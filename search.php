@@ -87,18 +87,18 @@ class BIBLEGET_SEARCH {
     
     static private $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
 
-    private $DATA;
-    private $returntype;
-    private $search;
-    private $mysqli;
-    private $validversions; 
+    private $DATA;           //all request parameters
+    private $returntype;     //which type of data to return (json, xml or html)
+    private $search;         //object with json, xml or html data to return
+    private $mysqli;         //instance of database
+    private $validversions;  //array of Bible versions supported by the BibleGet project, to check against
     
     function __construct($DATA){
         
         $this->DATA = $DATA;
         
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : "json";
-                
+        
     }
     
     public function Init(){
@@ -121,15 +121,17 @@ class BIBLEGET_SEARCH {
         $this->div      = $temp[1];
         $this->err      = $temp[2];
         
-        $this->mysqli   = self::dbConnect();
+        $this->mysqli   = $this->dbConnect();
+        $this->validversions = self::getValidVersions();
         
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
           switch(strtolower($this->DATA["query"])){
             case "keywordsearch":
               if(isset($this->DATA["keyword"]) && $this->DATA["keyword"] != ""){
                 if(isset($this->DATA["version"]) && $this->DATA["version"] != ""){
-                  //TODO: check if the version is a valid supported version of the Bible
-                  $this->searchByKeyword($this->DATA["keyword"],$this->DATA["version"]);
+                  if(checkValidVersions($this->DATA["version"])){
+                    $this->searchByKeyword($this->DATA["keyword"],$this->DATA["version"]);
+                  }
                 }
               }
               break;
@@ -140,7 +142,7 @@ class BIBLEGET_SEARCH {
         
     }
 
-    static private function dbConnect(){
+    private function dbConnect(){
     
         define("BIBLEGETIOQUERYSCRIPT","iknowwhythisishere");
         
@@ -238,9 +240,9 @@ class BIBLEGET_SEARCH {
       //we have already ensured that $version is a valid version, so let's get right to business
       // PREPARE ARRAY OF SEARCH RESULTS
       $searchresults = array();
-      if($result1 = $this->mysqli->query("SELECT * FROM '".$version."' WHERE text LIKE '%".$keyword."%'")){
-          while($row1 = mysqli_fetch_assoc($result1)){
-            //$searchresults[] = 
+      if($result1 = $this->mysqli->query("SELECT * FROM '{$version}' WHERE text LIKE '%{$keyword}%'")){
+          while($row = mysqli_fetch_assoc($result1)){
+            $searchresults[] = $row;
           }        
       }
       else{
@@ -257,12 +259,12 @@ class BIBLEGET_SEARCH {
         }
       }
       else if($this->returntype=="html"){
-      /*  
+      
         $TABLE = $this->search->createElement("table");
         $TABLE->setAttribute("id","SearchResultsTbl");
         $TABLE->setAttribute("class","SearchResultsTbl");
         $this->div->appendChild($TABLE);        
-        
+        /*
         $THEAD = $this->search->createElement("thead");
         $TABLE->appendChild($THEAD);
         
@@ -270,35 +272,23 @@ class BIBLEGET_SEARCH {
         $THEAD->appendChild($NEWROW);
         
         $NEWCOL = array();
-        $NEWCOL["BOOKIDX"] = $this->search->createElement("td","BOOK INDEX");
-        $NEWROW->appendChild($NEWCOL["BOOKIDX"]);
-        $NEWCOL["LANGUAGE"] = $this->search->createElement("td","LANGUAGE");
-        $NEWROW->appendChild($NEWCOL["LANGUAGE"]);
-        $NEWCOL["VALUE"] = $this->search->createElement("td","VALUE");
-        $NEWROW->appendChild($NEWCOL["VALUE"]);
-        
+        $NEWCOL["BOOK"] = $this->search->createElement("td","BOOK");
+        $NEWROW->appendChild($NEWCOL["BOOK"]);
+        $NEWCOL["CHAPTER"] = $this->search->createElement("td","CHAPTER");
+        $NEWROW->appendChild($NEWCOL["CHAPTER"]);
+        $NEWCOL["VERSE"] = $this->search->createElement("td","VERSE");
+        $NEWROW->appendChild($NEWCOL["VERSE"]);
+        */
         $TBODY = $this->search->createElement("tbody");
         $TABLE->appendChild($TBODY);
 
-        foreach($biblebooks as $key => $value){
+        foreach($searchresults as $key => $value){
             $NEWROW = $this->search->createElement("tr");
             $TBODY->appendChild($NEWROW);
-            
-            $NEWCELL = $this->search->createElement("td","Book ".$key);
-            $NEWCELL->setAttribute("rowspan",25);
-            $NEWROW->appendChild($NEWCELL);
         
-            foreach($value as $langKey => $langValue){
-                $NEWCELL = $this->search->createElement("td",$names[$langKey+1]);
+            foreach($value as $col => $cell){
+                $NEWCELL = $this->search->createElement("td",$cell);
                 $NEWROW->appendChild($NEWCELL);
-                
-                $NEWCELL = $this->search->createElement("td",json_encode($langValue, JSON_UNESCAPED_UNICODE));
-                $NEWROW->appendChild($NEWCELL);
-                
-                if($langKey < 24){
-                  $NEWROW  = $this->search->createElement("tr");
-                  $TBODY->appendChild($NEWROW);
-                }
             }
         }
       } 
@@ -364,11 +354,11 @@ switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
     case 'POST':
         //echo "A post request was detected...".PHP_EOL;
         //echo json_encode($_POST);
-        $SEARCH = new BIBLEGET_METADATA($_POST);
+        $SEARCH = new BIBLEGET_SEARCH($_POST);
         $SEARCH->Init();
         break;
     case 'GET':
-        $SEARCH = new BIBLEGET_METADATA($_GET);
+        $SEARCH = new BIBLEGET_SEARCH($_GET);
         $SEARCH->Init();
         break;
     default:
