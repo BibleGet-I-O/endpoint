@@ -494,6 +494,8 @@ function addErrorMessage($num,$rettype,$str=""){
  ********************************************************************************/
 
 function biblequeryInit($rettype){
+  $err = NULL;
+  $div = NULL; 
   switch($rettype){
     case "xml":
       $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
@@ -501,16 +503,12 @@ function biblequeryInit($rettype){
       $biblequery->addChild("Errors");
       $info = $biblequery->addChild("Info");
       $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
-      $err = NULL;
-      $div = NULL; 
       break;
     case "json":
       $biblequery = new stdClass();
       $biblequery->results = array();
       $biblequery->errors = array();
       $biblequery->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
-      $err = NULL;
-      $div = NULL;
       break; 
     case "html":
       $biblequery = new DOMDocument();
