@@ -54,7 +54,7 @@
  * more secure, more reliable, to be of better service to mankind.
  */
 
-
+error_reporting(E_ALL);
 define("ENDPOINT_VERSION", "2.4");
 
 /*************************************************************
