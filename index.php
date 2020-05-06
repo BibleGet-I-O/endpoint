@@ -103,10 +103,10 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/bot|crawl|slurp|spider/i'
 define("BIBLEGETIOQUERYSCRIPT","iknowwhythisishere");
 
 
-/*************************************************************/
-/* SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN */ 
-/* AND CONTENT-TYPE BASED ON REQUESTED RETURN TYPE           */
-/*************************************************************/
+/*************************************************************
+ * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
+ * AND CONTENT-TYPE BASED ON REQUESTED RETURN TYPE           *
+ ************************************************************/
 
 // Allow from any origin
 if (isset($_SERVER['HTTP_ORIGIN'])) {
@@ -195,9 +195,9 @@ foreach($ipranges_low as $key => $iprange_low){
 }
 */
 
-/*****************************************************************************/
-/* INITIALIZE THE OBJECT THAT WILL COLLECT THE RESULTS, BASED ON RETURN TYPE */
-/*****************************************************************************/    
+/*****************************************************************************
+ * INITIALIZE THE OBJECT THAT WILL COLLECT THE RESULTS, BASED ON RETURN TYPE *
+ ****************************************************************************/    
 
 $temp = biblequeryInit($returntype);
 
@@ -206,9 +206,9 @@ $div = $temp[1]; //useful only for html; needs to be appended
 $err = $temp[2]; //useful only for html; needs to be appended   
 
 
-/************************************************/
-/* PREPARE SOME GLOBALS THAT WE WILL BE NEEDING */
-/************************************************/
+/************************************************
+ * PREPARE SOME GLOBALS THAT WE WILL BE NEEDING *
+ ***********************************************/
 
 // open the connection to the database
 $mysqli = dbConnect();
@@ -324,9 +324,9 @@ $sections = array( //TODO: why have hardcoded strings in Italian? I started maki
 );
 
 
-/*****************************************/
-/* ELABORATE THE BIBLE QUOTE QUERYSTRING */
-/*****************************************/
+/*****************************************
+ * ELABORATE THE BIBLE QUOTE QUERYSTRING *
+ *****************************************/
 
 if(isset($BIBLEGET["query"]) && $BIBLEGET["query"] != ""){
 
@@ -380,9 +380,9 @@ if(isset($BIBLEGET["query"]) && $BIBLEGET["query"] != ""){
 $mysqli->close();
 
 
-/********************/
-/* USEFUL FUNCTIONS */
-/********************/
+/********************
+ * USEFUL FUNCTIONS *
+ *******************/
 
 function toProperCase($txt){
   preg_match("/\p{L}/u", $txt, $mList, PREG_OFFSET_CAPTURE);
@@ -486,10 +486,10 @@ function addErrorMessage($num,$rettype,$str=""){
   }
 }
 
-/*********************************************************************************/
-/* INITIALIZE THE OBJECT THAT WILL COLLECT THE RESULTS FROM THE MYSQL QUERIES,   */
-/* BASED ON THE RETURN TYPE                                                      */
-/*********************************************************************************/
+/*********************************************************************************
+ * INITIALIZE THE OBJECT THAT WILL COLLECT THE RESULTS FROM THE MYSQL QUERIES,   *
+ * BASED ON THE RETURN TYPE                                                      *
+ ********************************************************************************/
 
 function biblequeryInit($rettype){
   if($rettype == "xml"){
@@ -1411,9 +1411,9 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
 }
 
 
-/******************************************************************/
-/* ENCODE OUR OBJECT INTO THE FORMAT REQUESTED BY THE RETURN TYPE */
-/******************************************************************/
+/******************************************************************
+ * ENCODE OUR OBJECT INTO THE FORMAT REQUESTED BY THE RETURN TYPE *
+ *****************************************************************/
 
 
 function outputResult(){
