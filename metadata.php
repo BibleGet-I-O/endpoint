@@ -58,10 +58,10 @@
 //error_reporting(E_ALL);
 define("ENDPOINT_VERSION", "2.4");
 
-/*************************************************************/
-/* SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN */ 
-/* AND CONTENT-TYPE BASED ON REQUESTED RETURN TYPE           */
-/*************************************************************/
+/*************************************************************
+ * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
+ * AND CONTENT-TYPE BASED ON REQUESTED RETURN TYPE           *
+ ************************************************************/
 
 // Allow from any origin
 if (isset($_SERVER['HTTP_ORIGIN'])) {
@@ -631,7 +631,7 @@ class BIBLEGET_METADATA {
 }
 
 /*****************************************
- * END BIBLEGET METADATA CLASS           * 
+ *     END BIBLEGET METADATA CLASS       * 
  ****************************************/
 
 switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
