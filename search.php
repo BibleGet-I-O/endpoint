@@ -6,7 +6,7 @@
  * accepts all cross-domain requests
  * is CORS enabled (as far as I understand it)
  * 
- * ENDPOINT URL:    https://www.bibleget.io/search.php
+ * ENDPOINT URL:    https://query.bibleget.io/search.php
  * 
  * AUTHOR:          John Romano D'Orazio
  * AUTHOR EMAIL:    priest@johnromanodorazio.com
