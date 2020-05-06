@@ -90,8 +90,12 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/bot|crawl|slurp|spider/i'
   exit(0);
 }
 
-//PERHAPS IMPLEMENT A BLACKLIST FOR IP ADDRESSES OR ADDRESS RANGES THAT MAKE CONTINUED SPAM REQUESTS
+//TODO: PERHAPS IMPLEMENT A BLACKLIST FOR IP ADDRESSES OR ADDRESS RANGES THAT MAKE CONTINUED SPAM REQUESTS
 //just an idea, not actually using yet, but keep in mind if it becomes necessary to implement further protections
+//it's not enough to blacklist IP addresses, must also blacklist referers that generate requests from multiple IP addresses
+//all adding of IP addresses or referers to the blacklists should probably be done where the caching checks are done
+//Here we should only check if an IP address or referer is in a blacklist and if so, exit the script right away
+//(exit script with error message, saying the IP address or referer was blacklisted, or silently?)
 //$ipranges_low = array(ip2long("###.###.###.###"));
 //$ipranges_high = array(ip2long("###.###.###.###"));
 
