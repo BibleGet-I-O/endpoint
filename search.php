@@ -339,8 +339,14 @@ class BIBLEGET_SEARCH {
       else if($this->returntype == "html"){
         $this->search->appendChild($this->err); 
         $this->search->appendChild($this->div);
+        $info = $this->search->createElement("input");
+        $info->setAttribute("type", "hidden");
+        $info->setAttribute("value", ENDPOINT_VERSION);
+        $info->setAttribute("name", "ENDPOINT_VERSION");
+        $this->search->appendChild($info);
         echo $this->search->saveHTML($this->div); 
         echo $this->search->saveHTML($this->err);   
+        echo $this->search->saveHTML($info);   
       }
       
       $this->mysqli->close();
