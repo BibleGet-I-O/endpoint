@@ -80,10 +80,9 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
 $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
 
 
-/**************************************
- * START BUILDING BIBLEGET METADATA CLASS
- * 
- **************************************/
+/******************************************
+ * START BUILDING BIBLEGET METADATA CLASS * 
+ *****************************************/
  
 class BIBLEGET_METADATA {
     
@@ -632,8 +631,7 @@ class BIBLEGET_METADATA {
 }
 
 /*****************************************
- * END BIBLEGET METADATA CLASS
- * 
+ * END BIBLEGET METADATA CLASS           * 
  ****************************************/
 
 switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
