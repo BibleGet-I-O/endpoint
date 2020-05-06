@@ -121,8 +121,8 @@ class BIBLEGET_SEARCH {
         $this->div      = $temp[1];
         $this->err      = $temp[2];
         
-        $this->mysqli   = $this->dbConnect();
-        $this->validversions = self::getValidVersions();
+        $this->mysqli        = $this->dbConnect();
+        $this->validversions = $this->getValidVersions();
         
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
           switch(strtolower($this->DATA["query"])){
