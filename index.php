@@ -60,6 +60,8 @@
 
 define("ENDPOINT_VERSION","2.4");
 
+//TODO: perhaps create a class out of all this, like we did for metadata.php?
+
 if( !function_exists('apache_request_headers') ) {
     ///
     function apache_request_headers() {
