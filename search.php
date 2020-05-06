@@ -79,10 +79,9 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
 $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
 
 
-/**************************************
- * START BUILDING BIBLEGET METADATA CLASS
- * 
- **************************************/
+/****************************************
+ * START BUILDING BIBLEGET SEARCH CLASS * 
+ ***************************************/
  
 class BIBLEGET_SEARCH {
     
@@ -101,7 +100,6 @@ class BIBLEGET_SEARCH {
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : "json";
                 
     }
-
     
     public function Init(){
         switch($this->returntype){
