@@ -57,10 +57,10 @@
 
 define("ENDPOINT_VERSION", "2.4");
 
-/*************************************************************/
-/* SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN */ 
-/* AND CONTENT-TYPE BASED ON REQUESTED RETURN TYPE           */
-/*************************************************************/
+/*************************************************************
+ * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
+ * AND CONTENT-TYPE BASED ON REQUESTED RETURN TYPE           *
+ ************************************************************/
 
 // Allow from any origin
 if (isset($_SERVER['HTTP_ORIGIN'])) {
@@ -169,15 +169,18 @@ class BIBLEGET_SEARCH {
         $search = new stdClass();
         $search->results = array();
         $search->errors = array();
+        $search->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
       }
       else if($this->returntype == "xml"){
         $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
         $search = new simpleXMLElement($root);
         $search->addChild("Errors");
+        $info = $search->addChild("Info");
+        $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
       }
       else if($this->returntype == "html"){
         $search = new DOMDocument();
-        $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title></head><body></body>";
+        $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title></head><body></body>"; //we won't actually output this, but it is needed to create our DomDocument object
         $search->loadHTML($html);
         $div = $search->createElement("div");
         $div->setAttribute("class","results");
