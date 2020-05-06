@@ -622,8 +622,14 @@ class BIBLEGET_METADATA {
       else if($this->returntype == "html"){
         $this->metadata->appendChild($this->err); 
         $this->metadata->appendChild($this->div);
+        $info = $this->metadata->createElement("input");
+        $info->setAttribute("type", "hidden");
+        $info->setAttribute("value", ENDPOINT_VERSION);
+        $info->setAttribute("name", "ENDPOINT_VERSION");
+        $this->metadata->appendChild($info);
         echo $this->metadata->saveHTML($this->div); 
-        echo $this->metadata->saveHTML($this->err);   
+        echo $this->metadata->saveHTML($this->err);
+        echo $this->metadata->saveHTML($info);
       }
       
       $this->mysqli->close();
