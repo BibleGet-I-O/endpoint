@@ -494,33 +494,34 @@ function addErrorMessage($num,$rettype,$str=""){
  ********************************************************************************/
 
 function biblequeryInit($rettype){
-  if($rettype == "xml"){
-    $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
-    $biblequery = new simpleXMLElement($root);
-    $biblequery->addChild("Errors");
-    $info = $biblequery->addChild("Info");
-    $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
-    $err = NULL;
-    $div = NULL; 
-  }
-  elseif($rettype == "json"){
-    $biblequery = new stdClass();
-    $biblequery->results = array();
-    $biblequery->errors = array();
-    $biblequery->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
-    $err = NULL;
-    $div = NULL; 
-  }
-  elseif($rettype == "html"){
-    $biblequery = new DOMDocument();
-    $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title><style>table#errorsTbl { border: 3px double Red; background-color:DarkGray; } table#errorsTbl td { border: 1px solid Black; background-color:LightGray; padding: 3px; } td.errNum,td.errMessage { font-weight:bold; }</style><!-- QUERY.BIBLEGET.IO ENDPOINT VERSION {ENDPOINT_VERSION} --></head><body></body>";
-    $biblequery->loadHTML($html);
-    $div = $biblequery->createElement("div");
-    $div->setAttribute("class","results");
-    $div->setAttribute("id","results");
-    $err = $biblequery->createElement("div");
-    $err->setAttribute("class","errors");
-    $err->setAttribute("id","errors");
+  switch($rettype){
+    case "xml":
+      $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
+      $biblequery = new simpleXMLElement($root);
+      $biblequery->addChild("Errors");
+      $info = $biblequery->addChild("Info");
+      $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
+      $err = NULL;
+      $div = NULL; 
+      break;
+    case "json":
+      $biblequery = new stdClass();
+      $biblequery->results = array();
+      $biblequery->errors = array();
+      $biblequery->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
+      $err = NULL;
+      $div = NULL;
+      break; 
+    case "html":
+      $biblequery = new DOMDocument();
+      $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title><style>table#errorsTbl { border: 3px double Red; background-color:DarkGray; } table#errorsTbl td { border: 1px solid Black; background-color:LightGray; padding: 3px; } td.errNum,td.errMessage { font-weight:bold; }</style><!-- QUERY.BIBLEGET.IO ENDPOINT VERSION {ENDPOINT_VERSION} --></head><body></body>";
+      $biblequery->loadHTML($html);
+      $div = $biblequery->createElement("div");
+      $div->setAttribute("class","results");
+      $div->setAttribute("id","results");
+      $err = $biblequery->createElement("div");
+      $err->setAttribute("class","errors");
+      $err->setAttribute("id","errors");
   }
   return array($biblequery,$div,$err);
 }
