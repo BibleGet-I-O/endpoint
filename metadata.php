@@ -191,11 +191,14 @@ class BIBLEGET_METADATA {
         $metadata = new stdClass();
         $metadata->results = array();
         $metadata->errors = array();
+        $metadata->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
       }
       else if($this->returntype == "xml"){
         $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
         $metadata = new simpleXMLElement($root);
         $metadata->addChild("Errors");
+        $info = $metadata->addChild("Info");
+        $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
       }
       else if($this->returntype == "html"){
         $metadata = new DOMDocument();
