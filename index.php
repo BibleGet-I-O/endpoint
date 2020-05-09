@@ -58,7 +58,7 @@
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
 
-define("ENDPOINT_VERSION","2.4");
+define("ENDPOINT_VERSION","2.5");
 
 //TODO: perhaps create a class out of all this, like we did for metadata.php?
 
@@ -149,24 +149,30 @@ else if(strtoupper($_SERVER['REQUEST_METHOD']) === 'GET') {
     $BIBLEGET["forcecopyright"]         = isset($_GET["forcecopyright"]) 	? $_GET["forcecopyright"] 	: "";
 }
 
- define('DEBUGFILE', "requests.log");
- $data = "********************".PHP_EOL;
- $data .= date('l, F jS Y H:i:s T').PHP_EOL;
- $data .= print_r($_SERVER, true);
- if(strtoupper($_SERVER['REQUEST_METHOD']) === 'POST'){
+define('DEBUGFILE', "requests.log");
+define('DEBUG_REQUESTS',false); //set to true in order to enable logging of requests
+define('DEBUG_IPINFO',false);
+
+if(DEBUG_REQUESTS === true){
+  $data = "********************" . PHP_EOL;
+  $data .= date('l, F jS Y H:i:s T') . PHP_EOL;
+  $data .= print_r($_SERVER, true);
+  if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
     $data .= print_r($_POST, true);
- }
- if(isset($_POST["forceversion"])){
+  }
+  if (isset($_POST["forceversion"])) {
     $data .= "forceversion parameter is set, value = " . ($_POST["forceversion"] ? "true" : "false") . PHP_EOL;
- }
- $data .= PHP_EOL;
-// $fput_result = file_put_contents(DEBUGFILE,$data,FILE_APPEND | LOCK_EX);
+  }
+  $data .= PHP_EOL;
+  $fput_result = file_put_contents(DEBUGFILE, $data, FILE_APPEND | LOCK_EX);
 // if($fput_result){
 //   echo "LOG WRITE SUCCESSFUL";
 // }
 // else{
 //   echo "LOG WRITE NOT SUCCESSFUL";
 // }
+
+}
 
 // valid return types
 $returntypes = array("json","xml","html");
@@ -1122,6 +1128,37 @@ function formulateQueries($checkedResults){
 //END formulateQueries
 }
 
+function getGeoIpInfo($ipaddress, $mysqli){
+  $ch = curl_init("https://ipinfo.io/" . $ipaddress . "?token=" . IPINFO_ACCESS_TOKEN);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  if (($geoip_json = curl_exec($ch)) === false) {
+    $mysqli->query("INSERT INTO curl_error (ERRNO,ERROR) VALUES(" . curl_errno($ch) . ",'" . curl_error($ch) . "')");
+  }
+  //Check the status of communication with ipinfo.io server
+  $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+
+  if ($http_status == 429) {
+    $geoip_json = '{"ERROR":"api limit exceeded"}';
+  } else if ($http_status == 200) {
+    //Clean geopip_json object, ensure it is valid in any case
+    //$geoip_json = $mysqli->real_escape_string($geoip_json); // we don't need to escape it when it's coming from the ipinfo.io server, at least not before inserting into the database
+    //Check if it's actually an object or if it's not a string perhaps
+    $geoip_JSON_obj = json_decode($geoip_json);
+    if ($geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE) {
+      //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
+      $geoip_json = '{"ERROR":"' . json_last_error() . ' <'. $geoip_json.'>"}';
+    }
+    else{
+      $geoip_json = json_encode($geoip_JSON_obj);
+    }
+  } 
+  else{
+    $geoip_json = '{"ERROR":"wrong http status > '.$http_status.'"}';
+  }     	
+  return $geoip_json;
+}
+
 function doQueries($sqlqueries,$queriesversions, $originalquery){
   global $div;
   //global $err;
@@ -1168,38 +1205,48 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
     $realip = isset($_SERVER["HTTP_X_REAL_IP"]) ? $_SERVER["HTTP_X_REAL_IP"] : "";
     $clientip = isset($_SERVER["HTTP_CLIENT_IP"]) ? $_SERVER["HTTP_CLIENT_IP"] : "";
 
+    //Do our best to identify an IP address associated with the incoming request, 
+    //trying first HTTP_X_FORWARDED_FOR, then REMOTE_ADDR and last resort HTTP_X_REAL_IP
+    //This is useful only to protect against high volume requests from specific IP addresses or referers
     $ipaddress = isset($_SERVER["HTTP_X_FORWARDED_FOR"]) && $_SERVER["HTTP_X_FORWARDED_FOR"] != "" ? explode(",",$_SERVER["HTTP_X_FORWARDED_FOR"])[0] : "";
     if($ipaddress == ""){ $ipaddress = isset($_SERVER["REMOTE_ADDR"]) && $_SERVER["REMOTE_ADDR"] != "" ? $_SERVER["REMOTE_ADDR"] : ""; }
     if($ipaddress == ""){ $ipaddress = isset($_SERVER["HTTP_X_REAL_IP"]) && $_SERVER["HTTP_X_REAL_IP"] != "" ? $_SERVER["HTTP_X_REAL_IP"] : ""; }
     
     //we start off with the supposition that we've never seen this IP address before
-    $haveip = false;
+    $haveip = false; //this means "we already have this ip address in our records"
     //request logs are now divided by year, to keep things cleaner and easier to access and read
     $curYEAR = date("Y");
     
     //check if we have already seen this IP Address in the past 2 days and if we have the same request already
-    if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND QUERY = '".$xquery."'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){ 
-        //if more than 10 times in the past two days (but less than 20) simply add message inviting to use cacheing mechanism
-        if($ipresult->num_rows > 10 && $ipresult->num_rows < 20){
-          addErrorMessage(10,$returntype,$xquery);
-        	$iprow = $ipresult->fetch_assoc();
-        	$geoip_json = $iprow["WHO_WHERE_JSON"];
-        	$haveip = true; 			
-        }
-        //if we have more than 20 requests in the past two days for the same query, deny service?
-        else if($ipresult->num_rows > 19){
-            addErrorMessage(11,$returntype,$xquery);
-            outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
-        }
+    if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND QUERY = '".$xquery."'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){
+      if(DEBUG_IPINFO===true){file_put_contents(DEBUGFILE, "We have seen the IP Address [".$ipaddress."] in the past 2 days with this same request [".$xquery. "]" . PHP_EOL, FILE_APPEND | LOCK_EX);}
+      //if more than 10 times in the past two days (but less than 20) simply add message inviting to use cacheing mechanism
+      if($ipresult->num_rows > 10 && $ipresult->num_rows < 20){
+        addErrorMessage(10,$returntype,$xquery);
+        $iprow = $ipresult->fetch_assoc();
+        $geoip_json = $iprow["WHO_WHERE_JSON"];
+        $haveip = true; 			
+      }
+      //if we have more than 20 requests in the past two days for the same query, deny service?
+      else if($ipresult->num_rows > 19){
+          addErrorMessage(11,$returntype,$xquery);
+          outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
+      }
     }
 
     //and if the same IP address is making too many requests(>50?) with different queries (like copying the bible texts completely), deny service
-    if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){ 
-        //if more than 10 times in the past two days (but less than 20) simply add message inviting to use cacheing mechanism
-        if($ipresult->num_rows > 50){
-            addErrorMessage(12,$returntype,$xquery);
-            outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
+    if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){
+      if (DEBUG_IPINFO === true) {
+        file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
+      }
+      //if we 50 or more requests in the past two days, deny service?
+      if($ipresult->num_rows > 50){
+        if (DEBUG_IPINFO === true) {
+          file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX);
         }
+        addErrorMessage(12,$returntype,$xquery);
+        outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
+      }
     }
 
     //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
@@ -1245,39 +1292,39 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
         //if we already have a record of this IP address and we have info on it from ipinfo.io,
         //then we don't need to get info on it from ipinfo.io again (which has limit of 1000 requests per day)
         $pregmatch = preg_quote('{"ERROR":"','/');
-        if($haveip === false || $geoip_json == "" || $geoip_json === null || preg_match("/".$pregmatch."/",$geoip_json) ){ 
-            if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")){ 
-                if($ipresult->num_rows > 0){
-                	$iprow = $ipresult->fetch_assoc();
-                	$geoip_json = $iprow["WHO_WHERE_JSON"];
-                	$haveip = true; 			
-                }
+        if($haveip === false || $geoip_json == "" || $geoip_json === null || preg_match("/".$pregmatch."/",$geoip_json) ){
+        if (DEBUG_IPINFO === true) {
+          file_put_contents(DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [".$geoip_json. "]" . PHP_EOL, FILE_APPEND | LOCK_EX);  
+        }
+          if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")){ 
+            if($ipresult->num_rows > 0){
+              if (DEBUG_IPINFO === true) {
+                file_put_contents(DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX);  
+              }
+              $iprow = $ipresult->fetch_assoc();
+              $geoip_json = $iprow["WHO_WHERE_JSON"];
+              $haveip = true; 			
             }
-            else if($ipaddress != ""){
-                $ch = curl_init("https://ipinfo.io/".$ipaddress."?token=". IPINFO_ACCESS_TOKEN);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                if(($geoip_json = curl_exec($ch)) === false){
-                    $mysqli->query("INSERT INTO curl_error (ERRNO,ERROR) VALUES(".curl_errno($ch).",'".curl_error($ch)."')");
-                }
-                //Check the status of communication with ipinfo.io server
-                $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-
-                if($http_status == 429){
-                  $geoip_json = '{"ERROR":"api limit exceeded"}';
-                }
-                else if($http_status == 200){
-                  //Clean geopip_json object, ensure it is valid in any case
-                  $geoip_json = $mysqli->real_escape_string($geoip_json);
-                  //Check if it's actually an object or if it's not a string perhaps
-                  $geoip_JSON_obj = json_decode($geoip_json);
-                  if ($geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE) {
-                    //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
-                    $geoip_json = '{"ERROR":"'. json_last_error() .'"}';
-                  }
-                }      	
+            else{
+              if (DEBUG_IPINFO === true) {
+                file_put_contents(DEBUGFILE, "We do not yet have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX);  
+              }
+              $geoip_json = getGeoIpInfo($ipaddress,$mysqli);
+              if (DEBUG_IPINFO === true) {
+                file_put_contents(DEBUGFILE, "We have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);  
+              }
             }
-		}
+          }
+          else if($ipaddress != ""){
+            if (DEBUG_IPINFO === true) {
+              file_put_contents(DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io".PHP_EOL, FILE_APPEND | LOCK_EX);
+            }
+            $geoip_json = getGeoIpInfo($ipaddress, $mysqli);
+            if (DEBUG_IPINFO === true) {
+              file_put_contents(DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);  
+            }
+          }
+		    }
 			
         
 
