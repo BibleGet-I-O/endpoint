@@ -149,7 +149,7 @@ else if(strtoupper($_SERVER['REQUEST_METHOD']) === 'GET') {
     $BIBLEGET["forcecopyright"]         = isset($_GET["forcecopyright"]) 	? $_GET["forcecopyright"] 	: "";
 }
 
- $file = "requests.log";
+ define('DEBUGFILE', "requests.log");
  $data = "********************".PHP_EOL;
  $data .= date('l, F jS Y H:i:s T').PHP_EOL;
  $data .= print_r($_SERVER, true);
@@ -160,7 +160,7 @@ else if(strtoupper($_SERVER['REQUEST_METHOD']) === 'GET') {
     $data .= "forceversion parameter is set, value = " . ($_POST["forceversion"] ? "true" : "false") . PHP_EOL;
  }
  $data .= PHP_EOL;
- $fput_result = file_put_contents($file,$data,FILE_APPEND | LOCK_EX);
+// $fput_result = file_put_contents(DEBUGFILE,$data,FILE_APPEND | LOCK_EX);
 // if($fput_result){
 //   echo "LOG WRITE SUCCESSFUL";
 // }
@@ -602,7 +602,9 @@ function queryStrClean($gtquery){
   //if query is written in english notation, convert it to european notation
   $find = array(".",",",":");
   $replace = array("",".",",");
-  if(strpos($querystr,":") && strpos($querystr,".")){
+  //TODO: we need to detect mixed notations even when there are no dots, for example "Mt 5:1;6,2"
+  //in other words check what symbol we have immediately after [book &] chapter
+  if(strpos($querystr,":") && strpos($querystr,".")){ 
     //can't use both notations
     addErrorMessage("Mixed notations have been detected, please use either english or european notation.",$returntype);
     outputResult($bbquery,$returntype);  
@@ -1122,8 +1124,8 @@ function formulateQueries($checkedResults){
 
 function doQueries($sqlqueries,$queriesversions, $originalquery){
   global $div;
-  global $err;
-  global $sections;
+  //global $err;
+  //global $sections;
   global $mysqli;
   global $indexes;
   global $returntype;
@@ -1138,12 +1140,6 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
   // People need to learn to do cacheing of requests (maybe they're trying to turn it into a kind of DDOS attack?)
   // Need to protect ourselves here, but instead of pointing fingers by looking for example at the referring site,
   // we need to base the check on past requests
-  /*
-  if(isset($headersObj["REFERER"]) && preg_match("/giragno\.altervista\.org/") !== 0){
-      addErrorMessage("Please use a cacheing mechanism for requests to this endpoint",$returntype);
-      return;
-  }
-  */
   
   // First we initialize some variables and flags with default values
   $version = "";
@@ -1185,7 +1181,7 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
     if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND QUERY = '".$xquery."'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){ 
         //if more than 10 times in the past two days (but less than 20) simply add message inviting to use cacheing mechanism
         if($ipresult->num_rows > 10 && $ipresult->num_rows < 20){
-            addErrorMessage(10,$returntype,$xquery);
+          addErrorMessage(10,$returntype,$xquery);
         	$iprow = $ipresult->fetch_assoc();
         	$geoip_json = $iprow["WHO_WHERE_JSON"];
         	$haveip = true; 			
@@ -1248,8 +1244,9 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
         
         //if we already have a record of this IP address and we have info on it from ipinfo.io,
         //then we don't need to get info on it from ipinfo.io again (which has limit of 1000 requests per day)
-        if($haveip === false){ 
-            if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHERE_JSON != '{\"ERROR\":\"\"}'")){ 
+        $pregmatch = preg_quote('{"ERROR":"','/');
+        if($haveip === false || $geoip_json == "" || $geoip_json === null || preg_match("/".$pregmatch."/",$geoip_json) ){ 
+            if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")){ 
                 if($ipresult->num_rows > 0){
                 	$iprow = $ipresult->fetch_assoc();
                 	$geoip_json = $iprow["WHO_WHERE_JSON"];
@@ -1257,20 +1254,28 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
                 }
             }
             else if($ipaddress != ""){
-                $ch = curl_init("http://ipinfo.io/".$ipaddress);
+                $ch = curl_init("https://ipinfo.io/".$ipaddress."?token=". IPINFO_ACCESS_TOKEN);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 if(($geoip_json = curl_exec($ch)) === false){
                     $mysqli->query("INSERT INTO curl_error (ERRNO,ERROR) VALUES(".curl_errno($ch).",'".curl_error($ch)."')");
-                }			
+                }
+                //Check the status of communication with ipinfo.io server
+                $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
-                //Clean geopip_json object, ensure it is valid in any case
-                $geoip_json = $mysqli->real_escape_string($geoip_json);
-                //Check if it's actually an object or if it's not a string perhaps
-                $geoip_JSON_obj = json_decode($geoip_json);
-                if ($geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE) {
-                   //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
-                   $geoip_json = '{"ERROR":"'.$geoip_json.'"}';
-                }        	
+
+                if($http_status == 429){
+                  $geoip_json = '{"ERROR":"api limit exceeded"}';
+                }
+                else if($http_status == 200){
+                  //Clean geopip_json object, ensure it is valid in any case
+                  $geoip_json = $mysqli->real_escape_string($geoip_json);
+                  //Check if it's actually an object or if it's not a string perhaps
+                  $geoip_JSON_obj = json_decode($geoip_json);
+                  if ($geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE) {
+                    //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
+                    $geoip_json = '{"ERROR":"'. json_last_error() .'"}';
+                  }
+                }      	
             }
 		}
 			
@@ -1286,6 +1291,9 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
           $pluginversion = ($BIBLEGET["pluginversion"] != "") ? $BIBLEGET["pluginversion"] : "unknown";
         }
         $ipaddress = $ipaddress != "" ? $ipaddress : "0.0.0.0";
+        if($geoip_json === "" || $geoip_json === null){
+          $geoip_json = '{"ERROR":""}';
+        }
         /*
         $myfile = fopen("testfile_".time().".txt","w");
         fwrite($myfile,"SERVER REQUEST METHOD === ".$_SERVER["REQUEST_METHOD"].PHP_EOL);

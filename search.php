@@ -54,7 +54,9 @@
  * more secure, more reliable, to be of better service to mankind.
  */
 
-error_reporting(E_ALL);
+//ini_set('display_errors', 1);
+//error_reporting(E_ALL);
+
 define("ENDPOINT_VERSION", "2.4");
 
 /*************************************************************
@@ -129,7 +131,7 @@ class BIBLEGET_SEARCH {
             case "keywordsearch":
               if(isset($this->DATA["keyword"]) && $this->DATA["keyword"] != ""){
                 if(isset($this->DATA["version"]) && $this->DATA["version"] != ""){
-                  if(checkValidVersions($this->DATA["version"])){
+                  if($this->checkValidVersions($this->DATA["version"])){
                     $this->searchByKeyword($this->DATA["keyword"],$this->DATA["version"]);
                   }
                 }
@@ -167,29 +169,31 @@ class BIBLEGET_SEARCH {
       $err = NULL;
       $div = NULL;
 
-      if($this->returntype == "json"){
-        $search = new stdClass();
-        $search->results = array();
-        $search->errors = array();
-        $search->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
-      }
-      else if($this->returntype == "xml"){
-        $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
-        $search = new simpleXMLElement($root);
-        $search->addChild("Errors");
-        $info = $search->addChild("Info");
-        $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
-      }
-      else if($this->returntype == "html"){
-        $search = new DOMDocument();
-        $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title></head><body></body>"; //we won't actually output this, but it is needed to create our DomDocument object
-        $search->loadHTML($html);
-        $div = $search->createElement("div");
-        $div->setAttribute("class","results");
-        $div->setAttribute("id","results");
-        $err = $search->createElement("div");
-        $err->setAttribute("class","errors");
-        $err->setAttribute("id","errors");
+      switch($this->returntype){
+        case "json":
+          $search = new stdClass();
+          $search->results = array();
+          $search->errors = array();
+          $search->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
+        break;
+        case "xml":
+          $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
+          $search = new simpleXMLElement($root);
+          $search->addChild("Errors");
+          $info = $search->addChild("Info");
+          $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
+        break;
+        case "html":
+          $search = new DOMDocument();
+          $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title></head><body></body>"; //we won't actually output this, but it is needed to create our DomDocument object
+          $search->loadHTML($html);
+          $div = $search->createElement("div");
+          $div->setAttribute("class","results");
+          $div->setAttribute("id","results");
+          $err = $search->createElement("div");
+          $err->setAttribute("class","errors");
+          $err->setAttribute("id","errors");
+        break;
       }
       
       return array($search,$div,$err);
@@ -199,38 +203,38 @@ class BIBLEGET_SEARCH {
 
     private function addErrorMessage($str){  
     
-      if($this->returntype=="json"){
-        $error = array();
-        $error["errMessage"] = $str;    
-        $this->search->errors[] = $error;
-      }
-      elseif($this->returntype=="xml"){
-        $err_row = $this->search->Errors->addChild("error",$str);
-      }
-      elseif($this->returntype=="html"){
-    
-        $elements = array();
-        $attributes = array();
-    
-        $elements[0] = $this->search->createElement("table");
-        $elements[0]->setAttribute("id","errorsTbl");
-        $elements[0]->setAttribute("class","errorsTbl");
-        $this->err->appendChild($elements[0]);
-        
-        $elements[1] = $this->search->createElement("tr");
-        $elements[1]->setAttribute("id","errorsRow1");
-        $elements[1]->setAttribute("class","errorsRow1");
-        $elements[0]->appendChild($elements[1]);
-        
-        $elements[2] = $this->search->createElement("td","errMessage");
-        $elements[2]->setAttribute("class","errMessage");
-        $elements[2]->setAttribute("id","errMessage");
-        $elements[1]->appendChild($elements[2]);
-    
-        $elements[3] = $this->search->createElement("td",$str);
-        $elements[3]->setAttribute("class","errMessageVal");
-        $elements[3]->setAttribute("id","errMessageVal");
-        $elements[1]->appendChild($elements[3]);
+      switch($this->returntype){
+        case "json":
+          $error = array();
+          $error["errMessage"] = $str;    
+          $this->search->errors[] = $error;
+        break;
+        case "xml":
+          $err_row = $this->search->Errors->addChild("error",$str);
+        break;
+        case "html":    
+          $elements = array();
+          $attributes = array();
+      
+          $elements[0] = $this->search->createElement("table");
+          $elements[0]->setAttribute("id","errorsTbl");
+          $elements[0]->setAttribute("class","errorsTbl");
+          $this->err->appendChild($elements[0]);
+          
+          $elements[1] = $this->search->createElement("tr");
+          $elements[1]->setAttribute("id","errorsRow1");
+          $elements[1]->setAttribute("class","errorsRow1");
+          $elements[0]->appendChild($elements[1]);
+          
+          $elements[2] = $this->search->createElement("td","errMessage");
+          $elements[2]->setAttribute("class","errMessage");
+          $elements[2]->setAttribute("id","errMessage");
+          $elements[1]->appendChild($elements[2]);
+      
+          $elements[3] = $this->search->createElement("td",$str);
+          $elements[3]->setAttribute("class","errMessageVal");
+          $elements[3]->setAttribute("id","errMessageVal");
+          $elements[1]->appendChild($elements[3]);
       }
     }
     
@@ -240,7 +244,8 @@ class BIBLEGET_SEARCH {
       //we have already ensured that $version is a valid version, so let's get right to business
       // PREPARE ARRAY OF SEARCH RESULTS
       $searchresults = array();
-      if($result1 = $this->mysqli->query("SELECT * FROM '{$version}' WHERE text LIKE '%{$keyword}%'")){
+      $keyword = $this->mysqli->real_escape_string($keyword);
+      if($result1 = $this->mysqli->query("SELECT * FROM `{$version}` WHERE text LIKE '%{$keyword}%'")){
           while($row = mysqli_fetch_assoc($result1)){
             $searchresults[] = $row;
           }        
@@ -250,49 +255,50 @@ class BIBLEGET_SEARCH {
         $this->outputResult();
       }
       
-      if($this->returntype=="json"){
-        $this->search->results = $searchresults;
-      } 
-      else if($this->returntype=="xml"){
-        foreach($searchresults as $key => $value){
-          //TODO: how to do we want to build this XML representation
-        }
-      }
-      else if($this->returntype=="html"){
+      switch($this->returntype){
+        case "json":
+          $this->search->results = $searchresults;
+        break;
+        case "xml":
+          foreach($searchresults as $key => $value){
+            //TODO: how do we want to build this XML representation?
+          }
+        break;
+        case "html":
       
-        $TABLE = $this->search->createElement("table");
-        $TABLE->setAttribute("id","SearchResultsTbl");
-        $TABLE->setAttribute("class","SearchResultsTbl");
-        $this->div->appendChild($TABLE);        
-        /*
-        $THEAD = $this->search->createElement("thead");
-        $TABLE->appendChild($THEAD);
-        
-        $NEWROW = $this->search->createElement("tr");
-        $THEAD->appendChild($NEWROW);
-        
-        $NEWCOL = array();
-        $NEWCOL["BOOK"] = $this->search->createElement("td","BOOK");
-        $NEWROW->appendChild($NEWCOL["BOOK"]);
-        $NEWCOL["CHAPTER"] = $this->search->createElement("td","CHAPTER");
-        $NEWROW->appendChild($NEWCOL["CHAPTER"]);
-        $NEWCOL["VERSE"] = $this->search->createElement("td","VERSE");
-        $NEWROW->appendChild($NEWCOL["VERSE"]);
-        */
-        $TBODY = $this->search->createElement("tbody");
-        $TABLE->appendChild($TBODY);
+          $TABLE = $this->search->createElement("table");
+          $TABLE->setAttribute("id","SearchResultsTbl");
+          $TABLE->setAttribute("class","SearchResultsTbl");
+          $this->div->appendChild($TABLE);        
+          /*
+          $THEAD = $this->search->createElement("thead");
+          $TABLE->appendChild($THEAD);
+          
+          $NEWROW = $this->search->createElement("tr");
+          $THEAD->appendChild($NEWROW);
+          
+          $NEWCOL = array();
+          $NEWCOL["BOOK"] = $this->search->createElement("td","BOOK");
+          $NEWROW->appendChild($NEWCOL["BOOK"]);
+          $NEWCOL["CHAPTER"] = $this->search->createElement("td","CHAPTER");
+          $NEWROW->appendChild($NEWCOL["CHAPTER"]);
+          $NEWCOL["VERSE"] = $this->search->createElement("td","VERSE");
+          $NEWROW->appendChild($NEWCOL["VERSE"]);
+          */
+          $TBODY = $this->search->createElement("tbody");
+          $TABLE->appendChild($TBODY);
 
-        foreach($searchresults as $key => $value){
-            $NEWROW = $this->search->createElement("tr");
-            $TBODY->appendChild($NEWROW);
-        
-            foreach($value as $col => $cell){
-                $NEWCELL = $this->search->createElement("td",$cell);
-                $NEWROW->appendChild($NEWCELL);
-            }
-        }
+          foreach($searchresults as $key => $value){
+              $NEWROW = $this->search->createElement("tr");
+              $TBODY->appendChild($NEWROW);
+          
+              foreach($value as $col => $cell){
+                  $NEWCELL = $this->search->createElement("td",$cell);
+                  $NEWROW->appendChild($NEWCELL);
+              }
+          }
       } 
-      */
+      
       $this->outputResult();
       
     }
@@ -319,24 +325,27 @@ class BIBLEGET_SEARCH {
     
     private function outputResult(){
       
-      if($this->returntype == "json"){
-        //print_r($metadata->results[52]); 
-        echo json_encode($this->search, JSON_UNESCAPED_UNICODE);
-      }
-      else if($this->returntype == "xml"){
-        echo $this->search->asXML();
-      }
-      else if($this->returntype == "html"){
-        $this->search->appendChild($this->err); 
-        $this->search->appendChild($this->div);
-        $info = $this->search->createElement("input");
-        $info->setAttribute("type", "hidden");
-        $info->setAttribute("value", ENDPOINT_VERSION);
-        $info->setAttribute("name", "ENDPOINT_VERSION");
-        $this->search->appendChild($info);
-        echo $this->search->saveHTML($this->div); 
-        echo $this->search->saveHTML($this->err);   
-        echo $this->search->saveHTML($info);   
+      switch($this->returntype){
+        case "json":
+          //print_r($metadata->results[52]);
+          $this->search->info["keyword"] = $this->DATA["keyword"];
+          $this->search->info["version"] = $this->DATA["version"];
+          echo json_encode($this->search, JSON_UNESCAPED_UNICODE);
+        break;
+        case "xml":
+          echo $this->search->asXML();
+        break;
+        case "html":
+          $this->search->appendChild($this->err); 
+          $this->search->appendChild($this->div);
+          $info = $this->search->createElement("input");
+          $info->setAttribute("type", "hidden");
+          $info->setAttribute("value", ENDPOINT_VERSION);
+          $info->setAttribute("name", "ENDPOINT_VERSION");
+          $this->search->appendChild($info);
+          echo $this->search->saveHTML($this->div); 
+          echo $this->search->saveHTML($this->err);   
+          echo $this->search->saveHTML($info);   
       }
       
       $this->mysqli->close();
