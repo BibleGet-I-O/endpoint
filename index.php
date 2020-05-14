@@ -58,7 +58,7 @@
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
 
-define("ENDPOINT_VERSION","2.5");
+define("ENDPOINT_VERSION","2.6");
 
 //TODO: perhaps create a class out of all this, like we did for metadata.php?
 
@@ -129,23 +129,23 @@ $BIBLEGET = array();
 
 // Let's accept both POST requests and GET requests
 if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
-    $BIBLEGET["query"] 					= isset($_POST["query"]) 			? $_POST["query"] 			: "";
-    $BIBLEGET["return"] 				= isset($_POST["return"]) 			? $_POST["return"] 			: "";
-    $BIBLEGET["version"] 				= isset($_POST["version"]) 			? $_POST["version"] 		: "";
-    $BIBLEGET["domain"] 				= isset($_POST["domain"]) 			? $_POST["domain"] 			: "";
-    $BIBLEGET["appid"] 					= isset($_POST["appid"]) 			? $_POST["appid"] 			: "";
-    $BIBLEGET["pluginversion"] 	        = isset($_POST["pluginversion"]) 	? $_POST["pluginversion"] 	: "";
-    $BIBLEGET["forceversion"] 	        = isset($_POST["forceversion"])     ? $_POST["forceversion"] 	: "";
+    $BIBLEGET["query"] 			        		= isset($_POST["query"]) 	      		? $_POST["query"] 		    	: "";
+    $BIBLEGET["return"] 		        		= isset($_POST["return"])     			? $_POST["return"] 		    	: "";
+    $BIBLEGET["version"] 		        		= isset($_POST["version"])    			? $_POST["version"] 	    	: "";
+    $BIBLEGET["domain"] 			        	= isset($_POST["domain"])     			? $_POST["domain"] 		    	: "";
+    $BIBLEGET["appid"] 				        	= isset($_POST["appid"]) 	      		? $_POST["appid"] 		    	: "";
+    $BIBLEGET["pluginversion"] 	        = isset($_POST["pluginversion"])  	? $_POST["pluginversion"] 	: "";
+    $BIBLEGET["forceversion"] 	        = isset($_POST["forceversion"])     ? $_POST["forceversion"] 	  : "";
     $BIBLEGET["forcecopyright"]         = isset($_POST["forcecopyright"])   ? $_POST["forcecopyright"] 	: "";
 }
 else if(strtoupper($_SERVER['REQUEST_METHOD']) === 'GET') {
-    $BIBLEGET["query"] 					= isset($_GET["query"]) 			? $_GET["query"] 			: "";
-    $BIBLEGET["return"] 				= isset($_GET["return"]) 			? $_GET["return"] 			: "";
-    $BIBLEGET["version"] 				= isset($_GET["version"]) 			? $_GET["version"] 			: "";
-    $BIBLEGET["domain"] 				= isset($_GET["domain"]) 			? $_GET["domain"] 			: "";
-    $BIBLEGET["appid"] 					= isset($_GET["appid"]) 			? $_GET["appid"] 			: "";
-    $BIBLEGET["pluginversion"] 	        = isset($_GET["pluginversion"]) 	? $_GET["pluginversion"] 	: "";
-    $BIBLEGET["forceversion"] 	        = isset($_GET["forceversion"]) 		? $_GET["forceversion"] 	: "";
+    $BIBLEGET["query"] 		        			= isset($_GET["query"]) 	    		? $_GET["query"] 	      		: "";
+    $BIBLEGET["return"] 	        			= isset($_GET["return"]) 	    		? $_GET["return"]     			: "";
+    $BIBLEGET["version"] 		        		= isset($_GET["version"]) 	  		? $_GET["version"] 	    		: "";
+    $BIBLEGET["domain"] 			        	= isset($_GET["domain"]) 		    	? $_GET["domain"]     			: "";
+    $BIBLEGET["appid"] 			        		= isset($_GET["appid"]) 	    		? $_GET["appid"] 		       	: "";
+    $BIBLEGET["pluginversion"] 	        = isset($_GET["pluginversion"]) 	? $_GET["pluginversion"]  	: "";
+    $BIBLEGET["forceversion"] 	        = isset($_GET["forceversion"]) 		? $_GET["forceversion"]   	: "";
     $BIBLEGET["forcecopyright"]         = isset($_GET["forcecopyright"]) 	? $_GET["forcecopyright"] 	: "";
 }
 
@@ -459,7 +459,7 @@ function addErrorMessage($num,$rettype,$str=""){
   elseif($rettype=="html"){
 
     $elements = array();
-    $attributes = array();
+    //$attributes = array();
 
     //$bbquery->validateOnParse = true;
     $errorsTable = $bbquery->getElementById("errorsTbl");
@@ -1445,6 +1445,21 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
             $citation1 = $bbquery->createElement("p");
             $citation1->setAttribute("class","verses versesParagraph");
             $div->appendChild($citation1);
+            $metainfo = $bbquery->createElement("input");
+            $metainfo->setAttribute("type","hidden");
+            $metainfo->setAttribute("class","originalQuery");
+            $metainfo->setAttribute("value", $row["originalquery"]);
+            $div->appendChild($metainfo);
+            $metainfo1 = $bbquery->createElement("input");
+            $metainfo1->setAttribute("type", "hidden");
+            $metainfo1->setAttribute("class", "bookAbbrev");
+            $metainfo1->setAttribute("value", $row["bookabbrev"]);
+            $div->appendChild($metainfo1);
+            $metainfo2 = $bbquery->createElement("input");
+            $metainfo2->setAttribute("type", "hidden");
+            $metainfo2->setAttribute("class", "bookNum");
+            $metainfo2->setAttribute("value", $row["booknum"]);
+            $div->appendChild($metainfo2);
           }
           if($newverse){
             $versicle = $bbquery->createElement("span",$row["verse"]);
@@ -1487,6 +1502,7 @@ function outputResult(){
     $info->setAttribute("type", "hidden");
     $info->setAttribute("value", ENDPOINT_VERSION);
     $info->setAttribute("name", "ENDPOINT_VERSION");
+    $info->setAttribute("id", "BibleGetInfo");
     $bbquery->appendChild($info);
     $bbquery->appendChild($div);
     echo $bbquery->saveHTML($div); 
