@@ -58,7 +58,7 @@
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
 
-define("ENDPOINT_VERSION","2.6");
+define("ENDPOINT_VERSION","2.7");
 
 //TODO: perhaps create a class out of all this, like we did for metadata.php?
 
@@ -442,8 +442,8 @@ function addErrorMessage($num,$rettype,$str=""){
   $errorMessages[12] = "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management.";
 
   if(gettype($num)=="string"){
-    $errorMessages[10] = $num;
-    $num = 10;
+    $errorMessages[13] = $num;
+    $num = 13;
   }
 
   if($rettype=="xml"){
@@ -522,10 +522,8 @@ function biblequeryInit($rettype){
       $biblequery->loadHTML($html);
       $div = $biblequery->createElement("div");
       $div->setAttribute("class","results");
-      $div->setAttribute("id","results");
       $err = $biblequery->createElement("div");
       $err->setAttribute("class","errors");
-      $err->setAttribute("id","errors");
   }
   return array($biblequery,$div,$err);
 }
@@ -1217,67 +1215,72 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
     //request logs are now divided by year, to keep things cleaner and easier to access and read
     $curYEAR = date("Y");
     
-    //check if we have already seen this IP Address in the past 2 days and if we have the same request already
-    if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND QUERY = '".$xquery."'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){
-      if(DEBUG_IPINFO===true){file_put_contents(DEBUGFILE, "We have seen the IP Address [".$ipaddress."] in the past 2 days with this same request [".$xquery. "]" . PHP_EOL, FILE_APPEND | LOCK_EX);}
-      //if more than 10 times in the past two days (but less than 20) simply add message inviting to use cacheing mechanism
-      if($ipresult->num_rows > 10 && $ipresult->num_rows < 20){
-        addErrorMessage(10,$returntype,$xquery);
-        $iprow = $ipresult->fetch_assoc();
-        $geoip_json = $iprow["WHO_WHERE_JSON"];
-        $haveip = true; 			
+    //Don't enforce the max limit for requests from domains that need to do a lot of testing for plugin development
+    if(array_search($BIBLEGET["domain"],$WhitelistedDomainsIPs) || array_search($ipaddress, $WhitelistedDomainsIPs)){
+      $originHeader = key_exists("ORIGIN", $headersObj) ? $headersObj["ORIGIN"] : "";
+    } 
+    else {
+      //check if we have already seen this IP Address in the past 2 days and if we have the same request already
+      if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND QUERY = '".$xquery."'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){
+        if(DEBUG_IPINFO===true){file_put_contents(DEBUGFILE, "We have seen the IP Address [".$ipaddress."] in the past 2 days with this same request [".$xquery. "]" . PHP_EOL, FILE_APPEND | LOCK_EX);}
+        //if more than 10 times in the past two days (but less than 30) simply add message inviting to use cacheing mechanism
+        if($ipresult->num_rows > 10 && $ipresult->num_rows < 30){
+          addErrorMessage(10,$returntype,$xquery);
+          $iprow = $ipresult->fetch_assoc();
+          $geoip_json = $iprow["WHO_WHERE_JSON"];
+          $haveip = true; 			
+        }
+        //if we have more than 30 requests in the past two days for the same query, deny service?
+        else if($ipresult->num_rows > 29){
+            addErrorMessage(11,$returntype,$xquery);
+            outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
+        }
       }
-      //if we have more than 20 requests in the past two days for the same query, deny service?
-      else if($ipresult->num_rows > 19){
-          addErrorMessage(11,$returntype,$xquery);
-          outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
-      }
-    }
 
-    //and if the same IP address is making too many requests(>50?) with different queries (like copying the bible texts completely), deny service
-    if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){
-      if (DEBUG_IPINFO === true) {
-        file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
-      }
-      //if we 50 or more requests in the past two days, deny service?
-      if($ipresult->num_rows > 50){
+      //and if the same IP address is making too many requests(>100?) with different queries (like copying the bible texts completely), deny service
+      if($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__".$curYEAR." WHERE WHO_IP = INET_ATON('".$ipaddress."') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")){
         if (DEBUG_IPINFO === true) {
-          file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX);
+          file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
-        addErrorMessage(12,$returntype,$xquery);
-        outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
+        //if we 50 or more requests in the past two days, deny service?
+        if($ipresult->num_rows > 100){
+          if (DEBUG_IPINFO === true) {
+            file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX);
+          }
+          addErrorMessage(12,$returntype,$xquery);
+          outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
+        }
       }
-    }
 
-    //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
-    $originHeader = key_exists("ORIGIN",$headersObj) ? $headersObj["ORIGIN"] : "";
-    if($originres = $mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__".$curYEAR." WHERE QUERY = '".$xquery."' AND ORIGIN != '' AND ORIGIN = '".$originHeader."' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN") ){
-        if($originres->num_rows > 0){
-            $originRow = $originres->fetch_assoc();
-            if(key_exists("ORIGIN_CNT",$originRow)){
-                if($originRow["ORIGIN_CNT"] > 10 && $originRow["ORIGIN_CNT"] < 20){
-                    addErrorMessage(10,$returntype,$xquery);                
-                }
-                else if($originRow["ORIGIN_CNT"] > 19){
-                    addErrorMessage(11,$returntype,$xquery);
-                    outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection                
-                }
-            }
-        }
-    }
-    //and we'll check for diverse requests from the same origin in the past couple days (>50?)
-    if($originres = $mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__".$curYEAR." WHERE ORIGIN != '' AND ORIGIN = '".$originHeader."' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN") ){
-        if($originres->num_rows > 0){
-            $originRow = $originres->fetch_assoc();
-            if(key_exists("ORIGIN_CNT",$originRow)){
-                if($originRow["ORIGIN_CNT"] > 50){
-                  addErrorMessage(12,$returntype,$xquery);
-                  outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
-                }
-            }
-        }
-    }
-    
+      //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
+      $originHeader = key_exists("ORIGIN",$headersObj) ? $headersObj["ORIGIN"] : "";
+      if($originres = $mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__".$curYEAR." WHERE QUERY = '".$xquery."' AND ORIGIN != '' AND ORIGIN = '".$originHeader."' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN") ){
+          if($originres->num_rows > 0){
+              $originRow = $originres->fetch_assoc();
+              if(key_exists("ORIGIN_CNT",$originRow)){
+                  if($originRow["ORIGIN_CNT"] > 10 && $originRow["ORIGIN_CNT"] < 30){
+                      addErrorMessage(10,$returntype,$xquery);                
+                  }
+                  else if($originRow["ORIGIN_CNT"] > 29){
+                      addErrorMessage(11,$returntype,$xquery);
+                      outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection                
+                  }
+              }
+          }
+      }
+      //and we'll check for diverse requests from the same origin in the past couple days (>100?)
+      if($originres = $mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__".$curYEAR." WHERE ORIGIN != '' AND ORIGIN = '".$originHeader."' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN") ){
+          if($originres->num_rows > 0){
+              $originRow = $originres->fetch_assoc();
+              if(key_exists("ORIGIN_CNT",$originRow)){
+                  if($originRow["ORIGIN_CNT"] > 100){
+                    addErrorMessage(12,$returntype,$xquery);
+                    outputResult($bbquery,$returntype); //this should exit the script right here, closing the mysql connection
+                  }
+              }
+          }
+      }
+    }// end max request checks
     
     $myversion = $queriesversions[$i];
 //     echo $i.") myversion = ".$myversion."<br />";
@@ -1354,8 +1357,8 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
         fclose($myfile);
         */
         
-    $stmt = $mysqli->prepare("INSERT INTO requests_log__" . $curYEAR . " (WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION) VALUES (INET_ATON(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param('sssssssssssss',$ipaddress,$geoip_json,$headers,$originHeader,$xquery,$requestmethod,$clientip,$forwardedip,$realip,$remote_address,$appid,$domain,$pluginversion);
+    $stmt = $mysqli->prepare("INSERT INTO requests_log__" . $curYEAR . " (WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION) VALUES (INET_ATON(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param('ssssssssssssss',$ipaddress,$geoip_json,$headers,$originHeader,$xquery,$originalquery[$i],$requestmethod,$clientip,$forwardedip,$realip,$remote_address,$appid,$domain,$pluginversion);
     if($stmt->execute() === false){
         addErrorMessage("There has been an error updating the logs: (" . $mysqli->errno . ") " . $mysqli->error, $returntype);
     }
@@ -1502,7 +1505,7 @@ function outputResult(){
     $info->setAttribute("type", "hidden");
     $info->setAttribute("value", ENDPOINT_VERSION);
     $info->setAttribute("name", "ENDPOINT_VERSION");
-    $info->setAttribute("id", "BibleGetInfo");
+    $info->setAttribute("class", "BibleGetInfo");
     $bbquery->appendChild($info);
     $bbquery->appendChild($div);
     echo $bbquery->saveHTML($div); 
