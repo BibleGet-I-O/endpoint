@@ -57,7 +57,9 @@
 //ini_set('display_errors', 1);
 //error_reporting(E_ALL);
 
-define("ENDPOINT_VERSION", "2.4");
+//TODO: implement advanced search with fulltext boolean operators, multiple keywords, negating keywords...
+
+define("ENDPOINT_VERSION", "2.5");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -245,7 +247,7 @@ class BIBLEGET_SEARCH {
       // PREPARE ARRAY OF SEARCH RESULTS
       $searchresults = array();
       $keyword = $this->mysqli->real_escape_string($keyword);
-      if($result1 = $this->mysqli->query("SELECT * FROM `{$version}` WHERE text LIKE '%{$keyword}%'")){
+      if($result1 = $this->mysqli->query("SELECT * FROM `{$version}` WHERE MATCH(text) AGAINST ('{$keyword}*' IN BOOLEAN MODE)")){
           while($row = mysqli_fetch_assoc($result1)){
             $searchresults[] = $row;
           }        
