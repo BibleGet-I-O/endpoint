@@ -58,7 +58,7 @@
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
 
-define("ENDPOINT_VERSION","2.7");
+define("ENDPOINT_VERSION","2.8");
 
 //TODO: perhaps create a class out of all this, like we did for metadata.php?
 
@@ -521,9 +521,9 @@ function biblequeryInit($rettype){
       $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title><style>table#errorsTbl { border: 3px double Red; background-color:DarkGray; } table#errorsTbl td { border: 1px solid Black; background-color:LightGray; padding: 3px; } td.errNum,td.errMessage { font-weight:bold; }</style><!-- QUERY.BIBLEGET.IO ENDPOINT VERSION {ENDPOINT_VERSION} --></head><body></body>";
       $biblequery->loadHTML($html);
       $div = $biblequery->createElement("div");
-      $div->setAttribute("class","results");
+      $div->setAttribute("class","results bibleQuote");
       $err = $biblequery->createElement("div");
-      $err->setAttribute("class","errors");
+      $err->setAttribute("class","errors bibleQuote");
   }
   return array($biblequery,$div,$err);
 }
@@ -1214,9 +1214,10 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
     $haveip = false; //this means "we already have this ip address in our records"
     //request logs are now divided by year, to keep things cleaner and easier to access and read
     $curYEAR = date("Y");
-    
+
+    global $WhitelistedDomainsIPs;
     //Don't enforce the max limit for requests from domains that need to do a lot of testing for plugin development
-    if(array_search($BIBLEGET["domain"],$WhitelistedDomainsIPs) || array_search($ipaddress, $WhitelistedDomainsIPs)){
+    if(array_search($BIBLEGET["domain"],$WhitelistedDomainsIPs) !== false || array_search($ipaddress, $WhitelistedDomainsIPs) !== false){
       $originHeader = key_exists("ORIGIN", $headersObj) ? $headersObj["ORIGIN"] : "";
     } 
     else {
@@ -1378,9 +1379,11 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
         //TODO: why have this hardcoded into italian? probably best just to return the integer, 
         //then put translatable strings into metadata that can optionally be queried from the metadata endpoint
 
+        $universal_booknum = $row["book"];
         $booknum = array_search($row["book"],$indexes[$myversion]["book_num"]);
         $row["bookabbrev"] = $indexes[$myversion]["abbreviations"][$booknum];
         $row["booknum"] = $booknum;
+        $row["univbooknum"] = $universal_booknum;
         $row["book"] = $indexes[$myversion]["biblebooks"][$booknum];
         
         $row["section"] = (int) $row["section"];//$sections[$row["section"]]; //TODO: this is also coming back only in Italian. should probably come back as an integer value
@@ -1463,6 +1466,11 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
             $metainfo2->setAttribute("class", "bookNum");
             $metainfo2->setAttribute("value", $row["booknum"]);
             $div->appendChild($metainfo2);
+            $metainfo3 = $bbquery->createElement("input");
+            $metainfo3->setAttribute("type", "hidden");
+            $metainfo3->setAttribute("class", "univBookNum");
+            $metainfo3->setAttribute("value", $row["univbooknum"]);
+            $div->appendChild($metainfo3);
           }
           if($newverse){
             $versicle = $bbquery->createElement("span",$row["verse"]);
