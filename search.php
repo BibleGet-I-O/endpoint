@@ -59,7 +59,7 @@
 
 //TODO: implement advanced search with fulltext boolean operators, multiple keywords, negating keywords...
 
-define("ENDPOINT_VERSION", "2.5");
+define("ENDPOINT_VERSION", "2.6");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -96,6 +96,7 @@ class BIBLEGET_SEARCH {
     private $search;         //object with json, xml or html data to return
     private $mysqli;         //instance of database
     private $validversions;  //array of Bible versions supported by the BibleGet project, to check against
+    private $indexes;
     
     function __construct($DATA){
         
@@ -127,21 +128,38 @@ class BIBLEGET_SEARCH {
         
         $this->mysqli        = $this->dbConnect();
         $this->validversions = $this->getValidVersions();
-        
+        if(isset($this->DATA["version"]) && $this->DATA["version"] != ""){
+          if($this->checkValidVersions($this->DATA["version"])){
+            $this->indexes = $this->prepareIndexes(array(strtoupper($this->DATA["version"])));
+          }
+          else{
+            $this->addErrorMessage("The Bible version requested is not a valid Bible version");
+            $this->outputResult();          
+          }      
+        }
+        else{
+          $this->addErrorMessage("No Bible version to search from has been requested");
+          $this->outputResult();          
+        }
+
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
           switch(strtolower($this->DATA["query"])){
             case "keywordsearch":
               if(isset($this->DATA["keyword"]) && $this->DATA["keyword"] != ""){
-                if(isset($this->DATA["version"]) && $this->DATA["version"] != ""){
-                  if($this->checkValidVersions($this->DATA["version"])){
-                    $this->searchByKeyword($this->DATA["keyword"],$this->DATA["version"]);
-                  }
-                }
+                $this->searchByKeyword($this->DATA["keyword"],$this->DATA["version"]);
+              }
+              else{
+                $this->addErrorMessage("No keyword to search for has been requested. Please indicate a keyword using the 'keyword' parameter.");
+                $this->outputResult();          
               }
               break;
             default:
               exit(0);  
           }
+        }
+        else{
+          $this->addErrorMessage("No action has been requested. Please indicate an action using the 'query' parameter.");
+          $this->outputResult();          
         }
         
     }
@@ -249,8 +267,16 @@ class BIBLEGET_SEARCH {
       $keyword = $this->mysqli->real_escape_string($keyword);
       if($result1 = $this->mysqli->query("SELECT * FROM `{$version}` WHERE MATCH(text) AGAINST ('{$keyword}*' IN BOOLEAN MODE)")){
           while($row = mysqli_fetch_assoc($result1)){
+            $row["version"] = strtoupper($version);
+            $universal_booknum = $row["book"];
+            $booknum = array_search($row["book"],$this->indexes[$version]["book_num"]);
+            $row["bookabbrev"] = $this->indexes[$version]["abbreviations"][$booknum];
+            $row["booknum"] = $booknum;
+            $row["univbooknum"] = $universal_booknum;
+            $row["book"] = $this->indexes[$version]["biblebooks"][$booknum];
+            unset($row["verseID"]);
             $searchresults[] = $row;
-          }        
+          }   
       }
       else{
         $this->addErrorMessage("<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>");
@@ -324,6 +350,44 @@ class BIBLEGET_SEARCH {
     private function checkValidVersions($value){
       return(in_array($value,$this->validversions));
     }
+
+    private function prepareIndexes($versions){
+      
+      $indexes = array();
+      
+      foreach($versions as $variant){  
+        $abbreviations = array();
+        $bbbooks = array();
+        $chapter_limit = array();
+        $verse_limit = array();
+        $book_num = array();
+        
+        // fetch the index information for the requested version from the database and load it into our arrays
+        if($result = $this->mysqli->query("SELECT * FROM ".$variant."_idx")){
+          while($row = $result->fetch_assoc()){
+            $abbreviations[] = $row["abbrev"];
+            $bbbooks[] = $row["fullname"];
+            $chapter_limit[] = $row["chapters"];
+            $verse_limit[] = explode(",",$row["verses_last"]);
+            $book_num[] = $row["book"];
+          }
+        }
+        else{
+          //error
+        }
+        
+        $indexes[$variant]["abbreviations"] = $abbreviations;
+        $indexes[$variant]["biblebooks"] = $bbbooks;
+        $indexes[$variant]["chapter_limit"] = $chapter_limit;
+        $indexes[$variant]["verse_limit"] = $verse_limit;
+        $indexes[$variant]["book_num"] = $book_num;  
+      
+      }
+      
+      return $indexes;
+      
+    }
+    
     
     private function outputResult(){
       
@@ -342,8 +406,8 @@ class BIBLEGET_SEARCH {
           $this->search->appendChild($this->div);
           $info = $this->search->createElement("input");
           $info->setAttribute("type", "hidden");
-          $info->setAttribute("value", ENDPOINT_VERSION);
           $info->setAttribute("name", "ENDPOINT_VERSION");
+          $info->setAttribute("value", ENDPOINT_VERSION);
           $this->search->appendChild($info);
           echo $this->search->saveHTML($this->div); 
           echo $this->search->saveHTML($this->err);   
