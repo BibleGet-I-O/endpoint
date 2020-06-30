@@ -59,7 +59,7 @@
 
 //TODO: implement advanced search with fulltext boolean operators, multiple keywords, negating keywords...
 
-define("ENDPOINT_VERSION", "2.6");
+define("ENDPOINT_VERSION", "2.7");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -274,6 +274,7 @@ class BIBLEGET_SEARCH {
             $row["booknum"] = $booknum;
             $row["univbooknum"] = $universal_booknum;
             $row["book"] = $this->indexes[$version]["biblebooks"][$booknum];
+            $row["originalquery"] = $this->indexes[$version]["abbreviations"][$booknum] . $row["chapter"] . ":" . $row["verse"];
             unset($row["verseID"]);
             $searchresults[] = $row;
           }   
