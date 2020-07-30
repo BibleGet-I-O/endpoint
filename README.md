@@ -6,7 +6,7 @@ This is the main API endpoint for all queries for biblical texts and quotes, rea
 
 Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](https://www.w3.org/wiki/CORS_Enabled), which means that ajax requests can be made directly against the endpoint without getting cross-domain restriction errors.
 
-For the time being, there is not authorization required to access the endpoint. However anyone who intends on using the endpoint is requested to use the `appid` parameter explained below in order to identify the source of the requests to the endpoint. And especially for web-based tools (apps, plugins), it is very important to use some kind of cache mechanism, in order to avoid unnecessary repeated requests to the API endpoint.
+For the time being, authorization is not required to access the endpoint. However anyone who intends on using the endpoint is requested to use the `appid` parameter explained below in order to identify the source of the requests to the endpoint. And especially for web-based tools (apps, plugins), it is very important to use some kind of cache mechanism, in order to avoid unnecessary repeated requests to the API endpoint. Restrictions on the Maximum amount of requests permitted daily from any given IP address or web host are enforced.
 
 Types of data that can be returned from the API endpoint are `JSON`, `XML`, and `HTML`.
 
