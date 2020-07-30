@@ -34,7 +34,7 @@ An example of returned data for the query `https://query.bibleget.io/?query=Mt1,
   * **`section`**: will have one of the following values:
     * `0` = *Pentateuch*
     * `1` = *Historical Books*
-    * `2` = *Wisdom Books*`
+    * `2` = *Wisdom Books*
     * `3` = *Prophets*
     * `4` = *Gospels*
     * `5` = *Acts of the Apostles*
