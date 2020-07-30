@@ -23,7 +23,7 @@ Types of data that can be returned from the API endpoint are `JSON`, `XML`, and 
 ### STRUCTURE OF THE RETURNED DATA
 I will only take into consideration, for sake of simplicity, the structure of JSON data.
 
-An example of returned data for the query `https://query.bibleget.io/?query=Mt1,1-5&version=NABRE`:
+An example of data returned from the query `https://query.bibleget.io/?query=Mt1,1-5&version=NABRE`:
 
 ```javascript
 {"results":[{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"1","verseequiv":null,"text":" The book of the genealogy of Jesus Christ, the son of David, the son of Abraham.","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"2","verseequiv":null,"text":" Abraham became the father of Isaac, Isaac the father of Jacob, Jacob the father of Judah and his brothers. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"3","verseequiv":null,"text":"Judah became the father of Perez and Zerah, whose mother was Tamar. Perez became the father of Hezron, Hezron the father of Ram, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"4","verseequiv":null,"text":" Ram the father of Amminadab. Amminadab became the father of Nahshon, Nahshon the father of Salmon, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"5","verseequiv":null,"text":" Salmon the father of Boaz, whose mother was Rahab. Boaz became the father of Obed, whose mother was Ruth. Obed became the father of Jesse, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"}],"errors":[],"info":{"ENDPOINT_VERSION":"2.8"}}
@@ -61,7 +61,7 @@ An example of returned data for the query `https://query.bibleget.io/?query=Mt1,
 
 
 ## [metadata.php](https://github.com/BibleGet-I-O/endpoint/blob/master/metadata.php) 
-An API endpoint for querying metadata such as Bible versions that are available and their book/chapter/verse indexes, reachable at https://query.bibleget.io/metdata.php.
+An API endpoint for querying metadata such as Bible versions that are available and their book/chapter/verse indexes, reachable at https://query.bibleget.io/metadata.php.
 
 Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](https://www.w3.org/wiki/CORS_Enabled), which means that ajax requests can be made directly against the endpoint without getting cross-domain restriction errors. [HSTS](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) is enforced on the whole BibleGet server, both for the website and the API endpoints, so only the `https` protocol can be used for requests. Since the certificate used on the server is a **Let's Encrypt issued certificate**, it should be recognized by most platforms, this is not however the case for many **Java runtimes** in which the `keystore` often does **not** have a copy of the **Let's Encrypt CA or Intermediate certificate** ([see here](https://stackoverflow.com/a/34111150/394921)). In these cases, it may be necessary for the application to ensure that a copy of the Let's Encrypt CA or Intermediate certificate is installed to the keystore in order for valid requests to be made to the BibleGet API endpoint.
 
@@ -80,11 +80,11 @@ I will only take into consideration, for sake of simplicity, the structure of JS
 
 * **`languages`**: an array containing the languages supported by the main BibleGet endpoint, for the names of the Books of the Bible. The single languages are returned in the English form, all caps. The **implict numbered index** of this array will be useful for the data associated with the `results` key. 
 
-Example of data returned from the query **https://query.bibleget.io/metadata.php?query=biblebooks**:
+    Example of data returned from the query **https://query.bibleget.io/metadata.php?query=biblebooks** relative to the `languages` key:
 
-```javascript
-{"languages":["ENGLISH","AFRIKAANS","ALBANIAN","AMHARIC","ARABIC","CHINESE","CROATIAN","CZECH","FILIPINO","FRENCH","GERMAN","GREEK","HUNGARIAN","ITALIAN","JAPANESE","KOREAN","LATIN","POLISH","PORTUGUESE","ROMANIAN","RUSSIAN","SPANISH","TAMIL","THAI","VIETNAMESE"]}
-```
+    ```javascript
+    {"languages":["ENGLISH","AFRIKAANS","ALBANIAN","AMHARIC","ARABIC","CHINESE","CROATIAN","CZECH","FILIPINO","FRENCH","GERMAN","GREEK","HUNGARIAN","ITALIAN","JAPANESE","KOREAN","LATIN","POLISH","PORTUGUESE","ROMANIAN","RUSSIAN","SPANISH","TAMIL","THAI","VIETNAMESE"]}
+    ```
 
 * **`results`**: an array containing information about the names of the Bible books that can be used to make queries to the main endpoint. The **implict numbered index** of this array corresponds with the Bible books universally recognized by the Roman Catholic Church. Bible versions used by evangelicals will generally have a few less Bible books, so the index of reference is the Canon of the Scriptures as recognized by the Roman Catholic Church. 
   * Each element of this array will again be another array whose **implicit numbered index** corresponds with the **LANGUAGES** supported by the main endoint, and that can be found in the `languages` key of the returned data. 
@@ -93,31 +93,31 @@ Example of data returned from the query **https://query.bibleget.io/metadata.php
       2. The second element will be a pipe separated list of the possible abbreviated forms of the book in the given language (if there are multiple possible forms that is; the pipe will be not be present if there is not a list of values)
       3. Any other elements will not be pipe separated lists but single strings of the possible alternate forms whether full or abbreviated ??? [note to myself: double check this, what was the reasoning behind this kind of structuring of the data?]
 
-Example of data returned from the query **https://query.bibleget.io/metadata.php?query=biblebooks**:
+    Example of data returned from the query **https://query.bibleget.io/metadata.php?query=biblebooks** relative to the `results` key:
 
-```javascript
-{ // the main object returned by the endpoint
-  "results": [  // the results key contains an array, the elements of which can be used to reconstruct the Canon of the Scriptures as recognized by the Roman Catholic Church
-    [ // the first element [0] corresponds with the first book of the Bible, according to the Roman Catholic Canon, the Book of Genesis, and is again an array
-      ["Genesis","Gen","Genesis"],          //the first element [0] is an array that contains forms of the book name in the ENGLISH language
-      ["Génesis","Gn","Génesis"],           //the second element [1] is an array that contains forms of the book name in the AFRIKAANS language
-      ["Zanafilla","Gen","Zanafilla"],      //the third element [2] is an array that contains forms of the book name in the ALBANIAN language
-      ["","",""],                           //the fourth element [3] is an array that contains forms of the book name in the AMHARIC language (there actually isn't any data!)
-      ["تكوين","Gen","تكوين"],             //the fifth element [4] is an array that contains forms of the book name in the ARABIC language 
-      ["創世紀","Gen","創世紀"],             //the sixth element [5] is an array that contains forms of the book name in the CHINESE language
-      ...                                   //and so on, using the array of the languages key as a reference
-      ["Genesi","Gen | Gn | Ge","Genesi","Gen","Gn","Ge"], //the nth element contains forms of the book name in the ITALIAN language, note that the first element of the array is a simple string (there is only one form of the full name), but the second element is a pipe separated list of possible abbreviated forms
-      ...
-    ],
-    ...
-    [ // the nth element of the array corresponds with the book of Ecclesiastes
-      ["Ecclesiastes | Qoelet","Eccl | Qo","Ecclesiastes","Qoelet","Eccl","Qo"],  //the first element [0] is an array that contains forms of the book name in the ENGLISH language, note that the first element [0] of this array is a pipe separated list of possible forms of the full name of the book, the second element [1] is a pipe separated list of the possible abbreviated forms of the book name, following are all the single strings of these possible forms whether full or abbreviated
-      ...
-    ]
-    ...
-  ] //end of the results array
-}
-```
+    ```javascript
+    { // the main object returned by the endpoint
+      "results": [  // the results key contains an array, the elements of which can be used to reconstruct the Canon of the Scriptures as recognized by the Roman Catholic Church
+        [ // the first element [0] corresponds with the first book of the Bible, according to the Roman Catholic Canon, the Book of Genesis, and is again an array
+          ["Genesis","Gen","Genesis"],          //the first element [0] is an array that contains forms of the book name in the ENGLISH language
+          ["Génesis","Gn","Génesis"],           //the second element [1] is an array that contains forms of the book name in the AFRIKAANS language
+          ["Zanafilla","Gen","Zanafilla"],      //the third element [2] is an array that contains forms of the book name in the ALBANIAN language
+          ["","",""],                           //the fourth element [3] is an array that contains forms of the book name in the AMHARIC language (there actually isn't any data!)
+          ["تكوين","Gen","تكوين"],             //the fifth element [4] is an array that contains forms of the book name in the ARABIC language 
+          ["創世紀","Gen","創世紀"],             //the sixth element [5] is an array that contains forms of the book name in the CHINESE language
+          ...                                   //and so on, using the array of the languages key as a reference
+          ["Genesi","Gen | Gn | Ge","Genesi","Gen","Gn","Ge"], //the nth element contains forms of the book name in the ITALIAN language, note that the first element of the array is a simple string (there is only one form of the full name), but the second element is a pipe separated list of possible abbreviated forms
+          ...
+        ],
+        ...
+        [ // the nth element of the array corresponds with the book of Ecclesiastes
+          ["Ecclesiastes | Qoelet","Eccl | Qo","Ecclesiastes","Qoelet","Eccl","Qo"],  //the first element [0] is an array that contains forms of the book name in the ENGLISH language, note that the first element [0] of this array is a pipe separated list of possible forms of the full name of the book, the second element [1] is a pipe separated list of the possible abbreviated forms of the book name, following are all the single strings of these possible forms whether full or abbreviated
+          ...
+        ]
+        ...
+      ] //end of the results array
+    }
+    ```
 
 * **`errors`**: an array that will contains strings of errors that may have been generated from improper usage of the endpoint, unrecognized requests (or possibly even server / database errors if any). When the API endpoint is used correctly this should generally be an empty array, developers should always check against this array to display any relevant error messages to end users so they understand what might be happening when something doesn't seem to be working correctly, and they can contact the developer with the relevant error messages produced
 
@@ -125,9 +125,9 @@ Example of data returned from the query **https://query.bibleget.io/metadata.php
 
 2. Keys returned when `query=bibleversions` are: `validversions`, `validversions_fullname`, `copyrightversions`, `errors`, `info` (if the `results` key is present it will be an empty array, it is not useful here). Example data returned:
 
-```javascript
-{"results":[],"errors":[],"info":{"ENDPOINT_VERSION":"2.4"},"validversions":["CEI2008","LUZZI","NABRE","NVBSE"],"validversions_fullname":{"CEI2008":"Conferenza Episcopale Italiana|2008|it","LUZZI":"Riveduta - Luzzi|1924|it","NABRE":"New American Bible - Revised Edition|2011|en","NVBSE":"Nova Vulgata - Bibliorum Sacrorum Editio|1979|la"},"copyrightversions":["CEI2008","NABRE"]}
-```
+    ```javascript
+    {"results":[],"errors":[],"info":{"ENDPOINT_VERSION":"2.4"},"validversions":["CEI2008","LUZZI","NABRE","NVBSE"],"validversions_fullname":{"CEI2008":"Conferenza Episcopale Italiana|2008|it","LUZZI":"Riveduta - Luzzi|1924|it","NABRE":"New American Bible - Revised Edition|2011|en","NVBSE":"Nova Vulgata - Bibliorum Sacrorum Editio|1979|la"},"copyrightversions":["CEI2008","NABRE"]}
+    ```
 
 * **`validversions`**: an array containing the acronyms of the Bible versions supported by the BibleGet main endpoint
 * **`validversions_fullname`**: an object whose keys are the acronyms of the Bible versions supported. Associated with each key is a string of pipe separated values, when exploded or split these correspond with:
@@ -140,9 +140,9 @@ Example of data returned from the query **https://query.bibleget.io/metadata.php
 
 3. Keys returned when `query=versionindex` and assuming the second parameter, for example `versions=NABRE` are: `indexes`, `info`, `errors` (if the `results` key is present it will be an empty array, it is not useful here). Example data returned:
 
-```javascript
-{"indexes":{"NABRE":{"abbreviations":[...],"biblebooks":[...],"chapter_limit":[...],"verse_limit":[...],"book_num":[..]}},"results":[],"errors":[],"info":{"ENDPOINT_VERSION":"2.4"}}
-```
+    ```javascript
+    {"indexes":{"NABRE":{"abbreviations":[...],"biblebooks":[...],"chapter_limit":[...],"verse_limit":[...],"book_num":[..]}},"results":[],"errors":[],"info":{"ENDPOINT_VERSION":"2.4"}}
+    ```
 
 
 **N.B. Applications or plugins that wish to use the main API endpoint should CACHE the information returned by the METADATA endpoint**
