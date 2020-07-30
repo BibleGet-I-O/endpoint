@@ -41,6 +41,7 @@ An example of data returned from the query `https://query.bibleget.io/?query=Mt1
     * `6` = *Letters of Saint Paul*
     * `7` = *Catholic Letters*
     * `8` = *Apocalypse*
+    
     For now, applications that want to use this data will take care of localization and display, no text values are returned by the API.
   * **`book`**: display ready name of the Book of the Bible in the language of the Bible version being quoted from
   * **`bookabbrev`**: display ready abbreviated form of the Book of the Bible in the language of the Bible version being quoted from
