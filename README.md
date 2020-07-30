@@ -157,7 +157,35 @@ I will only take into consideration, for sake of simplicity, the structure of JS
 >N.B. Applications or plugins that wish to use the main API endpoint should CACHE the information returned by the METADATA endpoint. This data does not change often, there is no need to request it for every Bible quote. It can be a good idea to refresh this information about, let's say once a month, or create a user interface with a button that will allow the end user to refresh the information from the server if they think the cached information might be old.
 
 ## [search.php](https://github.com/BibleGet-I-O/endpoint/blob/master/search.php) 
-AN API endpoint for search requests using keywords or search by topic (Work in Progress)
+An API endpoint for issuing search requests using keywords or search by topic, reachable at https://query.bibleget.io/search.php.
 
 Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](https://www.w3.org/wiki/CORS_Enabled), which means that ajax requests can be made directly against the endpoint without getting cross-domain restriction errors. [HSTS](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) is enforced on the whole BibleGet server, both for the website and the API endpoints, so only the `https` protocol can be used for requests. Since the certificate used on the server is a **Let's Encrypt issued certificate**, it should be recognized by most platforms, this is not however the case for many **Java runtimes** in which the `keystore` often does **not** have a copy of the **Let's Encrypt CA or Intermediate certificate** ([see here](https://stackoverflow.com/a/34111150/394921)). In these cases, it may be necessary for the application to ensure that a copy of the Let's Encrypt CA or Intermediate certificate is installed to the keystore in order for valid requests to be made to the BibleGet API endpoint.
 
+### PARAMETERS
+* **`query`**: *(required)* as of version 2.8 of the endpoint it can take only one value: `keywordsearch`, which requires the usage of a second parameter: `keyword`. Search by topic is not yet available.
+* **`keyword`**: *(required when making a request where `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses
+* **`version`**: *(required)* indicates the Bible version to search in. Cannot be a comma separated list, can only be one version, indicated using the acronym for the Bible version among the versions available on the BibleGet server (which are discoverable from the `metadata.php` API endpoint)
+* **`return`**: *(optional)* indicates the format in which the structured data should be returned. This parameter takes one of three values: `json`, `xml`, or `html`. If left out, this parameter will default to `json`. To be honest, only `json` is currently fully supported, `html` and `xml` have not had much attention and currently (as of API endpoint version 2.7) do not return coherent results.
+
+
+### STRUCTURE OF THE RETURNED DATA
+The data is structured in a similar manner to the main API endpoint (index.php).
+
+* **`results`**: an array containing the data associated with the single verses that contain the keyword that was searched for within the requested Bible version, whether as a full match or as a match within a word (e.g. a search for the keyword `light` will first return Bible verses that contain exactly the word `light`, then verses that contain the word `lights` seeing that *light* can be found in *lights*). The objects contained in this array are exactly the same as those returned by the main API endpoint, for example:
+
+    ```javascript
+    {"testament":"0","section":"0","book":"Genesis","chapter":"1","versedescr":null,"verse":"3","verseequiv":null,"text":"Then God said: Let there be light, and there was light. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Gn","booknum":0,"univbooknum":"1","originalquery":"Gn1:3"}
+    ```
+    
+    The `originalquery` key in this case will simply be a reference to the single verse for that search result.
+    
+* **`errors`**: an array that will contains strings of errors that may have been generated from improper usage of the endpoint, unrecognized requests (or possibly even server / database errors if any). When the API endpoint is used correctly this should generally be an empty array, developers should always check against this array to display any relevant error messages to end users so they understand what might be happening when something doesn't seem to be working correctly, and they can contact the developer with the relevant error messages produced
+
+* **`info`**: an object containing a kind of metadata information about the search that was performed. 
+
+    * **`ENDPOINT_VERSION`**: the current version of the API endpoint. This may be useful information because the data produced by the endpoint may change over time, it is useful to know which data is associated with which version of the endpoint. For example, if an application caches data returned by the endpoint, but there has been a change to the structure of the data in a new version of the API, the application would know how to deal with emptying the cache and requesting new data from the updated endpoint.
+    
+    * **`keyword`**: just echoes back the keyword that was used to perform the search
+    
+    * **`version`**: just echoes back the acronym of the Bible version that the search was performed against
+    
