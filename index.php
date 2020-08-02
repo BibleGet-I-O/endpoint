@@ -447,7 +447,7 @@ function addErrorMessage($num,$rettype,$str=""){
   }
 
   if($rettype=="xml"){
-    $err_row = $bbquery->Errors->addChild("error",$errorMessages[$num]);
+    $err_row = $bbquery->errors->addChild("error",$errorMessages[$num]);
     $err_row->addAttribute("errNum",$num);
   }
   elseif($rettype=="json"){
@@ -504,10 +504,11 @@ function biblequeryInit($rettype){
   $div = NULL; 
   switch($rettype){
     case "xml":
-      $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
+      $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleQuote/>";
       $biblequery = new simpleXMLElement($root);
-      $biblequery->addChild("Errors");
-      $info = $biblequery->addChild("Info");
+      $biblequery->addChild("results");
+      $biblequery->addChild("errors");
+      $info = $biblequery->addChild("info");
       $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
       break;
     case "json":
@@ -1393,7 +1394,7 @@ function doQueries($sqlqueries,$queriesversions, $originalquery){
         $row["originalquery"] = $originalquery[$i];
         
         if($returntype=="xml"){
-          $thisrow = $bbquery->addChild("row");
+          $thisrow = $bbquery->results->addChild("result");
           foreach($row as $key => $value){
             $thisrow[$key] = $value;
           }
