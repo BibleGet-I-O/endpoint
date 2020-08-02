@@ -129,6 +129,7 @@ class BIBLEGET_SEARCH {
         $this->mysqli        = $this->dbConnect();
         $this->validversions = $this->getValidVersions();
         if(isset($this->DATA["version"]) && $this->DATA["version"] != ""){
+          $this->DATA["version"] = strtoupper($this->DATA["version"]);
           if($this->checkValidVersions($this->DATA["version"])){
             $this->indexes = $this->prepareIndexes(array(strtoupper($this->DATA["version"])));
           }
