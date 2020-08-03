@@ -167,7 +167,7 @@
             "get": {
                 "summary": "Retrieve metadata about Bible versions that are available and their relative book/chapter/verse indexes",
                 "description": "The API endpoint for querying metadata such as Bible versions that are available and their relative book/chapter/verse indexes",
-                "operationId": "getMetadataByGet",
+                "operationId": "getMetadataByGET",
                 "parameters": [
                     {
                         "name": "query",
@@ -181,6 +181,20 @@
                                 "bibleversions",
                                 "versionindex"
                             ]
+                        },
+                        "examples": {
+                            "biblebooks": {
+                                "summary": "Retrieve the list of valid **book names** and **abbreviations** in various languages that are currently supported / recognized by the main BibleGet API endpoint",
+                                "value": "biblebooks"
+                            },
+                            "bibleversions": {
+                                "summary": "Retrieve the list of **Bible versions** that are currently supported by the main BibleGet API endpoint.",
+                                "value": "bibleversions"
+                            },
+                            "versionindex": {
+                                "summary": "Retrieve the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine. Requires the usage of a second parameter `versions`.",
+                                "value": "versionindex"
+                            }
                         }
                     },
                     {
@@ -192,10 +206,21 @@
                             "type": "array",
                             "items": {
                                 "type": "string"
-                            }
+                            },
+                            "default": ["CEI2008"]
                         },
                         "style": "form",
-                        "explode": false
+                        "explode": false,
+                        "examples": {
+                            "singleVersion": {
+                                "summary": "Single Bible version",
+                                "value": ["NABRE"]
+                            },
+                            "multipleVersions": {
+                                "summary": "Multiple Bible versions",
+                                "value": ["NABRE","NVBSE"]
+                            }
+                        }
                     },
                     {
                         "name": "return",
@@ -210,9 +235,101 @@
                                 "html"
                             ],
                             "default": "json"
+                        },
+                        "examples": {
+                            "returnType": {
+                                "summary": "Request that the data returned be in JSON format",
+                                "value": "json"
+                            }
                         }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "Structured data containing the required metadata about either Bible versions available, Bible version indexes, or the names and abbreviations of Bible books for any given Bible version",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        { "$ref": "#/components/schemas/MetadataBibleVersions" },
+                                        { "$ref": "#/components/schemas/MetadataBibleBooks" },
+                                        { "$ref": "#/components/schemas/MetadataVersionIndex" }
+                                    ]
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Metadata"
+                                }
+                            },
+                            "text/html": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Metadata"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Retrieve metadata about Bible versions that are available and their relative book/chapter/verse indexes",
+                "description": "The API endpoint for querying metadata such as Bible versions that are available and their relative book/chapter/verse indexes",
+                "operationId": "getMetadataByPOST",
+                "requestBody": {
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "query": {
+                                        "type": "string",
+                                        "description": "Specifies the subset of metadata to retrieve. **`biblebooks`**: retrieve the list of valid **book names** and **abbreviations** in various languages that are currently supported / recognized by the main BibleGet API endpoint. **`bibleversions`**: retrieve the list of **Bible versions** that are currently supported by the main BibleGet API endpoint. **`versionindex`**: retrieve the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine (this value requires the usage of a second parameter `versions`).",
+                                        "enum": [
+                                            "biblebooks",
+                                            "bibleversions",
+                                            "versionindex"
+                                        ],
+                                        "example": "bibleversions"
+                                    },
+                                    "versions": {
+                                        "type": "array",
+                                        "description": "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `metadata.php` API using `query=bibleversions`",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "NABRE",
+                                            "NVBSE"
+                                        ],
+                                        "default": [
+                                            "CEI2008"
+                                        ]
+                                    },
+                                    "return": {
+                                        "type": "string",
+                                        "description": "Type of data that should be returned in the response",
+                                        "enum": [
+                                            "json",
+                                            "xml",
+                                            "html"
+                                        ],
+                                        "example": "json",
+                                        "default": "json"
+                                    }
+                                },
+                                "required": [
+                                    "query"
+                                ]
+                            },
+                            "encoding": {
+                                "versions": {
+                                    "style": "form",
+                                    "explode": false
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Structured data containing the required metadata about either Bible versions available, Bible version indexes, or the names and abbreviations of Bible books for any given Bible version",
