@@ -17,7 +17,7 @@
     },
     "servers": [
         {
-            "url": "https://query.bibleget.io/"
+            "url": "https://query.bibleget.io"
         }
     ],
     "paths": {
