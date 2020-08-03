@@ -476,10 +476,37 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-
+                                    "query": {
+                                        "type": "string",
+                                        "description": "Specifies the kind of search to perform. As of v2.8 of the search API only a value of `keywordsearch` is available.",
+                                        "enum": ["keywordsearch"],
+                                        "example": "keywordsearch"
+                                    },
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "*(required when `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses",
+                                        "example": "creation"
+                                    },
+                                    "version": {
+                                        "type": "string",
+                                        "description": "The acronym of the Bible version within which to perform the search by keyword. Can only be a single value, not a comma delimited list of values.",
+                                        "example": "NVBSE"
+                                    },
+                                    "return": {
+                                        "type": "string",
+                                        "description": "Type of data that should be returned in the response",
+                                        "enum": [
+                                            "json",
+                                            "xml",
+                                            "html"
+                                        ],
+                                        "example": "json",
+                                        "default": "json"
+                                    }
                                 },
                                 "required": [
-                                    "query"
+                                    "query",
+                                    "version"
                                 ]
                             }
                         }
