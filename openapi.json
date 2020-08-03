@@ -453,21 +453,21 @@
                             "application/json": {
                                 "schema": {
                                     "oneOf": [
-                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                        { "$ref": "#/components/schemas/KeywordSearchJSON" }
                                     ]
                                 }
                             },
                             "application/xml": {
                                 "schema": {
                                     "oneOf": [
-                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                        { "$ref": "#/components/schemas/KeywordSearchXML" }
                                     ]
                                 }
                             },
                             "application/html": {
                                 "schema": {
                                     "oneOf": [
-                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                        { "$ref": "#/components/schemas/KeywordSearchJSON" }
                                     ]
                                 }
                             }
@@ -528,21 +528,21 @@
                             "application/json": {
                                 "schema": {
                                     "oneOf": [
-                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                        { "$ref": "#/components/schemas/KeywordSearchJSON" }
                                     ]
                                 }
                             },
                             "application/xml": {
                                 "schema": {
                                     "oneOf": [
-                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                        { "$ref": "#/components/schemas/KeywordSearchXML" }
                                     ]
                                 }
                             },
                             "application/html": {
                                 "schema": {
                                     "oneOf": [
-                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                        { "$ref": "#/components/schemas/KeywordSearchJSON" }
                                     ]
                                 }
                             }
