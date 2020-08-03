@@ -452,14 +452,23 @@
                         "content": {
                             "application/json": {
                                 "schema": {
+                                    "oneOf": [
+                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                    ]
                                 }
                             },
                             "application/xml": {
                                 "schema": {
+                                    "oneOf": [
+                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                    ]
                                 }
                             },
                             "application/html": {
                                 "schema": {
+                                    "oneOf": [
+                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                    ]
                                 }
                             }
                         }
@@ -518,14 +527,23 @@
                         "content": {
                             "application/json": {
                                 "schema": {
+                                    "oneOf": [
+                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                    ]
                                 }
                             },
                             "application/xml": {
                                 "schema": {
+                                    "oneOf": [
+                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                    ]
                                 }
                             },
                             "application/html": {
                                 "schema": {
+                                    "oneOf": [
+                                        { "$ref": "#/components/schemas/KeywordSearch" }
+                                    ]
                                 }
                             }
                         }
@@ -1196,6 +1214,297 @@
                             }
                         }
                     }
+                }
+            },
+            "KeywordSearchJSON": {
+                "type": "object",
+                "properties": {
+                    "results": {
+                        "type": "array",
+                        "description": "Array of objects each of which represents a Bible verse with all associated information",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "testament": {
+                                    "type": "integer",
+                                    "enum": [
+                                        0,
+                                        1
+                                    ],
+                                    "description": "`0` = *Old Testament*, `1` = *New Testament*",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "section": {
+                                    "type": "integer",
+                                    "enum": [
+                                        0,
+                                        1,
+                                        2,
+                                        3,
+                                        4,
+                                        5,
+                                        6,
+                                        7,
+                                        8
+                                    ],
+                                    "description": "`0` = *Pentateuch*, `1` = *Historical Books*, `2` = *Wisdom Books*, `3` = *Prophets*, `4` = *Gospels*, `5` = *Acts of the Apostles*, `6` = *Letters of Saint Paul*, `7` = *Catholic Letters*, `8` = *Apocalypse*",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "book": {
+                                    "type": "string",
+                                    "description": "Name of the book of the Bible in the language of the Bible version being quoted from",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "bookabbrev": {
+                                    "type": "string",
+                                    "description": "Abbreviated form of the book of the Bible in the language of the Bible version being quoted from",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "booknum": {
+                                    "type": "integer",
+                                    "description": "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `metadata.php` API endpoint, as can index information about the number of chapters in the book and the number of verses in each chapter.",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "univbooknum": {
+                                    "type": "string",
+                                    "description": "A number identifying the Book of the Bible according to the universally recognized Catholic version of the Canon of the Sacred Scriptures (*i.e. universally recognized by the Roman Catholic Church*). This is not a 0 based index, but rather `1` = *Genesis*, `2` = *Exodus*, etc. Therefore it is returned as a string, but can be treated as a number.",
+                                    "enum": [
+                                        "1",
+                                        "2",
+                                        "3",
+                                        "4",
+                                        "5",
+                                        "6",
+                                        "7",
+                                        "8",
+                                        "9",
+                                        "10",
+                                        "11",
+                                        "12",
+                                        "13",
+                                        "14",
+                                        "15",
+                                        "16",
+                                        "17",
+                                        "18",
+                                        "19",
+                                        "20",
+                                        "21",
+                                        "22",
+                                        "23",
+                                        "24",
+                                        "25",
+                                        "26",
+                                        "27",
+                                        "28",
+                                        "29",
+                                        "30",
+                                        "31",
+                                        "32",
+                                        "33",
+                                        "34",
+                                        "35",
+                                        "36",
+                                        "37",
+                                        "38",
+                                        "39",
+                                        "40",
+                                        "41",
+                                        "42",
+                                        "43",
+                                        "44",
+                                        "45",
+                                        "46",
+                                        "47",
+                                        "48",
+                                        "49",
+                                        "50",
+                                        "51",
+                                        "52",
+                                        "53",
+                                        "54",
+                                        "55",
+                                        "56",
+                                        "57",
+                                        "58",
+                                        "59",
+                                        "60",
+                                        "61",
+                                        "62",
+                                        "63",
+                                        "64",
+                                        "65",
+                                        "66",
+                                        "67",
+                                        "68",
+                                        "69",
+                                        "70",
+                                        "71",
+                                        "72",
+                                        "73"
+                                    ],
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "chapter": {
+                                    "type": "integer",
+                                    "description": "Chapter of the book of the Bible in the Bible version that the verse is being quoted from",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "versedescr": {
+                                    "type": "string",
+                                    "description": "Not currently used, comes back as a `null` value. Could possible be used in the future for scholarly notes associated with a Bible verse",
+                                    "nullable": true,
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "verse": {
+                                    "type": "string",
+                                    "description": "Verse Number of the verse being quoted. *N.B. this is returned as a string because it will not always necessarily be a number value, there are verses that have letters in them. The value must be treated as a string and not as a number.*",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "verseequiv": {
+                                    "type": "integer",
+                                    "description": "I'm not actually sure if this is currently being used or not, I believe the idea was to have a number value for those verses that have a letter in the verse number... Will mostly return a `null` value.",
+                                    "nullable": true,
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "text": {
+                                    "type": "string",
+                                    "description": "Contains the actual text of the verse being quoted. May contain `newline` characters that may need to be dealt with. The **NABRE** version will contain ***it's own formatting tags that need to be dealt with***, whether that means producing the proper formatting associated with these tags, or removing them to have a basic formatting. The legal requirements for usage of the NABRE version require the proper formatting to be used where possible. Please [contact the project author](mailto:admin@bibleget.io) for information on how to deal with these tags and their formatting.",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "version": {
+                                    "type": "string",
+                                    "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `metadata.php` API endpoint can be used",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "title1": {
+                                    "type": "string",
+                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any first-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "title2": {
+                                    "type": "string",
+                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "title3": {
+                                    "type": "string",
+                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "originalquery": {
+                                    "type": "string",
+                                    "description": "The reference to the single verse in this result (*{Book}{Chapter}*:*{Verse}*).",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                }
+                            }
+                        },
+                        "xml": {
+                            "wrapped": true,
+                            "name": "results"
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "description": "An array of any error messages that may have been generated indicating a badly formed `query` parameter, a bad value for the `version` parameter, or an API server error",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "info": {
+                        "type": "object",
+                        "description": "An object containing metadata about the API endpoint",
+                        "properties": {
+                            "ENDPOINT_VERSION": {
+                                "type": "string",
+                                "description": "The current version of the API endpoint. This may be useful information because the data produced by the endpoint may change over time, it is useful to know which data is associated with which version of the endpoint. For example, if an application caches data returned by the endpoint, but there has been a change to the structure of the data in a new version of the API, the application would know how to deal with emptying the cache and requesting new data from the updated endpoint."
+                            },
+                            "keyword": {
+                                "type": "string",
+                                "description": "The Bible version in which the search by keyword was performed, as indicated in the `version` parameter in the request"
+                            },
+                            "version": {
+                                "type": "string",
+                                "description": "The keyword used to perform the search as indicated by the `keyword` parameter in the request"
+                            }
+                        }
+                    }
+                }
+            },
+            "KeywordSearchXML": {
+                "type": "object",
+                "properties": {
+                    "results": {
+                        "type": "array",
+                        "description": "Array of objects each of which represents a Bible verse in which the searched keyword was found, with all associated information",
+                        "items": {
+                            "$ref": "#/components/schemas/BibleQuoteResult"
+                        },
+                        "xml": {
+                            "name": "results",
+                            "wrapped": true
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "description": "An array of any error messages that may have been generated indicating a badly formed `query` parameter, a bad value for the `version` parameter, or an API server error",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "info": {
+                        "type": "object",
+                        "description": "An object containing metadata about the API endpoint",
+                        "properties": {
+                            "ENDPOINT_VERSION": {
+                                "type": "string",
+                                "description": "The current version of the API endpoint. This may be useful information because the data produced by the endpoint may change over time, it is useful to know which data is associated with which version of the endpoint. For example, if an application caches data returned by the endpoint, but there has been a change to the structure of the data in a new version of the API, the application would know how to deal with emptying the cache and requesting new data from the updated endpoint."
+                            },
+                            "keyword": {
+                                "type": "string",
+                                "description": "The Bible version in which the search by keyword was performed, as indicated in the `version` parameter in the request"
+                            },
+                            "version": {
+                                "type": "string",
+                                "description": "The keyword used to perform the search as indicated by the `keyword` parameter in the request"
+                            }
+                        }
+                    }
+                },
+                "xml": {
+                    "name": "BibleQuote"
                 }
             }
         },
