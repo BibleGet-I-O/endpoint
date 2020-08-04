@@ -56,7 +56,7 @@
  */
 
 //error_reporting(E_ALL);
-define("ENDPOINT_VERSION", "2.4");
+define("ENDPOINT_VERSION", "2.8");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -87,18 +87,21 @@ $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
 class BIBLEGET_METADATA {
     
     static private $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
+    static private $allowed_accept_headers = array("application/json", "application/xml", "text/html");
 
     private $DATA;
     private $returntype;
+    private $requestHeaders;
+    private $acceptHeader;
     private $metadata;
     private $mysqli;
     private $validversions; 
     
     function __construct($DATA){
-        
+        $this->requestHeaders = getallheaders();
         $this->DATA = $DATA;
-        
-        $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : "json";
+        $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";
+        $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
                 
     }
 
@@ -194,10 +197,10 @@ class BIBLEGET_METADATA {
         $metadata->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
       }
       else if($this->returntype == "xml"){
-        $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
+        $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleGetMetadata/>";
         $metadata = new simpleXMLElement($root);
-        $metadata->addChild("Errors");
-        $info = $metadata->addChild("Info");
+        $metadata->addChild("errors");
+        $info = $metadata->addChild("info");
         $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
       }
       else if($this->returntype == "html"){

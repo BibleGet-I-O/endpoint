@@ -59,7 +59,7 @@
 
 //TODO: implement advanced search with fulltext boolean operators, multiple keywords, negating keywords...
 
-define("ENDPOINT_VERSION", "2.7");
+define("ENDPOINT_VERSION", "2.8");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -90,9 +90,12 @@ $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
 class BIBLEGET_SEARCH {
     
     static private $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
+    static private $allowed_accept_headers = array("application/json", "application/xml", "text/html");
 
     private $DATA;           //all request parameters
     private $returntype;     //which type of data to return (json, xml or html)
+    private $requestHeaders;
+    private $acceptHeader;
     private $search;         //object with json, xml or html data to return
     private $mysqli;         //instance of database
     private $validversions;  //array of Bible versions supported by the BibleGet project, to check against
@@ -101,8 +104,9 @@ class BIBLEGET_SEARCH {
     function __construct($DATA){
         
         $this->DATA = $DATA;
-        
-        $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : "json";
+        $this->requestHeaders = getallheaders();
+        $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";        
+        $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
         
     }
     
@@ -198,10 +202,11 @@ class BIBLEGET_SEARCH {
           $search->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
         break;
         case "xml":
-          $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><Results/>";
+          $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleQuote/>";
           $search = new simpleXMLElement($root);
-          $search->addChild("Errors");
-          $info = $search->addChild("Info");
+          $errors = $search->addChild("errors");
+          $info = $search->addChild("info");
+          $results = $search->addChild("results");
           $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
         break;
         case "html":
@@ -290,8 +295,12 @@ class BIBLEGET_SEARCH {
           $this->search->results = $searchresults;
         break;
         case "xml":
-          foreach($searchresults as $key => $value){
+          foreach($searchresults as $key => $row){
             //TODO: how do we want to build this XML representation?
+            $thisrow = $this->search->results->addChild('result');
+            foreach($row as $key => $value){
+              $thisrow[$key] = $value;
+            }
           }
         break;
         case "html":
