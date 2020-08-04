@@ -174,10 +174,15 @@ if(DEBUG_REQUESTS === true){
 
 }
 
+$allowed_accept_headers = array("application/json", "application/xml", "text/html");
+$requestHeaders = getallheaders();
+$acceptHeader = isset($requestHeaders["Accept"]) && in_array($requestHeaders["Accept"],$allowed_accept_headers) ? $returntypes[array_search($requestHeaders["Accept"],$allowed_accept_headers)] : "";
+
 // valid return types
 $returntypes = array("json","xml","html");
 // initialize returntype with default value of "json" if none is given (can be json, xml, or html)
-$returntype = (isset($BIBLEGET["return"]) && in_array(strtolower($BIBLEGET["return"]),$returntypes)) ? strtolower($BIBLEGET["return"]) : "json";
+$returntype = (isset($BIBLEGET["return"]) && in_array(strtolower($BIBLEGET["return"]),$returntypes)) ? strtolower($BIBLEGET["return"]) : ($acceptHeader !== "" ? $acceptHeader : $returntypes[0]);
+
 
 switch($returntype){
   case "xml":
