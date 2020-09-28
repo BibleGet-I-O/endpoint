@@ -612,6 +612,8 @@ function queryStrClean($gtquery)
   $querystr = trim($querystr);
   // shouldn't have any spaces left but just in case
   $querystr = str_replace(' ', '', $querystr);
+  // convert en-dashes, em-dashes, minus signs and any other kind of dashes to simple hyphens
+  $querystr = preg_replace('/[\x{2011}-\x{2015}|\x{2212}|\x{23AF}]/u', '-', $querystr);
 
   //if query is written in english notation, convert it to european notation
   $find = array(".", ",", ":");
