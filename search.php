@@ -59,7 +59,7 @@
 
 //TODO: implement advanced search with fulltext boolean operators, multiple keywords, negating keywords...
 
-define("ENDPOINT_VERSION", "2.8");
+define("ENDPOINT_VERSION", "2.9");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -271,7 +271,13 @@ class BIBLEGET_SEARCH {
       // PREPARE ARRAY OF SEARCH RESULTS
       $searchresults = array();
       $keyword = $this->mysqli->real_escape_string($keyword);
-      if($result1 = $this->mysqli->query("SELECT * FROM `{$version}` WHERE MATCH(text) AGAINST ('{$keyword}*' IN BOOLEAN MODE)")){
+      $querystring = "";
+      if(isset($this->DATA["exactmatch"]) && $this->DATA["exactmatch"] === "true"){
+        $querystring = "SELECT * FROM `{$version}` WHERE text RLIKE '[[:<:]]{$keyword}[[:>:]]'";
+      } else{
+        $querystring = "SELECT * FROM `{$version}` WHERE MATCH(text) AGAINST ('{$keyword}*' IN BOOLEAN MODE)";
+      }
+      if($result1 = $this->mysqli->query($querystring)){
           while($row = mysqli_fetch_assoc($result1)){
             $row["version"] = strtoupper($version);
             $universal_booknum = $row["book"];
