@@ -13,5 +13,5 @@ jobs:
           readme-oas-key: ${{ secrets.README_OAS_KEY }}
            
           # OPTIONAL CONFIG, use if necessary
-          # oas-file-path: './openapi.json'
-          # api-version: 'v3.0.3'
+          oas-file-path: './openapi.json'
+          api-version: 'v3.0.3'
