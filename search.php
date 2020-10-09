@@ -100,6 +100,7 @@ class BIBLEGET_SEARCH {
     private $mysqli;         //instance of database
     private $validversions;  //array of Bible versions supported by the BibleGet project, to check against
     private $indexes;
+    private $dontSearch;
     
     function __construct($DATA){
         
@@ -107,7 +108,50 @@ class BIBLEGET_SEARCH {
         $this->requestHeaders = getallheaders();
         $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";        
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
-        
+        //first add english prepositions to our dontSearch array
+        $prepositions_conjunctions = ["about","above","across","after","against","ahead","along","already","also","among","and","around","as","at",
+                      "back","because","behind","before","below","beside","between","both","bottom","but","by",
+                      "earlier","either",
+                      "for","from","front",
+                      "how",
+                      "if","in","inside","instead","into",
+                      "just",
+                      "later","less",
+                      "more",
+                      "near","never","nor", "not","now",
+                      "of","off","on","once","only","or","out","outside","over",
+                      "rather",
+                      "since", "so",
+                      "through","till","to","top","toward",
+                      "under","until",
+                      "yet",
+                      "when","whenever","whether","while","with","within"];
+        //then add english pronouns
+        $articles_pronouns =  ["I", "me", "my", "mine", "myself", 
+                      "you", "your", "yours", "yourself", 
+                      "he", "him", "his", "himself", 
+                      "she", "her", "hers", "herself", 
+                      "it", "its", "itself", "this", "that", "these", "those",
+                      "a", "an", "the", "they", "their", "theirs", "them", "themselves",
+                      "each", "few", "many", "much", "some", "who", "whoever", "whose", "someone", "everyone", "everybody"];
+        $congiunzioni = ["intorno","sopra","attraverso","dopo","contro","davanti","avanti","accanto","anche","tra","fra","e","come","ad",
+                        "dietro","dopo","prima","sotto","vicino","però","anzi","intanto","da",
+                        "oppure","per","cui","se","in","dentro","soltanto","più","meno","mai",
+                        "nemmeno","non","adesso","di","su","sul","sulla","nel","nella","negli","sugli","o","fuori",
+                        "piuttosto","anziché","perché","invece","affinché","fintanto","siccome","così",
+                        "fino","al","alla","agli","verso","ancora","già",
+                        "quando","sia","che","durante","mentre","con"
+                        ];
+        $articoli_pronomi = ["io","mio","mia","miei","mie","stesso",
+                          "tu","tuo","tua","tuoi","tue",
+                          "lui","egli","suo","sua","suoi","sue",
+                          "lei","ella",
+                          "questo","questa","questi","queste","quello","quella","quelli","quegli","quelle",
+                          "un","una","uno","il","la","loro","essi","esse","ognuno","ognuna",
+                          "ciascuno","ciascuna","molti","molte","alcuni","alcune","certi","certe","alcuno","alcuna","alcuni","alcune",
+                          "chi","quale","quali","chiunque","qualcuno","qualcuna","qualunque","tutto","tutta","tutti","tutte","quanto","quanta","quanti","quante"
+                        ];
+        $this->dontSearch = array_merge($prepositions_conjunctions, $articles_pronouns,$congiunzioni,$articoli_pronomi);
     }
     
     public function Init(){
@@ -272,10 +316,13 @@ class BIBLEGET_SEARCH {
       $searchresults = array();
       $keyword = $this->mysqli->real_escape_string($keyword);
       $querystring = "";
-      if(isset($this->DATA["exactmatch"]) && $this->DATA["exactmatch"] === "true"){
+      if(isset($this->DATA["exactmatch"]) && $this->DATA["exactmatch"] === "true" && mb_strlen($keyword) > 1 && !in_array($keyword,$this->dontSearch) ){
         $querystring = "SELECT * FROM `{$version}` WHERE text RLIKE '[[:<:]]{$keyword}[[:>:]]'";
-      } else{
+      } else if(mb_strlen($keyword) > 1) {
         $querystring = "SELECT * FROM `{$version}` WHERE MATCH(text) AGAINST ('{$keyword}*' IN BOOLEAN MODE)";
+      } else {
+        $this->addErrorMessage("<p>Query string cannot be a single character</p>");
+        $this->outputResult();
       }
       if($result1 = $this->mysqli->query($querystring)){
           while($row = mysqli_fetch_assoc($result1)){
