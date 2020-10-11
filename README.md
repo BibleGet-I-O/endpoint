@@ -1,6 +1,8 @@
 # BibleGet I/O service endpoints
 There are 3 API endpoints for the BibleGet I/O project, reachable at the URL https://query.bibleget.io.
 
+Along with the information provided below, Swaggerhub documentation [can be found here](https://www.bibleget.io/swaggerdocs/dist/) (kudos to @MichaelRShelton for generating the docs from the Swagger docker image).
+
 ## [index.php](https://github.com/BibleGet-I-O/endpoint/blob/master/index.php)
 This is the main API endpoint for all queries for biblical texts and quotes, reachable at the URL https://query.bibleget.io/.
 
