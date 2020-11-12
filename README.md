@@ -166,6 +166,7 @@ Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](htt
 ### PARAMETERS
 * **`query`**: *(required)* as of version 2.8 of the endpoint it can take only one value: `keywordsearch`, which requires the usage of a second parameter: `keyword`. Search by topic is not yet available.
 * **`keyword`**: *(required when making a request where `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses
+* **`exactmatch`**: *(optional)* since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded) 
 * **`version`**: *(required)* indicates the Bible version to search in. Cannot be a comma separated list, can only be one version, indicated using the acronym for the Bible version among the versions available on the BibleGet server (which are discoverable from the `metadata.php` API endpoint)
 * **`return`**: *(optional)* indicates the format in which the structured data should be returned. This parameter takes one of three values: `json`, `xml`, or `html`. If left out, this parameter will default to `json`. To be honest, only `json` is currently fully supported, `html` and `xml` have not had much attention and currently (as of API endpoint version 2.7) do not return coherent results.
 
@@ -176,7 +177,7 @@ The data is structured in a similar manner to the main API endpoint (index.php).
 * **`results`**: an array containing the data associated with the single verses that contain the keyword that was searched for within the requested Bible version, whether as a full match or as a match within a word (e.g. a search for the keyword `light` will first return Bible verses that contain exactly the word `light`, then verses that contain the word `lights` seeing that *light* can be found in *lights*). The objects contained in this array are exactly the same as those returned by the main API endpoint, for example:
 
     ```javascript
-    {"testament":"0","section":"0","book":"Genesis","chapter":"1","versedescr":null,"verse":"3","verseequiv":null,"text":"Then God said: Let there be light, and there was light. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Gn","booknum":0,"univbooknum":"1","originalquery":"Gn1:3"}
+    {"testament":"1","section":"1","book":"Genesis","chapter":"1","versedescr":null,"verse":"3","verseequiv":null,"text":"Then God said: Let there be light, and there was light. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Gn","booknum":0,"univbooknum":"1","originalquery":"Gn1:3"}
     ```
     
     The `originalquery` key in this case will simply be a reference to the single verse for that search result.
