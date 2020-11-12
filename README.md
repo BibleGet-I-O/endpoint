@@ -32,7 +32,7 @@ An example of data returned from the query `https://query.bibleget.io/?query=Mt1
 ```
 
 * **`results`**: an array containing the data associated with the single verses of the requested Bible quote:
-  * **`testament`**: will have a value of `0` = *Old Testament* or `1` = *New Testament*. For now, applications that want to use this data will take care of localization and display, no text values are returned by the API.
+  * **`testament`**: will have a value of `1` = *Old Testament* or `2` = *New Testament*. For now, applications that want to use this data will take care of localization and display, no text values are returned by the API.
   * **`section`**: will have one of the following values:
     * `1` = *Pentateuch*
     * `2` = *Historical Books*
