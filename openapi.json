@@ -542,16 +542,16 @@
               "properties" : {
                 "testament" : {
                   "type" : "integer",
-                  "enum" : [ 0, 1 ],
-                  "description" : "`0` = *Old Testament*, `1` = *New Testament*",
+                  "enum" : [ 1, 2 ],
+                  "description" : "`1` = *Old Testament*, `2` = *New Testament*",
                   "xml" : {
                     "attribute" : true
                   }
                 },
                 "section" : {
                   "type" : "integer",
-                  "enum" : [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ],
-                  "description" : "`0` = *Pentateuch*, `1` = *Historical Books*, `2` = *Wisdom Books*, `3` = *Prophets*, `4` = *Gospels*, `5` = *Acts of the Apostles*, `6` = *Letters of Saint Paul*, `7` = *Catholic Letters*, `8` = *Apocalypse*",
+                  "enum" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+                  "description" : "`1` = *Pentateuch*, `2` = *Historical Books*, `3` = *Wisdom Books*, `4` = *Prophets*, `5` = *Gospels*, `6` = *Acts of the Apostles*, `7` = *Letters of Saint Paul*, `8` = *Catholic Letters*, `9` = *Apocalypse*",
                   "xml" : {
                     "attribute" : true
                   }
@@ -722,16 +722,16 @@
         "properties" : {
           "testament" : {
             "type" : "integer",
-            "enum" : [ 0, 1 ],
-            "description" : "`0` = *Old Testament*, `1` = *New Testament*",
+            "enum" : [ 1, 2 ],
+            "description" : "`1` = *Old Testament*, `2` = *New Testament*",
             "xml" : {
               "attribute" : true
             }
           },
           "section" : {
             "type" : "integer",
-            "enum" : [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ],
-            "description" : "`0` = *Pentateuch*, `1` = *Historical Books*, `2` = *Wisdom Books*, `3` = *Prophets*, `4` = *Gospels*, `5` = *Acts of the Apostles*, `6` = *Letters of Saint Paul*, `7` = *Catholic Letters*, `8` = *Apocalypse*",
+            "enum" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+            "description" : "`1` = *Pentateuch*, `2` = *Historical Books*, `3` = *Wisdom Books*, `4` = *Prophets*, `5` = *Gospels*, `6` = *Acts of the Apostles*, `7` = *Letters of Saint Paul*, `8` = *Catholic Letters*, `9` = *Apocalypse*",
             "xml" : {
               "attribute" : true
             }
@@ -1030,16 +1030,16 @@
               "properties" : {
                 "testament" : {
                   "type" : "integer",
-                  "enum" : [ 0, 1 ],
-                  "description" : "`0` = *Old Testament*, `1` = *New Testament*",
+                  "enum" : [ 1, 2 ],
+                  "description" : "`1` = *Old Testament*, `2` = *New Testament*",
                   "xml" : {
                     "attribute" : true
                   }
                 },
                 "section" : {
                   "type" : "integer",
-                  "enum" : [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ],
-                  "description" : "`0` = *Pentateuch*, `1` = *Historical Books*, `2` = *Wisdom Books*, `3` = *Prophets*, `4` = *Gospels*, `5` = *Acts of the Apostles*, `6` = *Letters of Saint Paul*, `7` = *Catholic Letters*, `8` = *Apocalypse*",
+                  "enum" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+                  "description" : "`1` = *Pentateuch*, `2` = *Historical Books*, `3` = *Wisdom Books*, `4` = *Prophets*, `5` = *Gospels*, `6` = *Acts of the Apostles*, `7` = *Letters of Saint Paul*, `8` = *Catholic Letters*, `9` = *Apocalypse*",
                   "xml" : {
                     "attribute" : true
                   }
