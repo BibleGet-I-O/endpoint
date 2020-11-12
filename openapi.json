@@ -364,6 +364,24 @@
             }
           }
         }, {
+          "name" : "exactmatch",
+          "in" : "query",
+          "description" : "since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded)",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          },
+          "examples" : {
+            "true" : {
+              "summary" : "find only exact matches of words that are made up of 3 or more letters (parts of speech excluded)",
+              "value" : "true"
+            },
+            "false" : {
+              "summary" : "find both exact and partial matches of words made up of 4 or more letters",
+              "value" : "false"
+            }
+          }
+        }, {
           "name" : "return",
           "in" : "query",
           "description" : "Type of data that should be returned in the response",
@@ -443,6 +461,11 @@
                     "type" : "string",
                     "description" : "The acronym of the Bible version within which to perform the search by keyword. Can only be a single value, not a comma delimited list of values.",
                     "example" : "NVBSE"
+                  },
+                  "exactmatch" : {
+                    "type" : "boolean",
+                    "description" : "since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded)",
+                    "example" : "true"
                   },
                   "return" : {
                     "type" : "string",
