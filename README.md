@@ -28,21 +28,21 @@ I will only take into consideration, for sake of simplicity, the structure of JS
 An example of data returned from the query `https://query.bibleget.io/?query=Mt1,1-5&version=NABRE`:
 
 ```javascript
-{"results":[{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"1","verseequiv":null,"text":" The book of the genealogy of Jesus Christ, the son of David, the son of Abraham.","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"2","verseequiv":null,"text":" Abraham became the father of Isaac, Isaac the father of Jacob, Jacob the father of Judah and his brothers. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"3","verseequiv":null,"text":"Judah became the father of Perez and Zerah, whose mother was Tamar. Perez became the father of Hezron, Hezron the father of Ram, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"4","verseequiv":null,"text":" Ram the father of Amminadab. Amminadab became the father of Nahshon, Nahshon the father of Salmon, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":1,"section":4,"book":"Matthew","chapter":1,"versedescr":null,"verse":"5","verseequiv":null,"text":" Salmon the father of Boaz, whose mother was Rahab. Boaz became the father of Obed, whose mother was Ruth. Obed became the father of Jesse, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"}],"errors":[],"info":{"ENDPOINT_VERSION":"2.8"}}
+{"results":[{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"1","verseequiv":null,"text":" The book of the genealogy of Jesus Christ, the son of David, the son of Abraham.","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"2","verseequiv":null,"text":" Abraham became the father of Isaac, Isaac the father of Jacob, Jacob the father of Judah and his brothers. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"3","verseequiv":null,"text":"Judah became the father of Perez and Zerah, whose mother was Tamar. Perez became the father of Hezron, Hezron the father of Ram, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"4","verseequiv":null,"text":" Ram the father of Amminadab. Amminadab became the father of Nahshon, Nahshon the father of Salmon, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"5","verseequiv":null,"text":" Salmon the father of Boaz, whose mother was Rahab. Boaz became the father of Obed, whose mother was Ruth. Obed became the father of Jesse, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"}],"errors":[],"info":{"ENDPOINT_VERSION":"2.8"}}
 ```
 
 * **`results`**: an array containing the data associated with the single verses of the requested Bible quote:
   * **`testament`**: will have a value of `0` = *Old Testament* or `1` = *New Testament*. For now, applications that want to use this data will take care of localization and display, no text values are returned by the API.
   * **`section`**: will have one of the following values:
-    * `0` = *Pentateuch*
-    * `1` = *Historical Books*
-    * `2` = *Wisdom Books*
-    * `3` = *Prophets*
-    * `4` = *Gospels*
-    * `5` = *Acts of the Apostles*
-    * `6` = *Letters of Saint Paul*
-    * `7` = *Catholic Letters*
-    * `8` = *Apocalypse*
+    * `1` = *Pentateuch*
+    * `2` = *Historical Books*
+    * `3` = *Wisdom Books*
+    * `4` = *Prophets*
+    * `5` = *Gospels*
+    * `6` = *Acts of the Apostles*
+    * `7` = *Letters of Saint Paul*
+    * `8` = *Catholic Letters*
+    * `9` = *Apocalypse*
     
     For now, applications that want to use this data will take care of localization and display, no text values are returned by the API.
   * **`book`**: display ready name of the Book of the Bible in the language of the Bible version being quoted from
