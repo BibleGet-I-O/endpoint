@@ -542,7 +542,15 @@ function dbConnect()
   global $bbquery;
   global $returntype;
 
-  include 'dbcredentials.php';
+  $dbCredentials = "dbcredentials.php";
+  //search for the database credentials file at least three levels up...
+  if(file_exists($dbCredentials)){
+    include $dbCredentials;
+  } else if (file_exists("../" . $dbCredentials)){
+    include "../{$dbCredentials}";
+  } else if (file_exists("../../" . $dbCredentials)){
+    include "../../{$dbCredentials}";
+  }
 
   $mysqli = new mysqli(SERVER, DBUSER, DBPASS, DATABASE);
 
