@@ -545,17 +545,17 @@ function dbConnect()
 {
   global $bbquery;
   global $returntype;
-
-  include 'dbcredentials.php';
-
-  /*
-	if($_SERVER["REMOTE_ADDR"]=="127.0.0.1"){
-    ***REMOVED***
+	
+  $dbCredentials = "dbcredentials.php";
+  //search for the database credentials file at least three levels up...
+  if(file_exists($dbCredentials)){
+    include $dbCredentials;
+  } else if (file_exists("../" . $dbCredentials)){
+    include "../{$dbCredentials}";
+  } else if (file_exists("../../" . $dbCredentials)){
+    include "../../{$dbCredentials}";
   }
-  else {
-    ***REMOVED***
-  }
-  */
+
   $mysqli = new mysqli(SERVER, DBUSER, DBPASS, DATABASE);
 
   if ($mysqli->connect_errno) {
