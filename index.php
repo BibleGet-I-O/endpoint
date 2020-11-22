@@ -544,14 +544,6 @@ function dbConnect()
 
   include 'dbcredentials.php';
 
-  /*
-	if($_SERVER["REMOTE_ADDR"]=="127.0.0.1"){
-    ***REMOVED***
-  }
-  else {
-    ***REMOVED***
-  }
-  */
   $mysqli = new mysqli(SERVER, DBUSER, DBPASS, DATABASE);
 
   if ($mysqli->connect_errno) {
