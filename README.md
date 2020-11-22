@@ -1,5 +1,5 @@
 # BibleGet I/O service endpoints
-There are 3 API endpoints for the BibleGet I/O project, reachable at the URL https://query.bibleget.io. The v2 endpoints (currently at v2.9) are also reachable at the URL https://query.bibleget.io/v2/. 
+There are 3 API endpoints for the BibleGet I/O project, reachable at the URL https://query.bibleget.io. The first official release on Github was v2.4. Since then, the v2 endpoints (currently at v2.9) have also become reachable at the URL https://query.bibleget.io/v2/. 
 
 Starting with the v3 release, the v2 endpoints will ONLY be available at https://query.bibleget.io/v2/, the v3 endpoints will ONLY be available at https://query.bibleget.io/v3/, and NO endpoints will be available at https://query.bibleget.io . This way it will be become clear which version of the endpoint is being used. Any significant changes that would break functionality in a plugin or application will only be applied between major versions, in order to allow plugins or applications to handle the versioning and avoid breaking functionality.
 
