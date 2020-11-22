@@ -128,25 +128,29 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
 // declare our global variable object
 $BIBLEGET = array();
 
+$allowedPreferredOrigins = ["GREEK","HEBREW"];
+
 // Let's accept both POST requests and GET requests
 if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
-  $BIBLEGET["query"]                   = isset($_POST["query"])             ? $_POST["query"]           : "";
-  $BIBLEGET["return"]                 = isset($_POST["return"])           ? $_POST["return"]           : "";
-  $BIBLEGET["version"]                 = isset($_POST["version"])          ? $_POST["version"]         : "";
-  $BIBLEGET["domain"]                 = isset($_POST["domain"])           ? $_POST["domain"]           : "";
-  $BIBLEGET["appid"]                   = isset($_POST["appid"])             ? $_POST["appid"]           : "";
-  $BIBLEGET["pluginversion"]           = isset($_POST["pluginversion"])    ? $_POST["pluginversion"]   : "";
-  $BIBLEGET["forceversion"]           = isset($_POST["forceversion"])     ? $_POST["forceversion"]     : "";
-  $BIBLEGET["forcecopyright"]         = isset($_POST["forcecopyright"])   ? $_POST["forcecopyright"]   : "";
+    $BIBLEGET["query"]                  = isset($_POST["query"])            ? $_POST["query"]           : "";
+    $BIBLEGET["return"]                 = isset($_POST["return"])           ? $_POST["return"]          : "";
+    $BIBLEGET["version"]                = isset($_POST["version"])          ? $_POST["version"]         : "";
+    $BIBLEGET["domain"]                 = isset($_POST["domain"])           ? $_POST["domain"]          : "";
+    $BIBLEGET["appid"]                  = isset($_POST["appid"])            ? $_POST["appid"]           : "";
+    $BIBLEGET["pluginversion"]          = isset($_POST["pluginversion"])    ? $_POST["pluginversion"]   : "";
+    $BIBLEGET["forceversion"]           = isset($_POST["forceversion"])     ? $_POST["forceversion"]    : "";
+    $BIBLEGET["forcecopyright"]         = isset($_POST["forcecopyright"])   ? $_POST["forcecopyright"]  : "";
+    $BIBLEGET["preferorigin"]           = isset($_POST["preferorigin"]) && in_array($_POST["preferorigin"],$allowedPreferredOrigins)     ? $_POST["preferorigin"]    : $allowedPreferredOrigins[0];
 } else if (strtoupper($_SERVER['REQUEST_METHOD']) === 'GET') {
-  $BIBLEGET["query"]                   = isset($_GET["query"])           ? $_GET["query"]             : "";
-  $BIBLEGET["return"]                 = isset($_GET["return"])           ? $_GET["return"]           : "";
-  $BIBLEGET["version"]                 = isset($_GET["version"])         ? $_GET["version"]           : "";
-  $BIBLEGET["domain"]                 = isset($_GET["domain"])           ? $_GET["domain"]           : "";
-  $BIBLEGET["appid"]                   = isset($_GET["appid"])           ? $_GET["appid"]              : "";
-  $BIBLEGET["pluginversion"]           = isset($_GET["pluginversion"])   ? $_GET["pluginversion"]    : "";
-  $BIBLEGET["forceversion"]           = isset($_GET["forceversion"])     ? $_GET["forceversion"]     : "";
-  $BIBLEGET["forcecopyright"]         = isset($_GET["forcecopyright"])   ? $_GET["forcecopyright"]   : "";
+    $BIBLEGET["query"]                  = isset($_GET["query"])             ? $_GET["query"]            : "";
+    $BIBLEGET["return"]                 = isset($_GET["return"])            ? $_GET["return"]           : "";
+    $BIBLEGET["version"]                = isset($_GET["version"])           ? $_GET["version"]          : "";
+    $BIBLEGET["domain"]                 = isset($_GET["domain"])            ? $_GET["domain"]           : "";
+    $BIBLEGET["appid"]                  = isset($_GET["appid"])             ? $_GET["appid"]            : "";
+    $BIBLEGET["pluginversion"]          = isset($_GET["pluginversion"])     ? $_GET["pluginversion"]    : "";
+    $BIBLEGET["forceversion"]           = isset($_GET["forceversion"])      ? $_GET["forceversion"]     : "";
+    $BIBLEGET["forcecopyright"]         = isset($_GET["forcecopyright"])    ? $_GET["forcecopyright"]   : "";
+    $BIBLEGET["preferorigin"]           = isset($_GET["preferorigin"]) && in_array($_GET["preferorigin"],$allowedPreferredOrigins)      ? $_GET["preferorigin"]     : $allowedPreferredOrigins[0];
 }
 
 define('DEBUGFILE', "requests.log");
@@ -992,6 +996,7 @@ function formulateQueries($checkedResults)
   global $copyrightversions;
   global $versions;
   global $indexes;
+  global $BIBLEGET;
   $queries        = $checkedResults->goodqueries;
   $usedvariants   = $checkedResults->usedvariants;
   $sqlqueries = array();
@@ -1042,6 +1047,11 @@ function formulateQueries($checkedResults)
 
       $sqlquery = "SELECT * FROM " . $version . " WHERE book = " . $book1;
 
+      //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
+      if($book1 == 19 || $book1 == "19"){
+        $sqlquery .= " AND verseorigin = '" . $BIBLEGET['preferorigin'] . "'";
+      }
+
       $xchapter = "";
 
       if (strpos($query, ".")) {
@@ -1074,7 +1084,7 @@ function formulateQueries($checkedResults)
             }
           }
           $queriesversions[$nn] = $version;
-          $sqlqueries[$nn] .= " ORDER BY verseID";
+          $sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
           if (in_array($version, $copyrightversions)) {
             $sqlqueries[$nn] .= " LIMIT 30";
           }
@@ -1112,7 +1122,7 @@ function formulateQueries($checkedResults)
           }
         }
         $queriesversions[$nn] = $version;
-        $sqlqueries[$nn] .= " ORDER BY verseID";
+        $sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
         if (in_array($version, $copyrightversions)) {
           $sqlqueries[$nn] .= " LIMIT 30";
         }
