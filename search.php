@@ -233,11 +233,15 @@ class BIBLEGET_SEARCH {
           $this->addErrorMessage("Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error);
           $this->outputResult();
         }
+        $mysqli->set_charset("utf8");
+        /*
         if (!$mysqli->set_charset("utf8")) {
           //printf("Error loading character set utf8: %s\n", $mysqli->error);
-        } else {
+        }
+        else {
           //printf("Current character set: %s\n", $mysqli->character_set_name());
         }
+        */
         return $mysqli;
     }
 
@@ -444,9 +448,11 @@ class BIBLEGET_SEARCH {
             $book_num[] = $row["book"];
           }
         }
+        /*
         else{
           //error
         }
+        */
         
         $indexes[$variant]["abbreviations"] = $abbreviations;
         $indexes[$variant]["biblebooks"] = $bbbooks;

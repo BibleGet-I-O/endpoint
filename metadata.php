@@ -102,7 +102,6 @@ class BIBLEGET_METADATA {
         $this->DATA = $DATA;
         $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
-                
     }
 
     
@@ -126,7 +125,7 @@ class BIBLEGET_METADATA {
         $this->div      = $temp[1];
         $this->err      = $temp[2];
         
-        $this->mysqli   = self::dbConnect();
+        $this->mysqli   = $this->dbConnect();
         
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
           switch($this->DATA["query"]){
@@ -150,7 +149,7 @@ class BIBLEGET_METADATA {
         
     }
 
-    static private function dbConnect(){
+    private function dbConnect(){
     
         define("BIBLEGETIOQUERYSCRIPT","iknowwhythisishere");
         
@@ -170,11 +169,14 @@ class BIBLEGET_METADATA {
           $this->addErrorMessage("Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error);
           $this->outputResult();
         }
+        $mysqli->set_charset("utf8");
+        /*
         if (!$mysqli->set_charset("utf8")) {
           //printf("Error loading character set utf8: %s\n", $mysqli->error);
         } else {
           //printf("Current character set: %s\n", $mysqli->character_set_name());
         }
+        */
         return $mysqli;
     }
 
@@ -524,7 +526,7 @@ class BIBLEGET_METADATA {
               }
             }
             else{
-              $this->addErrorMessage("<p>MySQL ERROR ".$mysqli->errno . ": " . $mysqli->error."</p>");
+              $this->addErrorMessage("<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>");
             }
             
             $indexes[$variant]["abbreviations"] = $abbreviations;
