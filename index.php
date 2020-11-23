@@ -140,7 +140,7 @@ if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
     $BIBLEGET["pluginversion"]          = isset($_POST["pluginversion"])    ? $_POST["pluginversion"]   : "";
     $BIBLEGET["forceversion"]           = isset($_POST["forceversion"])     ? $_POST["forceversion"]    : "";
     $BIBLEGET["forcecopyright"]         = isset($_POST["forcecopyright"])   ? $_POST["forcecopyright"]  : "";
-    $BIBLEGET["preferorigin"]           = isset($_POST["preferorigin"]) && in_array($_POST["preferorigin"],$allowedPreferredOrigins)     ? $_POST["preferorigin"]    : $allowedPreferredOrigins[0];
+    $BIBLEGET["preferorigin"]           = isset($_POST["preferorigin"]) && in_array($_POST["preferorigin"],$allowedPreferredOrigins)     ? $_POST["preferorigin"]    : "";
 } else if (strtoupper($_SERVER['REQUEST_METHOD']) === 'GET') {
     $BIBLEGET["query"]                  = isset($_GET["query"])             ? $_GET["query"]            : "";
     $BIBLEGET["return"]                 = isset($_GET["return"])            ? $_GET["return"]           : "";
@@ -150,7 +150,7 @@ if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
     $BIBLEGET["pluginversion"]          = isset($_GET["pluginversion"])     ? $_GET["pluginversion"]    : "";
     $BIBLEGET["forceversion"]           = isset($_GET["forceversion"])      ? $_GET["forceversion"]     : "";
     $BIBLEGET["forcecopyright"]         = isset($_GET["forcecopyright"])    ? $_GET["forcecopyright"]   : "";
-    $BIBLEGET["preferorigin"]           = isset($_GET["preferorigin"]) && in_array($_GET["preferorigin"],$allowedPreferredOrigins)      ? $_GET["preferorigin"]     : $allowedPreferredOrigins[0];
+    $BIBLEGET["preferorigin"]           = isset($_GET["preferorigin"]) && in_array($_GET["preferorigin"],$allowedPreferredOrigins)      ? $_GET["preferorigin"]     : "";
 }
 
 define('DEBUGFILE', "requests.log");
@@ -234,12 +234,23 @@ $mysqli = dbConnect();
 $validversions = array();
 $validversions_fullname = array();
 $copyrightversions = array();
+$PROTESTANT_VERSIONS = array();
+$CATHOLIC_VERSIONS =  array();
+
 if ($result = $mysqli->query("SELECT * FROM versions_available")) {
   while ($row = mysqli_fetch_assoc($result)) {
-    $validversions[] = $row["sigla"];
-    $validversions_fullname[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
-    if ($row["copyright"] == 1) {
-      $copyrightversions[] = $row["sigla"];
+    //we will only consider BIBLEs here, not LITERATURE
+    if($row["type"] == "BIBLE"){
+      $validversions[] = $row["sigla"];
+      $validversions_fullname[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
+      if ($row["copyright"] == 1) {
+        $copyrightversions[] = $row["sigla"];
+      }
+      if($row["canon"] == "CATHOLIC"){
+        $CATHOLIC_VERSIONS[] = $row["sigla"];
+      } else if ($row["canon"] == "PROTESTANT"){
+        $PROTESTANT_VERSIONS[] = $row["sigla"];
+      }
     }
   }
 } else {
@@ -375,7 +386,7 @@ if (isset($BIBLEGET["query"]) && $BIBLEGET["query"] != "") {
     //     echo "<pre>";
     //     print_r($usedvariants);
     //     echo "</pre>";
-    // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES    
+    // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
     //$temp = formulateQueries($queries);
     $temp = formulateQueries($resultsForCheckValid);
     $mysqlqueries = $temp[0];
@@ -462,7 +473,7 @@ function addErrorMessage($num, $rettype, $str = "")
   } elseif ($rettype == "json") {
     $error = array();
     $error["errNum"] = $num;
-    $error["errMessage"] = $errorMessages[$num];
+    $error["errMessage"] = $errorMessages[$num] . ($str != "" ? " > " . $str : "");
     $bbquery->errors[] = $error;
   } elseif ($rettype == "html") {
 
@@ -562,11 +573,12 @@ function dbConnect()
     addErrorMessage("Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error, $returntype);
     outputResult($bbquery, $returntype);
   }
-  if (!$mysqli->set_charset("utf8")) {
+  $mysqli->set_charset("utf8");
+  /*if (!$mysqli->set_charset("utf8")) {
     //printf("Error loading character set utf8: %s\n", $mysqli->error);
   } else {
     //printf("Current character set: %s\n", $mysqli->character_set_name());
-  }
+  }*/
   return $mysqli;
 }
 
@@ -591,9 +603,9 @@ function prepareIndexes($versions, $mysqli)
         $verse_limit[] = explode(",", $row["verses_last"]);
         $book_num[] = $row["book"];
       }
-    } else {
+    } /*else {
       //error
-    }
+    }*/
 
     $indexes[$variant]["abbreviations"] = $abbreviations;
     $indexes[$variant]["biblebooks"] = $bbbooks;
@@ -719,13 +731,13 @@ function checkValid($queries)
         } else {
           $query = str_replace($thisbook, "", $query);
         }
-      } else {
-        /*
+      } /*else {
+        
         $var = print_r($res, true);
         addErrorMessage($var,$returntype);
         outputResult();
-        */
-      }
+        
+      }*/
     } else {
       //echo "<p>We are dealing with a string that does not have upper / lower case variants.</p>";
       if (preg_match("/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $query, $res1) != preg_match("/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query, $res2)) {
@@ -884,9 +896,9 @@ function checkValid($queries)
                     //return false;
                   }
                 }
-              } else {
+              } /*else {
                 // bibleGetWriteLog("something is up with the regex check...");
-              }
+              }*/
             } else {
               if (preg_match("/,([1-9][0-9]{0,2})/", $query, $matches)) {
                 $highverse = intval($matches[1]);
@@ -997,6 +1009,8 @@ function formulateQueries($checkedResults)
   global $versions;
   global $indexes;
   global $BIBLEGET;
+  global $CATHOLIC_VERSIONS;
+  //global $PROTESTANT_VERSIONS;
   $queries        = $checkedResults->goodqueries;
   $usedvariants   = $checkedResults->usedvariants;
   $sqlqueries = array();
@@ -1047,9 +1061,16 @@ function formulateQueries($checkedResults)
 
       $sqlquery = "SELECT * FROM " . $version . " WHERE book = " . $book1;
 
+      $preferorigin = "";
       //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
-      if($book1 == 19 || $book1 == "19"){
-        $sqlquery .= " AND verseorigin = '" . $BIBLEGET['preferorigin'] . "'";
+      if($book1 == 19 || $book1 == "19"){ 
+        //if a protestant version is requested, it will only have HEBREW origin, not GREEK
+        //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
+        //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
+        if(in_array($version,$CATHOLIC_VERSIONS)){
+          $preferorigin = " AND verseorigin = '" . ( $BIBLEGET['preferorigin'] != "" ? $BIBLEGET['preferorigin'] : "GREEK" ) . "'";
+        }
+
       }
 
       $xchapter = "";
@@ -1067,8 +1088,14 @@ function formulateQueries($checkedResults)
               if (strpos($fromto[1], ",")) {
                 $chapterverse1 = preg_split("/,/", $fromto[1]);
                 $xchapter = $chapterverse1[0];
+                $mappedReference = mapReference($version,$book1,$chapterverse1[0],$preferorigin);
+                $chapterverse1[0] = $mappedReference[0];
+                $preferorigin = $mappedReference[1];
                 $sqlqueries[$nn] .= " AND chapter <= " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1];
               } else {
+                $mappedReference = mapReference($version,$book1,$xchapter,$preferorigin);
+                $xchapter = $mappedReference[0];
+                $preferorigin = $mappedReference[1];
                 $sqlqueries[$nn] .= " AND chapter <= " . $xchapter . " AND verse <= " . $fromto[1];
               }
             } else {
@@ -1076,13 +1103,22 @@ function formulateQueries($checkedResults)
             }
           } else {
             if (strpos($piece, ",")) {
-              $chapterverse = preg_split("/,/", $piece);
-              $xchapter = $chapterverse[0];
-              $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
+                $chapterverse = preg_split("/,/", $piece);
+                $xchapter = $chapterverse[0];
+                $mappedReference = mapReference($version,$book1,$chapterverse[0],$preferorigin);
+                $chapterverse[0] = $mappedReference[0];
+                $preferorigin = $mappedReference[1];
+                $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
             } else {
-              $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $xchapter . " AND verse = " . $piece;
+                $mappedReference = mapReference($version,$book1,$xchapter,$preferorigin);
+                $xchapter = $mappedReference[0];
+                $preferorigin = $mappedReference[1];
+                $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $xchapter . " AND verse = " . $piece;
             }
           }
+
+          $sqlqueries[$nn] .= $preferorigin;
+
           $queriesversions[$nn] = $version;
           $sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
           if (in_array($version, $copyrightversions)) {
@@ -1099,10 +1135,16 @@ function formulateQueries($checkedResults)
             //echo "We have a comma in this section of query! ". $fromto[0] . "<br />";
             $chapterverse = preg_split("/,/", $fromto[0]);
             $xchapter = $chapterverse[0];
-            $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
+            $mappedReference = mapReference($version,$book1,$xchapter,$preferorigin);
+            $xchapter = $mappedReference[0];
+            $preferorigin = $mappedReference[1];
+            $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $xchapter . " AND verse >= " . $chapterverse[1];
             if (strpos($fromto[1], ",")) {
-              $chapterverse1 = preg_split("/,/", $fromto[1]);
-              $sqlqueries[$nn] .= " AND chapter <= " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1];
+                $chapterverse1 = preg_split("/,/", $fromto[1]);
+                $mappedReference = mapReference($version,$book1,$chapterverse1[0],$preferorigin);
+                $chapterverse1[0] = $mappedReference[0];
+                $preferorigin = $mappedReference[1];
+                $sqlqueries[$nn] .= " AND chapter <= " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1];
             } else {
               $sqlqueries[$nn] .= " AND chapter <= " . $xchapter . " AND verse <= " . $fromto[1];
             }
@@ -1114,13 +1156,22 @@ function formulateQueries($checkedResults)
             $originalquery[$nn] = $origquery;
             $chapterverse = preg_split("/,/", $query);
             $xchapter = $chapterverse[0];
-            $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
+            $mappedReference = mapReference($version,$book1,$xchapter,$preferorigin);
+            $xchapter = $mappedReference[0];
+            $preferorigin = $mappedReference[1];
+            $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $xchapter . " AND verse = " . $chapterverse[1];
           } else {
             $originalquery[$nn] = $origquery;
             $xchapter = $query;
+            $mappedReference = mapReference($version,$book1,$xchapter,$preferorigin);
+            $xchapter = $mappedReference[0];
+            $preferorigin = $mappedReference[1];
             $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $xchapter; // . " AND verse = " . $piece;
           }
         }
+
+        $sqlqueries[$nn] .= $preferorigin;
+
         $queriesversions[$nn] = $version;
         $sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
         if (in_array($version, $copyrightversions)) {
@@ -1134,6 +1185,28 @@ function formulateQueries($checkedResults)
   }
   return array($sqlqueries, $queriesversions, $originalquery);
   //END formulateQueries
+}
+
+function mapReference($version,$book,$chapter,$preferorigin){
+  global $CATHOLIC_VERSIONS;
+  if(in_array($version,$CATHOLIC_VERSIONS)){
+    if($book == 19 || $book == "19"){ //19 == Esther
+      //first let's make sure that $xchapter is a number
+      if(gettype($chapter) == 'string'){
+        //the USCCB uses letters A-F to indicate the Greek additions to Esther
+        //however, the BibleGet engine does not allow chapters that are not numbers
+        //therefore these verses have been added to the database in the same fashion as the Vulgata
+        $chapter = intval($chapter); 
+      }
+      //some versions print the Hebrew chapters as chapters 11-20
+      //if a chapter between 11-20 is requested, we know that Hebrew origin is wanted
+      if($chapter > 10){
+        $chapter = $chapter - 10;
+        $preferorigin = " AND verseorigin = 'HEBREW'";
+      }
+    }
+  }
+  return [$chapter,$preferorigin];
 }
 
 function getGeoIpInfo($ipaddress, $mysqli)
@@ -1357,18 +1430,6 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
       if ($geoip_json === "" || $geoip_json === null) {
         $geoip_json = '{"ERROR":""}';
       }
-      /*
-        $myfile = fopen("testfile_".time().".txt","w");
-        fwrite($myfile,"SERVER REQUEST METHOD === ".$_SERVER["REQUEST_METHOD"].PHP_EOL);
-        foreach($BIBLEGET as $key => $value){
-        fwrite($myfile,"$"."BIBLEGET[".$key."] => ".$value.PHP_EOL);
-        }
-        fwrite($myfile,"appid = ".$appid.PHP_EOL);
-        fwrite($myfile,"domain = ".$domain.PHP_EOL);
-        fwrite($myfile,"pluginversion = ".$pluginversion.PHP_EOL);
-        fwrite($myfile,"ipaddress = ".$ipaddress);
-        fclose($myfile);
-        */
 
       $stmt = $mysqli->prepare("INSERT INTO requests_log__" . $curYEAR . " (WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION) VALUES (INET_ATON(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
       $stmt->bind_param('ssssssssssssss', $ipaddress, $geoip_json, $headers, $originHeader, $xquery, $originalquery[$i], $requestmethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion);
@@ -1380,16 +1441,9 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
       $verse = "";
       $newverse = false;
       while ($row = $result->fetch_assoc()) {
-        //         echo "<p>Fetching new row from database resultset:</p>";
-        //         echo "<pre>";
-        //         print_r($row);
-        //         echo "</pre>";
 
         $row["version"] = strtoupper($myversion);
         $row["testament"] = (int)$row["testament"];
-        //$row["testament"] = ($row["testament"]==0?"Antico Testamento":"Nuovo Testamento"); 
-        //TODO: why have this hardcoded into italian? probably best just to return the integer, 
-        //then put translatable strings into metadata that can optionally be queried from the metadata endpoint
 
         $universal_booknum = $row["book"];
         $booknum = array_search($row["book"], $indexes[$myversion]["book_num"]);
@@ -1398,7 +1452,7 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
         $row["univbooknum"] = $universal_booknum;
         $row["book"] = $indexes[$myversion]["biblebooks"][$booknum];
 
-        $row["section"] = (int) $row["section"]; //$sections[$row["section"]]; //TODO: this is also coming back only in Italian. should probably come back as an integer value
+        $row["section"] = (int) $row["section"];
         unset($row["verseID"]);
         //$row["verse"] = (int) $row["verse"];
         $row["chapter"] = (int) $row["chapter"];
