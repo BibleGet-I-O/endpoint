@@ -154,7 +154,15 @@ class BIBLEGET_METADATA {
     
         define("BIBLEGETIOQUERYSCRIPT","iknowwhythisishere");
         
-        include 'dbcredentials.php';
+        $dbCredentials = "dbcredentials.php";
+        //search for the database credentials file at least three levels up...
+        if(file_exists($dbCredentials)){
+          include $dbCredentials;
+        } else if (file_exists("../" . $dbCredentials)){
+          include "../{$dbCredentials}";
+        } else if (file_exists("../../" . $dbCredentials)){
+          include "../../{$dbCredentials}";
+        }
          
         $mysqli = new mysqli(SERVER,DBUSER,DBPASS,DATABASE);
       

@@ -59,7 +59,7 @@
 
 //TODO: implement advanced search with fulltext boolean operators, multiple keywords, negating keywords...
 
-define("ENDPOINT_VERSION", "2.9");
+define("ENDPOINT_VERSION", "3.0");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -217,7 +217,15 @@ class BIBLEGET_SEARCH {
     
         define("BIBLEGETIOQUERYSCRIPT","iknowwhythisishere");
         
-        include 'dbcredentials.php';
+        $dbCredentials = "dbcredentials.php";
+        //search for the database credentials file at least three levels up...
+        if(file_exists($dbCredentials)){
+            include $dbCredentials;
+        } else if (file_exists("../" . $dbCredentials)){
+            include "../{$dbCredentials}";
+        } else if (file_exists("../../" . $dbCredentials)){
+            include "../../{$dbCredentials}";
+        }
          
         $mysqli = new mysqli(SERVER,DBUSER,DBPASS,DATABASE);
       

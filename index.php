@@ -58,7 +58,7 @@
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
 
-define("ENDPOINT_VERSION", "2.9");
+define("ENDPOINT_VERSION", "3.0");
 
 //TODO: perhaps create a class out of all this, like we did for metadata.php?
 
