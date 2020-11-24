@@ -1084,18 +1084,24 @@ function formulateQueries($checkedResults)
             if (strpos($fromto[0], ",")) {
               $chapterverse = preg_split("/,/", $fromto[0]);
               $xchapter = $chapterverse[0];
+              $mappedReference = mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
+              $chapterverse[0] = $mappedReference[0];
+              $chapterverse[1] = $mappedReference[1];
+              $preferorigin = $mappedReference[2];
               $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
               if (strpos($fromto[1], ",")) {
                 $chapterverse1 = preg_split("/,/", $fromto[1]);
                 $xchapter = $chapterverse1[0];
-                $mappedReference = mapReference($version,$book1,$chapterverse1[0],$preferorigin);
+                $mappedReference = mapReference($version,$book1,$chapterverse1[0],$chapterverse1[1],$preferorigin);
                 $chapterverse1[0] = $mappedReference[0];
-                $preferorigin = $mappedReference[1];
+                $chapterverse1[1] = $mappedReference[1];
+                $preferorigin = $mappedReference[2];
                 $sqlqueries[$nn] .= " AND chapter <= " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1];
               } else {
-                $mappedReference = mapReference($version,$book1,$xchapter,$preferorigin);
+                $mappedReference = mapReference($version,$book1,$xchapter,$fromto[1],$preferorigin);
                 $xchapter = $mappedReference[0];
-                $preferorigin = $mappedReference[1];
+                $fromto[1] = $mappedReference[1];
+                $preferorigin = $mappedReference[2];
                 $sqlqueries[$nn] .= " AND chapter <= " . $xchapter . " AND verse <= " . $fromto[1];
               }
             } else {
@@ -1105,14 +1111,16 @@ function formulateQueries($checkedResults)
             if (strpos($piece, ",")) {
                 $chapterverse = preg_split("/,/", $piece);
                 $xchapter = $chapterverse[0];
-                $mappedReference = mapReference($version,$book1,$chapterverse[0],$preferorigin);
+                $mappedReference = mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
                 $chapterverse[0] = $mappedReference[0];
-                $preferorigin = $mappedReference[1];
+                $chapterverse[1] = $mappedReference[1];
+                $preferorigin = $mappedReference[2];
                 $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
             } else {
-                $mappedReference = mapReference($version,$book1,$xchapter,$preferorigin);
+                $mappedReference = mapReference($version,$book1,$xchapter,$piece,$preferorigin);
                 $xchapter = $mappedReference[0];
-                $preferorigin = $mappedReference[1];
+                $piece = $mappedReference[1];
+                $preferorigin = $mappedReference[2];
                 $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $xchapter . " AND verse = " . $piece;
             }
           }
@@ -1120,7 +1128,8 @@ function formulateQueries($checkedResults)
           $sqlqueries[$nn] .= $preferorigin;
 
           $queriesversions[$nn] = $version;
-          $sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
+          $sqlqueries[$nn] .= " ORDER BY verseID";
+          //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
           if (in_array($version, $copyrightversions)) {
             $sqlqueries[$nn] .= " LIMIT 30";
           }
@@ -1187,7 +1196,7 @@ function formulateQueries($checkedResults)
   //END formulateQueries
 }
 
-function mapReference($version,$book,$chapter,$preferorigin){
+function mapReference($version,$book,$chapter,$verse,$preferorigin){
   global $CATHOLIC_VERSIONS;
   if(in_array($version,$CATHOLIC_VERSIONS)){
     if($book == 19 || $book == "19"){ //19 == Esther
@@ -1198,15 +1207,28 @@ function mapReference($version,$book,$chapter,$preferorigin){
         //therefore these verses have been added to the database in the same fashion as the Vulgata
         $chapter = intval($chapter); 
       }
+      /*
       //some versions print the Hebrew chapters as chapters 11-20
       //if a chapter between 11-20 is requested, we know that Hebrew origin is wanted
       if($chapter > 10){
         $chapter = $chapter - 10;
         $preferorigin = " AND verseorigin = 'HEBREW'";
       }
+      */
+      if($version == 'VGCL'){
+        if(($chapter == 10 && ($verse >= 4 && $verse <= 13)) || ($chapter == 11 && $verse == 1 )){
+          $chapter = 10;
+          $verse = 3;
+          $preferorigin = " AND verseorigin = 'GREEK'";
+        } else if(($chapter == 11 && ($verse >= 2 && $verse <= 12 )) || ($chapter == 12 && ($verse >=1 && $verse <= 6))){
+          $chapter = 1;
+          $verse = 1;
+          $preferorigin = " AND verseorigin = 'GREEK'";
+        }
+      }
     }
   }
-  return [$chapter,$preferorigin];
+  return [$chapter,$verse,$preferorigin];
 }
 
 function getGeoIpInfo($ipaddress, $mysqli)
