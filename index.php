@@ -1181,8 +1181,13 @@ function formulateQueries($checkedResults)
           $sqlqueries[$nn] .= $preferorigin;
 
           $queriesversions[$nn] = $version;
+          //VERSES must be ordered by verseID in order to handle those cases where there are subverses (usually Greek additions)
+          //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
+          //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
+          //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
+          //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
           $sqlqueries[$nn] .= " ORDER BY verseID";
-          //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
+          //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
           if (in_array($version, $copyrightversions)) {
             $sqlqueries[$nn] .= " LIMIT 30";
           }
@@ -1276,7 +1281,13 @@ function formulateQueries($checkedResults)
         $sqlqueries[$nn] .= $preferorigin;
 
         $queriesversions[$nn] = $version;
-        $sqlqueries[$nn] .= " ORDER BY book,chapter,verse,versedescr";
+        //VERSES must be ordered by verseID in order to handle those cases where there are subverses (usually Greek additions)
+        //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
+        //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
+        //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
+        //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
+        $sqlqueries[$nn] .= " ORDER BY verseID";
+        //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
         if (in_array($version, $copyrightversions)) {
           $sqlqueries[$nn] .= " LIMIT 30";
         }
@@ -1302,7 +1313,7 @@ function mapReference($version,$book,$chapter,$verse,$preferorigin){
         //TODO: see if there is any way of allowing letters as chapter indicators and then map them to the CEI2008 layout
         $chapter = intval($chapter); 
       }
-      if($version == 'VGCL'){
+      if($version == 'VGCL' || $version == 'DRB'){
         if(($chapter == 10 && (($verse >= 4 && $verse <= 13) || $verse == null)) || ($chapter == 11 && ($verse == 1 || $verse == null) )){
           $chapter = 10;
           $verse = 3;
