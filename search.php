@@ -524,7 +524,7 @@ switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
         break;
     default:
         exit(0);
-        break;
+        //break;
 }
 
 ?>
