@@ -325,6 +325,14 @@ class BIBLEGET_SEARCH {
       
       //we have already ensured that $version is a valid version, so let's get right to business
       // PREPARE ARRAY OF SEARCH RESULTS
+      
+      //TODO: we should be able to gather the list of latin versions available automatically+
+      // however is it worth the trouble of doing a query against the metadata endpoint?
+      // how many latin versions are we going to be adding? perhaps just easier to leave it hardcoded here...
+      if(($version == 'NVBSE' || $version == 'VGCL') && (strpos($keyword,'ae') || strpos($keyword,'oe')) ){
+        $keyword = str_replace('ae','æ',$keyword);
+        $keyword = str_replace('oe','œ',$keyword);
+      }
       $searchresults = array();
       $keyword = $this->mysqli->real_escape_string($keyword);
       $querystring = "";
