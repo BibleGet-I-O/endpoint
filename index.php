@@ -1216,7 +1216,6 @@ function formulateQueries($checkedResults)
             $chapterverse[0] = $mappedReference[0];
             $chapterverse[1] = $mappedReference[1];
             $preferorigin = $mappedReference[2];
-            $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
             //IF there is also a chapter indicator on the right hand side of the range of consecutive verses
             //    ( EXAMPLE: John 3,16-4,5 )
             //    (    John 3,16 <=|=> 4,5 )
@@ -1227,13 +1226,15 @@ function formulateQueries($checkedResults)
                 $chapterverse1[0] = $mappedReference[0];
                 $chapterverse1[1] = $mappedReference[1];
                 $preferorigin = $mappedReference[2];
-                $sqlqueries[$nn] .= " AND chapter <= " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1];
+                $sqlqueries[$nn] = $sqlquery . " AND ((chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . ")";
+                $sqlqueries[$nn] .= " OR (chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . "))";
             } 
             //ELSEIF there is NOT a chapter indicator on the right hand side of the range of consecutive verses
             //    ( EXAMPLE: John 3,16-18 )
             //    (    John 3,16 <=|=> 18 )
             //    (    18 )
             else {
+              $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
               $mappedReference = mapReference($version,$book1,$chapterverse[0],$fromto[1],$preferorigin);
               $fromto[1] = $mappedReference[1];
               $preferorigin = $mappedReference[2];
