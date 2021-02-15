@@ -134,6 +134,7 @@ class BIBLEGET_SEARCH {
                       "it", "its", "itself", "this", "that", "these", "those",
                       "a", "an", "the", "they", "their", "theirs", "them", "themselves",
                       "each", "few", "many", "much", "some", "who", "whoever", "whose", "someone", "everyone", "everybody"];
+        $verbs = ["am", "is", "are", "have", "has", "had", "was", "were", "would", "can", "could", "shall", "should", "will", "might", "must", "being", "been", "do", "does", "did", "done", "be", "being", "been"];
         $congiunzioni = ["intorno","sopra","attraverso","dopo","contro","davanti","avanti","accanto","anche","tra","fra","e","come","ad",
                         "dietro","dopo","prima","sotto","vicino","però","anzi","intanto","da",
                         "oppure","per","cui","se","in","dentro","soltanto","più","meno","mai",
@@ -150,8 +151,13 @@ class BIBLEGET_SEARCH {
                           "un","una","uno","il","la","loro","essi","esse","ognuno","ognuna",
                           "ciascuno","ciascuna","molti","molte","alcuni","alcune","certi","certe","alcuno","alcuna","alcuni","alcune",
                           "chi","quale","quali","chiunque","qualcuno","qualcuna","qualunque","tutto","tutta","tutti","tutte","quanto","quanta","quanti","quante"
-                        ];
-        $this->dontSearch = array_merge($prepositions_conjunctions, $articles_pronouns,$congiunzioni,$articoli_pronomi);
+                        ];,
+        $verbi = ["sono", "sei", "è", "siamo", "siete", "sono", "ero", "eri", "era", "eravamo", "eravate", "erano", "sarò", "sarai", "sarà", "saremo", "sarete", "saranno", "fui", "fu", "fummo", "furono", 
+                  "ho", "hai", "ha", "abbiamo", "avete", "hanno", "avrò", "avrai", "avrà", "avremo", "avrete", "avranno", "avevo", "avevi", "aveva", "avevamo", "avevate", "avevano", "ebbi", "ebbe", "ebbero",
+                  "faccio", "fai", "fa", "facciamo", "fate", "fanno", "farò", "farai", "farà", "faremo", "farete", "faranno", "feci", "fece", "fecero", "facevo", "facevi", "faceva", "facevamo", "facevate", "facevano",
+                  "avrebbe", "dovrebbe", "potrebbe", "posso", "puoi", "può", "possiamo", "potete", "possono", "potrò", "potrai", "potrà", "potremo", "potrete", "potranno", "potevo", "potevi", "poteva", "potevamo", "potevate", "potevano", "potetti", "poté", "potemmo", "potettero",
+                  "devo", "devi", "deve", "dobbiamo", "dovete", "devono", "dovrò", "dovrai", "dovrà", "dovremo", "dovrete", "dovranno", "dovevo", "dovevi", "doveva", "dovevamo", "dovevate", "dovevano", "dovetti", "dovette", "dovemmo", "dovettero"];
+        $this->dontSearch = array_merge($prepositions_conjunctions, $articles_pronouns,$verbs,$congiunzioni,$articoli_pronomi,$verbi);
     }
     
     public function Init(){
