@@ -151,7 +151,7 @@ class BIBLEGET_SEARCH {
                           "un","una","uno","il","la","loro","essi","esse","ognuno","ognuna",
                           "ciascuno","ciascuna","molti","molte","alcuni","alcune","certi","certe","alcuno","alcuna","alcuni","alcune",
                           "chi","quale","quali","chiunque","qualcuno","qualcuna","qualunque","tutto","tutta","tutti","tutte","quanto","quanta","quanti","quante"
-                        ];,
+                        ];
         $verbi = ["sono", "sei", "è", "siamo", "siete", "sono", "ero", "eri", "era", "eravamo", "eravate", "erano", "sarò", "sarai", "sarà", "saremo", "sarete", "saranno", "fui", "fu", "fummo", "furono", 
                   "ho", "hai", "ha", "abbiamo", "avete", "hanno", "avrò", "avrai", "avrà", "avremo", "avrete", "avranno", "avevo", "avevi", "aveva", "avevamo", "avevate", "avevano", "ebbi", "ebbe", "ebbero",
                   "faccio", "fai", "fa", "facciamo", "fate", "fanno", "farò", "farai", "farà", "faremo", "farete", "faranno", "feci", "fece", "fecero", "facevo", "facevi", "faceva", "facevamo", "facevate", "facevano",
