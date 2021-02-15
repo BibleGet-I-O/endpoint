@@ -108,6 +108,7 @@ class BIBLEGET_SEARCH {
         $this->requestHeaders = getallheaders();
         $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";        
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
+        $this->exactmatch = isset($DATA["exactmatch"]) && $DATA["exactmatch"] === "true" ? true : false;
         //first add english prepositions to our dontSearch array
         $prepositions_conjunctions = ["about","above","across","after","against","ahead","along","already","also","among","and","around","as","at",
                       "back","because","behind","before","below","beside","between","both","bottom","but","by",
@@ -342,9 +343,9 @@ class BIBLEGET_SEARCH {
       $searchresults = array();
       $keyword = $this->mysqli->real_escape_string($keyword);
       $querystring = "";
-      if(isset($this->DATA["exactmatch"]) && $this->DATA["exactmatch"] === "true" && mb_strlen($keyword) > 1 && !in_array($keyword,$this->dontSearch) ){
+      if($this->exactmatch && mb_strlen($keyword) > 1 && !in_array($keyword,$this->dontSearch) ){
         $querystring = "SELECT * FROM `{$version}` WHERE text RLIKE '[[:<:]]{$keyword}[[:>:]]'";
-      } else if(mb_strlen($keyword) > 1) {
+      } else if($this->exactmatch === false && mb_strlen($keyword) > 1) {
         $querystring = "SELECT * FROM `{$version}` WHERE MATCH(text) AGAINST ('{$keyword}*' IN BOOLEAN MODE)";
       } else {
         $this->addErrorMessage("<p>Query string cannot be a single character</p>");
