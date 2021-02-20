@@ -1454,6 +1454,11 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
       $ipaddress = isset($_SERVER["HTTP_X_REAL_IP"]) && $_SERVER["HTTP_X_REAL_IP"] != "" ? $_SERVER["HTTP_X_REAL_IP"] : "";
     }
 
+    if (filter_var($ipaddress, FILTER_VALIDATE_IP) === false) {
+      addErrorMessage("The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $returntype, $xquery);
+      outputResult($bbquery, $returntype); //this should exit the script right here, closing the mysql connection
+    }
+
     //we start off with the supposition that we've never seen this IP address before
     $haveip = false; //"haveip" means "we already have this ip address in our records"
     //request logs are now divided by year, to keep things cleaner and easier to access and read
