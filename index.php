@@ -1455,7 +1455,7 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
     }
 
     //we start off with the supposition that we've never seen this IP address before
-    $haveip = false; //this means "we already have this ip address in our records"
+    $haveip = false; //"haveip" means "we already have this ip address in our records"
     //request logs are now divided by year, to keep things cleaner and easier to access and read
     $curYEAR = date("Y");
 
@@ -1465,7 +1465,7 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
       $originHeader = key_exists("ORIGIN", $headersObj) ? $headersObj["ORIGIN"] : "";
     } else {
       //check if we have already seen this IP Address in the past 2 days and if we have the same request already
-      if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET_ATON('" . $ipaddress . "') AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
+      if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
         if (DEBUG_IPINFO === true) {
           file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
@@ -1484,7 +1484,7 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
       }
 
       //and if the same IP address is making too many requests(>100?) with different queries (like copying the bible texts completely), deny service
-      if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET_ATON('" . $ipaddress . "') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
+      if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
         if (DEBUG_IPINFO === true) {
           file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
@@ -1544,7 +1544,7 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
         if (DEBUG_IPINFO === true) {
           file_put_contents(DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
-        if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET_ATON('" . $ipaddress . "') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")) {
+        if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")) {
           if ($ipresult->num_rows > 0) {
             if (DEBUG_IPINFO === true) {
               file_put_contents(DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX);
@@ -1588,7 +1588,7 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
         $geoip_json = '{"ERROR":""}';
       }
 
-      $stmt = $mysqli->prepare("INSERT INTO requests_log__" . $curYEAR . " (WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION) VALUES (INET_ATON(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      $stmt = $mysqli->prepare("INSERT INTO requests_log__" . $curYEAR . " (WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION) VALUES (INET6_ATON(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
       $stmt->bind_param('ssssssssssssss', $ipaddress, $geoip_json, $headers, $originHeader, $xquery, $originalquery[$i], $requestmethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion);
       if ($stmt->execute() === false) {
         addErrorMessage("There has been an error updating the logs: (" . $mysqli->errno . ") " . $mysqli->error, $returntype);
