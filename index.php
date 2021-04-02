@@ -54,9 +54,9 @@
  * so that men of good will might contribute to making it better,
  * more secure, more reliable, to be of better service to mankind.
  */
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 define("ENDPOINT_VERSION", "3.0");
 
@@ -226,7 +226,7 @@ $inf = $temp[3];
 /************************************************
  * PREPARE SOME GLOBALS THAT WE WILL BE NEEDING *
  ***********************************************/
-
+$WhitelistedDomainsIPs = [];
 // open the connection to the database
 $mysqli = dbConnect();
 
@@ -415,11 +415,15 @@ $mysqli->close();
 function toProperCase($txt)
 {
   preg_match("/\p{L}/u", $txt, $mList, PREG_OFFSET_CAPTURE);
-  $idx = $mList[0][1];
-  $chr = mb_substr($txt, $idx, 1, 'UTF-8');
-  if (preg_match("/\p{L&}/u", $chr)) {
-    $post = mb_substr($txt, $idx + 1, null, 'UTF-8');
-    return mb_substr($txt, 0, $idx, 'UTF-8') . mb_strtoupper($chr, 'UTF-8') . mb_strtolower($post, 'UTF-8');
+  if( array_key_exists( 0, $mList ) ){
+    $idx = $mList[0][1];
+    $chr = mb_substr($txt, $idx, 1, 'UTF-8');
+    if (preg_match("/\p{L&}/u", $chr)) {
+      $post = mb_substr($txt, $idx + 1, null, 'UTF-8');
+      return mb_substr($txt, 0, $idx, 'UTF-8') . mb_strtoupper($chr, 'UTF-8') . mb_strtolower($post, 'UTF-8');
+    } else {
+      return $txt;
+    }
   } else {
     return $txt;
   }
