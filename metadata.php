@@ -413,21 +413,27 @@ class BIBLEGET_METADATA {
         $THEAD->appendChild($NEWROW);
         
         $NEWCOL = array();
-        $NEWCOL["ABBREVIATION"] = $this->metadata->createElement("td","ABBREVIATION");
+        $NEWCOL["ABBREVIATION"] = $this->metadata->createElement("th","ABBREVIATION");
         $NEWROW->appendChild($NEWCOL["ABBREVIATION"]);
-        $NEWCOL["FULLNAME"] = $this->metadata->createElement("td","FULLNAME");
+        $NEWCOL["FULLNAME"] = $this->metadata->createElement("th","FULLNAME");
         $NEWROW->appendChild($NEWCOL["FULLNAME"]);
-        $NEWCOL["YEAR"] = $this->metadata->createElement("td","YEAR");
+        $NEWCOL["YEAR"] = $this->metadata->createElement("th","YEAR");
         $NEWROW->appendChild($NEWCOL["YEAR"]);
-        $NEWCOL["LANGUAGE"] = $this->metadata->createElement("td","LANGUAGE");
+        $NEWCOL["LANGUAGE"] = $this->metadata->createElement("th","LANGUAGE");
         $NEWROW->appendChild($NEWCOL["LANGUAGE"]);
-        $NEWCOL["COPYRIGHT"] = $this->metadata->createElement("td","COPYRIGHT");
+        $NEWCOL["COPYRIGHT"] = $this->metadata->createElement("th","COPYRIGHT");
         $NEWROW->appendChild($NEWCOL["COPYRIGHT"]);
+        $NEWCOL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("th","COPYRIGHT_HOLDER");
+        $NEWROW->appendChild($NEWCOL["COPYRIGHT_HOLDER"]);
+        $NEWCOL["IMPRIMATUR"] = $this->metadata->createElement("th","IMPRIMATUR");
+        $NEWROW->appendChild($NEWCOL["IMPRIMATUR"]);
+        $NEWCOL["CANON"] = $this->metadata->createElement("th","CANON");
+        $NEWROW->appendChild($NEWCOL["CANON"]);
         
         $TBODY = $this->metadata->createElement("tbody");
         $TABLE->appendChild($TBODY);
       }
-      
+
       $querystring = "SELECT * FROM versions_available";
       if($type !== ""){
         $querystring .= " WHERE type='$type'";
@@ -435,14 +441,22 @@ class BIBLEGET_METADATA {
       if($result = $this->mysqli->query($querystring)){
         $n=0;
         while($row = mysqli_fetch_assoc($result)){
-                    
+          $output_info_array = [
+            $row["fullname"],
+            $row["year"],
+            $row["language"],
+            $row["imprimatur"],
+            $row["canon"],
+            $row["copyright_holder"],
+            $row["notes"]
+          ];
           if($this->returntype == "json"){
-            $this->metadata->validversions_fullname[$row["sigla"]] = $row["fullname"]."|".$row["year"]."|".$row["language"]."|".$row["imprimatur"]."|".$row["canon"]."|".$row["notes"];
+            $this->metadata->validversions_fullname[$row["sigla"]] = implode("|",$output_info_array);
             $this->metadata->validversions[] = $row["sigla"];
             if($row["copyright"]==1){ $this->metadata->copyrightversions[] = $row["sigla"]; } 
           }
           else if($this->returntype == "xml"){
-            $this->metadata->validversions_fullname->{$row["sigla"]} = $row["fullname"]."|".$row["year"]."|".$row["language"];
+            $this->metadata->validversions_fullname->{$row["sigla"]} = implode("|",$output_info_array);
             $this->metadata->validversions->{$row["sigla"]} = $row["sigla"];
             if($row["copyright"]==1){ $this->metadata->copyrightversions->{$row["sigla"]} = $row["sigla"]; } 
           }
@@ -469,6 +483,9 @@ class BIBLEGET_METADATA {
             
             $NEWCELL["COPYRIGHT"] = $this->metadata->createElement("td",$row["copyright"]);
             $NEWROW->appendChild($NEWCELL["COPYRIGHT"]);
+            
+            $NEWCELL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("td",$row["copyright_holder"]);
+            $NEWROW->appendChild($NEWCELL["COPYRIGHT_HOLDER"]);
             
             $NEWCELL["IMPRIMATUR"] = $this->metadata->createElement("td",$row["imprimatur"]);
             $NEWROW->appendChild($NEWCELL["IMPRIMATUR"]);
