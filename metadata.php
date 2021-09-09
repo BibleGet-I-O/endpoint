@@ -56,7 +56,7 @@
  */
 
 //error_reporting(E_ALL);
-define("ENDPOINT_VERSION", "2.8");
+define("ENDPOINT_VERSION", "3.0");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
