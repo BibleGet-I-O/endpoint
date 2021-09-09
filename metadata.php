@@ -437,7 +437,7 @@ class BIBLEGET_METADATA {
         while($row = mysqli_fetch_assoc($result)){
                     
           if($this->returntype == "json"){
-            $this->metadata->validversions_fullname[$row["sigla"]] = $row["fullname"]."|".$row["year"]."|".$row["language"];
+            $this->metadata->validversions_fullname[$row["sigla"]] = $row["fullname"]."|".$row["year"]."|".$row["language"]."|".$row["imprimatur"]."|".$row["canon"]."|".$row["notes"];
             $this->metadata->validversions[] = $row["sigla"];
             if($row["copyright"]==1){ $this->metadata->copyrightversions[] = $row["sigla"]; } 
           }
@@ -469,6 +469,12 @@ class BIBLEGET_METADATA {
             
             $NEWCELL["COPYRIGHT"] = $this->metadata->createElement("td",$row["copyright"]);
             $NEWROW->appendChild($NEWCELL["COPYRIGHT"]);
+            
+            $NEWCELL["IMPRIMATUR"] = $this->metadata->createElement("td",$row["imprimatur"]);
+            $NEWROW->appendChild($NEWCELL["IMPRIMATUR"]);
+            
+            $NEWCELL["CANON"] = $this->metadata->createElement("td",$row["canon"]);
+            $NEWROW->appendChild($NEWCELL["CANON"]);
           }
         }
       }
