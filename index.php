@@ -125,48 +125,13 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
     header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
 }
 
-// valid return types
-$returntypes = array("json", "xml", "html");
-$allowed_accept_headers = array("application/json", "application/xml", "text/html");
-
-$requestHeaders = getallheaders();
-$acceptHeader = isset($requestHeaders["Accept"]) && in_array($requestHeaders["Accept"], $allowed_accept_headers) ? $returntypes[array_search($requestHeaders["Accept"], $allowed_accept_headers)] : "";
-
-// initialize returntype with default value of "json" if none is given (can be json, xml, or html)
-$returntype = ($acceptHeader !== "" ? $acceptHeader : $returntypes[0]);
-
 // declare our global variable object
 $BIBLEGET = array();
 
 $allowedPreferredOrigins = ["GREEK","HEBREW"];
 
 // Let's accept both POST requests and GET requests
-/*
-// However let's also accept a JSON object in the body
-if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/json"){
-    $json = file_get_contents('php://input');
-    $data = json_decode($json,true);
-    if(NULL === $data){
-      //addErrorMessage("No JSON data received in the request: <" . $json . ">", $returntype);
-      //we can't user addErrorMessage until we have initted bibleQueryInit
-      die("No JSON data received in the request: <" . $json . ">");
-    } else if (json_last_error() !== JSON_ERROR_NONE) {
-      //addErrorMessage("Malformed JSON data received in the request: <" . $json . ">, " . json_last_error_msg(), $returntype);
-      //we can't user addErrorMessage until we have initted bibleQueryInit
-      die("Malformed JSON data received in the request: <" . $json . ">, " . json_last_error_msg());
-    } else {
-      //Seems we have some valid JSON data to work with
-      $BIBLEGET["query"]                  = isset($data["query"])            ? $data["query"]           : "";
-      $BIBLEGET["return"]                 = isset($data["return"])           ? $data["return"]          : "";
-      $BIBLEGET["version"]                = isset($data["version"])          ? $data["version"]         : "";
-      $BIBLEGET["domain"]                 = isset($data["domain"])           ? $data["domain"]          : "";
-      $BIBLEGET["appid"]                  = isset($data["appid"])            ? $data["appid"]           : "";
-      $BIBLEGET["pluginversion"]          = isset($data["pluginversion"])    ? $data["pluginversion"]   : "";
-      $BIBLEGET["forceversion"]           = isset($data["forceversion"])     ? $data["forceversion"]    : "";
-      $BIBLEGET["forcecopyright"]         = isset($data["forcecopyright"])   ? $data["forcecopyright"]  : "";
-      $BIBLEGET["preferorigin"]           = isset($data["preferorigin"]) && in_array($data["preferorigin"],$allowedPreferredOrigins)     ? $data["preferorigin"]    : "";
-    }
-} else*/ if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
+if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
     $BIBLEGET["query"]                  = isset($_POST["query"])            ? $_POST["query"]           : "";
     $BIBLEGET["return"]                 = isset($_POST["return"])           ? $_POST["return"]          : "";
     $BIBLEGET["version"]                = isset($_POST["version"])          ? $_POST["version"]         : "";
@@ -187,9 +152,6 @@ if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/
     $BIBLEGET["forcecopyright"]         = isset($_GET["forcecopyright"])    ? $_GET["forcecopyright"]   : "";
     $BIBLEGET["preferorigin"]           = isset($_GET["preferorigin"]) && in_array($_GET["preferorigin"],$allowedPreferredOrigins)      ? $_GET["preferorigin"]     : "";
 }
-
-//returntype set explicitly in parameters can override accept header
-$returntype = (isset($BIBLEGET["return"]) && $BIBLEGET["return"] != "" && in_array(strtolower($BIBLEGET["return"]), $returntypes)) ? strtolower($BIBLEGET["return"]) : $returntype;
 
 define('DEBUGFILE', "requests.log");
 define('DEBUG_REQUESTS', false); //set to true in order to enable logging of requests
@@ -215,6 +177,16 @@ if (DEBUG_REQUESTS === true) {
   // }
 
 }
+
+$allowed_accept_headers = array("application/json", "application/xml", "text/html");
+$requestHeaders = getallheaders();
+$acceptHeader = isset($requestHeaders["Accept"]) && in_array($requestHeaders["Accept"], $allowed_accept_headers) ? $returntypes[array_search($requestHeaders["Accept"], $allowed_accept_headers)] : "";
+
+// valid return types
+$returntypes = array("json", "xml", "html");
+// initialize returntype with default value of "json" if none is given (can be json, xml, or html)
+$returntype = (isset($BIBLEGET["return"]) && in_array(strtolower($BIBLEGET["return"]), $returntypes)) ? strtolower($BIBLEGET["return"]) : ($acceptHeader !== "" ? $acceptHeader : $returntypes[0]);
+
 
 switch ($returntype) {
   case "xml":
@@ -349,6 +321,7 @@ foreach ($temp as $version) {
     $copyrightversions[] = $version;
   }
 }
+
 
 
 if (count($versions) < 1) {
