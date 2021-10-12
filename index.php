@@ -145,9 +145,9 @@ $json = file_get_contents('php://input');
 if($json != ""){
     $data = json_decode($json,true);
     if(NULL === $data){
-      addErrorMessage("No JSON data received in the request: <" . $json . ">", $returntype);
+      //addErrorMessage("No JSON data received in the request: <" . $json . ">", $returntype);
     } else if (json_last_error() !== JSON_ERROR_NONE) {
-      addErrorMessage("Malformed JSON data received in the request: <" . $json . ">, " . json_last_error_msg(), $returntype);
+      //addErrorMessage("Malformed JSON data received in the request: <" . $json . ">, " . json_last_error_msg(), $returntype);
     } else {
       //Seems we have some valid JSON data to work with
       $BIBLEGET["query"]                  = isset($data["query"])            ? $data["query"]           : "";
@@ -182,7 +182,8 @@ if($json != ""){
     $BIBLEGET["preferorigin"]           = isset($_GET["preferorigin"]) && in_array($_GET["preferorigin"],$allowedPreferredOrigins)      ? $_GET["preferorigin"]     : "";
 }
 
-$returntype = (isset($BIBLEGET["return"]) && in_array(strtolower($BIBLEGET["return"]), $returntypes)) ? strtolower($BIBLEGET["return"]) : ($acceptHeader !== "" ? $acceptHeader : $returntypes[0]);
+//returntype set explicitly in parameters can override accept header
+$returntype = (isset($BIBLEGET["return"]) && $BIBLEGET["return"] != "" && in_array(strtolower($BIBLEGET["return"]), $returntypes)) ? strtolower($BIBLEGET["return"]) : $returntype;
 
 define('DEBUGFILE', "requests.log");
 define('DEBUG_REQUESTS', false); //set to true in order to enable logging of requests
@@ -342,7 +343,6 @@ foreach ($temp as $version) {
     $copyrightversions[] = $version;
   }
 }
-
 
 
 if (count($versions) < 1) {
