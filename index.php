@@ -237,20 +237,17 @@ $copyrightversions = array();
 $PROTESTANT_VERSIONS = array();
 $CATHOLIC_VERSIONS =  array();
 
-if ($result = $mysqli->query("SELECT * FROM versions_available")) {
+if ($result = $mysqli->query("SELECT * FROM versions_available WHERE type = 'BIBLE'")) { //we will only consider BIBLEs here, not LITERATURE
   while ($row = mysqli_fetch_assoc($result)) {
-    //we will only consider BIBLEs here, not LITERATURE
-    if($row["type"] == "BIBLE"){
-      $validversions[] = $row["sigla"];
-      $validversions_fullname[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
-      if ($row["copyright"] == 1) {
-        $copyrightversions[] = $row["sigla"];
-      }
-      if($row["canon"] == "CATHOLIC"){
-        $CATHOLIC_VERSIONS[] = $row["sigla"];
-      } else if ($row["canon"] == "PROTESTANT"){
-        $PROTESTANT_VERSIONS[] = $row["sigla"];
-      }
+    $validversions[] = $row["sigla"];
+    $validversions_fullname[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
+    if ($row["copyright"] == 1) {
+      $copyrightversions[] = $row["sigla"];
+    }
+    if($row["canon"] == "CATHOLIC"){
+      $CATHOLIC_VERSIONS[] = $row["sigla"];
+    } else if ($row["canon"] == "PROTESTANT"){
+      $PROTESTANT_VERSIONS[] = $row["sigla"];
     }
   }
 } else {
@@ -317,7 +314,7 @@ foreach ($temp as $version) {
     if (in_array($version, $validversions)) {
       $versions[] = $version;
     } else {
-      addErrorMessage("Not a valid version: <" . $version . ">", $returntype);
+      addErrorMessage("Not a valid version: <" . $version . ">, valid versions are <" . explode(" | ",$validversions) . ">", $returntype);
     }
   }
   if (isset($BIBLEGET["forcecopyright"]) && $BIBLEGET["forcecopyright"] == "true") {
