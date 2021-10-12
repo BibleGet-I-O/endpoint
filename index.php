@@ -314,7 +314,7 @@ foreach ($temp as $version) {
     if (in_array($version, $validversions)) {
       $versions[] = $version;
     } else {
-      addErrorMessage("Not a valid version: <" . $version . ">, valid versions are <" . explode(" | ",$validversions) . ">", $returntype);
+      addErrorMessage("Not a valid version: <" . $version . ">, valid versions are <" . implode(" | ",$validversions) . ">", $returntype);
     }
   }
   if (isset($BIBLEGET["forcecopyright"]) && $BIBLEGET["forcecopyright"] == "true") {
