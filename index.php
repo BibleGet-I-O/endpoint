@@ -125,12 +125,13 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
     header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
 }
 
+// valid return types
+$returntypes = array("json", "xml", "html");
+
 $allowed_accept_headers = array("application/json", "application/xml", "text/html");
 $requestHeaders = getallheaders();
 $acceptHeader = isset($requestHeaders["Accept"]) && in_array($requestHeaders["Accept"], $allowed_accept_headers) ? $returntypes[array_search($requestHeaders["Accept"], $allowed_accept_headers)] : "";
 
-// valid return types
-$returntypes = array("json", "xml", "html");
 // initialize returntype with default value of "json" if none is given (can be json, xml, or html)
 $returntype = ($acceptHeader !== "" ? $acceptHeader : $returntypes[0]);
 
@@ -141,7 +142,6 @@ $allowedPreferredOrigins = ["GREEK","HEBREW"];
 
 // Let's accept both POST requests and GET requests
 // However let's also accept a JSON object in the body
-$json = file_get_contents('php://input');
 if($json != ""){
     $data = json_decode($json,true);
     if(NULL === $data){
