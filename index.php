@@ -128,6 +128,16 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
 // valid return types
 $returntypes = array("json", "xml", "html");
 $allowed_accept_headers = array("application/json", "application/xml", "text/html");
+$allowed_content_types = array("application/json" , "application/x-www-form-urlencoded");
+$allowed_request_methods = array("GET","POST");
+
+if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],$allowed_content_types)){
+    die('{"error":"You seem to be forming a strange kind of request? Allowed Content Types are application/json and application/x-www-form-urlencoded, but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}');
+}
+
+if(!isset($_SERVER['REQUEST_METHOD']) || !in_array(strtoupper($_SERVER['REQUEST_METHOD']),$allowed_request_methods)){
+    die('{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are GET and POST, but your Request Method was '.strtoupper($_SERVER['REQUEST_METHOD']).'"}');
+}
 
 $requestHeaders = getallheaders();
 $acceptHeader = isset($requestHeaders["Accept"]) && in_array($requestHeaders["Accept"], $allowed_accept_headers) ? $returntypes[array_search($requestHeaders["Accept"], $allowed_accept_headers)] : "";
