@@ -141,6 +141,7 @@ $BIBLEGET = array();
 $allowedPreferredOrigins = ["GREEK","HEBREW"];
 
 // Let's accept both POST requests and GET requests
+/*
 // However let's also accept a JSON object in the body
 if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/json"){
     $json = file_get_contents('php://input');
@@ -165,7 +166,7 @@ if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/
       $BIBLEGET["forcecopyright"]         = isset($data["forcecopyright"])   ? $data["forcecopyright"]  : "";
       $BIBLEGET["preferorigin"]           = isset($data["preferorigin"]) && in_array($data["preferorigin"],$allowedPreferredOrigins)     ? $data["preferorigin"]    : "";
     }
-} else if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
+} else*/ if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST') {
     $BIBLEGET["query"]                  = isset($_POST["query"])            ? $_POST["query"]           : "";
     $BIBLEGET["return"]                 = isset($_POST["return"])           ? $_POST["return"]          : "";
     $BIBLEGET["version"]                = isset($_POST["version"])          ? $_POST["version"]         : "";
