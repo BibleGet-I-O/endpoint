@@ -305,7 +305,7 @@ if ($result1 = $mysqli->query("SELECT * FROM biblebooks_fullname")) {
 
 // PREPARE VERSIONS ARRAY (AS REQUESTED IN QUERYSTRING)
 $versions = array();
-$temp = isset($BIBLEGET["version"]) ? explode(",", strtoupper($BIBLEGET["version"])) : array("CEI2008");
+$temp = isset($BIBLEGET["version"]) && $BIBLEGET["version"] != "" ? explode(",", strtoupper($BIBLEGET["version"])) : array("CEI2008");
 
 foreach ($temp as $version) {
   if (isset($BIBLEGET["forceversion"]) && $BIBLEGET["forceversion"] == "true") {
