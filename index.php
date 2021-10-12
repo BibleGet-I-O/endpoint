@@ -127,8 +127,8 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
 
 // valid return types
 $returntypes = array("json", "xml", "html");
-
 $allowed_accept_headers = array("application/json", "application/xml", "text/html");
+
 $requestHeaders = getallheaders();
 $acceptHeader = isset($requestHeaders["Accept"]) && in_array($requestHeaders["Accept"], $allowed_accept_headers) ? $returntypes[array_search($requestHeaders["Accept"], $allowed_accept_headers)] : "";
 
@@ -142,7 +142,8 @@ $allowedPreferredOrigins = ["GREEK","HEBREW"];
 
 // Let's accept both POST requests and GET requests
 // However let's also accept a JSON object in the body
-if($json != ""){
+if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/json"){
+    $json = file_get_contents('php://input');
     $data = json_decode($json,true);
     if(NULL === $data){
       //addErrorMessage("No JSON data received in the request: <" . $json . ">", $returntype);
