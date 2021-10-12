@@ -147,8 +147,12 @@ if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/
     $data = json_decode($json,true);
     if(NULL === $data){
       //addErrorMessage("No JSON data received in the request: <" . $json . ">", $returntype);
+      //we can't user addErrorMessage until we have initted bibleQueryInit
+      die("No JSON data received in the request: <" . $json . ">");
     } else if (json_last_error() !== JSON_ERROR_NONE) {
       //addErrorMessage("Malformed JSON data received in the request: <" . $json . ">, " . json_last_error_msg(), $returntype);
+      //we can't user addErrorMessage until we have initted bibleQueryInit
+      die("Malformed JSON data received in the request: <" . $json . ">, " . json_last_error_msg());
     } else {
       //Seems we have some valid JSON data to work with
       $BIBLEGET["query"]                  = isset($data["query"])            ? $data["query"]           : "";
