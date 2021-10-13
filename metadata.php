@@ -706,7 +706,7 @@ if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],BIBLEGE
           $METADATA->Init();
           break;
       default:
-          die('{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode(" and ",BIBLEGET_METADATA::$allowed_request_methods).', but your Request Method was '.strtoupper($_SERVER['REQUEST_METHOD']).'"}');
+          die('{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode(' and ',BIBLEGET_METADATA::$allowed_request_methods).', but your Request Method was '.strtoupper($_SERVER['REQUEST_METHOD']).'"}');
   }
 }
  
