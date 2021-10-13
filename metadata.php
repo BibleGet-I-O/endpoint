@@ -77,9 +77,6 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
         header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
 }
 
-$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
-
-
 /******************************************
  * START BUILDING BIBLEGET METADATA CLASS * 
  *****************************************/
@@ -88,6 +85,8 @@ class BIBLEGET_METADATA {
     
     static private $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
     static private $allowed_accept_headers = array("application/json", "application/xml", "text/html");
+    static private $allowed_content_types = array("application/json" , "application/x-www-form-urlencoded");
+    static private $allowed_request_methods = array("GET","POST");
 
     private $DATA;
     private $returntype;
@@ -95,16 +94,18 @@ class BIBLEGET_METADATA {
     private $acceptHeader;
     private $metadata;
     private $mysqli;
-    private $validversions; 
+    private $validversions;
+    private $is_ajax;
     
     function __construct($DATA){
         $this->requestHeaders = getallheaders();
         $this->DATA = $DATA;
+        $this->contenttype = isset($_SERVER['CONTENT_TYPE']) && in_array($_SERVER['CONTENT_TYPE'],$allowed_content_types)) ? $_SERVER['CONTENT_TYPE'] : NULL;
         $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
+        $this->is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
     }
 
-    
     public function Init(){
         switch($this->returntype){
           case "xml":
@@ -678,22 +679,32 @@ class BIBLEGET_METADATA {
 /*****************************************
  *     END BIBLEGET METADATA CLASS       * 
  ****************************************/
-
-switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
-    case 'POST':
-        //echo "A post request was detected...".PHP_EOL;
-        //echo json_encode($_POST);
-        $METADATA = new BIBLEGET_METADATA($_POST);
+if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],BIBLEGET_METADATA::allowed_content_types)){
+    die('{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode(" and ",BIBLEGET_METADATA::allowed_content_types).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}');
+} else if (isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+    $json = file_get_contents('php://input');
+    $data = json_decode($json,true);
+    if(NULL === $data){
+        die("No JSON data received in the request: <" . $json . ">");
+    } else if (json_last_error() !== JSON_ERROR_NONE) {
+        die("Malformed JSON data received in the request: <" . $json . ">, " . json_last_error_msg());
+    } else {
+        $METADATA = new BIBLEGET_METADATA($data);
         $METADATA->Init();
-        break;
-    case 'GET':
-        $METADATA = new BIBLEGET_METADATA($_GET);
-        $METADATA->Init();
-        break;
-    default:
-        exit(0);
-        //break;
+    }
+} else {
+  switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
+      case 'POST':
+          $METADATA = new BIBLEGET_METADATA($_POST);
+          $METADATA->Init();
+          break;
+      case 'GET':
+          $METADATA = new BIBLEGET_METADATA($_GET);
+          $METADATA->Init();
+          break;
+      default:
+          die('{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode(" and ",BIBLEGET_METADATA::allowed_request_methods).', but your Request Method was '.strtoupper($_SERVER['REQUEST_METHOD']).'"}');
+  }
 }
-
  
 ?>
