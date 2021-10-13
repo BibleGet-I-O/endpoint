@@ -683,7 +683,7 @@ class BIBLEGET_METADATA {
  *     END BIBLEGET METADATA CLASS       * 
  ****************************************/
 if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],BIBLEGET_METADATA::$allowed_content_types)){
-    die('{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode(" and ",BIBLEGET_METADATA::$allowed_content_types).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}');
+    die('{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode(' and ',BIBLEGET_METADATA::$allowed_content_types).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}');
 } else if (isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
     $json = file_get_contents('php://input');
     $data = json_decode($json,true);
