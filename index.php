@@ -876,314 +876,313 @@ class BIBLEGET_QUOTE {
     }
 
     private function formulateQueries($checkedResults) {
-      global $biblebooks;
-      global $copyrightversions;
-      global $versions;
-      global $indexes;
-      global $BIBLEGET;
-      global $CATHOLIC_VERSIONS;
-      //global $PROTESTANT_VERSIONS;
-      $queries        = $checkedResults->goodqueries;
-      $usedvariants   = $checkedResults->usedvariants;
-      $sqlqueries = array();
-      $queriesversions = array();
-      $originalquery = array();
-      $nn = 0;
-      $sqlquery = "";
-      $book = "";
-      $usedvariant = "";
-    
-      foreach ($this->requestedVersions as $version) {
-        $i = 0;
-        foreach ($queries as $query) {
-          $origquery = $query;
-          $book1 = "";
-          // Retrieve and store the book in the query string,if applicable
-          if (preg_match("/\p{L&}/u", $query)) {
-            if (preg_match("/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $query, $ret)) {
-              $usedvariant = $usedvariants[$i];
-              // Now that we have captured our book, we can erase it from the query string
-              $query = preg_replace("/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $query);
-              if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["biblebooks"])) !== FALSE) {
-                $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-              } else if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["abbreviations"])) !== FALSE) {
-                $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-              } else if (($key = self::idxOf($ret[0], $this->biblebooks)) !== FALSE) {
-                $book1 = $book = $key + 1;
-              }
-            } else {
-              $book1 = $book;
-            }
-          } else {
-            if (preg_match("/^[1-4]{0,1}\p{L}+/u", $query, $ret)) {
-              $usedvariant = $usedvariants[$i];
-              // Now that we have captured our book, we can erase it from the query string
-              $query = preg_replace("/^[1-4]{0,1}\p{L}+/u", "", $query);
-              if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["biblebooks"])) !== FALSE) {
-                $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-              } else if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["abbreviations"])) !== FALSE) {
-                $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-              } else if (($key = self::idxOf($ret[0], $this->biblebooks)) !== FALSE) {
-                $book1 = $book = $key + 1;
-              }
-            } else {
-              $book1 = $book;
-            }
-          }
-    
-          $sqlquery = "SELECT * FROM " . $version . " WHERE book = " . $book1;
-    
-          $preferorigin = "";
-          //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
-          if($book1 == 19 || $book1 == "19"){ 
-            //if a protestant version is requested, it will only have HEBREW origin, not GREEK
-            //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
-            //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
-            if(in_array($version,$CATHOLIC_VERSIONS)){
-              $preferorigin = " AND verseorigin = '" . ( $BIBLEGET['preferorigin'] != "" ? $BIBLEGET['preferorigin'] : "GREEK" ) . "'";
-            }
-    
-          }
-    
-          $xchapter = "";
-          //NOTE: all notations have been translated to EUROPEAN notation for the following calculations
-          //      1) Therefore we will not find colons, but commas for the chapter-verse separator
-          //      2) We will not find commas for non consecutive verses, but dots
-          //NOTE: since a dash can have multiple meanings, whereas a dot has one meaning, 
-          //      also considering that the dot has to do with the smallest unit in a Bible reference = verse,
-          //      whereas a dash could have to do either with verses or with chapters
-          //      we start our interpretation of the Bible reference from what is clear and certain
-          //      and is the smallest possible unit that we have to work with.
-          //      So if there is a dot = non-consecutive verses, we start splitting up the reference around the dot (or dots)
-          //NOTE: We have already capture the book, so we are not dealing with the book in the following calculations
-          //      However for our own sanity, the book is included in the examples to help understand what is happening
-          //      This symbol will be used to indicate splitting into left hand and right hand sections: <=|=>
+        global $biblebooks;
+        global $copyrightversions;
+        global $versions;
+        global $indexes;
+        global $BIBLEGET;
+        global $CATHOLIC_VERSIONS;
+        //global $PROTESTANT_VERSIONS;
+        $queries        = $checkedResults->goodqueries;
+        $usedvariants   = $checkedResults->usedvariants;
+        $sqlqueries = array();
+        $queriesversions = array();
+        $originalquery = array();
+        $nn = 0;
+        $sqlquery = "";
+        $book = "";
+        $usedvariant = "";
+
+        foreach ($this->requestedVersions as $version) {
+            $i = 0;
+            foreach ($queries as $query) {
+                $origquery = $query;
+                $book1 = "";
+                // Retrieve and store the book in the query string,if applicable
+                if (preg_match("/\p{L&}/u", $query)) {
+                    if (preg_match("/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $query, $ret)) {
+                        $usedvariant = $usedvariants[$i];
+                        // Now that we have captured our book, we can erase it from the query string
+                        $query = preg_replace("/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $query);
+                        if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["biblebooks"])) !== FALSE) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
+                        } else if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["abbreviations"])) !== FALSE) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
+                        } else if (($key = self::idxOf($ret[0], $this->biblebooks)) !== FALSE) {
+                            $book1 = $book = $key + 1;
+                        }
+                    } else {
+                        $book1 = $book;
+                    }
+                } else {
+                    if (preg_match("/^[1-4]{0,1}\p{L}+/u", $query, $ret)) {
+                        $usedvariant = $usedvariants[$i];
+                        // Now that we have captured our book, we can erase it from the query string
+                        $query = preg_replace("/^[1-4]{0,1}\p{L}+/u", "", $query);
+                        if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["biblebooks"])) !== FALSE) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
+                        } else if ($usedvariant != "" && ($key = array_search($ret[0], $this->indexes[$usedvariant]["abbreviations"])) !== FALSE) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
+                        } else if (($key = self::idxOf($ret[0], $this->biblebooks)) !== FALSE) {
+                            $book1 = $book = $key + 1;
+                        }
+                    } else {
+                        $book1 = $book;
+                    }
+                }
+
+                $sqlquery = "SELECT * FROM " . $version . " WHERE book = " . $book1;
+
+                $preferorigin = "";
+                //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
+                if($book1 == 19 || $book1 == "19"){ 
+                    //if a protestant version is requested, it will only have HEBREW origin, not GREEK
+                    //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
+                    //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
+                    if(in_array($version,$CATHOLIC_VERSIONS)){
+                        $preferorigin = " AND verseorigin = '" . ( $BIBLEGET['preferorigin'] != "" ? $BIBLEGET['preferorigin'] : "GREEK" ) . "'";
+                    }
+                }
           
-          //IF: non-consecutive verses are requested (EXAMPLE: John 3,16.18)
-          if (strpos($query, ".")) {
-            $querysplit = preg_split("/\./", $query);
-            //FOREACH non-consecutive chunk requested (John 3,16 <=|=> 18)
-            foreach ($querysplit as $piece) {
-              $originalquery[$nn] = $origquery;
-              //IF the chunk is not simply a single verse, but is a range of consecutive VERSES or CHAPTERS 
-              //    (EXAMPLE: John 3,16-18.20       OR John 3,16.18-20        OR John 3,16-18.20-22)
-              //    (         John 3,16-18 <=|=> 20 OR John 3,16 <=|=> 18-20  OR John 3,16-18 <=|=> 20-22 )
-              if (strpos($piece, "-")) {
-                $fromto = preg_split("/\-/", $piece);
-                //IF we have a CHAPTER indicator on the left hand side of the range of consecutive verses
-                //  (EXAMPLE: John 3,16-18.20)
-                //  ( John 3,16-18 <=|=> 20 )
-                //  ( John 3 <=> 16-18 )
-                if (strpos($fromto[0], ",")) {
-                  //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
-                  $chapterverse = preg_split("/,/", $fromto[0]);
-                  $xchapter = $chapterverse[0];
-                  $mappedReference = mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
-                  $chapterverse[0] = $mappedReference[0];
-                  $chapterverse[1] = $mappedReference[1];
-                  $preferorigin = $mappedReference[2];
-                  //IF we have a CHAPTER indicator on the right hand side of the range of consecutive verses
-                  //  (EXAMPLE: John 3,16-4,5.8 )
-                  //  ( John 3,16 <=|=> 4,5 )
-                  if (strpos($fromto[1], ",")) {
-                    //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
-                    $chapterverse1 = preg_split("/,/", $fromto[1]);
-                    $xchapter = $chapterverse1[0];
-                    $mappedReference = mapReference($version,$book1,$chapterverse1[0],$chapterverse1[1],$preferorigin);
-                    $chapterverse1[0] = $mappedReference[0];
-                    $chapterverse1[1] = $mappedReference[1];
-                    $preferorigin = $mappedReference[2];
-                    $sqlqueries[$nn] = $sqlquery . " AND ((chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . ")";
-                    if($chapterverse1[0] - $chapterverse[0] > 1) {
-                      for($d=1;$d<($chapterverse1[0] - $chapterverse[0]);$d++){
-                        $sqlqueries[$nn] .= " OR (chapter = " . ($chapterverse[0] + $d) . ")";
-                      }
+                $xchapter = "";
+                //NOTE: all notations have been translated to EUROPEAN notation for the following calculations
+                //      1) Therefore we will not find colons, but commas for the chapter-verse separator
+                //      2) We will not find commas for non consecutive verses, but dots
+                //NOTE: since a dash can have multiple meanings, whereas a dot has one meaning, 
+                //      also considering that the dot has to do with the smallest unit in a Bible reference = verse,
+                //      whereas a dash could have to do either with verses or with chapters
+                //      we start our interpretation of the Bible reference from what is clear and certain
+                //      and is the smallest possible unit that we have to work with.
+                //      So if there is a dot = non-consecutive verses, we start splitting up the reference around the dot (or dots)
+                //NOTE: We have already capture the book, so we are not dealing with the book in the following calculations
+                //      However for our own sanity, the book is included in the examples to help understand what is happening
+                //      This symbol will be used to indicate splitting into left hand and right hand sections: <=|=>
+                
+                //IF: non-consecutive verses are requested (EXAMPLE: John 3,16.18)
+                if (strpos($query, ".")) {
+                    $querysplit = preg_split("/\./", $query);
+                    //FOREACH non-consecutive chunk requested (John 3,16 <=|=> 18)
+                    foreach ($querysplit as $piece) {
+                        $originalquery[$nn] = $origquery;
+                        //IF the chunk is not simply a single verse, but is a range of consecutive VERSES or CHAPTERS 
+                        //    (EXAMPLE: John 3,16-18.20       OR John 3,16.18-20        OR John 3,16-18.20-22)
+                        //    (         John 3,16-18 <=|=> 20 OR John 3,16 <=|=> 18-20  OR John 3,16-18 <=|=> 20-22 )
+                        if (strpos($piece, "-")) {
+                            $fromto = preg_split("/\-/", $piece);
+                            //IF we have a CHAPTER indicator on the left hand side of the range of consecutive verses
+                            //  (EXAMPLE: John 3,16-18.20)
+                            //  ( John 3,16-18 <=|=> 20 )
+                            //  ( John 3 <=> 16-18 )
+                            if (strpos($fromto[0], ",")) {
+                                //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
+                                $chapterverse = preg_split("/,/", $fromto[0]);
+                                $xchapter = $chapterverse[0];
+                                $mappedReference = $this->mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
+                                $chapterverse[0] = $mappedReference[0];
+                                $chapterverse[1] = $mappedReference[1];
+                                $preferorigin = $mappedReference[2];
+                                //IF we have a CHAPTER indicator on the right hand side of the range of consecutive verses
+                                //  (EXAMPLE: John 3,16-4,5.8 )
+                                //  ( John 3,16 <=|=> 4,5 )
+                                if (strpos($fromto[1], ",")) {
+                                    //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
+                                    $chapterverse1 = preg_split("/,/", $fromto[1]);
+                                    $xchapter = $chapterverse1[0];
+                                    $mappedReference = $this->mapReference($version,$book1,$chapterverse1[0],$chapterverse1[1],$preferorigin);
+                                    $chapterverse1[0] = $mappedReference[0];
+                                    $chapterverse1[1] = $mappedReference[1];
+                                    $preferorigin = $mappedReference[2];
+                                    $sqlqueries[$nn] = $sqlquery . " AND ((chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . ")";
+                                    if($chapterverse1[0] - $chapterverse[0] > 1) {
+                                        for($d=1;$d<($chapterverse1[0] - $chapterverse[0]);$d++){
+                                            $sqlqueries[$nn] .= " OR (chapter = " . ($chapterverse[0] + $d) . ")";
+                                        }
+                                    }
+                                    $sqlqueries[$nn] .= " OR (chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . "))";
+                                }
+                                //ELSEIF we do NOT have a CHAPTER indicator on the right hand side of the range of consecutive verses
+                                // (EXAMPLE: John 3,16-18.20)
+                                else {
+                                    $mappedReference = $this->mapReference($version,$book1,$xchapter,$fromto[1],$preferorigin);
+                                    $xchapter = $mappedReference[0];
+                                    $fromto[1] = $mappedReference[1];
+                                    $preferorigin = $mappedReference[2];
+                                    $sqlqueries[$nn] = $sqlquery . " AND (chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . ")";
+                                    $sqlqueries[$nn] .= " AND (chapter <= " . $xchapter . " AND verse <= " . $fromto[1] . ")";
+                                }
+                            }
+                            //ELSEIF we DO NOT have a CHAPTER indicator on the left hand side of the range of consecutive verses
+                            //  ( EXAMPLE: John 3,16.18-20 )
+                            //  (  John 3,16 <=|=> 18-20 )
+                            //  (  18 <=> 20)
+                            else {
+                                $mappedReference = $this->mapReference($version,$book1,$xchapter,$fromto[0],$preferorigin);
+                                $mappedReference1 = $this->mapReference($version,$book1,$xchapter,$fromto[1],$preferorigin);
+                                $xchapter = $mappedReference[0];
+                                $fromto[0] = $mappedReference[1];
+                                $preferorigin = $mappedReference[2];
+                                $fromto[1] = $mappedReference1[1];
+                                $sqlqueries[$nn] = $sqlquery . " AND (chapter = " . $xchapter . " AND verse >= " . $fromto[0] . " AND verse <= " . $fromto[1] . ")";
+                            }
+                        }
+                        //ELSEIF the non consecutive chunk DOES NOT contain a range of consecutive VERSEs / CHAPTERs
+                        //    ( EXAMPLE: John 3,16.18 )
+                        //    (   John 3,16 <=|=> 18 )
+                        else {
+                            //IF the non consecutive chunk however DOES contain a chapter reference
+                            //  ( EXAMPLE: John 3,16.18 )
+                            //  (   John 3,16 <=|=> 18 )
+                            //  (   John 3 <=> 16 )
+                            if (strpos($piece, ",")) {
+                                $chapterverse = preg_split("/,/", $piece);
+                                $xchapter = $chapterverse[0];
+                                $mappedReference = $this->mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
+                                $chapterverse[0] = $mappedReference[0];
+                                $chapterverse[1] = $mappedReference[1];
+                                $preferorigin = $mappedReference[2];
+                                $sqlqueries[$nn] = $sqlquery . " AND (chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1] . ")";
+                            } 
+                            //ELSEIF the non consecutive chunk DOES NOT contain a chapter reference
+                            //  ( EXAMPLE: John 3,16.18 )
+                            //  (    John 3,16 <=|=> 18 )
+                            //  ( 18 )
+                            else {
+                                $mappedReference = $this->mapReference($version,$book1,$xchapter,$piece,$preferorigin);
+                                $xchapter = $mappedReference[0];
+                                $piece = $mappedReference[1];
+                                $preferorigin = $mappedReference[2];
+                                $sqlqueries[$nn] = $sqlquery . " AND (chapter = " . $xchapter . " AND verse = " . $piece . ")";
+                            }
+                        }
+              
+                        $sqlqueries[$nn] .= $preferorigin;
+              
+                        $queriesversions[$nn] = $version;
+                        //VERSES must be ordered by verseID in order to handle those cases where there are subverses (usually Greek additions)
+                        //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
+                        //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
+                        //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
+                        //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
+                        $sqlqueries[$nn] .= " ORDER BY verseID";
+                        //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
+                        if (in_array($version, $copyrightversions)) {
+                            $sqlqueries[$nn] .= " LIMIT 30";
+                        }
+                        $nn++;
                     }
-                    $sqlqueries[$nn] .= " OR (chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . "))";
-                  } 
-                  //ELSEIF we do NOT have a CHAPTER indicator on the right hand side of the range of consecutive verses
-                  // (EXAMPLE: John 3,16-18.20)
-                  else {
-                    $mappedReference = mapReference($version,$book1,$xchapter,$fromto[1],$preferorigin);
-                    $xchapter = $mappedReference[0];
-                    $fromto[1] = $mappedReference[1];
-                    $preferorigin = $mappedReference[2];
-                    $sqlqueries[$nn] = $sqlquery . " AND (chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . ")";
-                    $sqlqueries[$nn] .= " AND (chapter <= " . $xchapter . " AND verse <= " . $fromto[1] . ")";
-                  }
                 } 
-                //ELSEIF we DO NOT have a CHAPTER indicator on the left hand side of the range of consecutive verses
-                //  ( EXAMPLE: John 3,16.18-20 )
-                //  (  John 3,16 <=|=> 18-20 )
-                //  (  18 <=> 20)
+                //ELSEIF the request DOES NOT contain non-consecutive verses
+                //    ( EXAMPLE: John 3,16 )
                 else {
-                  $mappedReference = mapReference($version,$book1,$xchapter,$fromto[0],$preferorigin);
-                  $mappedReference1 = mapReference($version,$book1,$xchapter,$fromto[1],$preferorigin);
-                  $xchapter = $mappedReference[0];
-                  $fromto[0] = $mappedReference[1];
-                  $preferorigin = $mappedReference[2];
-                  $fromto[1] = $mappedReference1[1];
-                  $sqlqueries[$nn] = $sqlquery . " AND (chapter = " . $xchapter . " AND verse >= " . $fromto[0] . " AND verse <= " . $fromto[1] . ")";
-                }
-              } 
-              //ELSEIF the non consecutive chunk DOES NOT contain a range of consecutive VERSEs / CHAPTERs
-              //    ( EXAMPLE: John 3,16.18 )
-              //    (   John 3,16 <=|=> 18 )
-              else {
-                //IF the non consecutive chunk however DOES contain a chapter reference
-                //  ( EXAMPLE: John 3,16.18 )
-                //  (   John 3,16 <=|=> 18 )
-                //  (   John 3 <=> 16 )
-                if (strpos($piece, ",")) {
-                    $chapterverse = preg_split("/,/", $piece);
-                    $xchapter = $chapterverse[0];
-                    $mappedReference = mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
-                    $chapterverse[0] = $mappedReference[0];
-                    $chapterverse[1] = $mappedReference[1];
-                    $preferorigin = $mappedReference[2];
-                    $sqlqueries[$nn] = $sqlquery . " AND (chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1] . ")";
-                } 
-                //ELSEIF the non consecutive chunk DOES NOT contain a chapter reference
-                //  ( EXAMPLE: John 3,16.18 )
-                //  (    John 3,16 <=|=> 18 )
-                //  ( 18 )
-                else {
-                    $mappedReference = mapReference($version,$book1,$xchapter,$piece,$preferorigin);
-                    $xchapter = $mappedReference[0];
-                    $piece = $mappedReference[1];
-                    $preferorigin = $mappedReference[2];
-                    $sqlqueries[$nn] = $sqlquery . " AND (chapter = " . $xchapter . " AND verse = " . $piece . ")";
-                }
-              }
-    
-              $sqlqueries[$nn] .= $preferorigin;
-    
-              $queriesversions[$nn] = $version;
-              //VERSES must be ordered by verseID in order to handle those cases where there are subverses (usually Greek additions)
-              //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
-              //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
-              //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
-              //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
-              $sqlqueries[$nn] .= " ORDER BY verseID";
-              //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
-              if (in_array($version, $copyrightversions)) {
-                $sqlqueries[$nn] .= " LIMIT 30";
-              }
-              $nn++;
-            }
-          } 
-          //ELSEIF the request DOES NOT contain non-consecutive verses
-          //    ( EXAMPLE: John 3,16 )
-          else {
-            //$nn++;
-            //IF the request DOES however contain a range of consecutive verses or chapters
-            //    ( EXAMPLE: John 3,16-18 )
-            //    (    John 3,16 <=|=> 18 )
-            if (strpos($query, "-")) {
-              $originalquery[$nn] = $origquery;
-              $fromto = preg_split("/\-/", $query);
-              //IF there is a chapter indicator on the left hand side of the range of consecutive verses
-              //    ( EXAMPLE: John 3,16-18 )
-              //    (    John 3,16 <=|=> 18 )
-              //    (    John 3,16 )
-              if (strpos($fromto[0], ",")) {
-                //echo "We have a comma in this section of query! ". $fromto[0] . "<br />";
-                $chapterverse = preg_split("/,/", $fromto[0]);
-                $xchapter = $chapterverse[0];
-                $mappedReference = mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
-                $chapterverse[0] = $mappedReference[0];
-                $chapterverse[1] = $mappedReference[1];
-                $preferorigin = $mappedReference[2];
-                //IF there is also a chapter indicator on the right hand side of the range of consecutive verses
-                //    ( EXAMPLE: John 3,16-4,5 )
-                //    (    John 3,16 <=|=> 4,5 )
-                //    (    4,5 )
-                if (strpos($fromto[1], ",")) {
-                    $chapterverse1 = preg_split("/,/", $fromto[1]);
-                    $mappedReference = mapReference($version,$book1,$chapterverse1[0],$chapterverse1[1],$preferorigin);
-                    $chapterverse1[0] = $mappedReference[0];
-                    $chapterverse1[1] = $mappedReference[1];
-                    $preferorigin = $mappedReference[2];
-                    //what if the difference between chapters is greater than 1? Say: John 3,16-6,2 ?
-                    $sqlqueries[$nn] = $sqlquery . " AND ((chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . ")";
-                    if($chapterverse1[0] - $chapterverse[0] > 1) {
-                      for($d=1;$d<($chapterverse1[0] - $chapterverse[0]);$d++){
-                        $sqlqueries[$nn] .= " OR (chapter = " . ($chapterverse[0] + $d) . ")";
-                      }
+                    //$nn++;
+                    //IF the request DOES however contain a range of consecutive verses or chapters
+                    //    ( EXAMPLE: John 3,16-18 )
+                    //    (    John 3,16 <=|=> 18 )
+                    if (strpos($query, "-")) {
+                        $originalquery[$nn] = $origquery;
+                        $fromto = preg_split("/\-/", $query);
+                        //IF there is a chapter indicator on the left hand side of the range of consecutive verses
+                        //    ( EXAMPLE: John 3,16-18 )
+                        //    (    John 3,16 <=|=> 18 )
+                        //    (    John 3,16 )
+                        if (strpos($fromto[0], ",")) {
+                            //echo "We have a comma in this section of query! ". $fromto[0] . "<br />";
+                            $chapterverse = preg_split("/,/", $fromto[0]);
+                            $xchapter = $chapterverse[0];
+                            $mappedReference = $this->mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
+                            $chapterverse[0] = $mappedReference[0];
+                            $chapterverse[1] = $mappedReference[1];
+                            $preferorigin = $mappedReference[2];
+                            //IF there is also a chapter indicator on the right hand side of the range of consecutive verses
+                            //    ( EXAMPLE: John 3,16-4,5 )
+                            //    (    John 3,16 <=|=> 4,5 )
+                            //    (    4,5 )
+                            if (strpos($fromto[1], ",")) {
+                                $chapterverse1 = preg_split("/,/", $fromto[1]);
+                                $mappedReference = $this->mapReference($version,$book1,$chapterverse1[0],$chapterverse1[1],$preferorigin);
+                                $chapterverse1[0] = $mappedReference[0];
+                                $chapterverse1[1] = $mappedReference[1];
+                                $preferorigin = $mappedReference[2];
+                                //what if the difference between chapters is greater than 1? Say: John 3,16-6,2 ?
+                                $sqlqueries[$nn] = $sqlquery . " AND ((chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . ")";
+                                if($chapterverse1[0] - $chapterverse[0] > 1) {
+                                    for($d=1;$d<($chapterverse1[0] - $chapterverse[0]);$d++){
+                                        $sqlqueries[$nn] .= " OR (chapter = " . ($chapterverse[0] + $d) . ")";
+                                    }
+                                }
+                                $sqlqueries[$nn] .= " OR (chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . "))";
+                            }
+                            //ELSEIF there is NOT a chapter indicator on the right hand side of the range of consecutive verses
+                            //    ( EXAMPLE: John 3,16-18 )
+                            //    (    John 3,16 <=|=> 18 )
+                            //    (    18 )
+                            else {
+                              $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
+                              $mappedReference = $this->mapReference($version,$book1,$chapterverse[0],$fromto[1],$preferorigin);
+                              $fromto[1] = $mappedReference[1];
+                              $preferorigin = $mappedReference[2];
+                              $sqlqueries[$nn] .= " AND chapter <= " . $mappedReference[0] . " AND verse <= " . $fromto[1];
+                            }
+                        }
+                        //ELSEIF there is NOT a chapter/verse indicator on the left hand side of the range of consecutive verses OR chapters
+                        //    this means that we are dealing with consecutive CHAPTERS and not VERSES
+                        //     ( EXAMPLE: John 3-4 )
+                        //     ( EXAMPLE: 3 <=|=> 4 )
+                        else {
+                            $mappedReference1 = $this->mapReference($version,$book1,$fromto[0],null,$preferorigin);
+                            $mappedReference2 = $this->mapReference($version,$book1,$fromto[1],null,$preferorigin);
+                            $fromto[0] = $mappedReference1[0];
+                            $fromto[1] = $mappedReference2[0];
+                            $preferorigin = $mappedReference1[2];
+                            $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $fromto[0] . " AND chapter <= " . $fromto[1];
+                        }
                     }
-                    $sqlqueries[$nn] .= " OR (chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . "))";
-                  } 
-                //ELSEIF there is NOT a chapter indicator on the right hand side of the range of consecutive verses
-                //    ( EXAMPLE: John 3,16-18 )
-                //    (    John 3,16 <=|=> 18 )
-                //    (    18 )
-                else {
-                  $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
-                  $mappedReference = mapReference($version,$book1,$chapterverse[0],$fromto[1],$preferorigin);
-                  $fromto[1] = $mappedReference[1];
-                  $preferorigin = $mappedReference[2];
-                  $sqlqueries[$nn] .= " AND chapter <= " . $mappedReference[0] . " AND verse <= " . $fromto[1];
+                    //ELSEIF the request DOES NOT contain a range of consecutive verses OR chapters
+                    //    (EXAMPLE: John 3,16)
+                    else {
+                        //IF we DO have a chapter/verse indicator
+                        if (strpos($query, ",")) {
+                            $originalquery[$nn] = $origquery;
+                            $chapterverse = preg_split("/,/", $query);
+                            $xchapter = $chapterverse[0];
+                            $mappedReference = $this->mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
+                            $chapterverse[0] = $mappedReference[0];
+                            $chapterverse[1] = $mappedReference[1];
+                            $preferorigin = $mappedReference[2];
+                            $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
+                        } 
+                        //ELSEIF we are dealing with just a single chapter
+                        //    ( EXAMPLE: John 3 )
+                        else {
+                            $originalquery[$nn] = $origquery;
+                            $xchapter = $query;
+                            $mappedReference = $this->mapReference($version,$book1,$xchapter,null,$preferorigin);
+                            $preferorigin = $mappedReference[2];
+                            $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $mappedReference[0]; // . " AND verse = " . $piece;
+                        }
+                    }
+            
+                    $sqlqueries[$nn] .= $preferorigin;
+            
+                    $queriesversions[$nn] = $version;
+                    //VERSES must be ordered by verseID in order to handle those cases where there are subverses (usually Greek additions)
+                    //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
+                    //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
+                    //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
+                    //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
+                    $sqlqueries[$nn] .= " ORDER BY verseID";
+                    //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
+                    if (in_array($version, $copyrightversions)) {
+                        $sqlqueries[$nn] .= " LIMIT 30";
+                    }
+                    $nn++;
                 }
-              } 
-              //ELSEIF there is NOT a chapter/verse indicator on the left hand side of the range of consecutive verses OR chapters
-              //    this means that we are dealing with consecutive CHAPTERS and not VERSES
-              //     ( EXAMPLE: John 3-4 )
-              //     ( EXAMPLE: 3 <=|=> 4 )
-              else {
-                $mappedReference1 = mapReference($version,$book1,$fromto[0],null,$preferorigin);
-                $mappedReference2 = mapReference($version,$book1,$fromto[1],null,$preferorigin);
-                $fromto[0] = $mappedReference1[0];
-                $fromto[1] = $mappedReference2[0];
-                $preferorigin = $mappedReference1[2];
-                $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $fromto[0] . " AND chapter <= " . $fromto[1];
-              }
+
+                $i++;
             }
-            //ELSEIF the request DOES NOT contain a range of consecutive verses OR chapters
-            //    (EXAMPLE: John 3,16)
-            else {
-              //IF we DO have a chapter/verse indicator
-              if (strpos($query, ",")) {
-                $originalquery[$nn] = $origquery;
-                $chapterverse = preg_split("/,/", $query);
-                $xchapter = $chapterverse[0];
-                $mappedReference = mapReference($version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin);
-                $chapterverse[0] = $mappedReference[0];
-                $chapterverse[1] = $mappedReference[1];
-                $preferorigin = $mappedReference[2];
-                $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
-              } 
-              //ELSEIF we are dealing with just a single chapter
-              //    ( EXAMPLE: John 3 )
-              else {
-                $originalquery[$nn] = $origquery;
-                $xchapter = $query;
-                $mappedReference = mapReference($version,$book1,$xchapter,null,$preferorigin);
-                $preferorigin = $mappedReference[2];
-                $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $mappedReference[0]; // . " AND verse = " . $piece;
-              }
-            }
-    
-            $sqlqueries[$nn] .= $preferorigin;
-    
-            $queriesversions[$nn] = $version;
-            //VERSES must be ordered by verseID in order to handle those cases where there are subverses (usually Greek additions)
-            //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
-            //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
-            //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
-            //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
-            $sqlqueries[$nn] .= " ORDER BY verseID";
-            //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
-            if (in_array($version, $copyrightversions)) {
-              $sqlqueries[$nn] .= " LIMIT 30";
-            }
-            $nn++;
-          }
-    
-          $i++;
         }
-      }
-      return array($sqlqueries, $queriesversions, $originalquery);
-      //END formulateQueries
+        return array($sqlqueries, $queriesversions, $originalquery);
+        //END formulateQueries
     }
     
     private function mapReference($version,$book,$chapter,$verse,$preferorigin) {
@@ -1627,27 +1626,27 @@ class BIBLEGET_QUOTE {
             $resultsForCheckValid = $this->checkValid($queries);
             $usedvariants = property_exists($resultsForCheckValid, 'usedvariants') ? $resultsForCheckValid->usedvariants : false;
             if (!is_array($usedvariants)) {
-              $this->outputResult();
+                $this->outputResult();
             } else {
-              //     echo "<pre>";
-              //     print_r($usedvariants);
-              //     echo "</pre>";
-              // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
-              //$temp = formulateQueries($queries);
-              $temp = formulateQueries($resultsForCheckValid);
-              $mysqlqueries = $temp[0];
-              $queriesversions = $temp[1];
-              $originalquery = $temp[2];
-              //     echo "<pre>";
-              //     print_r($mysqlqueries);
-              //     echo "</pre>";
+                //     echo "<pre>";
+                //     print_r($usedvariants);
+                //     echo "</pre>";
+                // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
+                //$temp = formulateQueries($queries);
+                $temp = $this->formulateQueries($resultsForCheckValid);
+                $mysqlqueries = $temp[0];
+                $queriesversions = $temp[1];
+                $originalquery = $temp[2];
+                //     echo "<pre>";
+                //     print_r($mysqlqueries);
+                //     echo "</pre>";
 
-              // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
-              doQueries($mysqlqueries, $queriesversions, $originalquery);
+                // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
+                $this->doQueries($mysqlqueries, $queriesversions, $originalquery);
 
 
-              // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE    
-              $this->outputResult();
+                // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE    
+                $this->outputResult();
             }
 
         }
