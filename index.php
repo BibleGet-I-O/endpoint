@@ -58,6 +58,10 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+define('DEBUGFILE', "requests.log");
+define('DEBUG_REQUESTS', false); //set to true in order to enable logging of requests
+define('DEBUG_IPINFO', false);
+
 define("ENDPOINT_VERSION", "3.0");
 
 //TODO: perhaps create a class out of all this, like we did for metadata.php?
@@ -113,17 +117,435 @@ define("BIBLEGETIOQUERYSCRIPT", "iknowwhythisishere");
 
 // Allow from any origin
 if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
-  header('Access-Control-Allow-Credentials: true');
-  header('Access-Control-Max-Age: 86400');    // cache for 1 day
+    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Max-Age: 86400');    // cache for 1 day
 }
 // Access-Control headers are received during OPTIONS requests
 if (isset($_SERVER['REQUEST_METHOD'])) {
-  if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']))
-    header("Access-Control-Allow-Methods: GET, POST");
-  if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']))
-    header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']))
+        header("Access-Control-Allow-Methods: GET, POST");
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']))
+        header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
 }
+
+class BIBLEGET_QUOTE {
+
+    static public array $returnTypes                = [ "json", "xml", "html" ];
+    static public array $allowedAcceptHeaders       = [ "application/json", "application/xml", "text/html" ];
+    static public array $allowedContentTypes        = [ "application/json" , "application/x-www-form-urlencoded" ];
+    static public array $allowedRequestMethods      = [ "GET", "POST" ];
+    static public array $allowedPreferredOrigins    = [ "GREEK", "HEBREW" ];
+
+    static public array $errorMessages = [
+        "First query string must start with a valid book abbreviation!",
+        "You must have a valid chapter following the book abbreviation!",
+        "The book abbreviation is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.",
+        "You cannot use a dot without first using a comma. A dot is a liason between verses, which are separated from the chapter by a comma.",
+        "A dot must be preceded and followed by 1 to 3 digits of which the first digit cannot be zero.",
+        "A comma must be preceded and followed by 1 to 3 digits of which the first digit cannot be zero.",
+        "A dash must be preceded and followed by 1 to 3 digits of which the first digit cannot be zero.",
+        "If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.",
+        "There are multiple dashes in the query, but there are not enough dots. There can only be one more dash than dots.",
+        "Notation Error. Please check your citation notation.",
+        "Please use a cacheing mechanism, you seem to be submitting numerous requests for the same query.",
+        "You are submitting too many requests with the same query. You must use a cacheing mechanism. Once you have implemented a cacheing mechanism you may have to wait a couple of days before getting service again. Otherwise contact the service management to request service again.",
+        "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management."
+    ];
+
+    //TODO: these should not be hardcoded in Italian, they should be picked up from a database table with all possible language translations
+    static public array $sections = [
+        "Pentateuco",
+        "Storici",
+        "Sapienziali",
+        "Profeti",
+        "Vangeli",
+        "Atti degli Apostoli",
+        "Lettere Paoline",
+        "Lettere Cattoliche",
+        "Apocalisse"
+    ];
+
+
+    private array  $DATA                         = []; //all request parameters
+    private string $returnType                   = "json";     //which type of data to return (json, xml or html)
+    private array  $requestHeaders               = [];
+    private string $acceptHeader                 = "";
+    private string $contentType                  = "";
+    private object $bibleQuote;          //object with json, xml or html data to return
+    private object $mysqli;         //instance of database
+    private bool   $isAjax                      = false;
+    private array  $WhitelistedDomainsIPs        = [];
+    private array  $validversions                = [];
+    private array  $validversions_fullname       = [];
+    private array  $copyrightversions            = [];
+    private array  $PROTESTANT_VERSIONS          = [];
+    private array  $CATHOLIC_VERSIONS            = [];
+    //private $detectedNotation                  = NOTATION::tryFrom("ENGLISH"); //can be "ENGLISH" or "EUROPEAN"
+    private string $detectedNotation             = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN"
+    private array  $biblebooks                   = [];
+    private array  $requestedVersions            = [];
+    private array  $requestedCopyrightedVersions = [];
+    private array  $indexes                      = [];
+
+
+    function __construct(array $DATA){
+        $this->requestHeaders = getallheaders();
+        $this->DATA = $DATA;
+        $this->contentType = isset( $_SERVER['CONTENT_TYPE'] ) && in_array( $_SERVER['CONTENT_TYPE'], self::$allowedContentTypes ) ? $_SERVER['CONTENT_TYPE'] : "";
+        $this->acceptHeader = isset( $this->requestHeaders["Accept"] ) && in_array( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders ) ? (string) $this->requestHeaders["Accept"] : "";
+        $this->returnType = ( isset($DATA["return"] ) && in_array(strtolower($DATA["return"]),self::$returnTypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? (string) self::$returnTypes[array_search($this->requestHeaders["Accept"], self::$allowedAcceptHeaders)] : (string) self::$returnTypes[0]);
+        $this->isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
+    }
+
+    private function addErrorMessage( int $num, string $str="" ) {
+
+        if (gettype($num) === "string") {
+            self::$errorMessages[13] = $num;
+            $num = 13;
+        }
+
+        if ($this->returnType === "json") {
+            $error = [];
+            $error["errNum"] = $num;
+            $error["errMessage"] = self::$errorMessages[$num] . ($str !== "" ? " > " . $str : "");
+            $this->bibleQuote->errors[] = $error;
+        } elseif ($this->returnType === "xml") {
+            $err_row = $this->bibleQuote->Errors->addChild("error", self::$errorMessages[$num]);
+            $err_row->addAttribute("errNum", $num);
+        } elseif ($this->returnType === "html") {
+            $elements = [];
+            $errorsTable = $this->bibleQuote->getElementById("errorsTbl");
+            if ($errorsTable == null) {
+                $elements[0] = $this->bibleQuote->createElement("table");
+                $elements[0]->setAttribute("id","errorsTbl");
+                $elements[0]->setAttribute("class","errorsTbl");
+                $this->err->appendChild($elements[0]);
+            } else {
+                $elements[0] = $errorsTable;
+            }
+
+            $elements[1] = $this->bibleQuote->createElement("tr");
+            $elements[1]->setAttribute("id","errorsRow");
+            $elements[1]->setAttribute("class","errorsRow");
+            $elements[0]->appendChild($elements[1]);
+            
+            $elements[2] = $this->bibleQuote->createElement("td", "errNum");
+            $elements[2]->setAttribute("class", "errNum");
+            $elements[1]->appendChild($elements[2]);
+
+            $elements[3] = $this->bibleQuote->createElement("td", $num);
+            $elements[3]->setAttribute("class", "errNumVal");
+            $elements[1]->appendChild($elements[3]);
+        
+            $elements[4] = $this->bibleQuote->createElement("td", "errMessage");
+            $elements[4]->setAttribute("class", "errMessage");
+            $elements[1]->appendChild($elements[4]);
+
+            $elements[5] = $this->bibleQuote->createElement("td", self::$errorMessages[$num]);
+            $elements[5]->setAttribute("class", "errMessageVal");
+            $elements[1]->appendChild($elements[5]);
+
+        }
+    }
+
+    private function outputResult() {
+
+        switch($this->returnType) {
+            case "json":
+                $this->bibleQuote->info["keyword"] = $this->DATA["keyword"];
+                $this->bibleQuote->info["version"] = $this->DATA["version"];
+                echo json_encode($this->bibleQuote, JSON_UNESCAPED_UNICODE);
+                break;
+            case "xml":
+                echo $this->bibleQuote->asXML();
+                break;
+            case "html":
+                $this->bibleQuote->appendChild($this->err); 
+                $this->bibleQuote->appendChild($this->div);
+                $info = $this->bibleQuote->createElement("input");
+                $info->setAttribute("type", "hidden");
+                $info->setAttribute("name", "ENDPOINT_VERSION");
+                $info->setAttribute("value", ENDPOINT_VERSION);
+                $this->bibleQuote->appendChild($info);
+                echo $this->bibleQuote->saveHTML($this->div);
+                echo $this->bibleQuote->saveHTML($this->err);
+                echo $this->bibleQuote->saveHTML($info);
+        }
+
+        $this->mysqli->close();
+        exit(0);
+
+    }
+
+    private function dbConnect() {
+
+        $dbCredentials = "dbcredentials.php";
+        //search for the database credentials file at least three levels up...
+        if(file_exists($dbCredentials)){
+            include_once($dbCredentials);
+        } else if (file_exists("../" . $dbCredentials)){
+            include_once("../{$dbCredentials}");
+        } else if (file_exists("../../" . $dbCredentials)){
+            include_once("../../{$dbCredentials}");
+        }
+
+        $mysqli = new mysqli(SERVER,DBUSER,DBPASS,DATABASE);
+      
+        if ($mysqli->connect_errno) {
+            $this->addErrorMessage( "Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error );
+            $this->outputResult();
+        }
+        $mysqli->set_charset("utf8");
+        $this->mysqli = $mysqli;
+    }
+
+    static private function toProperCase(string $txt) {
+        preg_match("/\p{L}\p{M}*/u", $txt, $mList, PREG_OFFSET_CAPTURE);
+        $idx = $mList[0][1];
+        $chr = mb_substr( $txt, $idx, 1, 'UTF-8' );
+        if( preg_match("/\p{L&}\p{M}*/u", $chr) ){
+            $post = mb_substr( $txt, $idx+1, null, 'UTF-8' );
+            return mb_substr( $txt, 0, $idx, 'UTF-8' ) . mb_strtoupper( $chr, 'UTF-8' ) . mb_strtolower( $post, 'UTF-8' );
+        }
+        else{
+            return $txt;
+        }
+    }
+
+    static private function idxOf(string $needle, array $haystack) {
+        foreach ($haystack as $index => $value) {
+            if (is_array($haystack[$index])) {
+                foreach ($haystack[$index] as $index2 => $value2) {
+                    if (in_array($needle, $haystack[$index][$index2])) {
+                        return $index;
+                    }
+                }
+            } else if (in_array($needle, $haystack[$index])) {
+                return $index;
+            }
+        }
+        return false;
+    }
+
+
+    static private function normalizeBibleBook(string $str){
+        return self::toProperCase( preg_replace( "/\s+/", "", trim( $str ) ) );
+    }
+
+    private function BibleQuoteInit() {
+
+      $err = NULL;
+      $div = NULL;
+      $inf = NULL;
+
+      switch($this->returnType){
+          case "json":
+              $quote = new stdClass();
+              $quote->results = [];
+              $quote->errors = [];
+              $quote->info = ["ENDPOINT_VERSION" => ENDPOINT_VERSION];
+              break;
+          case "xml":
+              $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleQuote/>";
+              $quote = new simpleXMLElement($root);
+              $errors = $quote->addChild("errors");
+              $info = $quote->addChild("info");
+              $results = $quote->addChild("results");
+              $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
+              break;
+          case "html":
+              $quote = new DOMDocument();
+              $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title><style>table#errorsTbl { border: 3px double Red; background-color:DarkGray; } table#errorsTbl td { border: 1px solid Black; background-color:LightGray; padding: 3px; } td.errNum,td.errMessage { font-weight:bold; }</style><!-- QUERY.BIBLEGET.IO ENDPOINT VERSION {ENDPOINT_VERSION} --></head><body></body>";
+              $quote->loadHTML($html);
+              $div = $quote->createElement("div");
+              $div->setAttribute("class","results bibleQuote");
+              $err = $quote->createElement("div");
+              $err->setAttribute("class","errors bibleQuote");
+              $inf = $quote->createElement("div");
+              $inf->setAttribute("class", "info bibleQuote");
+              break;
+        }
+
+        $this->bibleQuote = $quote;
+        $this->div        = $div;
+        $this->err        = $err;
+        $this->inf        = $inf;
+
+    }
+
+
+    private function populateVersionsInfo(){
+
+        if( $result = $this->mysqli->query( "SELECT * FROM versions_available WHERE type = 'BIBLE'" ) ) {
+            while( $row = mysqli_fetch_assoc( $result ) ) {
+                $this->validversions[] = $row["sigla"];
+                $this->validversions_fullname[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
+                if ($row["copyright"] === 1) {
+                    $this->copyrightversions[] = $row["sigla"];
+                }
+                if($row["canon"] === "CATHOLIC"){
+                    $this->CATHOLIC_VERSIONS[] = $row["sigla"];
+                } else if ($row["canon"] === "PROTESTANT"){
+                    $this->PROTESTANT_VERSIONS[] = $row["sigla"];
+                }
+            }
+        }
+        else{
+            $this->addErrorMessage( "<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>" );
+            $this->outputResult();
+        }
+
+    }
+
+    private function isValidVersion( string $version ) {
+        return( in_array( $version, $this->validversions ) );
+    }
+
+    private function prepareIndexes(array $versions){
+
+        $indexes = [];
+
+        foreach($versions as $variant){
+
+            $abbreviations = [];
+            $bbbooks = [];
+            $chapter_limit = [];
+            $verse_limit = [];
+            $book_num = [];
+            
+            // fetch the index information for the requested version from the database and load it into our arrays
+            if($result = $this->mysqli->query("SELECT * FROM ".$variant."_idx")){
+                while($row = $result->fetch_assoc()){
+                    $abbreviations[] = $row["abbrev"];
+                    $bbbooks[] = $row["fullname"];
+                    $chapter_limit[] = $row["chapters"];
+                    $verse_limit[] = explode(",",$row["verses_last"]);
+                    $book_num[] = $row["book"];
+                }
+            }
+            /*
+            else{
+              //error
+            }
+            */
+            
+            $indexes[$variant]["abbreviations"] = $abbreviations;
+            $indexes[$variant]["biblebooks"] = $bbbooks;
+            $indexes[$variant]["chapter_limit"] = $chapter_limit;
+            $indexes[$variant]["verse_limit"] = $verse_limit;
+            $indexes[$variant]["book_num"] = $book_num;  
+
+        }
+        
+        return $indexes;
+
+    }
+
+    private function prepareBibleBooks(){
+
+        if ( $result1 = $this->mysqli->query( "SELECT * FROM biblebooks_fullname" ) ) {
+            $cols = mysqli_num_fields( $result1 );
+            $names = [];
+            $finfo = mysqli_fetch_fields( $result1 );
+            foreach ( $finfo as $val ) {
+                $names[] = $val->name;
+            }
+            if ( $result2 = $this->mysqli->query( "SELECT * FROM biblebooks_abbr" ) ) {
+                $cols2 = mysqli_num_fields( $result2 );
+                $rows2 = mysqli_num_rows( $result2 );
+                $names2 = [];
+                $finfo2 = mysqli_fetch_fields( $result2 );
+                foreach ( $finfo2 as $val ) {
+                    $names2[] = $val->name;
+                }
+
+                $n = 0;
+                while ( $row1 = mysqli_fetch_assoc($result1) ) {
+                    $row2 = mysqli_fetch_assoc( $result2 );
+                    $this->biblebooks[$n] = [];
+
+                    for ( $x = 1; $x < $cols; $x++ ) {
+                        $temparray = [ $row1[$names[$x]], $row2[$names[$x]] ];
+
+                        $arr1 = explode( " | ", $row1[$names[$x]] );
+                        $booknames = array_map( 'self::normalizeBibleBook', $arr1);
+
+                        $arr2 = explode(" | ", $row2[$names[$x]]);
+                        $abbrevs = ( count( $arr2 ) > 1 ) ? array_map( 'self::normalizeBibleBook', $arr2) : [];
+
+                        $this->biblebooks[$n][$x] = array_merge( $temparray, $booknames, $abbrevs );
+                    }
+                    $n++;
+                }
+            } else {
+                $this->addErrorMessage("<p>MySQL ERROR " . $this->mysqli->errno . ": " . $this->mysqli->error . "</p>");
+            }
+        } else {
+            $this->addErrorMessage("<p>MySQL ERROR " . $this->mysqli->errno . ": " . $this->mysqli->error . "</p>");
+        }
+
+    }
+
+    private function prepareRequestedVersions() {
+
+        $temp = isset( $this->DATA["version"] ) && $this->DATA["version"] !== "" ? explode( ",", strtoupper( $this->DATA["version"] ) ) : ["CEI2008"];
+
+        foreach ( $temp as $version ) {
+            if ( isset( $this->DATA["forceversion"] ) && $this->DATA["forceversion"] === "true" ) {
+                $this->requestedVersions[] = $version;
+            } else {
+                if ( $this->isValidVersion($version) ) {
+                    $this->requestedVersions[] = $version;
+                } else {
+                    $this->addErrorMessage( "Not a valid version: <" . $version . ">, valid versions are <" . implode( " | ", $this->validversions ) . ">" );
+                }
+            }
+            if ( isset( $this->DATA["forcecopyright"] ) && $this->DATA["forcecopyright"] === "true" ) {
+                $this->requestedCopyrightedVersions[] = $version;
+            }
+        }
+
+
+        if ( count($this->requestedVersions) < 1 ) {
+            $this->outputResult();
+        }
+
+    }
+
+    public function Init() {
+
+        switch($this->returnType){
+            case "xml":
+              header('Content-Type: application/xml; charset=utf-8');
+              break;
+            case "json":
+              header('Content-Type: application/json; charset=utf-8');
+              break;
+            case "html":
+              header('Content-Type: text/html; charset=utf-8');
+              break;
+            default:
+              header('Content-Type: application/json; charset=utf-8');
+        }
+
+        $this->BibleQuoteInit();
+        $this->dbConnect();
+        $this->populateVersionsInfo();
+        $this->prepareBibleBooks();
+        $this->prepareRequestedVersions();
+        $this->prepareIndexes();
+
+        if (isset($this->DATA["query"]) && $this->DATA["query"] !== "") {
+
+        }
+
+    }
+
+}
+
+
+
 
 // valid return types
 $returntypes = array("json", "xml", "html");
@@ -204,9 +626,6 @@ if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/
 //returntype set explicitly in parameters can override accept header
 $returntype = (isset($BIBLEGET["return"]) && $BIBLEGET["return"] != "" && in_array(strtolower($BIBLEGET["return"]), $returntypes)) ? strtolower($BIBLEGET["return"]) : $returntype;
 
-define('DEBUGFILE', "requests.log");
-define('DEBUG_REQUESTS', false); //set to true in order to enable logging of requests
-define('DEBUG_IPINFO', false);
 
 if (DEBUG_REQUESTS === true) {
   $data = "********************" . PHP_EOL;
@@ -230,17 +649,17 @@ if (DEBUG_REQUESTS === true) {
 }
 
 switch ($returntype) {
-  case "xml":
-    header('Content-Type: application/xml; charset=utf-8');
-    break;
-  case "json":
-    header('Content-Type: application/json; charset=utf-8');
-    break;
-  case "html":
-    header('Content-Type: text/html; charset=utf-8');
-    break;
-  default:
-    header('Content-Type: application/json; charset=utf-8');
+    case "xml":
+        header('Content-Type: application/xml; charset=utf-8');
+        break;
+    case "json":
+        header('Content-Type: application/json; charset=utf-8');
+        break;
+    case "html":
+        header('Content-Type: text/html; charset=utf-8');
+        break;
+    default:
+        header('Content-Type: application/json; charset=utf-8');
 }
 
 /*
@@ -465,6 +884,7 @@ function toProperCase($txt)
     return $txt;
   }
 }
+
 
 function idxOf($needle, $haystack)
 {
@@ -1765,58 +2185,55 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
  *****************************************************************/
 
 
-function outputResult()
-{
-  global $mysqli;
-  global $div;
-  global $err;
-  global $inf;
-  global $bbquery;
-  global $returntype;
-  global $detectedNotation;
+function outputResult() {
+    global $mysqli;
+    global $div;
+    global $err;
+    global $inf;
+    global $bbquery;
+    global $returntype;
+    global $detectedNotation;
 
 
-  if ($returntype == "json") {
-    $bbquery->info["detectedNotation"] = $detectedNotation;
-    echo json_encode($bbquery, JSON_UNESCAPED_UNICODE);
-  }
-  if ($returntype == "xml") {
-    $bbquery->info["detectedNotation"] = $detectedNotation;
-    echo $bbquery->asXML();
-  }
-  if ($returntype == "html") {
-    $bbquery->appendChild($div);
-    $bbquery->appendChild($err);
-    $info = $bbquery->createElement("input");
-    $info->setAttribute("type", "hidden");
-    $info->setAttribute("name", "ENDPOINT_VERSION");
-    $info->setAttribute("value", ENDPOINT_VERSION);
-    $info->setAttribute("class", "BibleGetInfo");
-    $inf->appendChild($info);
-    $info1 = $bbquery->createElement("input");
-    $info1->setAttribute("type", "hidden");
-    $info1->setAttribute("name", "detectedNotation");
-    $info1->setAttribute("value", $detectedNotation);
-    $info1->setAttribute("class", "BibleGetInfo");
-    $inf->appendChild($info1);
-    $bbquery->appendChild($inf);
-    echo $bbquery->saveHTML($div);
-    echo $bbquery->saveHTML($err);
-    echo $bbquery->saveHTML($inf);
-  }
-  if ($mysqli && $mysqli->thread_id) {
-    $mysqli->close();
-  }
-  exit();
+    if ($returntype == "json") {
+        $bbquery->info["detectedNotation"] = $detectedNotation;
+        echo json_encode($bbquery, JSON_UNESCAPED_UNICODE);
+    }
+    if ($returntype == "xml") {
+        $bbquery->info["detectedNotation"] = $detectedNotation;
+        echo $bbquery->asXML();
+    }
+    if ($returntype == "html") {
+        $bbquery->appendChild($div);
+        $bbquery->appendChild($err);
+        $info = $bbquery->createElement("input");
+        $info->setAttribute("type", "hidden");
+        $info->setAttribute("name", "ENDPOINT_VERSION");
+        $info->setAttribute("value", ENDPOINT_VERSION);
+        $info->setAttribute("class", "BibleGetInfo");
+        $inf->appendChild($info);
+        $info1 = $bbquery->createElement("input");
+        $info1->setAttribute("type", "hidden");
+        $info1->setAttribute("name", "detectedNotation");
+        $info1->setAttribute("value", $detectedNotation);
+        $info1->setAttribute("class", "BibleGetInfo");
+        $inf->appendChild($info1);
+        $bbquery->appendChild($inf);
+        echo $bbquery->saveHTML($div);
+        echo $bbquery->saveHTML($err);
+        echo $bbquery->saveHTML($inf);
+    }
+    if ($mysqli && $mysqli->thread_id) {
+        $mysqli->close();
+    }
+    exit(0);
 }
 
 
-function startsWith($needle, $haystack)
-{
-  return substr($haystack, 0, strlen($needle)) === $needle;
+function startsWith( $needle, $haystack ) {
+    return substr( $haystack, 0, strlen($needle) ) === $needle;
 }
 
-function endsWith($needle, $haystack)
-{
-  return (substr($haystack, -strlen($needle)) === $needle);
+function endsWith( $needle, $haystack ) {
+    return substr( $haystack, -strlen($needle) ) === $needle;
 }
