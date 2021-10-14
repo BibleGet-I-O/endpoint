@@ -53,62 +53,21 @@
  * I wish for the code of this engine to be open source,
  * so that men of good will might contribute to making it better,
  * more secure, more reliable, to be of better service to mankind.
+ * 
+ * Blessed Carlo Acutis, pray for us
  */
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-define('DEBUGFILE', "requests.log");
-define('DEBUG_REQUESTS', false); //set to true in order to enable logging of requests
-define('DEBUG_IPINFO', false);
-
 define("ENDPOINT_VERSION", "3.0");
-
-//TODO: perhaps create a class out of all this, like we did for metadata.php?
-
-if (!function_exists('apache_request_headers')) {
-  ///
-  function apache_request_headers()
-  {
-    $arh = array();
-    $rx_http = '/\AHTTP_/';
-    foreach ($_SERVER as $key => $val) {
-      if (preg_match($rx_http, $key)) {
-        $arh_key = preg_replace($rx_http, '', $key);
-        $rx_matches = array();
-        // do some nasty string manipulations to restore the original letter case
-        // this should work in most cases
-        $rx_matches = explode('_', $arh_key);
-        if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
-          foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
-          $arh_key = implode('-', $rx_matches);
-        }
-        $arh[$arh_key] = $val;
-      }
-    }
-    return ($arh);
-  }
-  ///
-}
-
+define("BIBLEGETIOQUERYSCRIPT", "iknowwhythisishere");
 
 // Don't allow bots to access this script!
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/bot|crawl|slurp|spider/i', $_SERVER['HTTP_USER_AGENT'])) {
   exit(0);
 }
-
-//TODO: PERHAPS IMPLEMENT A BLACKLIST FOR IP ADDRESSES OR ADDRESS RANGES THAT MAKE CONTINUED SPAM REQUESTS
-//just an idea, not actually using yet, but keep in mind if it becomes necessary to implement further protections
-//it's not enough to blacklist IP addresses, must also blacklist referers that generate requests from multiple IP addresses
-//all adding of IP addresses or referers to the blacklists should probably be done where the caching checks are done
-//Here we should only check if an IP address or referer is in a blacklist and if so, exit the script right away
-//(exit script with error message, saying the IP address or referer was blacklisted, or silently?)
-//$ipranges_low = array(ip2long("###.###.###.###"));
-//$ipranges_high = array(ip2long("###.###.###.###"));
-
-
-define("BIBLEGETIOQUERYSCRIPT", "iknowwhythisishere");
-
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -129,15 +88,24 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
         header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
 }
 
+//TODO: PERHAPS IMPLEMENT A BLACKLIST FOR IP ADDRESSES OR ADDRESS RANGES THAT MAKE CONTINUED SPAM REQUESTS
+//just an idea, not actually using yet, but keep in mind if it becomes necessary to implement further protections
+//it's not enough to blacklist IP addresses, must also blacklist referers that generate requests from multiple IP addresses
+//all adding of IP addresses or referers to the blacklists should probably be done where the caching checks are done
+//Here we should only check if an IP address or referer is in a blacklist and if so, exit the script right away
+//(exit script with error message, saying the IP address or referer was blacklisted, or silently?)
+//$ipranges_low = array(ip2long("###.###.###.###"));
+//$ipranges_high = array(ip2long("###.###.###.###"));
+
 class BIBLEGET_QUOTE {
 
-    static public array $returnTypes                = [ "json", "xml", "html" ];
-    static public array $allowedAcceptHeaders       = [ "application/json", "application/xml", "text/html" ];
-    static public array $allowedContentTypes        = [ "application/json" , "application/x-www-form-urlencoded" ];
-    static public array $allowedRequestMethods      = [ "GET", "POST" ];
-    static public array $allowedPreferredOrigins    = [ "GREEK", "HEBREW" ];
+    static public $returnTypes                = [ "json", "xml", "html" ];
+    static public $allowedAcceptHeaders       = [ "application/json", "application/xml", "text/html" ];
+    static public $allowedContentTypes        = [ "application/json", "application/x-www-form-urlencoded" ];
+    static public $allowedRequestMethods      = [ "GET", "POST" ];
+    static public $allowedPreferredOrigins    = [ "GREEK", "HEBREW" ];
 
-    static public array $errorMessages = [
+    static public $errorMessages = [
         "First query string must start with a valid book abbreviation!",
         "You must have a valid chapter following the book abbreviation!",
         "The book abbreviation is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.",
@@ -154,7 +122,7 @@ class BIBLEGET_QUOTE {
     ];
 
     //TODO: these should not be hardcoded in Italian, they should be picked up from a database table with all possible language translations
-    static public array $sections = [
+    static public $sections = [
         "Pentateuco",
         "Storici",
         "Sapienziali",
@@ -167,33 +135,40 @@ class BIBLEGET_QUOTE {
     ];
 
 
-    private array  $DATA                         = []; //all request parameters
-    private string $returnType                   = "json";     //which type of data to return (json, xml or html)
-    private array  $requestHeaders               = [];
-    private string $acceptHeader                 = "";
-    private string $contentType                  = "";
-    private object $bibleQuote;          //object with json, xml or html data to return
-    private object $mysqli;         //instance of database
-    private bool   $isAjax                      = false;
-    private array  $WhitelistedDomainsIPs        = [];
-    private array  $validversions                = [];
-    private array  $validversions_fullname       = [];
-    private array  $copyrightversions            = [];
-    private array  $PROTESTANT_VERSIONS          = [];
-    private array  $CATHOLIC_VERSIONS            = [];
-    //private $detectedNotation                  = NOTATION::tryFrom("ENGLISH"); //can be "ENGLISH" or "EUROPEAN"
-    private string $detectedNotation             = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN"
-    private array  $biblebooks                   = [];
-    private array  $requestedVersions            = [];
-    private array  $requestedCopyrightedVersions = [];
-    private array  $indexes                      = [];
-
+    private $DATA                         = []; //all request parameters
+    private $returnType                   = "json";     //which type of data to return (json, xml or html)
+    private $requestHeaders               = [];
+    private $acceptHeader                 = "";
+    private $requestMethod                = "";
+    private $contentType                  = "";
+    private $bibleQuote;                    //object with json, xml or html data to return
+    private $mysqli;                        //instance of database
+    private $isAjax                       = false;
+    private $WhitelistedDomainsIPs        = [];
+    private $validversions                = [];
+    private $validversions_fullname       = [];
+    private $copyrightversions            = [];
+    private $PROTESTANT_VERSIONS          = [];
+    private $CATHOLIC_VERSIONS            = [];
+    private $detectedNotation             = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN"
+    private $biblebooks                   = [];
+    private $requestedVersions            = [];
+    private $requestedCopyrightedVersions = [];
+    private $indexes                      = [];
+    //useful for html output:
+    private $div;
+    private $err;
+    private $inf;
+    public $DEBUG_REQUESTS                = false;
+    public $DEBUG_IPINFO                  = false;
+    public $DEBUGFILE                     = "requests.log";
 
     function __construct(array $DATA){
         $this->requestHeaders = getallheaders();
         $this->DATA = $DATA;
         $this->contentType = isset( $_SERVER['CONTENT_TYPE'] ) && in_array( $_SERVER['CONTENT_TYPE'], self::$allowedContentTypes ) ? $_SERVER['CONTENT_TYPE'] : "";
         $this->acceptHeader = isset( $this->requestHeaders["Accept"] ) && in_array( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders ) ? (string) $this->requestHeaders["Accept"] : "";
+        $this->requestMethod = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : $_SERVER["REQUEST_METHOD"];
         $this->returnType = ( isset($DATA["return"] ) && in_array(strtolower($DATA["return"]),self::$returnTypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? (string) self::$returnTypes[array_search($this->requestHeaders["Accept"], self::$allowedAcceptHeaders)] : (string) self::$returnTypes[0]);
         $this->isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
     }
@@ -408,33 +383,28 @@ class BIBLEGET_QUOTE {
 
         foreach($this->requestedVersions as $variant){
 
-            $abbreviations = [];
-            $bbbooks = [];
-            $chapter_limit = [];
-            $verse_limit = [];
-            $book_num = [];
-            
+            $abbreviations  = [];
+            $bbbooks        = [];
+            $chapter_limit  = [];
+            $verse_limit    = [];
+            $book_num       = [];
+
             // fetch the index information for the requested version from the database and load it into our arrays
             if($result = $this->mysqli->query("SELECT * FROM ".$variant."_idx")){
                 while($row = $result->fetch_assoc()){
-                    $abbreviations[] = $row["abbrev"];
-                    $bbbooks[] = $row["fullname"];
-                    $chapter_limit[] = $row["chapters"];
-                    $verse_limit[] = explode(",",$row["verses_last"]);
-                    $book_num[] = $row["book"];
+                    $abbreviations[]    = $row["abbrev"];
+                    $bbbooks[]          = $row["fullname"];
+                    $chapter_limit[]    = $row["chapters"];
+                    $verse_limit[]      = explode( ",", $row["verses_last"] );
+                    $book_num[]         = $row["book"];
                 }
             }
-            /*
-            else{
-              //error
-            }
-            */
             
-            $indexes[$variant]["abbreviations"] = $abbreviations;
-            $indexes[$variant]["biblebooks"] = $bbbooks;
-            $indexes[$variant]["chapter_limit"] = $chapter_limit;
-            $indexes[$variant]["verse_limit"] = $verse_limit;
-            $indexes[$variant]["book_num"] = $book_num;  
+            $indexes[$variant]["abbreviations"]   = $abbreviations;
+            $indexes[$variant]["biblebooks"]      = $bbbooks;
+            $indexes[$variant]["chapter_limit"]   = $chapter_limit;
+            $indexes[$variant]["verse_limit"]     = $verse_limit;
+            $indexes[$variant]["book_num"]        = $book_num;  
 
         }
         
@@ -551,11 +521,11 @@ class BIBLEGET_QUOTE {
         return $queries;
     }
     
-    private function checkValid($queries) {
+    private function validateQueries($queries) {
 
-        $resultsForCheckValid = new stdClass();
-        $resultsForCheckValid->usedvariants = [];
-        $resultsForCheckValid->goodqueries  = [];
+        $validatedQueries                   = new stdClass();
+        $validatedQueries->usedvariants     = [];
+        $validatedQueries->goodqueries      = [];
         $usedvariant                        = "";
         $thisbook                           = "";
         $idx                                = -1;
@@ -594,7 +564,7 @@ class BIBLEGET_QUOTE {
                             }
                         }
                     }
-            
+
                     if (!$validbookflag) {
                         //echo "<p>Book name ".$res[0]." was not recognized as a valid book name.</p>";
                         //echo "<pre>";
@@ -609,13 +579,7 @@ class BIBLEGET_QUOTE {
                     } else {
                         $query = str_replace($thisbook, "", $query);
                     }
-                } /*else {
-                  
-                  $var = print_r($res, true);
-                  $this->addErrorMessage($var);
-                  $this->outputResult();
-                  
-                }*/
+                }
             } else {
                 //echo "<p>We are dealing with a string that does not have upper / lower case variants.</p>";
                 if (preg_match("/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $query, $res1) != preg_match("/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query, $res2)) {
@@ -688,9 +652,7 @@ class BIBLEGET_QUOTE {
                 } else {
                     if (preg_match_all("/([1-9][0-9]{0,2})\,/", $query, $matches)) {
                         if (!is_array($matches[1])) {
-                            $matches[1] = array(
-                                $matches[1]
-                            );
+                            $matches[1] = [ $matches[1] ];
                         }
                         $myidx = $idx + 1;
                         foreach ($matches[1] as $match) {
@@ -713,7 +675,7 @@ class BIBLEGET_QUOTE {
                                 }
                             }
                         }
-              
+
                         $commacount = substr_count($query, ",");
                         if ($commacount > 1) {
                             if (!strpos($query, '-')) {
@@ -865,33 +827,26 @@ class BIBLEGET_QUOTE {
                     //return false;
                 }
             }
-            $resultsForCheckValid->usedvariants[] = $usedvariant;
-            $resultsForCheckValid->goodqueries[] = $fullquery;
+            $validatedQueries->usedvariants[] = $usedvariant;
+            $validatedQueries->goodqueries[]  = $fullquery;
             //$usedvariants[] = $usedvariant;
 
         } //END FOREACH
 
         //return $usedvariants;
-        return $resultsForCheckValid;
+        return $validatedQueries;
     }
 
     private function formulateQueries($checkedResults) {
-        global $biblebooks;
-        global $copyrightversions;
-        global $versions;
-        global $indexes;
-        global $BIBLEGET;
-        global $CATHOLIC_VERSIONS;
-        //global $PROTESTANT_VERSIONS;
-        $queries        = $checkedResults->goodqueries;
-        $usedvariants   = $checkedResults->usedvariants;
-        $sqlqueries = array();
-        $queriesversions = array();
-        $originalquery = array();
-        $nn = 0;
-        $sqlquery = "";
-        $book = "";
-        $usedvariant = "";
+        $queries          = $checkedResults->goodqueries;
+        $usedvariants     = $checkedResults->usedvariants;
+        $sqlqueries       = [];
+        $queriesversions  = [];
+        $originalquery    = [];
+        $nn               = 0;
+        $sqlquery         = "";
+        $book             = "";
+        $usedvariant      = "";
 
         foreach ($this->requestedVersions as $version) {
             $i = 0;
@@ -939,8 +894,8 @@ class BIBLEGET_QUOTE {
                     //if a protestant version is requested, it will only have HEBREW origin, not GREEK
                     //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
                     //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
-                    if(in_array($version,$CATHOLIC_VERSIONS)){
-                        $preferorigin = " AND verseorigin = '" . ( $BIBLEGET['preferorigin'] != "" ? $BIBLEGET['preferorigin'] : "GREEK" ) . "'";
+                    if(in_array($version,$this->CATHOLIC_VERSIONS)){
+                        $preferorigin = " AND verseorigin = '" . ( $this->DATA['preferorigin'] != "" ? $this->DATA['preferorigin'] : "GREEK" ) . "'";
                     }
                 }
           
@@ -1065,7 +1020,7 @@ class BIBLEGET_QUOTE {
                         //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
                         $sqlqueries[$nn] .= " ORDER BY verseID";
                         //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
-                        if (in_array($version, $copyrightversions)) {
+                        if (in_array($version, $this->copyrightversions)) {
                             $sqlqueries[$nn] .= " LIMIT 30";
                         }
                         $nn++;
@@ -1172,7 +1127,7 @@ class BIBLEGET_QUOTE {
                     //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
                     $sqlqueries[$nn] .= " ORDER BY verseID";
                     //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
-                    if (in_array($version, $copyrightversions)) {
+                    if (in_array($version, $this->copyrightversions)) {
                         $sqlqueries[$nn] .= " LIMIT 30";
                     }
                     $nn++;
@@ -1186,126 +1141,86 @@ class BIBLEGET_QUOTE {
     }
     
     private function mapReference($version,$book,$chapter,$verse,$preferorigin) {
-      global $CATHOLIC_VERSIONS;
-      if(in_array($version,$CATHOLIC_VERSIONS)){
-        if($book == 19 || $book == "19"){ //19 == Esther
-          //first let's make sure that $chapter is a number
-          if(gettype($chapter) == 'string'){
-            //the USCCB uses letters A-F to indicate the Greek additions to Esther
-            //however, the BibleGet engine does not allow chapters that are not numbers
-            //therefore these verses have been added to the database in the same fashion as the CEI2008 layout
-            //TODO: see if there is any way of allowing letters as chapter indicators and then map them to the CEI2008 layout
-            $chapter = intval($chapter); 
-          }
-          if($version == 'VGCL' || $version == 'DRB'){
-            if(($chapter == 10 && (($verse >= 4 && $verse <= 13) || $verse == null)) || ($chapter == 11 && ($verse == 1 || $verse == null) )){
-              $chapter = 10;
-              $verse = 3;
-              $preferorigin = " AND verseorigin = 'GREEK'";
-            } else if(($chapter == 11 && (($verse >= 2 && $verse <= 12 ) || $verse == null)) || ($chapter == 12 && (($verse >=1 && $verse <= 6) || $verse == null))){
-              $chapter = 1;
-              $verse = 1;
-              $preferorigin = " AND verseorigin = 'GREEK'";
-            } else if($chapter == 13 && (($verse >= 1 && $verse <= 7 ) || $verse == null)){
-              $chapter = 3;
-              $verse = 13;
-              $preferorigin = " AND verseorigin = 'GREEK'";
-            } else if(($chapter == 13 && (($verse >= 8 && $verse <= 18) || $verse == null)) || ($chapter == 14 && (($verse <= 1 && $verse >= 19) || $verse == null))){
-              $chapter = 4;
-              $verse = 17;
-              $preferorigin = " AND verseorigin = 'GREEK'";
-            } else if($chapter == 15 && (($verse >= 1 && $verse <= 3) || $verse == null)){
-              $chapter = 4;
-              $verse = 8;
-              $preferorigin = " AND verseorigin = 'GREEK'";
-            } else if($chapter == 15 && (($verse >= 4 && $verse <= 14) || $verse == null)){
-              $chapter = 5;
-              $verse = 1;
-              $preferorigin = " AND verseorigin = 'GREEK'";
-            } else if($chapter == 15 && (($verse >= 15 && $verse <= 19) || $verse == null)){
-              $chapter = 5;
-              $verse = 2;
-              $preferorigin = " AND verseorigin = 'GREEK'";
-            } else if($chapter == 16){
-              $chapter = 8;
-              $verse = 12;
-              $preferorigin = " AND verseorigin = 'GREEK'";
+        if(in_array($version, $this->CATHOLIC_VERSIONS)){
+            if($book == 19 || $book == "19"){ //19 == Esther
+                //first let's make sure that $chapter is a number
+                if(gettype($chapter) == 'string'){
+                    //the USCCB uses letters A-F to indicate the Greek additions to Esther
+                    //however, the BibleGet engine does not allow chapters that are not numbers
+                    //therefore these verses have been added to the database in the same fashion as the CEI2008 layout
+                    //TODO: see if there is any way of allowing letters as chapter indicators and then map them to the CEI2008 layout
+                    $chapter = intval($chapter); 
+                }
+                if($version == 'VGCL' || $version == 'DRB'){
+                    if(($chapter == 10 && (($verse >= 4 && $verse <= 13) || $verse == null)) || ($chapter == 11 && ($verse == 1 || $verse == null) )){
+                        $chapter = 10;
+                        $verse = 3;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if(($chapter == 11 && (($verse >= 2 && $verse <= 12 ) || $verse == null)) || ($chapter == 12 && (($verse >=1 && $verse <= 6) || $verse == null))){
+                        $chapter = 1;
+                        $verse = 1;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if($chapter == 13 && (($verse >= 1 && $verse <= 7 ) || $verse == null)){
+                        $chapter = 3;
+                        $verse = 13;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if(($chapter == 13 && (($verse >= 8 && $verse <= 18) || $verse == null)) || ($chapter == 14 && (($verse <= 1 && $verse >= 19) || $verse == null))){
+                        $chapter = 4;
+                        $verse = 17;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if($chapter == 15 && (($verse >= 1 && $verse <= 3) || $verse == null)){
+                        $chapter = 4;
+                        $verse = 8;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if($chapter == 15 && (($verse >= 4 && $verse <= 14) || $verse == null)){
+                        $chapter = 5;
+                        $verse = 1;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if($chapter == 15 && (($verse >= 15 && $verse <= 19) || $verse == null)){
+                        $chapter = 5;
+                        $verse = 2;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if($chapter == 16){
+                        $chapter = 8;
+                        $verse = 12;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    }
+                }
             }
-          }
         }
-      }
-      return [$chapter,$verse,$preferorigin];
+        return [ $chapter, $verse, $preferorigin ];
     }
-    
+
     private function getGeoIpInfo($ipaddress) {
-      $ch = curl_init("https://ipinfo.io/" . $ipaddress . "?token=" . IPINFO_ACCESS_TOKEN);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      if (($geoip_json = curl_exec($ch)) === false) {
-        $this->mysqli->query("INSERT INTO curl_error (ERRNO,ERROR) VALUES(" . curl_errno($ch) . ",'" . curl_error($ch) . "')");
-      }
-      //Check the status of communication with ipinfo.io server
-      $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      curl_close($ch);
-    
-      if ($http_status == 429) {
-        $geoip_json = '{"ERROR":"api limit exceeded"}';
-      } else if ($http_status == 200) {
-        //Clean geopip_json object, ensure it is valid in any case
-        //$geoip_json = $this->mysqli->real_escape_string($geoip_json); // we don't need to escape it when it's coming from the ipinfo.io server, at least not before inserting into the database
-        //Check if it's actually an object or if it's not a string perhaps
-        $geoip_JSON_obj = json_decode($geoip_json);
-        if ($geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE) {
-          //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
-          $geoip_json = '{"ERROR":"' . json_last_error() . ' <' . $geoip_json . '>"}';
-        } else {
-          $geoip_json = json_encode($geoip_JSON_obj);
+        $ch = curl_init("https://ipinfo.io/" . $ipaddress . "?token=" . IPINFO_ACCESS_TOKEN);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        if (($geoip_json = curl_exec($ch)) === false) {
+            $this->mysqli->query("INSERT INTO curl_error (ERRNO,ERROR) VALUES(" . curl_errno($ch) . ",'" . curl_error($ch) . "')");
         }
-      } else {
-        $geoip_json = '{"ERROR":"wrong http status > ' . $http_status . '"}';
-      }
-      return $geoip_json;
+        //Check the status of communication with ipinfo.io server
+        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+      
+        if ($http_status == 429) {
+            $geoip_json = '{"ERROR":"api limit exceeded"}';
+        } else if ($http_status == 200) {
+            //Clean geopip_json object, ensure it is valid in any case
+            //$geoip_json = $this->mysqli->real_escape_string($geoip_json); // we don't need to escape it when it's coming from the ipinfo.io server, at least not before inserting into the database
+            //Check if it's actually an object or if it's not a string perhaps
+            $geoip_JSON_obj = json_decode($geoip_json);
+            if ($geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE) {
+                //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
+                $geoip_json = '{"ERROR":"' . json_last_error() . ' <' . $geoip_json . '>"}';
+            } else {
+                $geoip_json = json_encode($geoip_JSON_obj);
+            }
+        } else {
+            $geoip_json = '{"ERROR":"wrong http status > ' . $http_status . '"}';
+        }
+        return $geoip_json;
     }
-    
-    private function doQueries($sqlqueries, $queriesversions, $originalquery) {
-      global $div;
-      //global $err;
-      //global $sections;
-      global $indexes;
-      global $returntype;
-      global $bbquery;
-      global $BIBLEGET;
-    
-      $requestmethod = isset($_SERVER['HTTP_X_REQUESTED_WITH']) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : $_SERVER["REQUEST_METHOD"];
-      $headersObj = apache_request_headers();
-      $headers = json_encode($headersObj);
-    
-      // I need to find a way to check and counter when someone uses in an indiscriminate manner
-      // People need to learn to do cacheing of requests (maybe they're trying to turn it into a kind of DDOS attack?)
-      // Need to protect ourselves here, but instead of pointing fingers by looking for example at the referring site,
-      // we need to base the check on past requests
-    
-      // First we initialize some variables and flags with default values
-      $version = "";
-      $newversion = false;
-      $book = "";
-      $newbook = false;
-      $chapter = 0;
-      $newchapter = false;
-    
-      //echo "<pre>";
-      //print_r($sqlqueries);
-      //echo "</pre>";
-      //die("DEBUG");
-    
-      // HTML return type is a special case, because we must already implement display logic to the structured data that is returned 
-      $i = 0;
-      $appid = "";
-      $domain = "";
-      $pluginversion = "";
-    
-      foreach ($sqlqueries as $xquery) {
-    
-        //$ipaddress = isset($_SERVER["HTTP_X_FORWARDED_FOR"]) && $_SERVER["HTTP_X_FORWARDED_FOR"] != "" ? explode(",",$_SERVER["HTTP_X_FORWARDED_FOR"])[0] : $_SERVER["REMOTE_ADDR"];
+
+    private function getIpAddress(){
         $forwardedip = isset($_SERVER["HTTP_X_FORWARDED_FOR"]) ? $_SERVER["HTTP_X_FORWARDED_FOR"] : "";
         $remote_address = isset($_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : "";
         $realip = isset($_SERVER["HTTP_X_REAL_IP"]) ? $_SERVER["HTTP_X_REAL_IP"] : "";
@@ -1314,276 +1229,305 @@ class BIBLEGET_QUOTE {
         //Do our best to identify an IP address associated with the incoming request, 
         //trying first HTTP_X_FORWARDED_FOR, then REMOTE_ADDR and last resort HTTP_X_REAL_IP
         //This is useful only to protect against high volume requests from specific IP addresses or referers
-        $ipaddress = isset($_SERVER["HTTP_X_FORWARDED_FOR"]) && $_SERVER["HTTP_X_FORWARDED_FOR"] != "" ? explode(",", $_SERVER["HTTP_X_FORWARDED_FOR"])[0] : "";
+        $ipaddress = $forwardedip != "" ? explode(",", $forwardedip)[0] : "";
         if ($ipaddress == "") {
-          $ipaddress = isset($_SERVER["REMOTE_ADDR"]) && $_SERVER["REMOTE_ADDR"] != "" ? $_SERVER["REMOTE_ADDR"] : "";
+            $ipaddress = $remote_address != "" ? $remote_address : "";
         }
         if ($ipaddress == "") {
-          $ipaddress = isset($_SERVER["HTTP_X_REAL_IP"]) && $_SERVER["HTTP_X_REAL_IP"] != "" ? $_SERVER["HTTP_X_REAL_IP"] : "";
+            $ipaddress = $realip != "" ? $realip : "";
         }
-    
-        if (filter_var($ipaddress, FILTER_VALIDATE_IP) === false) {
-          $this->addErrorMessage("The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $xquery);
-          $this->outputResult(); //this should exit the script right here, closing the mysql connection
-        }
-    
-        //we start off with the supposition that we've never seen this IP address before
-        $haveip = false; //"haveip" means "we already have this ip address in our records"
-        //request logs are now divided by year, to keep things cleaner and easier to access and read
-        $curYEAR = date("Y");
-    
-        global $WhitelistedDomainsIPs;
-        //Don't enforce the max limit for requests from domains that need to do a lot of testing for plugin development
-        if (array_search($BIBLEGET["domain"], $WhitelistedDomainsIPs) !== false || array_search($ipaddress, $WhitelistedDomainsIPs) !== false) {
-          $originHeader = key_exists("ORIGIN", $headersObj) ? $headersObj["ORIGIN"] : "";
-        } else {
-          //check if we have already seen this IP Address in the past 2 days and if we have the same request already
-          if ($ipaddress != "" && $ipresult = $this->mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
-            if (DEBUG_IPINFO === true) {
-              file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
+        return [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ];
+    }
+
+    private function doQueries( array $formulatedQueries ) {
+        [ $sqlqueries, $queriesversions, $originalquery ] = $formulatedQueries;
+
+        $headers = json_encode( $this->requestHeaders );
+
+        // I need to find a way to check and counter when someone uses in an indiscriminate manner
+        // People need to learn to do cacheing of requests (maybe they're trying to turn it into a kind of DDOS attack?)
+        // Need to protect ourselves here, but instead of pointing fingers by looking for example at the referring site,
+        // we need to base the check on past requests
+
+        // First we initialize some variables and flags with default values
+        $version        = "";
+        $newversion     = false;
+        $book           = "";
+        $newbook        = false;
+        $chapter        = 0;
+        $newchapter     = false;
+      
+        //echo "<pre>";
+        //print_r($sqlqueries);
+        //echo "</pre>";
+        //die("DEBUG");
+      
+        // HTML return type is a special case, because we must already implement display logic to the structured data that is returned 
+        $i              = 0;
+        $appid          = "";
+        $domain         = "";
+        $pluginversion  = "";
+        $curYEAR = date("Y"); //request logs are divided by year, to keep things cleaner and easier to access and read
+
+        foreach ($sqlqueries as $xquery) {
+
+            $geoip_json = "";
+            //we start off with the supposition that we've never seen this IP address before
+            $haveip     = false; //"haveip" means "we already have this ip address in our records"
+            $originHeader = key_exists("ORIGIN", $this->requestHeaders) ? $this->requestHeaders["ORIGIN"] : "";
+
+            [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress();
+
+            if (filter_var($ipaddress, FILTER_VALIDATE_IP) === false) {
+                $this->addErrorMessage("The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $xquery);
+                $this->outputResult(); //this should exit the script right here, closing the mysql connection
             }
-            //if more than 10 times in the past two days (but less than 30) simply add message inviting to use cacheing mechanism
-            if ($ipresult->num_rows > 10 && $ipresult->num_rows < 30) {
-              $this->addErrorMessage(10, $xquery);
-              $iprow = $ipresult->fetch_assoc();
-              $geoip_json = $iprow["WHO_WHERE_JSON"];
-              $haveip = true;
-            }
-            //if we have more than 30 requests in the past two days for the same query, deny service?
-            else if ($ipresult->num_rows > 29) {
-              $this->addErrorMessage(11, $xquery);
-              $this->outputResult(); //this should exit the script right here, closing the mysql connection
-            }
-          }
-    
-          //and if the same IP address is making too many requests(>100?) with different queries (like copying the bible texts completely), deny service
-          if ($ipaddress != "" && $ipresult = $this->mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
-            if (DEBUG_IPINFO === true) {
-              file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
-            }
-            //if we 50 or more requests in the past two days, deny service?
-            if ($ipresult->num_rows > 100) {
-              if (DEBUG_IPINFO === true) {
-                file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX);
-              }
-              $this->addErrorMessage(12, $xquery);
-              $this->outputResult(); //this should exit the script right here, closing the mysql connection
-            }
-          }
-    
-          //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
-          $originHeader = key_exists("ORIGIN", $headersObj) ? $headersObj["ORIGIN"] : "";
-          if ($originres = $this->mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN")) {
-            if ($originres->num_rows > 0) {
-              $originRow = $originres->fetch_assoc();
-              if (key_exists("ORIGIN_CNT", $originRow)) {
-                if ($originRow["ORIGIN_CNT"] > 10 && $originRow["ORIGIN_CNT"] < 30) {
-                  $this->addErrorMessage(10, $xquery);
-                } else if ($originRow["ORIGIN_CNT"] > 29) {
-                  $this->addErrorMessage(11, $xquery);
-                  $this->outputResult(); //this should exit the script right here, closing the mysql connection                
+
+            //Don't enforce the max limit for requests from domains that need to do a lot of testing for plugin development
+            if (array_search($this->DATA["domain"], $this->WhitelistedDomainsIPs) === false && array_search($ipaddress, $this->WhitelistedDomainsIPs) === false) {
+                //check if we have already seen this IP Address in the past 2 days and if we have the same request already
+                if ($ipaddress != "" && $ipresult = $this->mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
+                    if ($this->DEBUG_IPINFO === true) {
+                        file_put_contents($this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                    }
+                    //if more than 10 times in the past two days (but less than 30) simply add message inviting to use cacheing mechanism
+                    if ($ipresult->num_rows > 10 && $ipresult->num_rows < 30) {
+                        $this->addErrorMessage(10, $xquery);
+                        $iprow = $ipresult->fetch_assoc();
+                        $geoip_json = $iprow[ "WHO_WHERE_JSON" ];
+                        $haveip = true;
+                    }
+                    //if we have more than 30 requests in the past two days for the same query, deny service?
+                    else if ($ipresult->num_rows > 29) {
+                        $this->addErrorMessage(11, $xquery);
+                        $this->outputResult(); //this should exit the script right here, closing the mysql connection
+                    }
                 }
-              }
-            }
-          }
-          //and we'll check for diverse requests from the same origin in the past couple days (>100?)
-          if ($originres = $this->mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN")) {
-            if ($originres->num_rows > 0) {
-              $originRow = $originres->fetch_assoc();
-              if (key_exists("ORIGIN_CNT", $originRow)) {
-                if ($originRow["ORIGIN_CNT"] > 100) {
-                  $this->addErrorMessage(12, $xquery);
-                  $this->outputResult(); //this should exit the script right here, closing the mysql connection
+
+                //and if the same IP address is making too many requests(>100?) with different queries (like copying the bible texts completely), deny service
+                if ($ipaddress != "" && $ipresult = $this->mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
+                    if ($this->DEBUG_IPINFO === true) {
+                        file_put_contents($this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                    }
+                    //if we 50 or more requests in the past two days, deny service?
+                    if ($ipresult->num_rows > 100) {
+                        if ($this->DEBUG_IPINFO === true) {
+                            file_put_contents($this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX);
+                        }
+                        $this->addErrorMessage(12, $xquery);
+                        $this->outputResult(); //this should exit the script right here, closing the mysql connection
+                    }
                 }
-              }
-            }
-          }
-        } // end max request checks
-    
-        $myversion = $queriesversions[$i];
-        //     echo $i.") myversion = ".$myversion."<br />";
-        //     echo "about to query the database: &lt;".$xquery."&gt;<br />";
-        if ($result = $this->mysqli->query($xquery)) {
-          //       echo "<p>We have results from query ".$xquery."</p>";
-          // Up the good counter!
-          $this->mysqli->query("UPDATE counter SET good = good + 1");
-    
-    
-    
-          //if we already have a record of this IP address and we have info on it from ipinfo.io,
-          //then we don't need to get info on it from ipinfo.io again (which has limit of 1000 requests per day)
-          $pregmatch = preg_quote('{"ERROR":"', '/');
-          if ($haveip === false || $geoip_json == "" || $geoip_json === null || preg_match("/" . $pregmatch . "/", $geoip_json)) {
-            if (DEBUG_IPINFO === true) {
-              file_put_contents(DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
-            }
-            if ($ipaddress != "" && $ipresult = $this->mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")) {
-              if ($ipresult->num_rows > 0) {
-                if (DEBUG_IPINFO === true) {
-                  file_put_contents(DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX);
+
+                //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
+                if ($originres = $this->mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN")) {
+                    if ($originres->num_rows > 0) {
+                        $originRow = $originres->fetch_assoc();
+                        if (array_key_exists("ORIGIN_CNT", $originRow)) {
+                            if ($originRow["ORIGIN_CNT"] > 10 && $originRow["ORIGIN_CNT"] < 30) {
+                                $this->addErrorMessage(10, $xquery);
+                            } else if ($originRow["ORIGIN_CNT"] > 29) {
+                                $this->addErrorMessage(11, $xquery);
+                                $this->outputResult(); //this should exit the script right here, closing the mysql connection                
+                            }
+                        }
+                    }
                 }
-                $iprow = $ipresult->fetch_assoc();
-                $geoip_json = $iprow["WHO_WHERE_JSON"];
-                $haveip = true;
-              } else {
-                if (DEBUG_IPINFO === true) {
-                  file_put_contents(DEBUGFILE, "We do not yet have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                //and we'll check for diverse requests from the same origin in the past couple days (>100?)
+                if ($originres = $this->mysqli->query("SELECT ORIGIN,COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN")) {
+                    if ($originres->num_rows > 0) {
+                        $originRow = $originres->fetch_assoc();
+                        if (array_key_exists("ORIGIN_CNT", $originRow)) {
+                            if ($originRow["ORIGIN_CNT"] > 100) {
+                                $this->addErrorMessage(12, $xquery);
+                                $this->outputResult(); //this should exit the script right here, closing the mysql connection
+                            }
+                        }
+                    }
                 }
-                $geoip_json = getGeoIpInfo($ipaddress);
-                if (DEBUG_IPINFO === true) {
-                  file_put_contents(DEBUGFILE, "We have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
+            } // end max request checks
+
+            $myversion = $queriesversions[$i];
+            //     echo $i.") myversion = ".$myversion."<br />";
+            //     echo "about to query the database: &lt;".$xquery."&gt;<br />";
+            if ($result = $this->mysqli->query($xquery)) {
+                //       echo "<p>We have results from query ".$xquery."</p>";
+                // Up the good counter!
+                $this->mysqli->query("UPDATE counter SET good = good + 1");
+
+                //if we already have a record of this IP address and we have info on it from ipinfo.io,
+                //then we don't need to get info on it from ipinfo.io again (which has limit of 1000 requests per day)
+                $pregmatch = preg_quote('{"ERROR":"', '/');
+                if ($haveip === false || $geoip_json == "" || $geoip_json === null || preg_match("/" . $pregmatch . "/", $geoip_json)) {
+                    if ($this->DEBUG_IPINFO === true) {
+                        file_put_contents($this->DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                    }
+                    if ($ipaddress != "" && $ipresult = $this->mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")) {
+                        if ($ipresult->num_rows > 0) {
+                            if ($this->DEBUG_IPINFO === true) {
+                                file_put_contents($this->DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                            }
+                            $iprow = $ipresult->fetch_assoc();
+                            $geoip_json = $iprow["WHO_WHERE_JSON"];
+                            $haveip = true;
+                        } else {
+                            if ($this->DEBUG_IPINFO === true) {
+                                file_put_contents($this->DEBUGFILE, "We do not yet have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                            }
+                            $geoip_json = $this->getGeoIpInfo($ipaddress);
+                            if ($this->DEBUG_IPINFO === true) {
+                                file_put_contents($this->DEBUGFILE, "We have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                            }
+                        }
+                    } else if ($ipaddress != "") {
+                        if ($this->DEBUG_IPINFO === true) {
+                            file_put_contents($this->DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                        }
+                        $geoip_json = $this->getGeoIpInfo($ipaddress);
+                        if ($this->DEBUG_IPINFO === true) {
+                            file_put_contents($this->DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                        }
+                    }
                 }
-              }
-            } else if ($ipaddress != "") {
-              if (DEBUG_IPINFO === true) {
-                file_put_contents(DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
-              }
-              $geoip_json = getGeoIpInfo($ipaddress);
-              if (DEBUG_IPINFO === true) {
-                file_put_contents(DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
-              }
-            }
-          }
-    
-    
-    
-          if ($appid === "") {
-            $appid = ($BIBLEGET["appid"] != "") ? $BIBLEGET["appid"] : "unknown";
-          }
-          if ($domain === "") {
-            $domain = ($BIBLEGET["domain"] != "") ? $BIBLEGET["domain"] : "unknown";
-          }
-          if ($pluginversion === "") {
-            $pluginversion = ($BIBLEGET["pluginversion"] != "") ? $BIBLEGET["pluginversion"] : "unknown";
-          }
-          $ipaddress = $ipaddress != "" ? $ipaddress : "0.0.0.0";
-          if ($geoip_json === "" || $geoip_json === null) {
-            $geoip_json = '{"ERROR":""}';
-          }
-    
-          $stmt = $this->mysqli->prepare("INSERT INTO requests_log__" . $curYEAR . " (WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION) VALUES (INET6_ATON(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-          $stmt->bind_param('ssssssssssssss', $ipaddress, $geoip_json, $headers, $originHeader, $xquery, $originalquery[$i], $requestmethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion);
-          if ($stmt->execute() === false) {
-            $this->addErrorMessage("There has been an error updating the logs: (" . $this->mysqli->errno . ") " . $this->mysqli->error);
-          }
-          $stmt->close();
-    
-          $verse = "";
-          $newverse = false;
-          while ($row = $result->fetch_assoc()) {
-    
-            $row["version"] = strtoupper($myversion);
-            $row["testament"] = (int)$row["testament"];
-    
-            $universal_booknum = $row["book"];
-            $booknum = array_search($row["book"], $this->indexes[$myversion]["book_num"]);
-            $row["bookabbrev"] = $this->indexes[$myversion]["abbreviations"][$booknum];
-            $row["booknum"] = $booknum;
-            $row["univbooknum"] = $universal_booknum;
-            $row["book"] = $this->indexes[$myversion]["biblebooks"][$booknum];
-    
-            $row["section"] = (int) $row["section"];
-            unset($row["verseID"]);
-            //$row["verse"] = (int) $row["verse"];
-            $row["chapter"] = (int) $row["chapter"];
-            $row["originalquery"] = $originalquery[$i];
-    
-            if ($returntype == "xml") {
-              $thisrow = $bbquery->results->addChild("result");
-              foreach ($row as $key => $value) {
-                $thisrow[$key] = $value;
-              }
-            } elseif ($returntype == "json") {
-              $bbquery->results[] = $row;
-            } elseif ($returntype == "html") {
-    
-              if ($row["verse"] != $verse) {
-                $newverse = true;
-                $verse = $row["verse"];
-              } else {
+
+                if ($appid === "") {
+                    $appid = ($this->DATA["appid"] != "") ? $this->DATA["appid"] : "unknown";
+                }
+                if ($domain === "") {
+                    $domain = ($this->DATA["domain"] != "") ? $this->DATA["domain"] : "unknown";
+                }
+                if ($pluginversion === "") {
+                    $pluginversion = ($this->DATA["pluginversion"] != "") ? $this->DATA["pluginversion"] : "unknown";
+                }
+                $ipaddress = $ipaddress != "" ? $ipaddress : "0.0.0.0";
+                if ($geoip_json === "" || $geoip_json === null) {
+                    $geoip_json = '{"ERROR":""}';
+                }
+
+                $stmt = $this->mysqli->prepare("INSERT INTO requests_log__" . $curYEAR . " (WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION) VALUES (INET6_ATON(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param('ssssssssssssss', $ipaddress, $geoip_json, $headers, $originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion);
+                if ($stmt->execute() === false) {
+                    $this->addErrorMessage("There has been an error updating the logs: (" . $this->mysqli->errno . ") " . $this->mysqli->error);
+                }
+                $stmt->close();
+
+                $verse = "";
                 $newverse = false;
-              }
-    
-              if ($row["chapter"] != $chapter) {
-                $newchapter = true;
-                $newverse = true;
-                $chapter = $row["chapter"];
-              } else {
-                $newchapter = false;
-              }
-    
-              if ($row["book"] != $book) {
-                $newbook = true;
-                $newchapter = true;
-                $newverse = true;
-                $book = $row["book"];
-              } else {
-                $newbook = false;
-              }
-    
-              if ($row["version"] != $version) {
-                $newversion = true;
-                $newbook = true;
-                $newchapter = true;
-                $newverse = true;
-                $version = $row["version"];
-              } else {
-                $newversion = false;
-              }
-    
-              if ($newversion) {
-                $variant = $bbquery->createElement("p", $row["version"]);
-                if ($i > 0) {
-                  $br = $bbquery->createElement("br");
-                  $variant->insertBefore($br, $variant->firstChild);
+                while ($row = $result->fetch_assoc()) {
+
+                    $row["version"] = strtoupper($myversion);
+                    $row["testament"] = (int)$row["testament"];
+
+                    $universal_booknum = $row["book"];
+                    $booknum = array_search($row["book"], $this->indexes[$myversion]["book_num"]);
+                    $row["bookabbrev"] = $this->indexes[$myversion]["abbreviations"][$booknum];
+                    $row["booknum"] = $booknum;
+                    $row["univbooknum"] = $universal_booknum;
+                    $row["book"] = $this->indexes[$myversion]["biblebooks"][$booknum];
+
+                    $row["section"] = (int) $row["section"];
+                    unset($row["verseID"]);
+                    //$row["verse"] = (int) $row["verse"];
+                    $row["chapter"] = (int) $row["chapter"];
+                    $row["originalquery"] = $originalquery[$i];
+
+                    if ($this->returnType == "xml") {
+                        $thisrow = $this->bibleQuote->results->addChild("result");
+                        foreach ($row as $key => $value) {
+                            $thisrow[$key] = $value;
+                        }
+                    } elseif ($this->returnType == "json") {
+                        $this->bibleQuote->results[] = $row;
+                    } elseif ($this->returnType == "html") {
+
+                        if ($row["verse"] != $verse) {
+                            $newverse = true;
+                            $verse = $row["verse"];
+                        } else {
+                            $newverse = false;
+                        }
+
+                        if ($row["chapter"] != $chapter) {
+                            $newchapter = true;
+                            $newverse = true;
+                            $chapter = $row["chapter"];
+                        } else {
+                            $newchapter = false;
+                        }
+
+                        if ($row["book"] != $book) {
+                            $newbook = true;
+                            $newchapter = true;
+                            $newverse = true;
+                            $book = $row["book"];
+                        } else {
+                            $newbook = false;
+                        }
+
+                        if ($row["version"] != $version) {
+                            $newversion = true;
+                            $newbook = true;
+                            $newchapter = true;
+                            $newverse = true;
+                            $version = $row["version"];
+                        } else {
+                            $newversion = false;
+                        }
+
+                        if ($newversion) {
+                            $variant = $this->bibleQuote->createElement("p", $row["version"]);
+                            if ($i > 0) {
+                                $br = $this->bibleQuote->createElement("br");
+                                $variant->insertBefore($br, $variant->firstChild);
+                            }
+                            $variant->setAttribute("class", "version bibleVersion");
+                            $this->div->appendChild($variant);
+                        }
+
+                        if ($newbook || $newchapter) {
+                            $citation = $this->bibleQuote->createElement("p", $row["book"] . "&nbsp;" . $row["chapter"]);
+                            $citation->setAttribute("class", "book bookChapter");
+                            $this->div->appendChild($citation);
+                            $citation1 = $this->bibleQuote->createElement("p");
+                            $citation1->setAttribute("class", "verses versesParagraph");
+                            $this->div->appendChild($citation1);
+                            $metainfo = $this->bibleQuote->createElement("input");
+                            $metainfo->setAttribute("type", "hidden");
+                            $metainfo->setAttribute("class", "originalQuery");
+                            $metainfo->setAttribute("value", $row["originalquery"]);
+                            $this->div->appendChild($metainfo);
+                            $metainfo1 = $this->bibleQuote->createElement("input");
+                            $metainfo1->setAttribute("type", "hidden");
+                            $metainfo1->setAttribute("class", "bookAbbrev");
+                            $metainfo1->setAttribute("value", $row["bookabbrev"]);
+                            $this->div->appendChild($metainfo1);
+                            $metainfo2 = $this->bibleQuote->createElement("input");
+                            $metainfo2->setAttribute("type", "hidden");
+                            $metainfo2->setAttribute("class", "bookNum");
+                            $metainfo2->setAttribute("value", $row["booknum"]);
+                            $this->div->appendChild($metainfo2);
+                            $metainfo3 = $this->bibleQuote->createElement("input");
+                            $metainfo3->setAttribute("type", "hidden");
+                            $metainfo3->setAttribute("class", "univBookNum");
+                            $metainfo3->setAttribute("value", $row["univbooknum"]);
+                            $this->div->appendChild($metainfo3);
+                        }
+                        if ($newverse) {
+                            $versicle = $this->bibleQuote->createElement("span", $row["verse"]);
+                            $versicle->setAttribute("class", "sup verseNum");
+                            $citation1->appendChild($versicle);
+                        }
+
+                        $text = $this->bibleQuote->createElement("span", $row["text"]);
+                        $text->setAttribute("class", "text verseText");
+                        $citation1->appendChild($text);
+                    }
                 }
-                $variant->setAttribute("class", "version bibleVersion");
-                $div->appendChild($variant);
-              }
-              if ($newbook || $newchapter) {
-                $citation = $bbquery->createElement("p", $row["book"] . "&nbsp;" . $row["chapter"]);
-                $citation->setAttribute("class", "book bookChapter");
-                $div->appendChild($citation);
-                $citation1 = $bbquery->createElement("p");
-                $citation1->setAttribute("class", "verses versesParagraph");
-                $div->appendChild($citation1);
-                $metainfo = $bbquery->createElement("input");
-                $metainfo->setAttribute("type", "hidden");
-                $metainfo->setAttribute("class", "originalQuery");
-                $metainfo->setAttribute("value", $row["originalquery"]);
-                $div->appendChild($metainfo);
-                $metainfo1 = $bbquery->createElement("input");
-                $metainfo1->setAttribute("type", "hidden");
-                $metainfo1->setAttribute("class", "bookAbbrev");
-                $metainfo1->setAttribute("value", $row["bookabbrev"]);
-                $div->appendChild($metainfo1);
-                $metainfo2 = $bbquery->createElement("input");
-                $metainfo2->setAttribute("type", "hidden");
-                $metainfo2->setAttribute("class", "bookNum");
-                $metainfo2->setAttribute("value", $row["booknum"]);
-                $div->appendChild($metainfo2);
-                $metainfo3 = $bbquery->createElement("input");
-                $metainfo3->setAttribute("type", "hidden");
-                $metainfo3->setAttribute("class", "univBookNum");
-                $metainfo3->setAttribute("value", $row["univbooknum"]);
-                $div->appendChild($metainfo3);
-              }
-              if ($newverse) {
-                $versicle = $bbquery->createElement("span", $row["verse"]);
-                $versicle->setAttribute("class", "sup verseNum");
-                $citation1->appendChild($versicle);
-              }
-    
-              $text = $bbquery->createElement("span", $row["text"]);
-              $text->setAttribute("class", "text verseText");
-              $citation1->appendChild($text);
+            } else {
+                $this->addErrorMessage(9, $xquery);
             }
-          }
-        } else {
-          $this->addErrorMessage(9, $xquery);
+            $i++;
         }
-        $i++;
-      }
     }
 
 
@@ -1611,7 +1555,8 @@ class BIBLEGET_QUOTE {
         $this->prepareIndexes();
 
         if (isset($this->DATA["query"]) && $this->DATA["query"] !== "") {
-            $queries = queryStrClean($this->DATA["query"]);
+
+            $queries = $this->queryStrClean( $this->DATA["query"] );
 
             //at least the first query must start with a book reference, which may have a number from 1 to 3 at the beginning
             //echo "matching against: ".$queries[0]."<br />";
@@ -1622,27 +1567,18 @@ class BIBLEGET_QUOTE {
                     $this->outputResult();
                 }
             }
-            //enforce rules on each query, return an array of the versions referred to in the queries 
-            $resultsForCheckValid = $this->checkValid($queries);
-            $usedvariants = property_exists($resultsForCheckValid, 'usedvariants') ? $resultsForCheckValid->usedvariants : false;
+
+            $validatedQueries = $this->validateQueries( $queries );
+            $usedvariants = property_exists( $validatedQueries, 'usedvariants' ) ? $validatedQueries->usedvariants : false;
+
             if (!is_array($usedvariants)) {
                 $this->outputResult();
             } else {
-                //     echo "<pre>";
-                //     print_r($usedvariants);
-                //     echo "</pre>";
                 // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
-                //$temp = formulateQueries($queries);
-                $temp = $this->formulateQueries($resultsForCheckValid);
-                $mysqlqueries = $temp[0];
-                $queriesversions = $temp[1];
-                $originalquery = $temp[2];
-                //     echo "<pre>";
-                //     print_r($mysqlqueries);
-                //     echo "</pre>";
+                $formulatedQueries = $this->formulateQueries( $validatedQueries );
 
                 // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
-                $this->doQueries($mysqlqueries, $queriesversions, $originalquery);
+                $this->doQueries( $formulatedQueries );
 
 
                 // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE    
@@ -1737,7 +1673,7 @@ if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === "application/
 //returntype set explicitly in parameters can override accept header
 $returntype = (isset($BIBLEGET["return"]) && $BIBLEGET["return"] != "" && in_array(strtolower($BIBLEGET["return"]), $returntypes)) ? strtolower($BIBLEGET["return"]) : $returntype;
 
-
+/*
 if (DEBUG_REQUESTS === true) {
   $data = "********************" . PHP_EOL;
   $data .= date('l, F jS Y H:i:s T') . PHP_EOL;
@@ -1758,7 +1694,7 @@ if (DEBUG_REQUESTS === true) {
   // }
 
 }
-
+*/
 switch ($returntype) {
     case "xml":
         header('Content-Type: application/xml; charset=utf-8');
@@ -3038,13 +2974,13 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
     global $WhitelistedDomainsIPs;
     //Don't enforce the max limit for requests from domains that need to do a lot of testing for plugin development
     if (array_search($BIBLEGET["domain"], $WhitelistedDomainsIPs) !== false || array_search($ipaddress, $WhitelistedDomainsIPs) !== false) {
-      $originHeader = key_exists("ORIGIN", $headersObj) ? $headersObj["ORIGIN"] : "";
+      $originHeader = array_key_exists("ORIGIN", $headersObj) ? $headersObj["ORIGIN"] : "";
     } else {
       //check if we have already seen this IP Address in the past 2 days and if we have the same request already
       if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
-        if (DEBUG_IPINFO === true) {
-          file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
-        }
+        //if (DEBUG_IPINFO === true) {
+        //  file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
+        //}
         //if more than 10 times in the past two days (but less than 30) simply add message inviting to use cacheing mechanism
         if ($ipresult->num_rows > 10 && $ipresult->num_rows < 30) {
           addErrorMessage(10, $returntype, $xquery);
@@ -3061,14 +2997,14 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
 
       //and if the same IP address is making too many requests(>100?) with different queries (like copying the bible texts completely), deny service
       if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)")) {
-        if (DEBUG_IPINFO === true) {
-          file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
-        }
+        // if (DEBUG_IPINFO === true) {
+        //   file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX);
+        // }
         //if we 50 or more requests in the past two days, deny service?
         if ($ipresult->num_rows > 100) {
-          if (DEBUG_IPINFO === true) {
-            file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX);
-          }
+          // if (DEBUG_IPINFO === true) {
+          //   file_put_contents(DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX);
+          // }
           addErrorMessage(12, $returntype, $xquery);
           outputResult($bbquery, $returntype); //this should exit the script right here, closing the mysql connection
         }
@@ -3117,34 +3053,34 @@ function doQueries($sqlqueries, $queriesversions, $originalquery)
       //then we don't need to get info on it from ipinfo.io again (which has limit of 1000 requests per day)
       $pregmatch = preg_quote('{"ERROR":"', '/');
       if ($haveip === false || $geoip_json == "" || $geoip_json === null || preg_match("/" . $pregmatch . "/", $geoip_json)) {
-        if (DEBUG_IPINFO === true) {
-          file_put_contents(DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
-        }
+        // if (DEBUG_IPINFO === true) {
+        //   file_put_contents(DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX);
+        // }
         if ($ipaddress != "" && $ipresult = $mysqli->query("SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON('" . $ipaddress . "') AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'")) {
           if ($ipresult->num_rows > 0) {
-            if (DEBUG_IPINFO === true) {
-              file_put_contents(DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX);
-            }
+            // if (DEBUG_IPINFO === true) {
+            //   file_put_contents(DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX);
+            // }
             $iprow = $ipresult->fetch_assoc();
             $geoip_json = $iprow["WHO_WHERE_JSON"];
             $haveip = true;
           } else {
-            if (DEBUG_IPINFO === true) {
-              file_put_contents(DEBUGFILE, "We do not yet have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX);
-            }
+            // if (DEBUG_IPINFO === true) {
+            //   file_put_contents(DEBUGFILE, "We do not yet have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX);
+            // }
             $geoip_json = getGeoIpInfo($ipaddress, $mysqli);
-            if (DEBUG_IPINFO === true) {
-              file_put_contents(DEBUGFILE, "We have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
-            }
+            // if (DEBUG_IPINFO === true) {
+            //   file_put_contents(DEBUGFILE, "We have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
+            // }
           }
         } else if ($ipaddress != "") {
-          if (DEBUG_IPINFO === true) {
-            file_put_contents(DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
-          }
+          // if (DEBUG_IPINFO === true) {
+          //   file_put_contents(DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
+          // }
           $geoip_json = getGeoIpInfo($ipaddress, $mysqli);
-          if (DEBUG_IPINFO === true) {
-            file_put_contents(DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
-          }
+          // if (DEBUG_IPINFO === true) {
+          //   file_put_contents(DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX);
+          // }
         }
       }
 
