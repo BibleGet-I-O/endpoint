@@ -85,7 +85,7 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
  *****************************************/
  
 class BIBLEGET_METADATA {
-    
+
     static public $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
     static public $allowed_accept_headers = array("application/json", "application/xml", "text/html");
     static public $allowed_content_types = array("application/json" , "application/x-www-form-urlencoded");
@@ -683,14 +683,17 @@ class BIBLEGET_METADATA {
  *     END BIBLEGET METADATA CLASS       * 
  ****************************************/
 if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],BIBLEGET_METADATA::$allowed_content_types)){
+    header($_SERVER["SERVER_PROTOCOL"]." 415 Unsupported Media Type", true, 415);
     die('{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode(' and ',BIBLEGET_METADATA::$allowed_content_types).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}');
 } else if (isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
     $json = file_get_contents('php://input');
     $data = json_decode($json,true);
-    if(NULL === $data){
-        die('{"error":"No JSON data received in the request: <' . $json . '>"');
+    if(NULL === $json || "" === $json){
+      header($_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400);
+      die('{"error":"No JSON data received in the request: <' . $json . '>"');
     } else if (json_last_error() !== JSON_ERROR_NONE) {
-        die('{"error":"Malformed JSON data received in the request: <' . $json . '>, ' . json_last_error_msg() . '"}');
+      header($_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400);
+      die('{"error":"Malformed JSON data received in the request: <' . $json . '>, ' . json_last_error_msg() . '"}');
     } else {
         $METADATA = new BIBLEGET_METADATA($data);
         $METADATA->Init();
@@ -706,6 +709,7 @@ if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],BIBLEGE
           $METADATA->Init();
           break;
       default:
+          header($_SERVER["SERVER_PROTOCOL"]." 405 Method Not Allowed", true, 405);
           die('{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode(' and ',BIBLEGET_METADATA::$allowed_request_methods).', but your Request Method was '.strtoupper($_SERVER['REQUEST_METHOD']).'"}');
   }
 }
