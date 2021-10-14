@@ -289,7 +289,7 @@ class BIBLEGET_QUOTE {
         }
 
         $mysqli = new mysqli(SERVER,DBUSER,DBPASS,DATABASE);
-      
+
         if ($mysqli->connect_errno) {
             $this->addErrorMessage( "Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error );
             $this->outputResult();

@@ -53,6 +53,8 @@
  * I wish for the code of this engine to be open source,
  * so that men of good will might contribute to making it better,
  * more secure, more reliable, to be of better service to mankind.
+ * 
+ * Blessed Carlo Acutis, pray for us
  */
 
 ini_set('display_errors', 1);
