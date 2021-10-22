@@ -188,16 +188,20 @@ class BIBLEGET_METADATA {
 
     
     static private function toProperCase($txt){
-      preg_match("/\p{L}\p{M}*/u", $txt, $mList, PREG_OFFSET_CAPTURE);
-      $idx=$mList[0][1];
-      $chr = mb_substr($txt,$idx,1,'UTF-8');
-      if(preg_match("/\p{L&}\p{M}*/u",$chr)){
-        $post = mb_substr($txt,$idx+1,null,'UTF-8'); 
-        return mb_substr($txt,0,$idx,'UTF-8') . mb_strtoupper($chr,'UTF-8') . mb_strtolower($post,'UTF-8');
-      }
-      else{
-        return $txt;
-      }
+        preg_match( "/\p{L}\p{M}*/u", $txt, $mList, PREG_OFFSET_CAPTURE );
+        if( array_key_exists( 0, $mList ) ){
+            $idx = $mList[0][1];
+            $chr = mb_substr( $txt, $idx, 1, 'UTF-8' );
+            if( preg_match( "/\p{L&}\p{M}*/u", $chr ) ){
+                $post = mb_substr( $txt, $idx+1, null, 'UTF-8' );
+                return mb_substr( $txt, 0, $idx, 'UTF-8' ) . mb_strtoupper( $chr, 'UTF-8' ) . mb_strtolower( $post, 'UTF-8' );
+            }
+            else{
+                return $txt;
+            }
+        } else {
+            return $txt;
+        }
     }
 
 
