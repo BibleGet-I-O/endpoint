@@ -609,7 +609,7 @@ class BIBLEGET_QUOTE {
         if($hasULVariants){
             return ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query, $res1 ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query, $res2 ) );
         } else {
-            return ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query, $res1 ) == preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+[1-9][0-9]{0,2}/u", $query, $res2 ) );
+            return ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query, $res1 ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query, $res2 ) );
         }
     }
 
@@ -627,13 +627,13 @@ class BIBLEGET_QUOTE {
 
     private function matchBookInQuery( string $query, bool $hasULVariants ) {
         if( $hasULVariants ){
-            if( preg_match( "/^( [1-3]{0,1}( ( \p{Lu}\p{Ll}* )+ ) )/u", $query, $res ) ){
+            if( preg_match( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
                 return $res;
             } else {
                 return false;
             }
         } else {
-            if( preg_match( "/^( [1-3]{0,1}( ( \p{L}\p{M}* )+ ) )/u", $query, $res ) ){
+            if( preg_match( "/^([1-3]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
                 return $res;
             } else {
                 return false;
@@ -646,7 +646,7 @@ class BIBLEGET_QUOTE {
         $validation = false;
         switch( $rule ){
             case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
-                $validation = ( preg_match_all( "/( ?<![0-9] )( ?=( [1-9][0-9]{0,2}\.[1-9][0-9]{0,2} ) )/", $query ) === substr_count( $query, "." ) );
+                $validation = ( preg_match_all( "/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/", $query ) === substr_count( $query, "." ) );
                 break;
             case self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
                 $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "," ) );
@@ -759,8 +759,8 @@ class BIBLEGET_QUOTE {
                     continue;
                     //return false;
                 }
-                //if( preg_match_all( "/( ?=[1-9][0-9]{0,2}\.[1-9][0-9]{0,2} )/",$query ) != substr_count( $query,"." ) ){
-                //if( preg_match_all( "/( ?=( [1-9][0-9]{0,2}\.[1-9][0-9]{0,2} ) )/",$query ) < substr_count( $query,"." ) ){
+                //if( preg_match_all( "/(?=[1-9][0-9]{0,2}\.[1-9][0-9]{0,2})/",$query ) != substr_count( $query,"." ) ){
+                //if( preg_match_all( "/(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/",$query ) < substr_count( $query,"." ) ){
                 if ( $this->validateRuleAgainstQuery( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS, $query ) === false ) {
                     $this->addErrorMessage( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS );
                     $this->incrementBadQueryCount();
@@ -772,14 +772,14 @@ class BIBLEGET_QUOTE {
             if ( $this->queryContainsChapterVerseSeparator( $query ) ) {
                 if ( $this->validateRuleAgainstQuery( self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS , $query ) === false ) {
                     // error message: A comma must be preceded and followed by 1 to 3 digits etc.
-                    //echo "There are ".preg_match_all( "/( ?=[1-9][0-9]{0,2}\,[1-9][0-9]{0,2} )/",$query )." matches for commas preceded and followed by valid 1-3 digit sequences;<br>";
+                    //echo "There are ".preg_match_all( "/(?=[1-9][0-9]{0,2}\,[1-9][0-9]{0,2})/",$query )." matches for commas preceded and followed by valid 1-3 digit sequences;<br>";
                     //echo "There are ".substr_count( $query,"," )." matches for commas in this query.";
                     $this->addErrorMessage( self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS );
                     $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 } else {
-                    if ( preg_match_all( "/( [1-9][0-9]{0,2} )\,/", $query, $matches ) ) {
+                    if ( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $matches ) ) {
                         if ( !is_array( $matches[1] ) ) {
                             $matches[1] = [ $matches[1] ];
                         }
@@ -842,7 +842,7 @@ class BIBLEGET_QUOTE {
                             // bibleGetWriteLog( "checking for presence of dashes in the right-side of the comma..." );
                             if ( strpos( $parts[1], '-' ) ) {
                                 // bibleGetWriteLog( "a dash has been detected in the right-side of the comma( ".$parts[1]." )" );
-                                if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-( [1-9][0-9]{0,2} )/", $query, $matches ) ) {
+                                if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $query, $matches ) ) {
                                     if ( !is_array( $matches[1] ) ) {
                                         $matches[1] = [ $matches[1] ];
                                     }
@@ -866,7 +866,7 @@ class BIBLEGET_QUOTE {
                                   // bibleGetWriteLog( "something is up with the regex check..." );
                                 }*/
                             } else {
-                                if ( preg_match( "/,( [1-9][0-9]{0,2} )/", $query, $matches ) ) {
+                                if ( preg_match( "/,([1-9][0-9]{0,2})/", $query, $matches ) ) {
                                     $highverse = intval( $matches[1] );
                                     foreach ( $this->indexes as $jkey => $jindex ) {
                                         $bookidx = array_search( $myidx, $jindex["book_num"] );
@@ -884,7 +884,7 @@ class BIBLEGET_QUOTE {
                                 }
                             }
 
-                            if ( preg_match_all( "/\.( [1-9][0-9]{0,2} )$/", $query, $matches ) ) {
+                            if ( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $matches ) ) {
                                 if ( !is_array( $matches[1] ) ) {
                                     $matches[1] = [ $matches[1] ];
                                 }
@@ -938,7 +938,7 @@ class BIBLEGET_QUOTE {
                     continue;
                     //return false;
                 }
-                if ( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/( ?=\,[1-9][0-9]{0,2}\- )/", $query ) > preg_match_all( "/( ?=\-[1-9][0-9]{0,2}\, )/", $query ) ) ) {
+                if ( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/(?=\,[1-9][0-9]{0,2}\-)/", $query ) > preg_match_all( "/(?=\-[1-9][0-9]{0,2}\,)/", $query ) ) ) {
                     // error message: there must be as many comma constructs preceding dashes as there are following dashes
                     $this->addErrorMessage( 7 );
                     $this->incrementBadQueryCount();
@@ -1743,7 +1743,7 @@ class BIBLEGET_QUOTE {
             //at least the first query must start with a book reference, which may have a number from 1 to 3 at the beginning
             //echo "matching against: ".$queries[0]."<br />";
             if ( !preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $queries[0] ) ) {
-                if ( !preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $queries[0] ) ) {
+                if ( !preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $queries[0] ) ) {
                     // error message: querystring must have book indication at the very start...
                     $this->addErrorMessage( 0 );
                     $this->outputResult();
