@@ -117,19 +117,22 @@ class BIBLEGET_QUOTE {
         5 => "A chapter-verse separator must be preceded by a valid chapter number and followed by a valid verse number.",
         6 => "A request for a range of verses must contain two valid verse numbers on either side of a verse range indicator.",
         7 => "If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.",
-        8 => "There are multiple dashes in the query, but there are not enough verse separators. There can only be one dash more than there are verse separators.",
+        8 => "Multiple verse ranges have been requested, but there are not enough verse separators. Multiple verse ranges assume there are verse separators that connect them.",
         9 => "Notation Error. Please check your citation notation.",
         10 => "Please use a cacheing mechanism, you seem to be submitting numerous requests for the same query.",
         11 => "You are submitting too many requests with the same query. You must use a cacheing mechanism. Once you have implemented a cacheing mechanism you may have to wait a couple of days before getting service again. Otherwise contact the service management to request service again.",
         12 => "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management."
     ];
 
-    const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                        = 0;
-    const VALID_CHAPTER_MUST_FOLLOW_BOOK                                    = 1;
-    const IS_VALID_BOOK_INDICATOR                                           = 2;
-    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR       = 3;
-    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS                 = 4;
-    const CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS         = 5;
+    const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                            = 0;
+    const VALID_CHAPTER_MUST_FOLLOW_BOOK                                        = 1;
+    const IS_VALID_BOOK_INDICATOR                                               = 2;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR           = 3;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS                     = 4;
+    const CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS             = 5;
+    const VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS                          = 6;
+    const CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS   = 7;
+    const CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES              = 8;
 
     /*
     static public $sections = [
@@ -647,17 +650,26 @@ class BIBLEGET_QUOTE {
                     $validation = ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query ) );
                 }
                 break;
-            case self::IS_VALID_BOOK_INDICATOR :
+            /*case self::IS_VALID_BOOK_INDICATOR :
                 $validation = (1===1);
-                break;
+                break;*/
             case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR :
-                $validation = (1===1);
+                $validation = !( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) );
                 break;
             case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
                 $validation = ( preg_match_all( "/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/", $query ) === substr_count( $query, "." ) );
                 break;
             case self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
                 $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "," ) );
+                break;
+            case self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS :
+                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "-" ) );
+                break;
+            case self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS :
+                $validation = !( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/(?=\,[1-9][0-9]{0,2}\-)/", $query ) > preg_match_all( "/(?=\-[1-9][0-9]{0,2}\,)/", $query ) ) );
+                break;
+            case self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES :
+                $validation = !( substr_count( $query, "-" ) > 1 && ( !strpos( $query, "." ) || ( substr_count( $query, "-" ) - 1 > substr_count( $query, "." ) ) ) );
                 break;
         }
         return $validation;
@@ -669,6 +681,36 @@ class BIBLEGET_QUOTE {
 
     private function queryContainsChapterVerseSeparator( string $query ) : bool {
         return strpos( $query, "," ) !== false;
+    }
+
+    private function getAllChapterIndicators( string $query ) : array {
+        if( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $chapterIndicators ) ){
+            if ( !is_array( $chapterIndicators[1] ) ) {
+                $chapterIndicators[1] = [ $chapterIndicators[1] ];
+            }
+            return $chapterIndicators;
+        } else {
+            return ["",[]];
+        }
+    }
+
+    private function getAllVersesAfterChapterVerseSeparators( string $query ) : array {
+        if( preg_match( "/,([1-9][0-9]{0,2})/", $query, $verses ) ){
+            return $verses;
+        } else {
+            return [[],[]];
+        }
+    }
+
+    private function getAllVersesAfterDiscontinuousVerseIndicator( string $query ) : array {
+        if( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $discontinuousVerses ) ){
+            if ( !is_array( $discontinuousVerses[1] ) ) {
+                $discontinuousVerses[1] = [ $discontinuousVerses[1] ];
+            }
+            return $discontinuousVerses;
+        } else {
+            return [[],[]];
+        }
     }
 
     private function validateQueries( $queries ) {
@@ -721,9 +763,8 @@ class BIBLEGET_QUOTE {
             }
 
             if ( $this->queryContainsVerseSeparator( $query ) ) {
-                if ( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) ) {
-                    // error message: You cannot use a dot without first using a comma. A dot is a liason between verses, which are separated from the chapter by a comma.
-                    $this->addErrorMessage( 3 );
+                if ( $this->validateRuleAgainstQuery( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR, $query ) === false ) {
+                    $this->addErrorMessage( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR );
                     $this->incrementBadQueryCount();
                     continue;
                     //return false;
@@ -748,120 +789,77 @@ class BIBLEGET_QUOTE {
                     continue;
                     //return false;
                 } else {
-                    if ( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $matches ) ) {
-                        if ( !is_array( $matches[1] ) ) {
-                            $matches[1] = [ $matches[1] ];
+                    $chapterIndicators = $this->getAllChapterIndicators( $query );
+                    $myidx = $idx + 1;
+                    foreach ( $chapterIndicators[1] as $chapterIndicator ) {
+                        foreach ( $this->indexes as $jkey => $jindex ) {
+                            // bibleGetWriteLog( "jindex array contains:" );
+                            // bibleGetWriteLog( $jindex );
+                            $bookidx = array_search( $myidx, $jindex["book_num"] );
+                            // bibleGetWriteLog( "bookidx for ".$jkey." = ".$bookidx );
+                            $chapter_limit = $jindex["chapter_limit"][$bookidx];
+                            // bibleGetWriteLog( "chapter_limit for ".$jkey." = ".$chapter_limit );
+                            // bibleGetWriteLog( "match for " . $jkey . " = " . $chapterIndicator );
+                            if ( $chapterIndicator > $chapter_limit ) {
+                                //addErrorMessage( '$myidx = '.$myidx,$returntype );
+                                //addErrorMessage( '$bookidx = '.$bookidx,$returntype );
+                                /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                                $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
+                                $this->addErrorMessage( sprintf( $msg, $chapterIndicator, $thisbook, $jkey, $chapter_limit ) );
+                                $this->incrementBadQueryCount();
+                                continue 3;
+                            }
                         }
-                        $myidx = $idx + 1;
-                        foreach ( $matches[1] as $match ) {
+                    }
+
+                    $chapterVerseSeparatorCount = substr_count( $query, "," );
+                    if ( $chapterVerseSeparatorCount > 1 ) {
+                        if ( !strpos( $query, '-' ) ) {
+                            $this->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
+                            $this->incrementBadQueryCount();
+                            continue;
+                            //return false;
+                        }
+                        $parts = explode( "-", $query );
+                        if ( count( $parts ) != 2 ) {
+                            $this->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
+                            $this->incrementBadQueryCount();
+                            continue;
+                            //return false;
+                        }
+                        foreach ( $parts as $part ) {
+                            $pp = array_map( "intval", explode( ",", $part ) );
                             foreach ( $this->indexes as $jkey => $jindex ) {
-                                // bibleGetWriteLog( "jindex array contains:" );
-                                // bibleGetWriteLog( $jindex );
                                 $bookidx = array_search( $myidx, $jindex["book_num"] );
-                                // bibleGetWriteLog( "bookidx for ".$jkey." = ".$bookidx );
-                                $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                                // bibleGetWriteLog( "chapter_limit for ".$jkey." = ".$chapter_limit );
-                                // bibleGetWriteLog( "match for " . $jkey . " = " . $match );
-                                if ( $match > $chapter_limit ) {
-                                    //addErrorMessage( '$myidx = '.$myidx,$returntype );
-                                    //addErrorMessage( '$bookidx = '.$bookidx,$returntype );
-                                    /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                                    $this->addErrorMessage( sprintf( $msg, $match, $thisbook, $jkey, $chapter_limit ) );
+                                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                                $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
+                                if ( $pp[1] > $verselimit ) {
+                                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                                    $this->addErrorMessage( sprintf( $msg, $pp[1], $thisbook, $pp[0], $jkey, $verselimit ) );
                                     $this->incrementBadQueryCount();
                                     continue 3;
+                                    //return false;
                                 }
                             }
                         }
-
-                        $commacount = substr_count( $query, "," );
-                        if ( $commacount > 1 ) {
-                            if ( !strpos( $query, '-' ) ) {
-                                $this->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
-                                $this->incrementBadQueryCount();
-                                continue;
-                                //return false;
-                            }
-                            $parts = explode( "-", $query );
-                            if ( count( $parts ) != 2 ) {
-                                $this->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
-                                $this->incrementBadQueryCount();
-                                continue;
-                                //return false;
-                            }
-                            foreach ( $parts as $part ) {
-                                $pp = array_map( "intval", explode( ",", $part ) );
-                                foreach ( $this->indexes as $jkey => $jindex ) {
-                                    $bookidx = array_search( $myidx, $jindex["book_num"] );
-                                    $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                                    $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
-                                    if ( $pp[1] > $verselimit ) {
-                                        $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                        $this->addErrorMessage( sprintf( $msg, $pp[1], $thisbook, $pp[0], $jkey, $verselimit ) );
-                                        $this->incrementBadQueryCount();
-                                        continue 3;
-                                        //return false;
-                                    }
-                                }
-                            }
-                        } elseif ( $commacount == 1 ) {
-                            // bibleGetWriteLog( "commacount has been detected as 1, now exploding on comma the query[".$thisquery."]" );
-                            $parts = explode( ",", $query );
-                            // bibleGetWriteLog( $parts );
-                            // bibleGetWriteLog( "checking for presence of dashes in the right-side of the comma..." );
-                            if ( strpos( $parts[1], '-' ) ) {
-                                // bibleGetWriteLog( "a dash has been detected in the right-side of the comma( ".$parts[1]." )" );
-                                if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $query, $matches ) ) {
-                                    if ( !is_array( $matches[1] ) ) {
-                                        $matches[1] = [ $matches[1] ];
-                                    }
-                                    $highverse = intval( array_pop( $matches[1] ) );
-                                    // bibleGetWriteLog( "highverse = ".$highverse );
-                                    foreach ( $this->indexes as $jkey => $jindex ) {
-                                        $bookidx = array_search( $myidx, $jindex["book_num"] );
-                                        $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                                        $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-                                        // bibleGetWriteLog( "verselimit for ".$jkey." = ".$verselimit );
-                                        if ( $highverse > $verselimit ) {
-                                            /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                                            $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                            $this->addErrorMessage( sprintf( $msg, $highverse, $thisbook, $parts[0], $jkey, $verselimit ) );
-                                            $this->incrementBadQueryCount();
-                                            continue 2;
-                                            //return false;
-                                        }
-                                    }
-                                } /*else {
-                                  // bibleGetWriteLog( "something is up with the regex check..." );
-                                }*/
-                            } else {
-                                if ( preg_match( "/,([1-9][0-9]{0,2})/", $query, $matches ) ) {
-                                    $highverse = intval( $matches[1] );
-                                    foreach ( $this->indexes as $jkey => $jindex ) {
-                                        $bookidx = array_search( $myidx, $jindex["book_num"] );
-                                        $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                                        $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-                                        if ( $highverse > $verselimit ) {
-                                            /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                                            $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                            $this->addErrorMessage( sprintf( $msg, $highverse, $thisbook, $parts[0], $jkey, $verselimit ) );
-                                            $this->incrementBadQueryCount();
-                                            continue 2;
-                                            //return false;
-                                        }
-                                    }
-                                }
-                            }
-
-                            if ( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $matches ) ) {
+                    } elseif ( $chapterVerseSeparatorCount == 1 ) {
+                        // bibleGetWriteLog( "commacount has been detected as 1, now exploding on comma the query[".$thisquery."]" );
+                        $parts = explode( ",", $query );
+                        // bibleGetWriteLog( $parts );
+                        // bibleGetWriteLog( "checking for presence of dashes in the right-side of the comma..." );
+                        if ( strpos( $parts[1], '-' ) ) {
+                            // bibleGetWriteLog( "a dash has been detected in the right-side of the comma( ".$parts[1]." )" );
+                            if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $query, $matches ) ) {
                                 if ( !is_array( $matches[1] ) ) {
                                     $matches[1] = [ $matches[1] ];
                                 }
-                                $highverse = array_pop( $matches[1] );
+                                $highverse = intval( array_pop( $matches[1] ) );
+                                // bibleGetWriteLog( "highverse = ".$highverse );
                                 foreach ( $this->indexes as $jkey => $jindex ) {
                                     $bookidx = array_search( $myidx, $jindex["book_num"] );
                                     $chapters_verselimit = $jindex["verse_limit"][$bookidx];
                                     $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+                                    // bibleGetWriteLog( "verselimit for ".$jkey." = ".$verselimit );
                                     if ( $highverse > $verselimit ) {
                                         /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
                                         $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
@@ -871,9 +869,47 @@ class BIBLEGET_QUOTE {
                                         //return false;
                                     }
                                 }
+                            } /*else {
+                                // bibleGetWriteLog( "something is up with the regex check..." );
+                            }*/
+                        } else {
+                            $versesAfterChapterVerseSeparators = $this->getAllVersesAfterChapterVerseSeparators( $query );
+
+                            $highverse = intval( $versesAfterChapterVerseSeparators[1] );
+                            foreach ( $this->indexes as $jkey => $jindex ) {
+                                $bookidx = array_search( $myidx, $jindex["book_num"] );
+                                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                                $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+                                if ( $highverse > $verselimit ) {
+                                    /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                                    $this->addErrorMessage( sprintf( $msg, $highverse, $thisbook, $parts[0], $jkey, $verselimit ) );
+                                    $this->incrementBadQueryCount();
+                                    continue 2;
+                                    //return false;
+                                }
+                            }
+
+                        }
+
+                        $discontinuousVerses = $this->getAllVersesAfterDiscontinuousVerseIndicator( $query );
+                        $highverse = array_pop( $discontinuousVerses[1] );
+                        foreach ( $this->indexes as $jkey => $jindex ) {
+                            $bookidx = array_search( $myidx, $jindex["book_num"] );
+                            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+                            if ( $highverse > $verselimit ) {
+                                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                                $this->addErrorMessage( sprintf( $msg, $highverse, $thisbook, $parts[0], $jkey, $verselimit ) );
+                                $this->incrementBadQueryCount();
+                                continue 2;
+                                //return false;
                             }
                         }
+
                     }
+
                 }
             } else {
                 $chapters = explode( "-", $query );
@@ -898,26 +934,26 @@ class BIBLEGET_QUOTE {
             }
 
             if ( strpos( $query, "-" ) ) {
-                if ( preg_match_all( "/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/", $query ) != substr_count( $query, "-" ) ) {
+                if ( $this->validateRuleAgainstQuery( self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS, $query ) === false ) {
                     // error message: A dash must be preceded and followed by 1 to 3 digits etc.
                     //echo "There are ".preg_match( "/( ?=[1-9][0-9]{0,2}\-[1-9][0-9]{0,2} )/",$query )." matches for dashes preceded and followed by valid 1-3 digit sequences;<br>";
                     //echo "There are ".substr_count( $query,"-" )." matches for dashes in this query.";
-                    $this->addErrorMessage( 6 );
+                    $this->addErrorMessage( self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS );
                     $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 }
-                if ( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/(?=\,[1-9][0-9]{0,2}\-)/", $query ) > preg_match_all( "/(?=\-[1-9][0-9]{0,2}\,)/", $query ) ) ) {
+                if ( $this->validateRuleAgainstQuery( self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS, $query ) === false ) {
                     // error message: there must be as many comma constructs preceding dashes as there are following dashes
-                    $this->addErrorMessage( 7 );
+                    $this->addErrorMessage( self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS );
                     $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 }
-                if ( substr_count( $query, "-" ) > 1 && ( !strpos( $query, "." ) || ( substr_count( $query, "-" ) - 1 > substr_count( $query, "." ) ) ) ) {
+                if ( $this->validateRuleAgainstQuery( self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES, $query ) === false ) {
                     // error message: there cannot be multiple dashes in a query if there are not as many dots minus 1.
                     $this->incrementBadQueryCount();
-                    $this->addErrorMessage( 8 );
+                    $this->addErrorMessage( self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES );
                     continue;
                     //return false;
                 }
