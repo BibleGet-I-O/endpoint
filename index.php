@@ -618,6 +618,23 @@ class BIBLEGET_QUOTE {
         return in_array( $thisbook, $this->indexes[$variant]["biblebooks"] ) || in_array( $thisbook, $this->indexes[$variant]["abbreviations"] );
     }
 
+    private function matchBookInQuery( string $query, bool $hasULVariants ) {
+        if( $hasULVariants ){
+            if( preg_match( "/^( [1-3]{0,1}( ( \p{Lu}\p{Ll}* )+ ) )/u", $query, $res ) ){
+                return $res;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^( [1-3]{0,1}( ( \p{L}\p{M}* )+ ) )/u", $query, $res ) ){
+                return $res;
+            } else {
+                return false;
+            }
+        }
+
+    }
+
     private function validateQueries( $queries ) {
 
         $validatedQueries                   = new stdClass();
@@ -638,13 +655,13 @@ class BIBLEGET_QUOTE {
                     return false;
                 }
 
-                if ( preg_match( "/^( [1-3]{0,1}( ( \p{Lu}\p{Ll}* )+ ) )/u", $query, $res ) ) {
+                $matchedBook = $this->matchBookInQuery( $query, $hasULVariants );
+
+                if ( $matchedBook !== false ) {
                     $validbookflag = false;
-                    $thisbook = $res[0];
+                    $thisbook = $matchedBook[0];
                     foreach ( $this->requestedVersions as $variant ) {
-                        //echo "<p>Looping through requested versions: ".$variant."</p>";
                         if ( $this->isValidBookForVariant( $thisbook, $variant ) ) {
-                            //echo "<p>Book name ".$thisbook." was found in the indexes of the requested version \"".$variant."\".</p>";
                             $validbookflag = true;
                             $usedvariant = $variant;
                             //we can still use the index for further integrity checks!
@@ -662,7 +679,6 @@ class BIBLEGET_QUOTE {
                     if ( !$validbookflag ) {
                         $this->addErrorMessage( sprintf( 'The book abbreviation %s is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.', $thisbook ) );
                         $this->incrementBadQueryCount();
-                        //return false;
                         continue;
                     } else {
                         $query = str_replace( $thisbook, "", $query );
@@ -671,24 +687,24 @@ class BIBLEGET_QUOTE {
             } else {
                 //echo "<p>We are dealing with a string that does not have upper / lower case variants.</p>";
                 if ( $this->chapterIndicatorFollowsBookIndicator( $query, $hasULVariants ) === false ) {
-                    // error message: every book indication must be followed by a valid chapter indication
                     $this->addErrorMessage( 1 );
                     $this->incrementBadQueryCount();
                     return false;
                 }
-                if ( preg_match( "/^( [1-3]{0,1}( ( \p{L}\p{M}* )+ ) )/u", $query, $res ) ) {
-                    //echo "<p>We have matched the bookname: ".$res[0]."</p>";
-                    $thisbook = $res[0];
+
+                $matchedBook = $this->matchBookInQuery( $query, $hasULVariants );
+                if ( $matchedBook !== false ) {
+                    $thisbook = $matchedBook[0];
                     $validbookflag = false;
                     foreach ( $this->requestedVersions as $variant ) {
-                        if ( in_array( $res[0], $this->indexes[$variant]["biblebooks"] ) || in_array( $res[0], $this->indexes[$variant]["abbreviations"] ) ) {
+                        if ( $this->isValidBookForVariant( $thisbook, $variant ) ) {
                             $validbookflag = true;
                             $usedvariant = $variant;
                             //we can still use the index for further integrity checks!
-                            $idx = self::idxOf( $res[0], $this->biblebooks );
+                            $idx = self::idxOf( $thisbook, $this->biblebooks );
                             break;
                         } else {
-                            $idx = self::idxOf( $res[0], $this->biblebooks );
+                            $idx = self::idxOf( $thisbook, $this->biblebooks );
                             if( $idx !== false){
                                 //echo "<p>Book was recognized as valid.</p>";
                                 $validbookflag = true;
