@@ -170,6 +170,7 @@ class BIBLEGET_QUOTE {
     private $geoip_json                   = "";
     private $haveIPAddressOnRecord        = false;
     private $jsonEncodedRequestHeaders    = "";
+    private $curYEAR                      = "";
     //useful for html output:
     private $div;
     private $err;
@@ -190,6 +191,7 @@ class BIBLEGET_QUOTE {
         //let's ensure that we have at least default values for parameters
         $this->DATA = array_merge( self::$requestParameters, $DATA );
         $this->DATA["preferorigin"] = in_array( $this->DATA["preferorigin"], self::$allowedPreferredOrigins ) ? $this->DATA["preferorigin"] : "";
+        $this->curYEAR = date( 'Y' );
     }
 
     private function addErrorMessage( $num, $str="" ) {
@@ -243,7 +245,7 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    private function outputResult( ) {
+    private function outputResult() {
 
         switch( $this->returnType ) {
             case "json":
@@ -252,7 +254,7 @@ class BIBLEGET_QUOTE {
                 break;
             case "xml":
                 $this->bibleQuote->info["detectedNotation"] = $this->detectedNotation;
-                echo $this->bibleQuote->asXML( );
+                echo $this->bibleQuote->asXML();
                 break;
             case "html":
                 $this->bibleQuote->appendChild( $this->div );
@@ -276,13 +278,13 @@ class BIBLEGET_QUOTE {
         }
 
         if ( $this->mysqli && $this->mysqli->thread_id ) {
-            $this->mysqli->close( );
+            $this->mysqli->close();
         }
         exit( 0 );
 
     }
 
-    private function dbConnect( ) {
+    private function dbConnect() {
 
         $dbCredentials = "dbcredentials.php";
         //search for the database credentials file at least three levels up...
@@ -298,7 +300,7 @@ class BIBLEGET_QUOTE {
 
         if ( $mysqli->connect_errno ) {
             $this->addErrorMessage( "Failed to connect to MySQL: ( " . $mysqli->connect_errno . " ) " . $mysqli->connect_error );
-            $this->outputResult( );
+            $this->outputResult();
         }
         $mysqli->set_charset( "utf8" );
         $this->mysqli = $mysqli;
@@ -344,6 +346,8 @@ class BIBLEGET_QUOTE {
         return self::toProperCase( preg_replace( "/\s+/", "", trim( $str ) ) );
     }
 
+    /*
+    * These functions look fine and dandy, but we're not even using them
     static private function startsWith( string $needle, string $haystack ) {
         return substr( $haystack, 0, strlen( $needle ) ) === $needle;
     }
@@ -351,8 +355,9 @@ class BIBLEGET_QUOTE {
     static private function endsWith( string $needle, string $haystack ) {
         return substr( $haystack, -strlen( $needle ) ) === $needle;
     }
+    */
 
-    private function BibleQuoteInit( ) {
+    private function BibleQuoteInit() {
 
       $err = NULL;
       $div = NULL;
@@ -360,7 +365,7 @@ class BIBLEGET_QUOTE {
 
       switch( $this->returnType ){
           case "json":
-              $quote = new stdClass( );
+              $quote = new stdClass();
               $quote->results = [];
               $quote->errors = [];
               $quote->info = ["ENDPOINT_VERSION" => ENDPOINT_VERSION];
@@ -374,7 +379,7 @@ class BIBLEGET_QUOTE {
               $info->addAttribute( "ENDPOINT_VERSION", ENDPOINT_VERSION );
               break;
           case "html":
-              $quote = new DOMDocument( );
+              $quote = new DOMDocument();
               $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title><style>table#errorsTbl { border: 3px double Red; background-color:DarkGray; } table#errorsTbl td { border: 1px solid Black; background-color:LightGray; padding: 3px; } td.errNum,td.errMessage { font-weight:bold; }</style><!-- QUERY.BIBLEGET.IO ENDPOINT VERSION {ENDPOINT_VERSION} --></head><body></body>";
               $quote->loadHTML( $html );
               $div = $quote->createElement( "div" );
@@ -393,7 +398,7 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function populateVersionsInfo( ){
+    private function populateVersionsInfo(){
 
         $result = $this->mysqli->query( "SELECT * FROM versions_available WHERE type = 'BIBLE'" );
         if( $result ) {
@@ -412,16 +417,16 @@ class BIBLEGET_QUOTE {
         }
         else{
             $this->addErrorMessage( "<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>" );
-            $this->outputResult( );
+            $this->outputResult();
         }
 
     }
 
-    private function isValidVersion( string $version ) {
+    private function isValidVersion( string $version ) : bool {
         return( in_array( $version, $this->validversions ) );
     }
 
-    private function prepareIndexes( ){
+    private function prepareIndexes(){
 
         $indexes = [];
 
@@ -436,7 +441,7 @@ class BIBLEGET_QUOTE {
             // fetch the index information for the requested version from the database and load it into our arrays
             $result = $this->mysqli->query( "SELECT * FROM ".$variant."_idx" );
             if( $result ){
-                while( $row = $result->fetch_assoc( ) ){
+                while( $row = $result->fetch_assoc() ){
                     $abbreviations[]    = $row["abbrev"];
                     $bbbooks[]          = $row["fullname"];
                     $chapter_limit[]    = $row["chapters"];
@@ -457,7 +462,7 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function prepareBibleBooks( ){
+    private function prepareBibleBooks() {
 
         $result1 = $this->mysqli->query( "SELECT * FROM biblebooks_fullname" );
         if ( $result1 ) {
@@ -504,7 +509,7 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function prepareRequestedVersions( ) {
+    private function prepareRequestedVersions() {
 
         $temp = isset( $this->DATA["version"] ) && $this->DATA["version"] !== "" ? explode( ",", strtoupper( $this->DATA["version"] ) ) : ["CEI2008"];
 
@@ -525,7 +530,7 @@ class BIBLEGET_QUOTE {
 
 
         if ( count( $this->requestedVersions ) < 1 ) {
-            $this->outputResult( );
+            $this->outputResult();
         }
 
     }
@@ -566,32 +571,35 @@ class BIBLEGET_QUOTE {
         return $querystr;
     }
 
-    private function queryStrClean( ) {
-        $querystr = "";
-        // remove all whitespace from the query
-        $querystr = preg_replace( '/\s+/', '', $this->DATA["query"] );
-        // trim shouldn't be necessary now but just in case
-        $querystr = trim( $querystr );
-        // shouldn't have any spaces left but just in case
-        $querystr = str_replace( ' ', '', $querystr );
-        // convert en-dashes, em-dashes, minus signs and any other kind of dashes to simple hyphens
-        $querystr = preg_replace( '/[\x{2011}-\x{2015}|\x{2212}|\x{23AF}]/u', '-', $querystr );
+    private function removeWhitespace( string $querystr ) : string {
+        $querystr = preg_replace( '/\s+/', '', $querystr );
+        return str_replace( ' ', '', $querystr );
+    }
 
+    private function convertAllDashesToHyphens( string $querystr ) : string {
+        return preg_replace( '/[\x{2011}-\x{2015}|\x{2212}|\x{23AF}]/u', '-', $querystr );
+    }
+
+    private function removeEmptyItems( array $queries ) : array {
+        return array_values( array_filter( $queries, function ( $var ) {
+            return $var !== "";
+        } ) );
+    }
+
+    private function queryStrClean() {
+
+        $querystr = $this->removeWhitespace( $this->DATA["query"] );
+        $querystr = trim( $querystr );
+        $querystr = $this->convertAllDashesToHyphens( $querystr );
         $querystr = $this->detectAndNormalizeNotation( $querystr );
-        if( $this->detectedNotation === "MIXED" ){
-            $this->addErrorMessage( "Mixed notations have been detected, please use either english or european notation." );
-            $this->outputResult( );
-        }
 
         //if there are multiple queries separated by semicolons, we explode them into an array
         $queries = explode( ";", $querystr );
-        //get rid of empty queries
-        $queries = array_values( array_filter( $queries, function ( $var ) {
-            return $var !== "";
-        } ) );
+        $queries = $this->removeEmptyItems( $queries );
 
         array_walk( $queries,'self::toProperCase' );
         return $queries;
+
     }
 
     private function stringWithUpperAndLowerCaseVariants (string $query) : bool {
@@ -605,10 +613,14 @@ class BIBLEGET_QUOTE {
     private function incrementBadQueryCount() {
         $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
     }
-    
+
+    private function incrementGoodQueryCount() {
+        $this->mysqli->query( "UPDATE counter SET good = good + 1" );
+    }
+
     private function validateQueries( $queries ) {
 
-        $validatedQueries                   = new stdClass( );
+        $validatedQueries                   = new stdClass();
         $validatedQueries->usedvariants     = [];
         $validatedQueries->goodqueries      = [];
         $usedvariant                        = "";
@@ -1293,9 +1305,9 @@ class BIBLEGET_QUOTE {
             //$this->geoip_json = $this->mysqli->real_escape_string( $this->geoip_json); // we don't need to escape it when it's coming from the ipinfo.io server, at least not before inserting into the database
             //Check if it's actually an object or if it's not a string perhaps
             $geoip_JSON_obj = json_decode( $this->geoip_json );
-            if ( $geoip_JSON_obj === null || json_last_error( ) !== JSON_ERROR_NONE ) {
+            if ( $geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE ) {
                 //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
-                $this->geoip_json = '{"ERROR":"' . json_last_error( ) . ' <' . $this->geoip_json . '>"}';
+                $this->geoip_json = '{"ERROR":"' . json_last_error() . ' <' . $this->geoip_json . '>"}';
             } else {
                 $this->geoip_json = json_encode( $geoip_JSON_obj );
             }
@@ -1304,7 +1316,7 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    private function getIpAddress( ){
+    private function getIpAddress(){
         $forwardedip = isset( $_SERVER["HTTP_X_FORWARDED_FOR"] ) ? $_SERVER["HTTP_X_FORWARDED_FOR"] : "";
         $remote_address = isset( $_SERVER["REMOTE_ADDR"] ) ? $_SERVER["REMOTE_ADDR"] : "";
         $realip = isset( $_SERVER["HTTP_X_REAL_IP"] ) ? $_SERVER["HTTP_X_REAL_IP"] : "";
@@ -1328,13 +1340,11 @@ class BIBLEGET_QUOTE {
     }
 
     private function haveSeenIPAddressPastTwoDaysWithSameRequest( string $ipaddress, string $xquery ) {
-        $curYEAR = date( "Y" );
-        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
+        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
     }
 
     private function tooManyQueriesFromSameIPAddress( string $ipaddress ) {
-        $curYEAR = date( "Y" );
-        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
+        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
     }
 
     private function validateIPAddress( string $ipaddress ) {
@@ -1352,14 +1362,14 @@ class BIBLEGET_QUOTE {
             //if more than 10 times in the past two days ( but less than 30 ) simply add message inviting to use cacheing mechanism
             if ( $ipresult->num_rows > 10 && $ipresult->num_rows < 30 ) {
                 $this->addErrorMessage( 10, $xquery );
-                $iprow = $ipresult->fetch_assoc( );
+                $iprow = $ipresult->fetch_assoc();
                 $this->geoip_json = $iprow[ "WHO_WHERE_JSON" ];
                 $this->haveIPAddressOnRecord = true;
             }
             //if we have more than 30 requests in the past two days for the same query, deny service?
             else if ( $ipresult->num_rows > 29 ) {
                 $this->addErrorMessage( 11, $xquery );
-                $this->outputResult( ); //this should exit the script right here, closing the mysql connection
+                $this->outputResult(); //this should exit the script right here, closing the mysql connection
             }
         }
 
@@ -1375,39 +1385,43 @@ class BIBLEGET_QUOTE {
                     file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX );
                 }
                 $this->addErrorMessage( 12, $xquery );
-                $this->outputResult( ); //this should exit the script right here, closing the mysql connection
+                $this->outputResult(); //this should exit the script right here, closing the mysql connection
             }
         }
 
         //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
-        $curYEAR = date( "Y" );
-        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
-                $originRow = $originres->fetch_assoc( );
+                $originRow = $originres->fetch_assoc();
                 if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
                     if ( $originRow["ORIGIN_CNT"] > 10 && $originRow["ORIGIN_CNT"] < 30 ) {
                         $this->addErrorMessage( 10, $xquery );
                     } else if ( $originRow["ORIGIN_CNT"] > 29 ) {
                         $this->addErrorMessage( 11, $xquery );
-                        $this->outputResult( ); //this should exit the script right here, closing the mysql connection                
+                        $this->outputResult(); //this should exit the script right here, closing the mysql connection                
                     }
                 }
             }
         }
         //and we'll check for diverse requests from the same origin in the past couple days ( >100? )
-        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
-                $originRow = $originres->fetch_assoc( );
+                $originRow = $originres->fetch_assoc();
                 if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
                     if ( $originRow["ORIGIN_CNT"] > 100 ) {
                         $this->addErrorMessage( 12, $xquery );
-                        $this->outputResult( ); //this should exit the script right here, closing the mysql connection
+                        $this->outputResult(); //this should exit the script right here, closing the mysql connection
                     }
                 }
             }
         }
+    }
+
+    private function geoIPInfoIsEmptyOrIsError() {
+        $pregmatch = preg_quote( '{"ERROR":"', '/' );
+        return $this->haveIPAddressOnRecord === false || $this->geoip_json == "" || $this->geoip_json === null || preg_match( "/" . $pregmatch . "/", $this->geoip_json );
     }
 
     private function doQueries( array $formulatedQueries ) {
@@ -1426,19 +1440,17 @@ class BIBLEGET_QUOTE {
         $chapter        = 0;
         $newchapter     = false;
 
-
         // HTML return type is a special case, because we must already implement display logic to the structured data that is returned 
         $i              = 0;
         $appid          = $this->DATA["appid"] != "" ? $this->DATA["appid"] : "unknown";
         $domain         = $this->DATA["domain"] != "" ? $this->DATA["domain"] : "unknown";
         $pluginversion  = $this->DATA["pluginversion"] != "" ? $this->DATA["pluginversion"] : "unknown";
-        $curYEAR = date( "Y" ); //request logs are divided by year, to keep things cleaner and easier to access and read
 
-        [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress( );
+        [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress();
 
         if ( $this->validateIPAddress( $ipaddress ) === false ) {
             $this->addErrorMessage( "The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $xquery );
-            $this->outputResult( ); //this should exit the script right here, closing the mysql connection
+            $this->outputResult(); //this should exit the script right here, closing the mysql connection
         }
 
         $notWhitelisted = ( $this->isWhitelisted( $domain ) === false && $this->isWhitelisted( $ipaddress ) === false );
@@ -1457,23 +1469,21 @@ class BIBLEGET_QUOTE {
             $result = $this->mysqli->query( $xquery );
             if ( $result ) {
                 //       echo "<p>We have results from query ".$xquery."</p>";
-                // Up the good counter!
-                $this->mysqli->query( "UPDATE counter SET good = good + 1" );
+                $this->incrementGoodQueryCount();
 
                 //if we already have a record of this IP address and we have info on it from ipinfo.io,
                 //then we don't need to get info on it from ipinfo.io again ( which has limit of 1000 requests per day )
-                $pregmatch = preg_quote( '{"ERROR":"', '/' );
-                if ( $this->haveIPAddressOnRecord === false || $this->geoip_json == "" || $this->geoip_json === null || preg_match( "/" . $pregmatch . "/", $this->geoip_json ) ) {
+                if ( $this->geoIPInfoIsEmptyOrIsError() ) {
                     if ( $this->DEBUG_IPINFO === true ) {
                         file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $this->geoip_json. "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
                     }
-                    $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" ) : false;
+                    $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" ) : false;
                     if ( $ipresult ) {
                         if ( $ipresult->num_rows > 0 ) {
                             if ( $this->DEBUG_IPINFO === true ) {
                                 file_put_contents( $this->DEBUGFILE, "We already have valid geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX );
                             }
-                            $iprow = $ipresult->fetch_assoc( );
+                            $iprow = $ipresult->fetch_assoc();
                             $this->geoip_json = $iprow["WHO_WHERE_JSON"];
                             $this->haveIPAddressOnRecord = true;
                         } else {
@@ -1501,16 +1511,16 @@ class BIBLEGET_QUOTE {
                     $this->geoip_json = '{"ERROR":""}';
                 }
 
-                $stmt = $this->mysqli->prepare( "INSERT INTO requests_log__" . $curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )" );
+                $stmt = $this->mysqli->prepare( "INSERT INTO requests_log__" . $this->curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )" );
                 $stmt->bind_param( 'ssssssssssssss', $ipaddress, $this->geoip_json, $this->jsonEncodedRequestHeaders, $this->originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
-                if ( $stmt->execute( ) === false ) {
+                if ( $stmt->execute() === false ) {
                     $this->addErrorMessage( "There has been an error updating the logs: ( " . $this->mysqli->errno . " ) " . $this->mysqli->error );
                 }
-                $stmt->close( );
+                $stmt->close();
 
                 $verse = "";
                 $newverse = false;
-                while ( $row = $result->fetch_assoc( ) ) {
+                while ( $row = $result->fetch_assoc() ) {
 
                     $row["version"] = strtoupper( $myversion );
                     $row["testament"] = ( int )$row["testament"];
@@ -1628,7 +1638,7 @@ class BIBLEGET_QUOTE {
     }
 
 
-    public function Init( ) {
+    public function Init() {
 
         switch( $this->returnType ){
             case "xml":
@@ -1644,24 +1654,28 @@ class BIBLEGET_QUOTE {
               header( 'Content-Type: application/json; charset=utf-8' );
         }
 
-        $this->BibleQuoteInit( );
-        $this->dbConnect( );
-        $this->populateVersionsInfo( );
-        $this->prepareBibleBooks( );
-        $this->prepareRequestedVersions( );
-        $this->prepareIndexes( );
+        $this->BibleQuoteInit();
+        $this->dbConnect();
+        $this->populateVersionsInfo();
+        $this->prepareBibleBooks();
+        $this->prepareRequestedVersions();
+        $this->prepareIndexes();
 
         if ( isset( $this->DATA["query"] ) && $this->DATA["query"] !== "" ) {
 
             $queries = $this->queryStrClean( $this->DATA["query"] );
-
+            if( $this->detectedNotation === "MIXED" ){
+                $this->addErrorMessage( "Mixed notations have been detected, please use either english or european notation." );
+                $this->outputResult();
+            }
+    
             //at least the first query must start with a book reference, which may have a number from 1 to 3 at the beginning
             //echo "matching against: ".$queries[0]."<br />";
             if ( !preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $queries[0] ) ) {
                 if ( !preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $queries[0] ) ) {
                     // error message: querystring must have book indication at the very start...
                     $this->addErrorMessage( 0 );
-                    $this->outputResult( );
+                    $this->outputResult();
                 }
             }
 
@@ -1669,7 +1683,7 @@ class BIBLEGET_QUOTE {
             $usedvariants = property_exists( $validatedQueries, 'usedvariants' ) ? $validatedQueries->usedvariants : false;
 
             if ( !is_array( $usedvariants ) ) {
-                $this->outputResult( );
+                $this->outputResult();
             } else {
                 // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
                 $formulatedQueries = $this->formulateQueries( $validatedQueries );
@@ -1677,9 +1691,8 @@ class BIBLEGET_QUOTE {
                 // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
                 $this->doQueries( $formulatedQueries );
 
-
-                // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE    
-                $this->outputResult( );
+                // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE
+                $this->outputResult();
             }
 
         }
@@ -1699,22 +1712,22 @@ if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BI
     if( NULL === $json || "" === $json ){
         header( $_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400 );
         die( '{"error":"No JSON data received in the request: <' . $json . '>"' );
-    } else if ( json_last_error( ) !== JSON_ERROR_NONE ) {
+    } else if ( json_last_error() !== JSON_ERROR_NONE ) {
         header( $_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400 );
-        die( '{"error":"Malformed JSON data received in the request: <' . $json . '>, ' . json_last_error_msg( ) . '"}' );
+        die( '{"error":"Malformed JSON data received in the request: <' . $json . '>, ' . json_last_error_msg() . '"}' );
     } else {
         $BIBLEQUOTE = new BIBLEGET_QUOTE( $data );
-        $BIBLEQUOTE->Init( );
+        $BIBLEQUOTE->Init();
     }
 } else {
   switch( strtoupper( $_SERVER["REQUEST_METHOD"] ) ) {
       case 'POST':
           $BIBLEQUOTE = new BIBLEGET_QUOTE( $_POST );
-          $BIBLEQUOTE->Init( );
+          $BIBLEQUOTE->Init();
           break;
       case 'GET':
           $BIBLEQUOTE = new BIBLEGET_QUOTE( $_GET );
-          $BIBLEQUOTE->Init( );
+          $BIBLEQUOTE->Init();
           break;
       default:
           header( $_SERVER["SERVER_PROTOCOL"]." 405 Method Not Allowed", true, 405 );
