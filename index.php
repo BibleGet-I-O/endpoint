@@ -386,7 +386,8 @@ class BIBLEGET_QUOTE {
 
     private function populateVersionsInfo( ){
 
-        if( $result = $this->mysqli->query( "SELECT * FROM versions_available WHERE type = 'BIBLE'" ) ) {
+        $result = $this->mysqli->query( "SELECT * FROM versions_available WHERE type = 'BIBLE'" );
+        if( $result ) {
             while( $row = mysqli_fetch_assoc( $result ) ) {
                 $this->validversions[] = $row["sigla"];
                 $this->validversions_fullname[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
@@ -424,7 +425,8 @@ class BIBLEGET_QUOTE {
             $book_num       = [];
 
             // fetch the index information for the requested version from the database and load it into our arrays
-            if( $result = $this->mysqli->query( "SELECT * FROM ".$variant."_idx" ) ){
+            $result = $this->mysqli->query( "SELECT * FROM ".$variant."_idx" );
+            if( $result ){
                 while( $row = $result->fetch_assoc( ) ){
                     $abbreviations[]    = $row["abbrev"];
                     $bbbooks[]          = $row["fullname"];
@@ -448,14 +450,16 @@ class BIBLEGET_QUOTE {
 
     private function prepareBibleBooks( ){
 
-        if ( $result1 = $this->mysqli->query( "SELECT * FROM biblebooks_fullname" ) ) {
+        $result1 = $this->mysqli->query( "SELECT * FROM biblebooks_fullname" );
+        if ( $result1 ) {
             $cols = mysqli_num_fields( $result1 );
             $names = [];
             $finfo = mysqli_fetch_fields( $result1 );
             foreach ( $finfo as $val ) {
                 $names[] = $val->name;
             }
-            if ( $result2 = $this->mysqli->query( "SELECT * FROM biblebooks_abbr" ) ) {
+            $result2 = $this->mysqli->query( "SELECT * FROM biblebooks_abbr" );
+            if ( $result2 ) {
                 $cols2 = mysqli_num_fields( $result2 );
                 $rows2 = mysqli_num_rows( $result2 );
                 $names2 = [];
@@ -1342,7 +1346,8 @@ class BIBLEGET_QUOTE {
             //Don't enforce the max limit for requests from domains that need to do a lot of testing for plugin development
             if ( array_search( $this->DATA["domain"], $this->WhitelistedDomainsIPs ) === false && array_search( $ipaddress, $this->WhitelistedDomainsIPs ) === false ) {
                 //check if we have already seen this IP Address in the past 2 days and if we have the same request already
-                if ( $ipaddress != "" && $ipresult = $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) ) {
+                $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
+                if ( $ipresult ) {
                     if ( $this->DEBUG_IPINFO === true ) {
                         file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
                     }
@@ -1361,7 +1366,8 @@ class BIBLEGET_QUOTE {
                 }
 
                 //and if the same IP address is making too many requests( >100? ) with different queries ( like copying the bible texts completely ), deny service
-                if ( $ipaddress != "" && $ipresult = $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) ) {
+                $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
+                if ( $ipresult ) {
                     if ( $this->DEBUG_IPINFO === true ) {
                         file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX );
                     }
@@ -1376,7 +1382,8 @@ class BIBLEGET_QUOTE {
                 }
 
                 //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
-                if ( $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" ) ) {
+                $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+                if ( $originres ) {
                     if ( $originres->num_rows > 0 ) {
                         $originRow = $originres->fetch_assoc( );
                         if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
@@ -1390,7 +1397,8 @@ class BIBLEGET_QUOTE {
                     }
                 }
                 //and we'll check for diverse requests from the same origin in the past couple days ( >100? )
-                if ( $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" ) ) {
+                $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+                if ( $originres ) {
                     if ( $originres->num_rows > 0 ) {
                         $originRow = $originres->fetch_assoc( );
                         if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
@@ -1406,7 +1414,8 @@ class BIBLEGET_QUOTE {
             $myversion = $queriesversions[$i];
             //     echo $i." ) myversion = ".$myversion."<br />";
             //     echo "about to query the database: &lt;".$xquery."&gt;<br />";
-            if ( $result = $this->mysqli->query( $xquery ) ) {
+            $result = $this->mysqli->query( $xquery );
+            if ( $result ) {
                 //       echo "<p>We have results from query ".$xquery."</p>";
                 // Up the good counter!
                 $this->mysqli->query( "UPDATE counter SET good = good + 1" );
@@ -1418,7 +1427,8 @@ class BIBLEGET_QUOTE {
                     if ( $this->DEBUG_IPINFO === true ) {
                         file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
                     }
-                    if ( $ipaddress != "" && $ipresult = $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" ) ) {
+                    $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" ) : false;
+                    if ( $ipresult ) {
                         if ( $ipresult->num_rows > 0 ) {
                             if ( $this->DEBUG_IPINFO === true ) {
                                 file_put_contents( $this->DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX );
