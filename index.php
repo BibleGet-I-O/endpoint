@@ -1406,8 +1406,6 @@ class BIBLEGET_QUOTE {
     private function doQueries( array $formulatedQueries ) {
         [ $sqlqueries, $queriesversions, $originalquery ] = $formulatedQueries;
 
-        $headers = json_encode( $this->requestHeaders );
-
         // I need to find a way to check and counter when someone uses in an indiscriminate manner
         // People need to learn to do cacheing of requests ( maybe they're trying to turn it into a kind of DDOS attack? )
         // Need to protect ourselves here, but instead of pointing fingers by looking for example at the referring site,
@@ -1429,9 +1427,9 @@ class BIBLEGET_QUOTE {
         $pluginversion  = $this->DATA["pluginversion"] != "" ? $this->DATA["pluginversion"] : "unknown";
         $curYEAR = date( "Y" ); //request logs are divided by year, to keep things cleaner and easier to access and read
 
-        foreach ( $sqlqueries as $xquery ) {
+        [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress( );
 
-            [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress( );
+        foreach ( $sqlqueries as $xquery ) {
 
             if ( $this->validateIPAddress( $ipaddress ) === false ) {
                 $this->addErrorMessage( "The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $xquery );
@@ -1495,7 +1493,7 @@ class BIBLEGET_QUOTE {
                 }
 
                 $stmt = $this->mysqli->prepare( "INSERT INTO requests_log__" . $curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )" );
-                $stmt->bind_param( 'ssssssssssssss', $ipaddress, $this->geoip_json, $headers, $this->originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
+                $stmt->bind_param( 'ssssssssssssss', $ipaddress, $this->geoip_json, json_encode( $this->requestHeaders ), $this->originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
                 if ( $stmt->execute( ) === false ) {
                     $this->addErrorMessage( "There has been an error updating the logs: ( " . $this->mysqli->errno . " ) " . $this->mysqli->error );
                 }
