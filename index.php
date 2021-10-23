@@ -152,6 +152,7 @@ class BIBLEGET_QUOTE {
     private $acceptHeader                 = "";
     private $requestMethod                = "";
     private $contentType                  = "";
+    private $originHeader                 = "";
     private $bibleQuote;                    //object with json, xml or html data to return
     private $mysqli;                        //instance of database
     private $isAjax                       = false;
@@ -176,6 +177,7 @@ class BIBLEGET_QUOTE {
 
     function __construct( array $DATA ){
         $this->requestHeaders = getallheaders( );
+        $this->originHeader = key_exists( "ORIGIN", $this->requestHeaders ) ? $this->requestHeaders["ORIGIN"] : "";
         $this->contentType = isset( $_SERVER['CONTENT_TYPE'] ) && in_array( $_SERVER['CONTENT_TYPE'], self::$allowedContentTypes ) ? $_SERVER['CONTENT_TYPE'] : "";
         $this->acceptHeader = isset( $this->requestHeaders["Accept"] ) && in_array( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders ) ? ( string ) $this->requestHeaders["Accept"] : "";
         $this->requestMethod = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : $_SERVER["REQUEST_METHOD"];
@@ -1331,7 +1333,7 @@ class BIBLEGET_QUOTE {
         return filter_var( $ipaddress, FILTER_VALIDATE_IP );
     }
 
-    private function enforceQueryLimits( string $ipaddress, string $xquery, string $originHeader ) {
+    private function enforceQueryLimits( string $ipaddress, string $xquery ) {
         $geoip_json = "";
         $haveIPAddressOnRecord = false;
 
@@ -1373,7 +1375,7 @@ class BIBLEGET_QUOTE {
 
         //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
         $curYEAR = date( "Y" );
-        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
                 $originRow = $originres->fetch_assoc( );
@@ -1388,7 +1390,7 @@ class BIBLEGET_QUOTE {
             }
         }
         //and we'll check for diverse requests from the same origin in the past couple days ( >100? )
-        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
                 $originRow = $originres->fetch_assoc( );
@@ -1434,7 +1436,6 @@ class BIBLEGET_QUOTE {
             $geoip_json = "";
             //we start off with the supposition that we've never seen this IP address before
             $haveIPAddressOnRecord     = false;
-            $originHeader = key_exists( "ORIGIN", $this->requestHeaders ) ? $this->requestHeaders["ORIGIN"] : "";
 
             [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress( );
 
@@ -1446,7 +1447,7 @@ class BIBLEGET_QUOTE {
             //We don't enforce the max limit for requests from domains or IP addresses that need to do a lot of testing for plugin development
             //These are put into and checked against a whitelist
             if ( $this->isWhitelisted( $domain ) === false && $this->isWhitelisted( $ipaddress ) === false ) {
-                [ $geoip_json, $haveIPAddressOnRecord ] = $this->enforceQueryLimits( $ipaddress, $xquery, $originHeader );
+                [ $geoip_json, $haveIPAddressOnRecord ] = $this->enforceQueryLimits( $ipaddress, $xquery );
             }
 
             $myversion = $queriesversions[$i];
@@ -1500,7 +1501,7 @@ class BIBLEGET_QUOTE {
                 }
 
                 $stmt = $this->mysqli->prepare( "INSERT INTO requests_log__" . $curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )" );
-                $stmt->bind_param( 'ssssssssssssss', $ipaddress, $geoip_json, $headers, $originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
+                $stmt->bind_param( 'ssssssssssssss', $ipaddress, $geoip_json, $headers, $this->originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
                 if ( $stmt->execute( ) === false ) {
                     $this->addErrorMessage( "There has been an error updating the logs: ( " . $this->mysqli->errno . " ) " . $this->mysqli->error );
                 }
