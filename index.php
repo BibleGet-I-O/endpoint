@@ -302,6 +302,9 @@ class BIBLEGET_QUOTE {
         }
         $mysqli->set_charset( "utf8" );
         $this->mysqli = $mysqli;
+        if( defined('WHITELISTED_DOMAINS_IPS') ){
+            $this->WhitelistedDomainsIPs = WHITELISTED_DOMAINS_IPS;
+        }
     }
 
     static private function toProperCase( string $txt ) {
@@ -590,6 +593,18 @@ class BIBLEGET_QUOTE {
         array_walk( $queries,'self::toProperCase' );
         return $queries;
     }
+
+    private function stringWithUpperAndLowerCaseVariants (string $query) : bool {
+        return preg_match( "/\p{L&}/u", $query );
+    }
+
+    private function chapterIndicatorFollowsBookIndicator (string $query) : bool {
+        return ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query, $res1 ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query, $res2 ) );
+    }
+
+    private function incrementBadQueryCount() {
+        $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+    }
     
     private function validateQueries( $queries ) {
 
@@ -604,13 +619,12 @@ class BIBLEGET_QUOTE {
             $fullquery = $query;
             //echo "<p>Now checking validity of query: ".$query."</p>";
             //if( preg_match( "/^[1-3]{0,1}[A-Z][a-z]+/u",$query,$res1 ) != preg_match( "/^[1-3]{0,1}[A-Z][a-z]+[1-9][0-9]{0,2}/u",$query,$res2 ) ){
-            if ( preg_match( "/\p{L&}/u", $query ) ) {
+            if ( $this->stringWithUpperAndLowerCaseVariants( $query ) ) {
                 //echo "<p>We are dealing with a string that has upper/lower case variants.</p>";
-                if ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query, $res1 ) != preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query, $res2 ) ) {
+                if ( $this->chapterIndicatorFollowsBookIndicator( $query ) === false ) {
                     // error message: every book indication must be followed by a valid chapter indication
                     $this->addErrorMessage( 1 );
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     return false;
                 }
 
@@ -642,8 +656,7 @@ class BIBLEGET_QUOTE {
                         //echo "</pre>";
                         // error message: unrecognized book abbreviation
                         $this->addErrorMessage( sprintf( 'The book abbreviation %s is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.', $thisbook ) );
-                        // Up the bad counter
-                        $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                        $this->incrementBadQueryCount();
                         //return false;
                         continue;
                     } else {
@@ -655,8 +668,7 @@ class BIBLEGET_QUOTE {
                 if ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query, $res1 ) != preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+[1-9][0-9]{0,2}/u", $query, $res2 ) ) {
                     // error message: every book indication must be followed by a valid chapter indication
                     $this->addErrorMessage( 1 );
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     return false;
                 }
                 if ( preg_match( "/^( [1-3]{0,1}( ( \p{L}\p{M}* )+ ) )/u", $query, $res ) ) {
@@ -682,8 +694,7 @@ class BIBLEGET_QUOTE {
                         //echo "<p>ALARM!!! We are getting an invalid book flag.</p>";
                         // error message: unrecognized book abbreviation
                         $this->addErrorMessage( sprintf( 'The book abbreviation %s is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.', $thisbook ) );
-                        // Up the bad counter
-                        $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                        $this->incrementBadQueryCount();
                         continue;
                     } else {
                         $query = str_replace( $thisbook, "", $query );
@@ -695,8 +706,7 @@ class BIBLEGET_QUOTE {
                 if ( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) ) {
                     // error message: You cannot use a dot without first using a comma. A dot is a liason between verses, which are separated from the chapter by a comma.
                     $this->addErrorMessage( 3 );
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 }
@@ -705,8 +715,7 @@ class BIBLEGET_QUOTE {
                 if ( preg_match_all( "/( ?<![0-9] )( ?=( [1-9][0-9]{0,2}\.[1-9][0-9]{0,2} ) )/", $query ) != substr_count( $query, "." ) ) {
                     // error message: A dot must be preceded and followed by 1 to 3 digits etc.
                     $this->addErrorMessage( 4 );
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 }
@@ -718,8 +727,7 @@ class BIBLEGET_QUOTE {
                     //echo "There are ".preg_match_all( "/( ?=[1-9][0-9]{0,2}\,[1-9][0-9]{0,2} )/",$query )." matches for commas preceded and followed by valid 1-3 digit sequences;<br>";
                     //echo "There are ".substr_count( $query,"," )." matches for commas in this query.";
                     $this->addErrorMessage( 5 );
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 } else {
@@ -878,23 +886,20 @@ class BIBLEGET_QUOTE {
                     //echo "There are ".preg_match( "/( ?=[1-9][0-9]{0,2}\-[1-9][0-9]{0,2} )/",$query )." matches for dashes preceded and followed by valid 1-3 digit sequences;<br>";
                     //echo "There are ".substr_count( $query,"-" )." matches for dashes in this query.";
                     $this->addErrorMessage( 6 );
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 }
                 if ( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/( ?=\,[1-9][0-9]{0,2}\- )/", $query ) > preg_match_all( "/( ?=\-[1-9][0-9]{0,2}\, )/", $query ) ) ) {
                     // error message: there must be as many comma constructs preceding dashes as there are following dashes
                     $this->addErrorMessage( 7 );
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 }
                 if ( substr_count( $query, "-" ) > 1 && ( !strpos( $query, "." ) || ( substr_count( $query, "-" ) - 1 > substr_count( $query, "." ) ) ) ) {
                     // error message: there cannot be multiple dashes in a query if there are not as many dots minus 1.
-                    // Up the bad counter
-                    $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
+                    $this->incrementBadQueryCount();
                     $this->addErrorMessage( 8 );
                     continue;
                     //return false;
