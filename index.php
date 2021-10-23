@@ -182,7 +182,7 @@ class BIBLEGET_QUOTE {
         $this->returnType = ( isset( $DATA["return"] ) && in_array( strtolower( $DATA["return"] ),self::$returnTypes ) ) ? strtolower( $DATA["return"] ) : ( $this->acceptHeader !== "" ? ( string ) self::$returnTypes[array_search( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders )] : ( string ) self::$returnTypes[0] );
         $this->isAjax = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] );
         //let's ensure that we have at least default values for parameters
-        $this->DATA = array_merge( self::$requestParameters,$DATA );
+        $this->DATA = array_merge( self::$requestParameters, $DATA );
         $this->DATA["preferorigin"] = in_array( $this->DATA["preferorigin"], self::$allowedPreferredOrigins ) ? $this->DATA["preferorigin"] : "";
     }
 
@@ -1313,6 +1313,96 @@ class BIBLEGET_QUOTE {
         return [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ];
     }
 
+    private function isWhitelisted( string $domainOrIP ) {
+        return array_search( $domainOrIP, $this->WhitelistedDomainsIPs );
+    }
+
+    private function haveSeenIPAddressPastTwoDaysWithSameRequest( string $ipaddress, string $xquery ) {
+        $curYEAR = date( "Y" );
+        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
+    }
+
+    private function tooManyQueriesFromSameIPAddress( string $ipaddress ) {
+        $curYEAR = date( "Y" );
+        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
+    }
+
+    private function validateIPAddress( string $ipaddress ) {
+        return filter_var( $ipaddress, FILTER_VALIDATE_IP );
+    }
+
+    private function enforceQueryLimits( string $ipaddress, string $xquery, string $originHeader ) {
+        $geoip_json = "";
+        $haveIPAddressOnRecord = false;
+
+        //check if we have already seen this IP Address in the past 2 days and if we have the same request already
+        $ipresult = $this->haveSeenIPAddressPastTwoDaysWithSameRequest( $ipaddress, $xquery );
+        if ( $ipresult ) {
+            if ( $this->DEBUG_IPINFO === true ) {
+                file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
+            }
+            //if more than 10 times in the past two days ( but less than 30 ) simply add message inviting to use cacheing mechanism
+            if ( $ipresult->num_rows > 10 && $ipresult->num_rows < 30 ) {
+                $this->addErrorMessage( 10, $xquery );
+                $iprow = $ipresult->fetch_assoc( );
+                $geoip_json = $iprow[ "WHO_WHERE_JSON" ];
+                $haveIPAddressOnRecord = true;
+            }
+            //if we have more than 30 requests in the past two days for the same query, deny service?
+            else if ( $ipresult->num_rows > 29 ) {
+                $this->addErrorMessage( 11, $xquery );
+                $this->outputResult( ); //this should exit the script right here, closing the mysql connection
+            }
+        }
+
+        //and if the same IP address is making too many requests( >100? ) with different queries ( like copying the bible texts completely ), deny service
+        $ipresult = $this->tooManyQueriesFromSameIPAddress( $ipaddress );
+        if ( $ipresult ) {
+            if ( $this->DEBUG_IPINFO === true ) {
+                file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX );
+            }
+            //if we 50 or more requests in the past two days, deny service?
+            if ( $ipresult->num_rows > 100 ) {
+                if ( $this->DEBUG_IPINFO === true ) {
+                    file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX );
+                }
+                $this->addErrorMessage( 12, $xquery );
+                $this->outputResult( ); //this should exit the script right here, closing the mysql connection
+            }
+        }
+
+        //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
+        $curYEAR = date( "Y" );
+        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        if ( $originres ) {
+            if ( $originres->num_rows > 0 ) {
+                $originRow = $originres->fetch_assoc( );
+                if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
+                    if ( $originRow["ORIGIN_CNT"] > 10 && $originRow["ORIGIN_CNT"] < 30 ) {
+                        $this->addErrorMessage( 10, $xquery );
+                    } else if ( $originRow["ORIGIN_CNT"] > 29 ) {
+                        $this->addErrorMessage( 11, $xquery );
+                        $this->outputResult( ); //this should exit the script right here, closing the mysql connection                
+                    }
+                }
+            }
+        }
+        //and we'll check for diverse requests from the same origin in the past couple days ( >100? )
+        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        if ( $originres ) {
+            if ( $originres->num_rows > 0 ) {
+                $originRow = $originres->fetch_assoc( );
+                if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
+                    if ( $originRow["ORIGIN_CNT"] > 100 ) {
+                        $this->addErrorMessage( 12, $xquery );
+                        $this->outputResult( ); //this should exit the script right here, closing the mysql connection
+                    }
+                }
+            }
+        }
+        return [ $geoip_json, $haveIPAddressOnRecord ];
+    }
+
     private function doQueries( array $formulatedQueries ) {
         [ $sqlqueries, $queriesversions, $originalquery ] = $formulatedQueries;
 
@@ -1334,92 +1424,30 @@ class BIBLEGET_QUOTE {
 
         // HTML return type is a special case, because we must already implement display logic to the structured data that is returned 
         $i              = 0;
-        $appid          = "";
-        $domain         = "";
-        $pluginversion  = "";
+        $appid          = $this->DATA["appid"] != "" ? $this->DATA["appid"] : "unknown";
+        $domain         = $this->DATA["domain"] != "" ? $this->DATA["domain"] : "unknown";
+        $pluginversion  = $this->DATA["pluginversion"] != "" ? $this->DATA["pluginversion"] : "unknown";
         $curYEAR = date( "Y" ); //request logs are divided by year, to keep things cleaner and easier to access and read
 
         foreach ( $sqlqueries as $xquery ) {
 
             $geoip_json = "";
             //we start off with the supposition that we've never seen this IP address before
-            $haveip     = false; //"haveip" means "we already have this ip address in our records"
+            $haveIPAddressOnRecord     = false;
             $originHeader = key_exists( "ORIGIN", $this->requestHeaders ) ? $this->requestHeaders["ORIGIN"] : "";
 
             [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress( );
 
-            if ( filter_var( $ipaddress, FILTER_VALIDATE_IP ) === false ) {
+            if ( $this->validateIPAddress( $ipaddress ) === false ) {
                 $this->addErrorMessage( "The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $xquery );
                 $this->outputResult( ); //this should exit the script right here, closing the mysql connection
             }
 
-            //Don't enforce the max limit for requests from domains that need to do a lot of testing for plugin development
-            if ( array_search( $this->DATA["domain"], $this->WhitelistedDomainsIPs ) === false && array_search( $ipaddress, $this->WhitelistedDomainsIPs ) === false ) {
-                //check if we have already seen this IP Address in the past 2 days and if we have the same request already
-                $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
-                if ( $ipresult ) {
-                    if ( $this->DEBUG_IPINFO === true ) {
-                        file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
-                    }
-                    //if more than 10 times in the past two days ( but less than 30 ) simply add message inviting to use cacheing mechanism
-                    if ( $ipresult->num_rows > 10 && $ipresult->num_rows < 30 ) {
-                        $this->addErrorMessage( 10, $xquery );
-                        $iprow = $ipresult->fetch_assoc( );
-                        $geoip_json = $iprow[ "WHO_WHERE_JSON" ];
-                        $haveip = true;
-                    }
-                    //if we have more than 30 requests in the past two days for the same query, deny service?
-                    else if ( $ipresult->num_rows > 29 ) {
-                        $this->addErrorMessage( 11, $xquery );
-                        $this->outputResult( ); //this should exit the script right here, closing the mysql connection
-                    }
-                }
-
-                //and if the same IP address is making too many requests( >100? ) with different queries ( like copying the bible texts completely ), deny service
-                $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY )" ) : false;
-                if ( $ipresult ) {
-                    if ( $this->DEBUG_IPINFO === true ) {
-                        file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX );
-                    }
-                    //if we 50 or more requests in the past two days, deny service?
-                    if ( $ipresult->num_rows > 100 ) {
-                        if ( $this->DEBUG_IPINFO === true ) {
-                            file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with over 50 requests", FILE_APPEND | LOCK_EX );
-                        }
-                        $this->addErrorMessage( 12, $xquery );
-                        $this->outputResult( ); //this should exit the script right here, closing the mysql connection
-                    }
-                }
-
-                //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
-                $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
-                if ( $originres ) {
-                    if ( $originres->num_rows > 0 ) {
-                        $originRow = $originres->fetch_assoc( );
-                        if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
-                            if ( $originRow["ORIGIN_CNT"] > 10 && $originRow["ORIGIN_CNT"] < 30 ) {
-                                $this->addErrorMessage( 10, $xquery );
-                            } else if ( $originRow["ORIGIN_CNT"] > 29 ) {
-                                $this->addErrorMessage( 11, $xquery );
-                                $this->outputResult( ); //this should exit the script right here, closing the mysql connection                
-                            }
-                        }
-                    }
-                }
-                //and we'll check for diverse requests from the same origin in the past couple days ( >100? )
-                $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $originHeader . "' AND WHO_WHEN > DATE_SUB( NOW( ), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
-                if ( $originres ) {
-                    if ( $originres->num_rows > 0 ) {
-                        $originRow = $originres->fetch_assoc( );
-                        if ( array_key_exists( "ORIGIN_CNT", $originRow ) ) {
-                            if ( $originRow["ORIGIN_CNT"] > 100 ) {
-                                $this->addErrorMessage( 12, $xquery );
-                                $this->outputResult( ); //this should exit the script right here, closing the mysql connection
-                            }
-                        }
-                    }
-                }
-            } // end max request checks
+            //We don't enforce the max limit for requests from domains or IP addresses that need to do a lot of testing for plugin development
+            //These are put into and checked against a whitelist
+            if ( $this->isWhitelisted( $domain ) === false && $this->isWhitelisted( $ipaddress ) === false ) {
+                [ $geoip_json, $haveIPAddressOnRecord ] = $this->enforceQueryLimits( $ipaddress, $xquery, $originHeader );
+            }
 
             $myversion = $queriesversions[$i];
             //     echo $i." ) myversion = ".$myversion."<br />";
@@ -1433,7 +1461,7 @@ class BIBLEGET_QUOTE {
                 //if we already have a record of this IP address and we have info on it from ipinfo.io,
                 //then we don't need to get info on it from ipinfo.io again ( which has limit of 1000 requests per day )
                 $pregmatch = preg_quote( '{"ERROR":"', '/' );
-                if ( $haveip === false || $geoip_json == "" || $geoip_json === null || preg_match( "/" . $pregmatch . "/", $geoip_json ) ) {
+                if ( $haveIPAddressOnRecord === false || $geoip_json == "" || $geoip_json === null || preg_match( "/" . $pregmatch . "/", $geoip_json ) ) {
                     if ( $this->DEBUG_IPINFO === true ) {
                         file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
                     }
@@ -1445,7 +1473,7 @@ class BIBLEGET_QUOTE {
                             }
                             $iprow = $ipresult->fetch_assoc( );
                             $geoip_json = $iprow["WHO_WHERE_JSON"];
-                            $haveip = true;
+                            $haveIPAddressOnRecord = true;
                         } else {
                             if ( $this->DEBUG_IPINFO === true ) {
                                 file_put_contents( $this->DEBUGFILE, "We do not yet have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX );
@@ -1466,15 +1494,6 @@ class BIBLEGET_QUOTE {
                     }
                 }
 
-                if ( $appid === "" ) {
-                    $appid = ( $this->DATA["appid"] != "" ) ? $this->DATA["appid"] : "unknown";
-                }
-                if ( $domain === "" ) {
-                    $domain = ( $this->DATA["domain"] != "" ) ? $this->DATA["domain"] : "unknown";
-                }
-                if ( $pluginversion === "" ) {
-                    $pluginversion = ( $this->DATA["pluginversion"] != "" ) ? $this->DATA["pluginversion"] : "unknown";
-                }
                 $ipaddress = $ipaddress != "" ? $ipaddress : "0.0.0.0";
                 if ( $geoip_json === "" || $geoip_json === null ) {
                     $geoip_json = '{"ERROR":""}';
