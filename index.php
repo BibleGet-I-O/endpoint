@@ -124,6 +124,13 @@ class BIBLEGET_QUOTE {
         12 => "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management."
     ];
 
+    const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                        = 0;
+    const VALID_CHAPTER_MUST_FOLLOW_BOOK                                    = 1;
+    const IS_VALID_BOOK_INDICATOR                                           = 2;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR       = 3;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS                 = 4;
+    const CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS         = 5;
+
     /*
     static public $sections = [
         "Pentateuco",
@@ -170,13 +177,6 @@ class BIBLEGET_QUOTE {
     public $DEBUG_REQUESTS                = false;
     public $DEBUG_IPINFO                  = false;
     public $DEBUGFILE                     = "requests.log";
-
-    const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                        = 0;
-    const VALID_CHAPTER_MUST_FOLLOW_BOOK                                    = 1;
-    const IS_VALID_BOOK_INDICATOR                                           = 2;
-    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR       = 3;
-    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS                 = 4;
-    const CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS         = 5;
 
     function __construct( array $DATA ){
         $this->requestHeaders = getallheaders();
@@ -605,14 +605,6 @@ class BIBLEGET_QUOTE {
         return preg_match( "/\p{L&}/u", $query );
     }
 
-    private function chapterIndicatorFollowsBookIndicator( string $query, bool $hasULVariants ) : bool {
-        if($hasULVariants){
-            return ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query, $res1 ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query, $res2 ) );
-        } else {
-            return ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query, $res1 ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query, $res2 ) );
-        }
-    }
-
     private function incrementBadQueryCount() {
         $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
     }
@@ -645,6 +637,22 @@ class BIBLEGET_QUOTE {
     private function validateRuleAgainstQuery( int $rule, string $query ) : bool {
         $validation = false;
         switch( $rule ){
+            case self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR :
+                $validation = (preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $query ));
+                break;
+            case self::VALID_CHAPTER_MUST_FOLLOW_BOOK :
+                if($this->stringWithUpperAndLowerCaseVariants( $query ) ){
+                    $validation = ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query ) );
+                } else {
+                    $validation = ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query ) );
+                }
+                break;
+            case self::IS_VALID_BOOK_INDICATOR :
+                $validation = (1===1);
+                break;
+            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR :
+                $validation = (1===1);
+                break;
             case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
                 $validation = ( preg_match_all( "/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/", $query ) === substr_count( $query, "." ) );
                 break;
@@ -674,80 +682,41 @@ class BIBLEGET_QUOTE {
 
         foreach ( $queries as $query ) {
             $fullquery = $query;
-            //if( preg_match( "/^[1-3]{0,1}[A-Z][a-z]+/u",$query,$res1 ) != preg_match( "/^[1-3]{0,1}[A-Z][a-z]+[1-9][0-9]{0,2}/u",$query,$res2 ) ){
+
+            if( $this->validateRuleAgainstQuery( self::VALID_CHAPTER_MUST_FOLLOW_BOOK, $query ) === false ){
+                $this->addErrorMessage( self::VALID_CHAPTER_MUST_FOLLOW_BOOK );
+                $this->incrementBadQueryCount();
+                return false;
+            }
+
             $hasULVariants = $this->stringWithUpperAndLowerCaseVariants( $query );
-            if ( $hasULVariants ) {
-                if ( $this->chapterIndicatorFollowsBookIndicator( $query, $hasULVariants ) === false ) {
-                    $this->addErrorMessage( 1 );
-                    $this->incrementBadQueryCount();
-                    return false;
-                }
-
-                $matchedBook = $this->matchBookInQuery( $query, $hasULVariants );
-
-                if ( $matchedBook !== false ) {
-                    $validbookflag = false;
-                    $thisbook = $matchedBook[0];
-                    foreach ( $this->requestedVersions as $variant ) {
-                        if ( $this->isValidBookForVariant( $thisbook, $variant ) ) {
+            $matchedBook = $this->matchBookInQuery( $query, $hasULVariants );
+            if ( $matchedBook !== false ) {
+                $thisbook = $matchedBook[0];
+                $validbookflag = false;
+                foreach ( $this->requestedVersions as $variant ) {
+                    if ( $this->isValidBookForVariant( $thisbook, $variant ) ) {
+                        $validbookflag = true;
+                        $usedvariant = $variant;
+                        //we can still use the index for further integrity checks!
+                        $idx = self::idxOf( $thisbook, $this->biblebooks );
+                        break;
+                    } else {
+                        $idx = self::idxOf( $thisbook, $this->biblebooks );
+                        if( $idx !== false){
+                            //echo "<p>Book was recognized as valid.</p>";
                             $validbookflag = true;
-                            $usedvariant = $variant;
-                            //we can still use the index for further integrity checks!
-                            $idx = self::idxOf( $thisbook, $this->biblebooks );
-                            break;
-                        } else {
-                            $idx = self::idxOf( $thisbook, $this->biblebooks );
-                            if ( $idx !== false ) {
-                              //echo "<p>Book name ".$thisbook." was recognized as a valid book name, even if not in the indexes of the requested version \"".$variant."\"</p>";
-                              $validbookflag = true;
-                            }
                         }
                     }
-
-                    if ( !$validbookflag ) {
-                        $this->addErrorMessage( sprintf( 'The book abbreviation %s is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.', $thisbook ) );
-                        $this->incrementBadQueryCount();
-                        continue;
-                    } else {
-                        $query = str_replace( $thisbook, "", $query );
-                    }
                 }
-            } else {
-                //echo "<p>We are dealing with a string that does not have upper / lower case variants.</p>";
-                if ( $this->chapterIndicatorFollowsBookIndicator( $query, $hasULVariants ) === false ) {
-                    $this->addErrorMessage( 1 );
+                if ( !$validbookflag ) {
+                    //echo "<p>ALARM!!! We are getting an invalid book flag.</p>";
+                    // error message: unrecognized book abbreviation
+                    $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $thisbook ) );
                     $this->incrementBadQueryCount();
-                    return false;
-                }
-
-                $matchedBook = $this->matchBookInQuery( $query, $hasULVariants );
-                if ( $matchedBook !== false ) {
-                    $thisbook = $matchedBook[0];
-                    $validbookflag = false;
-                    foreach ( $this->requestedVersions as $variant ) {
-                        if ( $this->isValidBookForVariant( $thisbook, $variant ) ) {
-                            $validbookflag = true;
-                            $usedvariant = $variant;
-                            //we can still use the index for further integrity checks!
-                            $idx = self::idxOf( $thisbook, $this->biblebooks );
-                            break;
-                        } else {
-                            $idx = self::idxOf( $thisbook, $this->biblebooks );
-                            if( $idx !== false){
-                                //echo "<p>Book was recognized as valid.</p>";
-                                $validbookflag = true;
-                            }
-                        }
-                    }
-                    if ( !$validbookflag ) {
-                        //echo "<p>ALARM!!! We are getting an invalid book flag.</p>";
-                        // error message: unrecognized book abbreviation
-                        $this->addErrorMessage( sprintf( 'The book abbreviation %s is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.', $thisbook ) );
-                        $this->incrementBadQueryCount();
-                        continue;
-                    } else {
-                        $query = str_replace( $thisbook, "", $query );
-                    }
+                    continue;
+                } else {
+                    $query = str_replace( $thisbook, "", $query );
                 }
             }
 
@@ -1742,12 +1711,9 @@ class BIBLEGET_QUOTE {
     
             //at least the first query must start with a book reference, which may have a number from 1 to 3 at the beginning
             //echo "matching against: ".$queries[0]."<br />";
-            if ( !preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $queries[0] ) ) {
-                if ( !preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $queries[0] ) ) {
-                    // error message: querystring must have book indication at the very start...
-                    $this->addErrorMessage( 0 );
-                    $this->outputResult();
-                }
+            if ( $this->validateRuleAgainstQuery( self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR, $queries[0] ) === false ) {
+                $this->addErrorMessage( self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR );
+                $this->outputResult();
             }
 
             $validatedQueries = $this->validateQueries( $queries );
