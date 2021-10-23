@@ -167,6 +167,8 @@ class BIBLEGET_QUOTE {
     private $requestedVersions            = [];
     private $requestedCopyrightedVersions = [];
     private $indexes                      = [];
+    private $geoip_json                   = "";
+    private $haveIPAddressOnRecord        = false;
     //useful for html output:
     private $div;
     private $err;
@@ -1269,8 +1271,8 @@ class BIBLEGET_QUOTE {
     private function getGeoIpInfo( $ipaddress ) {
         $ch = curl_init( "https://ipinfo.io/" . $ipaddress . "?token=" . IPINFO_ACCESS_TOKEN );
         curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-        $geoip_json = curl_exec( $ch );
-        if ( $geoip_json === false ) {
+        $this->geoip_json = curl_exec( $ch );
+        if ( $this->geoip_json === false ) {
             $this->mysqli->query( "INSERT INTO curl_error ( ERRNO,ERROR ) VALUES( " . curl_errno( $ch ) . ",'" . curl_error( $ch ) . "' )" );
         }
         //Check the status of communication with ipinfo.io server
@@ -1278,22 +1280,21 @@ class BIBLEGET_QUOTE {
         curl_close( $ch );
 
         if ( $http_status == 429 ) {
-            $geoip_json = '{"ERROR":"api limit exceeded"}';
+            $this->geoip_json = '{"ERROR":"api limit exceeded"}';
         } else if ( $http_status == 200 ) {
             //Clean geopip_json object, ensure it is valid in any case
-            //$geoip_json = $this->mysqli->real_escape_string( $geoip_json ); // we don't need to escape it when it's coming from the ipinfo.io server, at least not before inserting into the database
+            //$this->geoip_json = $this->mysqli->real_escape_string( $this->geoip_json); // we don't need to escape it when it's coming from the ipinfo.io server, at least not before inserting into the database
             //Check if it's actually an object or if it's not a string perhaps
-            $geoip_JSON_obj = json_decode( $geoip_json );
+            $geoip_JSON_obj = json_decode( $this->geoip_json );
             if ( $geoip_JSON_obj === null || json_last_error( ) !== JSON_ERROR_NONE ) {
                 //we have a problem with our geoip_json, it's probably a string with an error. We should already have escaped it           
-                $geoip_json = '{"ERROR":"' . json_last_error( ) . ' <' . $geoip_json . '>"}';
+                $this->geoip_json = '{"ERROR":"' . json_last_error( ) . ' <' . $this->geoip_json . '>"}';
             } else {
-                $geoip_json = json_encode( $geoip_JSON_obj );
+                $this->geoip_json = json_encode( $geoip_JSON_obj );
             }
         } else {
-            $geoip_json = '{"ERROR":"wrong http status > ' . $http_status . '"}';
+            $this->geoip_json = '{"ERROR":"wrong http status > ' . $http_status . '"}';
         }
-        return $geoip_json;
     }
 
     private function getIpAddress( ){
@@ -1334,8 +1335,6 @@ class BIBLEGET_QUOTE {
     }
 
     private function enforceQueryLimits( string $ipaddress, string $xquery ) {
-        $geoip_json = "";
-        $haveIPAddressOnRecord = false;
 
         //check if we have already seen this IP Address in the past 2 days and if we have the same request already
         $ipresult = $this->haveSeenIPAddressPastTwoDaysWithSameRequest( $ipaddress, $xquery );
@@ -1347,8 +1346,8 @@ class BIBLEGET_QUOTE {
             if ( $ipresult->num_rows > 10 && $ipresult->num_rows < 30 ) {
                 $this->addErrorMessage( 10, $xquery );
                 $iprow = $ipresult->fetch_assoc( );
-                $geoip_json = $iprow[ "WHO_WHERE_JSON" ];
-                $haveIPAddressOnRecord = true;
+                $this->geoip_json = $iprow[ "WHO_WHERE_JSON" ];
+                $this->haveIPAddressOnRecord = true;
             }
             //if we have more than 30 requests in the past two days for the same query, deny service?
             else if ( $ipresult->num_rows > 29 ) {
@@ -1402,7 +1401,6 @@ class BIBLEGET_QUOTE {
                 }
             }
         }
-        return [ $geoip_json, $haveIPAddressOnRecord ];
     }
 
     private function doQueries( array $formulatedQueries ) {
@@ -1433,10 +1431,6 @@ class BIBLEGET_QUOTE {
 
         foreach ( $sqlqueries as $xquery ) {
 
-            $geoip_json = "";
-            //we start off with the supposition that we've never seen this IP address before
-            $haveIPAddressOnRecord     = false;
-
             [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress( );
 
             if ( $this->validateIPAddress( $ipaddress ) === false ) {
@@ -1447,7 +1441,7 @@ class BIBLEGET_QUOTE {
             //We don't enforce the max limit for requests from domains or IP addresses that need to do a lot of testing for plugin development
             //These are put into and checked against a whitelist
             if ( $this->isWhitelisted( $domain ) === false && $this->isWhitelisted( $ipaddress ) === false ) {
-                [ $geoip_json, $haveIPAddressOnRecord ] = $this->enforceQueryLimits( $ipaddress, $xquery );
+                $this->enforceQueryLimits( $ipaddress, $xquery );
             }
 
             $myversion = $queriesversions[$i];
@@ -1462,46 +1456,46 @@ class BIBLEGET_QUOTE {
                 //if we already have a record of this IP address and we have info on it from ipinfo.io,
                 //then we don't need to get info on it from ipinfo.io again ( which has limit of 1000 requests per day )
                 $pregmatch = preg_quote( '{"ERROR":"', '/' );
-                if ( $haveIPAddressOnRecord === false || $geoip_json == "" || $geoip_json === null || preg_match( "/" . $pregmatch . "/", $geoip_json ) ) {
+                if ( $this->haveIPAddressOnRecord === false || $this->geoip_json == "" || $this->geoip_json === null || preg_match( "/" . $pregmatch . "/", $this->geoip_json ) ) {
                     if ( $this->DEBUG_IPINFO === true ) {
-                        file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $geoip_json . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                        file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $this->geoip_json. "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
                     }
                     $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" ) : false;
                     if ( $ipresult ) {
                         if ( $ipresult->num_rows > 0 ) {
                             if ( $this->DEBUG_IPINFO === true ) {
-                                file_put_contents( $this->DEBUGFILE, "We already have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                                file_put_contents( $this->DEBUGFILE, "We already have valid geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX );
                             }
                             $iprow = $ipresult->fetch_assoc( );
-                            $geoip_json = $iprow["WHO_WHERE_JSON"];
-                            $haveIPAddressOnRecord = true;
+                            $this->geoip_json = $iprow["WHO_WHERE_JSON"];
+                            $this->haveIPAddressOnRecord = true;
                         } else {
                             if ( $this->DEBUG_IPINFO === true ) {
-                                file_put_contents( $this->DEBUGFILE, "We do not yet have valid geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                                file_put_contents( $this->DEBUGFILE, "We do not yet have valid geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX );
                             }
-                            $geoip_json = $this->getGeoIpInfo( $ipaddress );
+                            $this->getGeoIpInfo( $ipaddress );
                             if ( $this->DEBUG_IPINFO === true ) {
-                                file_put_contents( $this->DEBUGFILE, "We have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                                file_put_contents( $this->DEBUGFILE, "We have attempted to get geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
                             }
                         }
                     } else if ( $ipaddress != "" ) {
                         if ( $this->DEBUG_IPINFO === true ) {
                             file_put_contents( $this->DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
                         }
-                        $geoip_json = $this->getGeoIpInfo( $ipaddress );
+                        $this->getGeoIpInfo( $ipaddress );
                         if ( $this->DEBUG_IPINFO === true ) {
-                            file_put_contents( $this->DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $geoip_json . "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                            file_put_contents( $this->DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
                         }
                     }
                 }
 
                 $ipaddress = $ipaddress != "" ? $ipaddress : "0.0.0.0";
-                if ( $geoip_json === "" || $geoip_json === null ) {
-                    $geoip_json = '{"ERROR":""}';
+                if ( $this->geoip_json === "" || $this->geoip_json === null ) {
+                    $this->geoip_json = '{"ERROR":""}';
                 }
 
                 $stmt = $this->mysqli->prepare( "INSERT INTO requests_log__" . $curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )" );
-                $stmt->bind_param( 'ssssssssssssss', $ipaddress, $geoip_json, $headers, $this->originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
+                $stmt->bind_param( 'ssssssssssssss', $ipaddress, $this->geoip_json, $headers, $this->originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
                 if ( $stmt->execute( ) === false ) {
                     $this->addErrorMessage( "There has been an error updating the logs: ( " . $this->mysqli->errno . " ) " . $this->mysqli->error );
                 }
