@@ -109,22 +109,22 @@ class BIBLEGET_QUOTE {
     ];
 
     static public $errorMessages = [
-        "First query string must start with a valid book abbreviation!",
-        "You must have a valid chapter following the book abbreviation!",
-        "The book abbreviation is not a valid abbreviation. Please check the documentation for a list of correct abbreviations.",
-        "You cannot use a dot without first using a comma. A dot is a liason between verses, which are separated from the chapter by a comma.",
-        "A dot must be preceded and followed by 1 to 3 digits of which the first digit cannot be zero.",
-        "A comma must be preceded and followed by 1 to 3 digits of which the first digit cannot be zero.",
-        "A dash must be preceded and followed by 1 to 3 digits of which the first digit cannot be zero.",
-        "If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.",
-        "There are multiple dashes in the query, but there are not enough dots. There can only be one more dash than dots.",
-        "Notation Error. Please check your citation notation.",
-        "Please use a cacheing mechanism, you seem to be submitting numerous requests for the same query.",
-        "You are submitting too many requests with the same query. You must use a cacheing mechanism. Once you have implemented a cacheing mechanism you may have to wait a couple of days before getting service again. Otherwise contact the service management to request service again.",
-        "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management."
+        0 => "The first query must start with a valid book indicator.",
+        1 => "You must have a valid chapter following a book indicator.",
+        2 => "The book indicator is not valid. Please check the documentation for a list of correct book indicators.",
+        3 => "You cannot request discontinuous verses without first indicating a chapter for the discontinuous verses.",
+        4 => "A request for discontinuous verses must contain two valid verse numbers on either side of a discontinuous verse indicator.",
+        5 => "A chapter-verse separator must be preceded by a valid chapter number and followed by a valid verse number.",
+        6 => "A request for a range of verses must contain two valid verse numbers on either side of a verse range indicator.",
+        7 => "If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.",
+        8 => "There are multiple dashes in the query, but there are not enough verse separators. There can only be one dash more than there are verse separators.",
+        9 => "Notation Error. Please check your citation notation.",
+        10 => "Please use a cacheing mechanism, you seem to be submitting numerous requests for the same query.",
+        11 => "You are submitting too many requests with the same query. You must use a cacheing mechanism. Once you have implemented a cacheing mechanism you may have to wait a couple of days before getting service again. Otherwise contact the service management to request service again.",
+        12 => "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management."
     ];
 
-    //TODO: these should not be hardcoded in Italian, they should be picked up from a database table with all possible language translations
+    /*
     static public $sections = [
         "Pentateuco",
         "Storici",
@@ -136,7 +136,7 @@ class BIBLEGET_QUOTE {
         "Lettere Cattoliche",
         "Apocalisse"
     ];
-
+    */
 
     private $DATA                         = []; //all request parameters
     private $returnType                   = "json";     //which type of data to return ( json, xml or html )
@@ -170,6 +170,13 @@ class BIBLEGET_QUOTE {
     public $DEBUG_REQUESTS                = false;
     public $DEBUG_IPINFO                  = false;
     public $DEBUGFILE                     = "requests.log";
+
+    const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                        = 0;
+    const VALID_CHAPTER_MUST_FOLLOW_BOOK                                    = 1;
+    const IS_VALID_BOOK_INDICATOR                                           = 2;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR       = 3;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS                 = 4;
+    const CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS         = 5;
 
     function __construct( array $DATA ){
         $this->requestHeaders = getallheaders();
@@ -635,6 +642,27 @@ class BIBLEGET_QUOTE {
 
     }
 
+    private function validateRuleAgainstQuery( int $rule, string $query ) : bool {
+        $validation = false;
+        switch( $rule ){
+            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
+                $validation = ( preg_match_all( "/( ?<![0-9] )( ?=( [1-9][0-9]{0,2}\.[1-9][0-9]{0,2} ) )/", $query ) === substr_count( $query, "." ) );
+                break;
+            case self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
+                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "," ) );
+                break;
+        }
+        return $validation;
+    }
+
+    private function queryContainsVerseSeparator( string $query ) : bool {
+        return strpos( $query, "." ) !== false;
+    }
+
+    private function queryContainsChapterVerseSeparator( string $query ) : bool {
+        return strpos( $query, "," ) !== false;
+    }
+
     private function validateQueries( $queries ) {
 
         $validatedQueries                   = new stdClass();
@@ -723,7 +751,7 @@ class BIBLEGET_QUOTE {
                 }
             }
 
-            if ( strpos( $query, "." ) ) {
+            if ( $this->queryContainsVerseSeparator( $query ) ) {
                 if ( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) ) {
                     // error message: You cannot use a dot without first using a comma. A dot is a liason between verses, which are separated from the chapter by a comma.
                     $this->addErrorMessage( 3 );
@@ -733,21 +761,20 @@ class BIBLEGET_QUOTE {
                 }
                 //if( preg_match_all( "/( ?=[1-9][0-9]{0,2}\.[1-9][0-9]{0,2} )/",$query ) != substr_count( $query,"." ) ){
                 //if( preg_match_all( "/( ?=( [1-9][0-9]{0,2}\.[1-9][0-9]{0,2} ) )/",$query ) < substr_count( $query,"." ) ){
-                if ( preg_match_all( "/( ?<![0-9] )( ?=( [1-9][0-9]{0,2}\.[1-9][0-9]{0,2} ) )/", $query ) != substr_count( $query, "." ) ) {
-                    // error message: A dot must be preceded and followed by 1 to 3 digits etc.
-                    $this->addErrorMessage( 4 );
+                if ( $this->validateRuleAgainstQuery( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS, $query ) === false ) {
+                    $this->addErrorMessage( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS );
                     $this->incrementBadQueryCount();
                     continue;
                     //return false;
                 }
             }
 
-            if ( strpos( $query, "," ) ) {
-                if ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) != substr_count( $query, "," ) ) {
+            if ( $this->queryContainsChapterVerseSeparator( $query ) ) {
+                if ( $this->validateRuleAgainstQuery( self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS , $query ) === false ) {
                     // error message: A comma must be preceded and followed by 1 to 3 digits etc.
                     //echo "There are ".preg_match_all( "/( ?=[1-9][0-9]{0,2}\,[1-9][0-9]{0,2} )/",$query )." matches for commas preceded and followed by valid 1-3 digit sequences;<br>";
                     //echo "There are ".substr_count( $query,"," )." matches for commas in this query.";
-                    $this->addErrorMessage( 5 );
+                    $this->addErrorMessage( self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS );
                     $this->incrementBadQueryCount();
                     continue;
                     //return false;
@@ -1724,20 +1751,25 @@ class BIBLEGET_QUOTE {
             }
 
             $validatedQueries = $this->validateQueries( $queries );
-            $usedvariants = property_exists( $validatedQueries, 'usedvariants' ) ? $validatedQueries->usedvariants : false;
 
-            if ( !is_array( $usedvariants ) ) {
-                $this->outputResult();
+            if( $validatedQueries !== false ){
+                $usedvariants = property_exists( $validatedQueries, 'usedvariants' ) ? $validatedQueries->usedvariants : false;
+                if ( !is_array( $usedvariants ) ) {
+                    $this->outputResult();
+                } else {
+                    // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
+                    $formulatedQueries = $this->formulateQueries( $validatedQueries );
+    
+                    // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
+                    $this->doQueries( $formulatedQueries );
+    
+                    // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE
+                    $this->outputResult();
+                }
             } else {
-                // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
-                $formulatedQueries = $this->formulateQueries( $validatedQueries );
-
-                // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
-                $this->doQueries( $formulatedQueries );
-
-                // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE
                 $this->outputResult();
             }
+
 
         }
 
