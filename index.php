@@ -664,9 +664,12 @@ class BIBLEGET_QUOTE {
                             //we can still use the index for further integrity checks!
                             $idx = self::idxOf( $res[0], $this->biblebooks );
                             break;
-                        } else if ( ( $idx = self::idxOf( $res[0], $this->biblebooks ) ) !== FALSE ) {
-                            //echo "<p>Book was recognized as valid.</p>";
-                            $validbookflag = true;
+                        } else {
+                            $idx = self::idxOf( $res[0], $this->biblebooks );
+                            if( $idx !== false){
+                                //echo "<p>Book was recognized as valid.</p>";
+                                $validbookflag = true;
+                            }
                         }
                     }
                     if ( !$validbookflag ) {
@@ -923,12 +926,15 @@ class BIBLEGET_QUOTE {
                         $usedvariant = $usedvariants[$i];
                         // Now that we have captured our book, we can erase it from the query string
                         $query = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $query );
-                        if ( $usedvariant != "" && ( $key = array_search( $ret[0], $this->indexes[$usedvariant]["biblebooks"] ) ) !== FALSE ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-                        } else if ( $usedvariant != "" && ( $key = array_search( $ret[0], $this->indexes[$usedvariant]["abbreviations"] ) ) !== FALSE ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-                        } else if ( ( $key = self::idxOf( $ret[0], $this->biblebooks ) ) !== FALSE ) {
-                            $book1 = $book = $key + 1;
+                        $key1 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["biblebooks"] ) : false;
+                        $key2 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["abbreviations"] ) : false;
+                        $key3 = self::idxOf( $ret[0], $this->biblebooks );
+                        if ( $key1 ) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key1];
+                        } else if ( $key2 ) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key2];
+                        } else if ( $key3 ) {
+                            $book1 = $book = $key3 + 1;
                         }
                     } else {
                         $book1 = $book;
@@ -938,12 +944,15 @@ class BIBLEGET_QUOTE {
                         $usedvariant = $usedvariants[$i];
                         // Now that we have captured our book, we can erase it from the query string
                         $query = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $query );
-                        if ( $usedvariant != "" && ( $key = array_search( $ret[0], $this->indexes[$usedvariant]["biblebooks"] ) ) !== FALSE ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-                        } else if ( $usedvariant != "" && ( $key = array_search( $ret[0], $this->indexes[$usedvariant]["abbreviations"] ) ) !== FALSE ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key];
-                        } else if ( ( $key = self::idxOf( $ret[0], $this->biblebooks ) ) !== FALSE ) {
-                            $book1 = $book = $key + 1;
+                        $key1 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["biblebooks"] ) : false;
+                        $key2 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["abbreviations"] ) : false;
+                        $key3 = self::idxOf( $ret[0], $this->biblebooks );
+                        if ( $key1 ) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key1];
+                        } else if ( $key2 ) {
+                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key2];
+                        } else if ( $key3 ) {
+                            $book1 = $book = $key3 + 1;
                         }
                     } else {
                         $book1 = $book;
@@ -1258,7 +1267,8 @@ class BIBLEGET_QUOTE {
     private function getGeoIpInfo( $ipaddress ) {
         $ch = curl_init( "https://ipinfo.io/" . $ipaddress . "?token=" . IPINFO_ACCESS_TOKEN );
         curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-        if ( ( $geoip_json = curl_exec( $ch ) ) === false ) {
+        $geoip_json = curl_exec( $ch );
+        if ( $geoip_json === false ) {
             $this->mysqli->query( "INSERT INTO curl_error ( ERRNO,ERROR ) VALUES( " . curl_errno( $ch ) . ",'" . curl_error( $ch ) . "' )" );
         }
         //Check the status of communication with ipinfo.io server
