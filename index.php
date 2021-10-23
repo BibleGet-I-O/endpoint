@@ -1424,13 +1424,89 @@ class BIBLEGET_QUOTE {
         return $this->haveIPAddressOnRecord === false || $this->geoip_json == "" || $this->geoip_json === null || preg_match( "/" . $pregmatch . "/", $this->geoip_json );
     }
 
-    private function doQueries( array $formulatedQueries ) {
-        [ $sqlqueries, $queriesversions, $originalquery ] = $formulatedQueries;
+    private function getGeoIPFromLogs( string $ipaddress ) {
+        if( $ipaddress != "" ){
+            return $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" );
+        } else {
+            return false;
+        }
+    }
 
-        // I need to find a way to check and counter when someone uses in an indiscriminate manner
-        // People need to learn to do cacheing of requests ( maybe they're trying to turn it into a kind of DDOS attack? )
-        // Need to protect ourselves here, but instead of pointing fingers by looking for example at the referring site,
-        // we need to base the check on past requests
+    private function haveGeoIPResultsFromLogs( $geoIPFromLogs ) : bool {
+        return $geoIPFromLogs->num_rows > 0;
+    }
+
+    private function getGeoIPInfoFromLogsElseOnline( string $ipaddress ) {
+
+        $geoIPFromLogs = $this->getGeoIPFromLogs( $ipaddress );
+        if ( $geoIPFromLogs !== false ) {
+            if ( $this->haveGeoIPResultsFromLogs( $geoIPFromLogs ) ) {
+                if ( $this->DEBUG_IPINFO === true ) {
+                    file_put_contents( $this->DEBUGFILE, "We already have valid geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                }
+                $iprow = $geoIPFromLogs->fetch_assoc();
+                $this->geoip_json = $iprow["WHO_WHERE_JSON"];
+                $this->haveIPAddressOnRecord = true;
+            } else {
+                if ( $this->DEBUG_IPINFO === true ) {
+                    file_put_contents( $this->DEBUGFILE, "We do not yet have valid geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                }
+                $this->getGeoIpInfo( $ipaddress );
+                if ( $this->DEBUG_IPINFO === true ) {
+                    file_put_contents( $this->DEBUGFILE, "We have attempted to get geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                }
+            }
+        } else if ( $ipaddress != "" ) {
+            if ( $this->DEBUG_IPINFO === true ) {
+                file_put_contents( $this->DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
+            }
+            $this->getGeoIpInfo( $ipaddress );
+            if ( $this->DEBUG_IPINFO === true ) {
+                file_put_contents( $this->DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
+            }
+        }
+
+    }
+
+    private function fillEmptyIPAddress( string $ipaddress ) : string {
+        return $ipaddress != "" ? $ipaddress : "0.0.0.0";
+    }
+
+    private function normalizeErroredGeoIPInfo() {
+        if ( $this->geoip_json === "" || $this->geoip_json === null ) {
+            $this->geoip_json = '{"ERROR":""}';
+        }
+    }
+
+    private function logQuery( $QUERY_ACTION_OBJ ) {
+        $stmt = $this->mysqli->prepare( "INSERT INTO requests_log__" . $this->curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )" );
+        $stmt->bind_param( 'ssssssssssssss', $QUERY_ACTION_OBJ->ipaddress, $this->geoip_json, $this->jsonEncodedRequestHeaders, $this->originHeader, $QUERY_ACTION_OBJ->xquery, $QUERY_ACTION_OBJ->originalquery[$QUERY_ACTION_OBJ->i], $this->requestMethod, $QUERY_ACTION_OBJ->clientip, $QUERY_ACTION_OBJ->forwardedip, $QUERY_ACTION_OBJ->realip, $QUERY_ACTION_OBJ->remote_address, $QUERY_ACTION_OBJ->appid, $QUERY_ACTION_OBJ->domain, $QUERY_ACTION_OBJ->pluginversion );
+        if ( $stmt->execute() === false ) {
+            $this->addErrorMessage( "There has been an error updating the logs: ( " . $this->mysqli->errno . " ) " . $this->mysqli->error );
+        }
+        $stmt->close();
+    }
+
+    private function doQueries( array $formulatedQueries ) {
+
+        $QUERY_ACTION_OBJ = new stdClass();
+        [ $sqlqueries, $queriesversions, $originalquery ] = $formulatedQueries;
+        $QUERY_ACTION_OBJ->sqlqueries = $sqlqueries;
+        $QUERY_ACTION_OBJ->queriesversions = $queriesversions;
+        $QUERY_ACTION_OBJ->originalquery = $originalquery;
+
+        $QUERY_ACTION_OBJ->appid          = $this->DATA["appid"] != "" ? $this->DATA["appid"] : "unknown";
+        $QUERY_ACTION_OBJ->domain         = $this->DATA["domain"] != "" ? $this->DATA["domain"] : "unknown";
+        $QUERY_ACTION_OBJ->pluginversion  = $this->DATA["pluginversion"] != "" ? $this->DATA["pluginversion"] : "unknown";
+
+        [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress();
+        $QUERY_ACTION_OBJ->ipaddress = $ipaddress;
+        $QUERY_ACTION_OBJ->forwardedip = $forwardedip;
+        $QUERY_ACTION_OBJ->remote_address = $remote_address;
+        $QUERY_ACTION_OBJ->realip = $realip;
+        $QUERY_ACTION_OBJ->clientip = $clientip;
+        $QUERY_ACTION_OBJ->i = 0;
+        $QUERY_ACTION_OBJ->xquery = "";
 
         // First we initialize some variables and flags with default values
         $version        = "";
@@ -1440,31 +1516,23 @@ class BIBLEGET_QUOTE {
         $chapter        = 0;
         $newchapter     = false;
 
-        // HTML return type is a special case, because we must already implement display logic to the structured data that is returned 
-        $i              = 0;
-        $appid          = $this->DATA["appid"] != "" ? $this->DATA["appid"] : "unknown";
-        $domain         = $this->DATA["domain"] != "" ? $this->DATA["domain"] : "unknown";
-        $pluginversion  = $this->DATA["pluginversion"] != "" ? $this->DATA["pluginversion"] : "unknown";
-
-        [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress();
-
-        if ( $this->validateIPAddress( $ipaddress ) === false ) {
+        if ( $this->validateIPAddress( $QUERY_ACTION_OBJ->ipaddress ) === false ) {
             $this->addErrorMessage( "The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $xquery );
             $this->outputResult(); //this should exit the script right here, closing the mysql connection
         }
 
-        $notWhitelisted = ( $this->isWhitelisted( $domain ) === false && $this->isWhitelisted( $ipaddress ) === false );
+        $notWhitelisted = ( $this->isWhitelisted( $QUERY_ACTION_OBJ->domain ) === false && $this->isWhitelisted( $QUERY_ACTION_OBJ->ipaddress ) === false );
 
-        foreach ( $sqlqueries as $xquery ) {
-
+        foreach ( $QUERY_ACTION_OBJ->sqlqueries as $xquery ) {
+            $QUERY_ACTION_OBJ->xquery = $xquery;
             //We don't enforce the max limit for requests from domains or IP addresses that need to do a lot of testing for plugin development
             //These are put into and checked against a whitelist
             if ( $notWhitelisted ) {
-                $this->enforceQueryLimits( $ipaddress, $xquery );
+                $this->enforceQueryLimits( $QUERY_ACTION_OBJ->ipaddress, $xquery );
             }
 
-            $myversion = $queriesversions[$i];
-            //     echo $i." ) myversion = ".$myversion."<br />";
+            $myversion = $QUERY_ACTION_OBJ->queriesversions[$QUERY_ACTION_OBJ->i];
+            //     echo $QUERY_ACTION_OBJ->i." ) myversion = ".$myversion."<br />";
             //     echo "about to query the database: &lt;".$xquery."&gt;<br />";
             $result = $this->mysqli->query( $xquery );
             if ( $result ) {
@@ -1475,48 +1543,15 @@ class BIBLEGET_QUOTE {
                 //then we don't need to get info on it from ipinfo.io again ( which has limit of 1000 requests per day )
                 if ( $this->geoIPInfoIsEmptyOrIsError() ) {
                     if ( $this->DEBUG_IPINFO === true ) {
-                        file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $ipaddress . "] in the past 2 days or we have not geo_ip info [" . $this->geoip_json. "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
+                        file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $QUERY_ACTION_OBJ->ipaddress . "] in the past 2 days or we have no geo_ip info [" . $this->geoip_json. "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
                     }
-                    $ipresult = $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" ) : false;
-                    if ( $ipresult ) {
-                        if ( $ipresult->num_rows > 0 ) {
-                            if ( $this->DEBUG_IPINFO === true ) {
-                                file_put_contents( $this->DEBUGFILE, "We already have valid geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "], reusing" . PHP_EOL, FILE_APPEND | LOCK_EX );
-                            }
-                            $iprow = $ipresult->fetch_assoc();
-                            $this->geoip_json = $iprow["WHO_WHERE_JSON"];
-                            $this->haveIPAddressOnRecord = true;
-                        } else {
-                            if ( $this->DEBUG_IPINFO === true ) {
-                                file_put_contents( $this->DEBUGFILE, "We do not yet have valid geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "], nothing to reuse" . PHP_EOL, FILE_APPEND | LOCK_EX );
-                            }
-                            $this->getGeoIpInfo( $ipaddress );
-                            if ( $this->DEBUG_IPINFO === true ) {
-                                file_put_contents( $this->DEBUGFILE, "We have attempted to get geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
-                            }
-                        }
-                    } else if ( $ipaddress != "" ) {
-                        if ( $this->DEBUG_IPINFO === true ) {
-                            file_put_contents( $this->DEBUGFILE, "We do however seem to have a valid IP address [" . $ipaddress . "] , now trying to fetch info from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
-                        }
-                        $this->getGeoIpInfo( $ipaddress );
-                        if ( $this->DEBUG_IPINFO === true ) {
-                            file_put_contents( $this->DEBUGFILE, "Even in this case we have attempted to get geo_ip info [" . $this->geoip_json. "] for the IP address [" . $ipaddress . "] from ipinfo.io" . PHP_EOL, FILE_APPEND | LOCK_EX );
-                        }
-                    }
+                    $this->getGeoIPInfoFromLogsElseOnline( $QUERY_ACTION_OBJ->ipaddress );
                 }
 
-                $ipaddress = $ipaddress != "" ? $ipaddress : "0.0.0.0";
-                if ( $this->geoip_json === "" || $this->geoip_json === null ) {
-                    $this->geoip_json = '{"ERROR":""}';
-                }
+                $QUERY_ACTION_OBJ->ipaddress = $this->fillEmptyIPAddress( $QUERY_ACTION_OBJ->ipaddress );
+                $this->normalizeErroredGeoIPInfo();
 
-                $stmt = $this->mysqli->prepare( "INSERT INTO requests_log__" . $this->curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )" );
-                $stmt->bind_param( 'ssssssssssssss', $ipaddress, $this->geoip_json, $this->jsonEncodedRequestHeaders, $this->originHeader, $xquery, $originalquery[$i], $this->requestMethod, $clientip, $forwardedip, $realip, $remote_address, $appid, $domain, $pluginversion );
-                if ( $stmt->execute() === false ) {
-                    $this->addErrorMessage( "There has been an error updating the logs: ( " . $this->mysqli->errno . " ) " . $this->mysqli->error );
-                }
-                $stmt->close();
+                $this->logQuery( $QUERY_ACTION_OBJ );
 
                 $verse = "";
                 $newverse = false;
@@ -1536,7 +1571,7 @@ class BIBLEGET_QUOTE {
                     unset( $row["verseID"] );
                     //$row["verse"] = ( int ) $row["verse"];
                     $row["chapter"] = ( int ) $row["chapter"];
-                    $row["originalquery"] = $originalquery[$i];
+                    $row["originalquery"] = $QUERY_ACTION_OBJ->originalquery[$QUERY_ACTION_OBJ->i];
 
                     if ( $this->returnType == "xml" ) {
                         $thisrow = $this->bibleQuote->results->addChild( "result" );
@@ -1583,7 +1618,7 @@ class BIBLEGET_QUOTE {
 
                         if ( $newversion ) {
                             $variant = $this->bibleQuote->createElement( "p", $row["version"] );
-                            if ( $i > 0 ) {
+                            if ( $QUERY_ACTION_OBJ->i > 0 ) {
                                 $br = $this->bibleQuote->createElement( "br" );
                                 $variant->insertBefore( $br, $variant->firstChild );
                             }
@@ -1633,7 +1668,7 @@ class BIBLEGET_QUOTE {
             } else {
                 $this->addErrorMessage( 9, $xquery );
             }
-            $i++;
+            $QUERY_ACTION_OBJ->i++;
         }
     }
 
