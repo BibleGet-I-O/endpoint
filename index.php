@@ -827,6 +827,39 @@ class BIBLEGET_QUOTE {
         return true;
     }
 
+    private function highVerseOutOfBounds( $highverse, object $validatedQueries, array $parts ) : bool {
+        foreach ( $this->indexes as $jkey => $jindex ) {
+            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+            if ( $highverse > $verselimit ) {
+                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
+                $this->incrementBadQueryCount();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function chapterOutOfBounds( array $chapters, object $validatedQueries ) : bool {
+        foreach ( $chapters as $zchapter ) {
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                
+                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+                $chapter_limit = $jindex["chapter_limit"][$bookidx];
+                if ( intval( $zchapter ) > $chapter_limit ) {
+                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
+                    $this->addErrorMessage( sprintf( $msg, $zchapter, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
+                    $this->incrementBadQueryCount();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private function validateQueries( $queries ) {
 
         $validatedQueries                   = new stdClass();
@@ -895,37 +928,16 @@ class BIBLEGET_QUOTE {
 
                         $discontinuousVerses = $this->getAllVersesAfterDiscontinuousVerseIndicator( $validatedQueries->currentQuery );
                         $highverse = array_pop( $discontinuousVerses[1] );
-                        foreach ( $this->indexes as $jkey => $jindex ) {
-                            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-                            if ( $highverse > $verselimit ) {
-                                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
-                                $this->incrementBadQueryCount();
-                                continue 2;
-                                //return false;
-                            }
+                        if( $this->highVerseOutOfBounds( $highverse, $validatedQueries, $parts ) ) {
+                            continue;
                         }
-
                     }
 
                 }
             } else {
                 $chapters = explode( "-", $validatedQueries->currentQuery );
-                foreach ( $chapters as $zchapter ) {
-                    foreach ( $this->indexes as $jkey => $jindex ) {
-                        
-                        $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                        $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                        if ( intval( $zchapter ) > $chapter_limit ) {
-                            $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                            $this->addErrorMessage( sprintf( $msg, $zchapter, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
-                            $this->incrementBadQueryCount();
-                            continue 3;
-                        }
-                    }
+                if( $this->chapterOutOfBounds( $chapters, $validatedQueries ) ){
+                    continue;
                 }
             }
 
