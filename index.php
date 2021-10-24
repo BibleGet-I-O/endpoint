@@ -724,14 +724,37 @@ class BIBLEGET_QUOTE {
         }
     }
 
+    private function validateBibleBook( string $book, string &$currentVariant, int &$bookIdxBase ) : bool {
+        $bookIsValid = false;
+        foreach ( $this->requestedVersions as $variant ) {
+            if ( $this->isValidBookForVariant( $book, $variant ) ) {
+                $bookIsValid = true;
+                $currentVariant = $variant;
+                $bookIdxBase = self::idxOf( $book, $this->biblebooks );
+                break;
+            }
+        }
+        if( !$bookIsValid ) {
+            $bookIdxBase = self::idxOf( $book, $this->biblebooks );
+            if( $bookIdxBase !== false){
+                $bookIsValid = true;
+            }
+        }
+        if( !$bookIsValid ){
+            $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $thisbook ) );
+            $this->incrementBadQueryCount();
+        }
+        return $bookIsValid;
+    }
+
     private function validateQueries( $queries ) {
 
         $validatedQueries                   = new stdClass();
         $validatedQueries->usedvariants     = [];
         $validatedQueries->goodqueries      = [];
-        $usedvariant                        = "";
+        $currentVariant                     = "";
         $thisbook                           = "";
-        $idx                                = -1;
+        $bookIdxBase                        = -1;
 
         foreach ( $queries as $query ) {
             $fullquery = $query;
@@ -744,27 +767,7 @@ class BIBLEGET_QUOTE {
             $matchedBook = $this->matchBookInQuery( $query, $hasULVariants );
             if ( $matchedBook !== false ) {
                 $thisbook = $matchedBook[0];
-                $validbookflag = false;
-                foreach ( $this->requestedVersions as $variant ) {
-                    if ( $this->isValidBookForVariant( $thisbook, $variant ) ) {
-                        $validbookflag = true;
-                        $usedvariant = $variant;
-                        //we can still use the index for further integrity checks!
-                        $idx = self::idxOf( $thisbook, $this->biblebooks );
-                        break;
-                    } else {
-                        $idx = self::idxOf( $thisbook, $this->biblebooks );
-                        if( $idx !== false){
-                            //echo "<p>Book was recognized as valid.</p>";
-                            $validbookflag = true;
-                        }
-                    }
-                }
-                if ( !$validbookflag ) {
-                    //echo "<p>ALARM!!! We are getting an invalid book flag.</p>";
-                    // error message: unrecognized book abbreviation
-                    $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $thisbook ) );
-                    $this->incrementBadQueryCount();
+                if ( $this->validateBibleBook( $thisbook, $currentVariant, $bookIdxBase ) === false ) {
                     continue;
                 } else {
                     $query = str_replace( $thisbook, "", $query );
@@ -786,7 +789,7 @@ class BIBLEGET_QUOTE {
                     continue;
                 } else {
                     $chapterIndicators = $this->getAllChapterIndicators( $query );
-                    $myidx = $idx + 1;
+                    $myidx = $bookIdxBase + 1;
                     foreach ( $chapterIndicators[1] as $chapterIndicator ) {
                         foreach ( $this->indexes as $jkey => $jindex ) {
                             // bibleGetWriteLog( "jindex array contains:" );
@@ -911,7 +914,7 @@ class BIBLEGET_QUOTE {
                 $chapters = explode( "-", $query );
                 foreach ( $chapters as $zchapter ) {
                     foreach ( $this->indexes as $jkey => $jindex ) {
-                        $myidx = $idx + 1;
+                        $myidx = $bookIdxBase + 1;
                         $bookidx = array_search( $myidx, $jindex["book_num"] );
                         $chapter_limit = $jindex["chapter_limit"][$bookidx];
                         //addErrorMessage( '$myidx = '.$myidx,$returntype );
@@ -939,7 +942,7 @@ class BIBLEGET_QUOTE {
                     continue;
                 }
             }
-            $validatedQueries->usedvariants[] = $usedvariant;
+            $validatedQueries->usedvariants[] = $currentVariant;
             $validatedQueries->goodqueries[]  = $fullquery;
 
         } //END FOREACH
@@ -957,7 +960,7 @@ class BIBLEGET_QUOTE {
         $nn               = 0;
         $sqlquery         = "";
         $book             = "";
-        $usedvariant      = "";
+        $currentVariant   = "";
 
         foreach ( $this->requestedVersions as $version ) {
             $i = 0;
@@ -967,16 +970,16 @@ class BIBLEGET_QUOTE {
                 // Retrieve and store the book in the query string,if applicable
                 if ( preg_match( "/\p{L&}/u", $query ) ) {
                     if ( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $query, $ret ) ) {
-                        $usedvariant = $usedvariants[$i];
+                        $currentVariant = $usedvariants[$i];
                         // Now that we have captured our book, we can erase it from the query string
                         $query = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $query );
-                        $key1 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["biblebooks"] ) : false;
-                        $key2 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["abbreviations"] ) : false;
+                        $key1 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["biblebooks"] ) : false;
+                        $key2 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["abbreviations"] ) : false;
                         $key3 = self::idxOf( $ret[0], $this->biblebooks );
                         if ( $key1 ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key1];
+                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key1];
                         } else if ( $key2 ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key2];
+                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key2];
                         } else if ( $key3 ) {
                             $book1 = $book = $key3 + 1;
                         }
@@ -985,16 +988,16 @@ class BIBLEGET_QUOTE {
                     }
                 } else {
                     if ( preg_match( "/^[1-4]{0,1}\p{L}+/u", $query, $ret ) ) {
-                        $usedvariant = $usedvariants[$i];
+                        $currentVariant = $usedvariants[$i];
                         // Now that we have captured our book, we can erase it from the query string
                         $query = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $query );
-                        $key1 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["biblebooks"] ) : false;
-                        $key2 = $usedvariant != "" ? array_search( $ret[0], $this->indexes[$usedvariant]["abbreviations"] ) : false;
+                        $key1 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["biblebooks"] ) : false;
+                        $key2 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["abbreviations"] ) : false;
                         $key3 = self::idxOf( $ret[0], $this->biblebooks );
                         if ( $key1 ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key1];
+                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key1];
                         } else if ( $key2 ) {
-                            $book1 = $book = $this->indexes[$usedvariant]["book_num"][$key2];
+                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key2];
                         } else if ( $key3 ) {
                             $book1 = $book = $key3 + 1;
                         }
