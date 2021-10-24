@@ -311,20 +311,23 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    static private function toProperCase( string $txt ) {
-        preg_match( "/\p{L}\p{M}*/u", $txt, $mList, PREG_OFFSET_CAPTURE );
-        if( array_key_exists( 0, $mList ) ){
-            $idx = $mList[0][1];
-            $chr = mb_substr( $txt, $idx, 1, 'UTF-8' );
-            if( preg_match( "/\p{L&}\p{M}*/u", $chr ) ){
-                $post = mb_substr( $txt, $idx+1, null, 'UTF-8' );
-                return mb_substr( $txt, 0, $idx, 'UTF-8' ) . mb_strtoupper( $chr, 'UTF-8' ) . mb_strtolower( $post, 'UTF-8' );
-            }
-            else{
+    static private function stringWithUpperAndLowerCaseVariants( string $str ) : bool {
+        return preg_match( "/\p{L&}/u", $str );
+    }
+
+    static private function toProperCase( string $txt ) : string {
+        if( self::stringWithUpperAndLowerCaseVariants( $txt ) === false ){
+            return $txt;
+        } else {
+            preg_match( "/\p{L&}/u", $txt, $mList, PREG_OFFSET_CAPTURE );
+            if( $mList && array_key_exists( 0, $mList ) ){
+                $offset = $mList[0][1];
+                $chr = mb_substr( $txt, $offset, 1, 'UTF-8' );
+                $post = mb_substr( $txt, $offset+1, null, 'UTF-8' );
+                return mb_substr( $txt, 0, $offset, 'UTF-8' ) . mb_strtoupper( $chr, 'UTF-8' ) . mb_strtolower( $post, 'UTF-8' );
+            } else {
                 return $txt;
             }
-        } else {
-            return $txt;
         }
     }
 
@@ -347,17 +350,6 @@ class BIBLEGET_QUOTE {
     static private function normalizeBibleBook( string $str ){
         return self::toProperCase( preg_replace( "/\s+/", "", trim( $str ) ) );
     }
-
-    /*
-    * These functions look fine and dandy, but we're not even using them
-    static private function startsWith( string $needle, string $haystack ) {
-        return substr( $haystack, 0, strlen( $needle ) ) === $needle;
-    }
-
-    static private function endsWith( string $needle, string $haystack ) {
-        return substr( $haystack, -strlen( $needle ) ) === $needle;
-    }
-    */
 
     private function BibleQuoteInit() {
 
@@ -589,23 +581,41 @@ class BIBLEGET_QUOTE {
     }
 
     private function queryStrClean() {
-
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "querystr before cleaning = " . json_encode( $this->DATA["query"], JSON_PRETTY_PRINT ) );
+        }
         $querystr = $this->removeWhitespace( $this->DATA["query"] );
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "querystr after removing whitespace = " . json_encode( $querystr, JSON_PRETTY_PRINT ) );
+        }
         $querystr = trim( $querystr );
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "querystr after trimming = " . json_encode( $querystr, JSON_PRETTY_PRINT ) );
+        }
         $querystr = $this->convertAllDashesToHyphens( $querystr );
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "querystr after converting all dashes to hyphens = " . json_encode( $querystr, JSON_PRETTY_PRINT ) );
+        }
         $querystr = $this->detectAndNormalizeNotation( $querystr );
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "querystr after normalizing notation = " . json_encode( $querystr, JSON_PRETTY_PRINT ) );
+        }
 
         //if there are multiple queries separated by semicolons, we explode them into an array
         $queries = explode( ";", $querystr );
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "queries = (" . gettype($queries) . ") " . json_encode( $queries, JSON_PRETTY_PRINT ) );
+        }
         $queries = $this->removeEmptyItems( $queries );
-
-        array_walk( $queries,'self::toProperCase' );
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "queries after removing empty items = (" . gettype($queries) . ") " . json_encode( $queries, JSON_PRETTY_PRINT ) );
+        }
+        $queries = array_map( 'self::toProperCase', $queries );
+        if( $this->DEBUG_REQUESTS ){
+            $this->writeEntryToDebugFile( "queries after proper casing = (" . gettype($queries) . ") " . json_encode( $queries, JSON_PRETTY_PRINT ) );
+        }
         return $queries;
 
-    }
-
-    private function stringWithUpperAndLowerCaseVariants( string $query ) : bool {
-        return preg_match( "/\p{L&}/u", $query );
     }
 
     private function incrementBadQueryCount() {
@@ -616,25 +626,30 @@ class BIBLEGET_QUOTE {
         $this->mysqli->query( "UPDATE counter SET good = good + 1" );
     }
 
-    private function isValidBookForVariant( string $thisbook, string $variant ) : bool {
-        return in_array( $thisbook, $this->indexes[$variant]["biblebooks"] ) || in_array( $thisbook, $this->indexes[$variant]["abbreviations"] );
-    }
-
-    private function matchBookInQuery( string $query, bool $hasULVariants ) {
-        if( $hasULVariants ){
+    private function matchBookInQuery( string $query ) {
+        if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
+            if( $this->DEBUG_REQUESTS ){
+                $this->writeEntryToDebugFile( "query " . $query . " is a string that has upper and lower case variants " );
+            }
             if( preg_match( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
+                if( $this->DEBUG_REQUESTS ){
+                    $this->writeEntryToDebugFile( "we have a match for pattern /^([1-3]{0,1}((\p{Lu}\p{Ll}*)+))/u against query " . $query . ": " . json_encode( $query, JSON_PRETTY_PRINT ) );
+                }
                 return $res;
             } else {
                 return false;
             }
         } else {
+            $this->writeEntryToDebugFile( "query " . $query . " is a string that does not have upper or lower case variants " );
             if( preg_match( "/^([1-3]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
+                if( $this->DEBUG_REQUESTS ){
+                    $this->writeEntryToDebugFile( "we have a match for pattern /^([1-3]{0,1}((\p{L}\p{M}*)+))/u against query " . $query . ": " . json_encode( $query, JSON_PRETTY_PRINT ) );
+                }
                 return $res;
             } else {
                 return false;
             }
         }
-
     }
 
     private function validateRuleAgainstQuery( int $rule, string $query ) : bool {
@@ -644,7 +659,7 @@ class BIBLEGET_QUOTE {
                 $validation = (preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $query ));
                 break;
             case self::VALID_CHAPTER_MUST_FOLLOW_BOOK :
-                if($this->stringWithUpperAndLowerCaseVariants( $query ) ){
+                if(self::stringWithUpperAndLowerCaseVariants( $query ) ){
                     $validation = ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query ) );
                 } else {
                     $validation = ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query ) );
@@ -724,7 +739,11 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    private function validateBibleBook( string $book, string &$currentVariant, int &$bookIdxBase ) : bool {
+    private function isValidBookForVariant( string $thisbook, string $variant ) : bool {
+        return ( in_array( $thisbook, $this->indexes[$variant]["biblebooks"] ) || in_array( $thisbook, $this->indexes[$variant]["abbreviations"] ) );
+    }
+
+    private function validateBibleBook( string $book, &$currentVariant, &$bookIdxBase ) : bool {
         $bookIsValid = false;
         foreach ( $this->requestedVersions as $variant ) {
             if ( $this->isValidBookForVariant( $book, $variant ) ) {
@@ -738,11 +757,10 @@ class BIBLEGET_QUOTE {
             $bookIdxBase = self::idxOf( $book, $this->biblebooks );
             if( $bookIdxBase !== false){
                 $bookIsValid = true;
+            } else {
+                $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $thisbook ) );
+                $this->incrementBadQueryCount();
             }
-        }
-        if( !$bookIsValid ){
-            $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $thisbook ) );
-            $this->incrementBadQueryCount();
         }
         return $bookIsValid;
     }
@@ -762,15 +780,26 @@ class BIBLEGET_QUOTE {
             if( $this->queryViolatesAnyRuleOf( $query, [ self::VALID_CHAPTER_MUST_FOLLOW_BOOK ] ) ){
                 return false;
             }
+            if( $this->DEBUG_REQUESTS ){
+                $this->writeEntryToDebugFile( "query = (" . gettype($query) . ") " . json_encode( $query, JSON_PRETTY_PRINT ) );
+            }
 
-            $hasULVariants = $this->stringWithUpperAndLowerCaseVariants( $query );
-            $matchedBook = $this->matchBookInQuery( $query, $hasULVariants );
+            $matchedBook = $this->matchBookInQuery( $query );
+            if( $this->DEBUG_REQUESTS ){
+                $this->writeEntryToDebugFile( "matchedBook = (" . gettype($matchedBook) . ") " . json_encode( $matchedBook, JSON_PRETTY_PRINT ) );
+            }
             if ( $matchedBook !== false ) {
                 $thisbook = $matchedBook[0];
+                if( $this->DEBUG_REQUESTS ){
+                    $this->writeEntryToDebugFile( "thisbook = (" . gettype($thisbook) . ") " . json_encode( $thisbook, JSON_PRETTY_PRINT ) );
+                }
                 if ( $this->validateBibleBook( $thisbook, $currentVariant, $bookIdxBase ) === false ) {
                     continue;
                 } else {
                     $query = str_replace( $thisbook, "", $query );
+                    if( $this->DEBUG_REQUESTS ){
+                        $this->writeEntryToDebugFile( "query without book = (" . gettype($query) . ") " . json_encode( $query, JSON_PRETTY_PRINT ) );
+                    }
                 }
             }
 
@@ -1375,6 +1404,10 @@ class BIBLEGET_QUOTE {
         return filter_var( $ipaddress, FILTER_VALIDATE_IP );
     }
 
+    private function writeEntryToDebugFile( string $entry ) {
+        file_put_contents( $this->DEBUGFILE, date( 'r' ) . "\t" . $entry . PHP_EOL, FILE_APPEND | LOCK_EX );
+    }
+
     private function enforceQueryLimits( string $ipaddress, string $xquery ) {
 
         //check if we have already seen this IP Address in the past 2 days and if we have the same request already
@@ -1722,7 +1755,7 @@ class BIBLEGET_QUOTE {
 
         if ( isset( $this->DATA["query"] ) && $this->DATA["query"] !== "" ) {
 
-            $queries = $this->queryStrClean( $this->DATA["query"] );
+            $queries = $this->queryStrClean();
             if( $this->detectedNotation === "MIXED" ){
                 $this->addErrorMessage( "Mixed notations have been detected, please use either english or european notation." );
                 $this->outputResult();
@@ -1777,16 +1810,19 @@ if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BI
         die( '{"error":"Malformed JSON data received in the request: <' . $json . '>, ' . json_last_error_msg() . '"}' );
     } else {
         $BIBLEQUOTE = new BIBLEGET_QUOTE( $data );
+        //$BIBLEQUOTE->DEBUG_REQUESTS = true;
         $BIBLEQUOTE->Init();
     }
 } else {
   switch( strtoupper( $_SERVER["REQUEST_METHOD"] ) ) {
       case 'POST':
           $BIBLEQUOTE = new BIBLEGET_QUOTE( $_POST );
+          //$BIBLEQUOTE->DEBUG_REQUESTS = true;
           $BIBLEQUOTE->Init();
           break;
       case 'GET':
           $BIBLEQUOTE = new BIBLEGET_QUOTE( $_GET );
+          //$BIBLEQUOTE->DEBUG_REQUESTS = true;
           $BIBLEQUOTE->Init();
           break;
       default:
