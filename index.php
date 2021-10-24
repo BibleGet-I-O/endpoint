@@ -197,6 +197,10 @@ class BIBLEGET_QUOTE {
     }
 
 
+    static private function stringWithUpperAndLowerCaseVariants( string $str ) : bool {
+        return preg_match( "/\p{L&}/u", $str );
+    }
+
     static private function toProperCase( string $txt ) : string {
         if( self::stringWithUpperAndLowerCaseVariants( $txt ) === false ){
             return $txt;
@@ -238,6 +242,146 @@ class BIBLEGET_QUOTE {
             $element = [ $element ];
         }
         return $element;
+    }
+
+    static private function detectAndNormalizeNotation( string &$querystr ) : string {
+        $detectedNotation = "";
+
+        //if query is written in english notation, convert it to european notation
+        $find = [ ".", ",", ":" ];
+        $replace = [ "", ".", "," ];
+
+        if ( strpos( $querystr, ":" ) && strpos( $querystr, "." ) ) {
+            //can't use both notations
+            $detectedNotation = "MIXED";
+        } else if ( strpos( $querystr, ":" ) && strpos( $querystr, "," ) && strpos( $querystr, ";" ) ) {
+            //check if the comma is used invalidly, this will only happen if there is more than one query
+            //this is why we check if there is a semicolon
+            //let's split all queries into an array
+            $queries = explode( ";", $querystr );
+            //let's remove any book and chapter indicators from the beginning of each query
+            $queries = preg_replace( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)*))([1-9][0-9]{0,2})/u", "", $queries );
+            //let's get the first character that was following any chapter indicators
+            $queries = array_map(function($v) { return substr($v, 0, 1); }, $queries);
+            if( in_array( ":", $queries ) && in_array( ",", $queries ) ){
+                $detectedNotation = "MIXED";
+            } else if ( in_array( ":", $queries ) ){
+                $detectedNotation = "ENGLISH";
+                $querystr = str_replace( $find, $replace, $querystr );
+            } else {
+                $detectedNotation = "EUROPEAN";
+            }
+        } else if ( strpos( $querystr, ":" ) ) {
+            $detectedNotation = "ENGLISH";
+            $querystr = str_replace( $find, $replace, $querystr );
+        } else {
+            $detectedNotation = "EUROPEAN";
+        }
+
+        return $detectedNotation;
+    }
+
+    static private function removeWhitespace( string $querystr ) : string {
+        $querystr = preg_replace( '/\s+/', '', $querystr );
+        return str_replace( ' ', '', $querystr );
+    }
+
+    static private function convertAllDashesToHyphens( string $querystr ) : string {
+        return preg_replace( '/[\x{2011}-\x{2015}|\x{2212}|\x{23AF}]/u', '-', $querystr );
+    }
+
+    static private function removeEmptyItems( array $queries ) : array {
+        return array_values( array_filter( $queries, function ( $var ) {
+            return $var !== "";
+        } ) );
+    }
+
+    static private function matchBookInQuery( string $query ) {
+        if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
+            if( preg_match( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
+                return $res;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^([1-3]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
+                return $res;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    static private function validateRuleAgainstQuery( int $rule, string $query ) : bool {
+        $validation = false;
+        switch( $rule ){
+            case self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR :
+                $validation = (preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $query ));
+                break;
+            case self::VALID_CHAPTER_MUST_FOLLOW_BOOK :
+                if(self::stringWithUpperAndLowerCaseVariants( $query ) ){
+                    $validation = ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query ) );
+                } else {
+                    $validation = ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query ) );
+                }
+                break;
+            /*case self::IS_VALID_BOOK_INDICATOR :
+                $validation = (1===1);
+                break;*/
+            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR :
+                $validation = !( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) );
+                break;
+            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
+                $validation = ( preg_match_all( "/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/", $query ) === substr_count( $query, "." ) );
+                break;
+            case self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
+                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "," ) );
+                break;
+            case self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS :
+                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "-" ) );
+                break;
+            case self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS :
+                $validation = !( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/(?=\,[1-9][0-9]{0,2}\-)/", $query ) > preg_match_all( "/(?=\-[1-9][0-9]{0,2}\,)/", $query ) ) );
+                break;
+            case self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES :
+                $validation = !( substr_count( $query, "-" ) > 1 && ( !strpos( $query, "." ) || ( substr_count( $query, "-" ) - 1 > substr_count( $query, "." ) ) ) );
+                break;
+        }
+        return $validation;
+    }
+
+    static private function queryContainsDiscountinuousVerses( string $query ) : bool {
+        return strpos( $query, "." ) !== false;
+    }
+
+    static private function queryContainsChapterVerseSeparator( string $query ) : bool {
+        return strpos( $query, "," ) !== false;
+    }
+
+    static private function getAllChapterIndicators( string $query ) : array {
+        if( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $chapterIndicators ) ){
+            $chapterIndicators[1] = self::forceArray( $chapterIndicators[1] );
+            return $chapterIndicators;
+        } else {
+            return ["",[]];
+        }
+    }
+
+    static private function getVerseAfterChapterVerseSeparator( string $query ) : array {
+        if( preg_match( "/,([1-9][0-9]{0,2})/", $query, $verse ) ){
+            return $verse;
+        } else {
+            return [[],[]];
+        }
+    }
+
+    static private function getAllVersesAfterDiscontinuousVerseIndicator( string $query ) : array {
+        if( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $discontinuousVerses ) ){
+            $discontinuousVerses[1] = self::forceArray( $discontinuousVerses[1] );
+            return $discontinuousVerses;
+        } else {
+            return [[],[]];
+        }
     }
 
 
@@ -354,10 +498,6 @@ class BIBLEGET_QUOTE {
         if( defined('WHITELISTED_DOMAINS_IPS') ){
             $this->WhitelistedDomainsIPs = WHITELISTED_DOMAINS_IPS;
         }
-    }
-
-    static private function stringWithUpperAndLowerCaseVariants( string $str ) : bool {
-        return preg_match( "/\p{L&}/u", $str );
     }
 
     private function BibleQuoteInit() {
@@ -538,136 +678,24 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function detectAndNormalizeNotation( $querystr ) : string {
-        //if query is written in english notation, convert it to european notation
-        $find = [ ".", ",", ":" ];
-        $replace = [ "", ".", "," ];
-        //detect mixed notations even when there are no dots, for example "Mt5:1;6,2"
-        //in other words check what symbol we have immediately after [book &] chapter
-        if ( strpos( $querystr, ":" ) && strpos( $querystr, "." ) ) {
-            //can't use both notations
-            $this->detectedNotation = "MIXED";
-        } else if ( strpos( $querystr, ":" ) && strpos( $querystr, "," ) && strpos( $querystr, ";" ) ) {
-            //check if the comma is used invalidly, this will only happen if there is more than one query
-            //this is why we check if there is a semicolon
-            //let's split all queries into an array
-            $queries = explode( ";", $querystr );
-            //let's remove any book and chapter indicators from the beginning of each query
-            $queries = preg_replace( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)*))([1-9][0-9]{0,2})/u", "", $queries );
-            //let's get the first character that was following any chapter indicators
-            $queries = array_map(function($v) { return substr($v, 0, 1); }, $queries);
-            if( in_array( ":", $queries ) && in_array( ",", $queries ) ){
-                $this->detectedNotation = "MIXED";
-            } else if ( in_array( ":", $queries ) ){
-                $this->detectedNotation = "ENGLISH";
-                $querystr = str_replace( $find, $replace, $querystr );
-            } else {
-                $this->detectedNotation = "EUROPEAN";
-            }
-        } else if ( strpos( $querystr, ":" ) ) {
-            $this->detectedNotation = "ENGLISH";
-            $querystr = str_replace( $find, $replace, $querystr );
-        } else {
-            $this->detectedNotation = "EUROPEAN";
-        }
+    private function queryStrClean() : array {
 
-        return $querystr;
-    }
-
-    private function removeWhitespace( string $querystr ) : string {
-        $querystr = preg_replace( '/\s+/', '', $querystr );
-        return str_replace( ' ', '', $querystr );
-    }
-
-    private function convertAllDashesToHyphens( string $querystr ) : string {
-        return preg_replace( '/[\x{2011}-\x{2015}|\x{2212}|\x{23AF}]/u', '-', $querystr );
-    }
-
-    private function removeEmptyItems( array $queries ) : array {
-        return array_values( array_filter( $queries, function ( $var ) {
-            return $var !== "";
-        } ) );
-    }
-
-    private function queryStrClean() {
-        $querystr = $this->removeWhitespace( $this->DATA["query"] );
+        $querystr = self::removeWhitespace( $this->DATA["query"] );
         $querystr = trim( $querystr );
-        $querystr = $this->convertAllDashesToHyphens( $querystr );
-        $querystr = $this->detectAndNormalizeNotation( $querystr );
+        $querystr = self::convertAllDashesToHyphens( $querystr );
+        $this->detectedNotation = self::detectAndNormalizeNotation( $querystr );
 
         //if there are multiple queries separated by semicolons, we explode them into an array
         $queries = explode( ";", $querystr );
-        $queries = $this->removeEmptyItems( $queries );
+        $queries = self::removeEmptyItems( $queries );
         $queries = array_map( 'self::toProperCase', $queries );
         return $queries;
 
     }
 
-    private function incrementBadQueryCount() {
-        $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
-    }
-
-    private function incrementGoodQueryCount() {
-        $this->mysqli->query( "UPDATE counter SET good = good + 1" );
-    }
-
-    private function matchBookInQuery( string $query ) {
-        if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
-            if( preg_match( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
-                return $res;
-            } else {
-                return false;
-            }
-        } else {
-            if( preg_match( "/^([1-3]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
-                return $res;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    private function validateRuleAgainstQuery( int $rule, string $query ) : bool {
-        $validation = false;
-        switch( $rule ){
-            case self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR :
-                $validation = (preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $query ));
-                break;
-            case self::VALID_CHAPTER_MUST_FOLLOW_BOOK :
-                if(self::stringWithUpperAndLowerCaseVariants( $query ) ){
-                    $validation = ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query ) );
-                } else {
-                    $validation = ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query ) );
-                }
-                break;
-            /*case self::IS_VALID_BOOK_INDICATOR :
-                $validation = (1===1);
-                break;*/
-            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR :
-                $validation = !( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) );
-                break;
-            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
-                $validation = ( preg_match_all( "/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/", $query ) === substr_count( $query, "." ) );
-                break;
-            case self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
-                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "," ) );
-                break;
-            case self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS :
-                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "-" ) );
-                break;
-            case self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS :
-                $validation = !( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/(?=\,[1-9][0-9]{0,2}\-)/", $query ) > preg_match_all( "/(?=\-[1-9][0-9]{0,2}\,)/", $query ) ) );
-                break;
-            case self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES :
-                $validation = !( substr_count( $query, "-" ) > 1 && ( !strpos( $query, "." ) || ( substr_count( $query, "-" ) - 1 > substr_count( $query, "." ) ) ) );
-                break;
-        }
-        return $validation;
-    }
-
     private function queryViolatesAnyRuleOf( string $query, array $rules ) : bool {
         foreach( $rules as $rule ) {
-            if( $this->validateRuleAgainstQuery( $rule, $query ) === false ){
+            if( self::validateRuleAgainstQuery( $rule, $query ) === false ){
                 $this->addErrorMessage( $rule );
                 $this->incrementBadQueryCount();
                 return true;
@@ -676,38 +704,12 @@ class BIBLEGET_QUOTE {
         return false;
     }
 
-    private function queryContainsVerseSeparator( string $query ) : bool {
-        return strpos( $query, "." ) !== false;
+    private function incrementBadQueryCount() {
+        $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
     }
 
-    private function queryContainsChapterVerseSeparator( string $query ) : bool {
-        return strpos( $query, "," ) !== false;
-    }
-
-    private function getAllChapterIndicators( string $query ) : array {
-        if( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $chapterIndicators ) ){
-            $chapterIndicators[1] = self::forceArray( $chapterIndicators[1] );
-            return $chapterIndicators;
-        } else {
-            return ["",[]];
-        }
-    }
-
-    private function getVerseAfterChapterVerseSeparator( string $query ) : array {
-        if( preg_match( "/,([1-9][0-9]{0,2})/", $query, $verse ) ){
-            return $verse;
-        } else {
-            return [[],[]];
-        }
-    }
-
-    private function getAllVersesAfterDiscontinuousVerseIndicator( string $query ) : array {
-        if( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $discontinuousVerses ) ){
-            $discontinuousVerses[1] = self::forceArray( $discontinuousVerses[1] );
-            return $discontinuousVerses;
-        } else {
-            return [[],[]];
-        }
+    private function incrementGoodQueryCount() {
+        $this->mysqli->query( "UPDATE counter SET good = good + 1" );
     }
 
     private function isValidBookForVariant( string $currentBook, string $variant ) : bool {
@@ -809,7 +811,7 @@ class BIBLEGET_QUOTE {
     }
 
     private function validateVersesAfterChapterVerseSeparators( object $validatedQueries, array $parts ) : bool {
-        $versesAfterChapterVerseSeparators = $this->getVerseAfterChapterVerseSeparator( $validatedQueries->currentQuery );
+        $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator( $validatedQueries->currentQuery );
 
         $highverse = intval( $versesAfterChapterVerseSeparators[1] );
         foreach ( $this->indexes as $jkey => $jindex ) {
@@ -880,7 +882,7 @@ class BIBLEGET_QUOTE {
                 return false;
             }
 
-            $matchedBook = $this->matchBookInQuery( $validatedQueries->currentQuery );
+            $matchedBook = self::matchBookInQuery( $validatedQueries->currentQuery );
             if ( $matchedBook !== false ) {
                 $validatedQueries->currentBook = $matchedBook[0];
                 if ( $this->validateBibleBook( $validatedQueries ) === false ) {
@@ -890,7 +892,7 @@ class BIBLEGET_QUOTE {
                 }
             }
 
-            if ( $this->queryContainsVerseSeparator( $validatedQueries->currentQuery ) ) {
+            if ( self::queryContainsDiscountinuousVerses( $validatedQueries->currentQuery ) ) {
                 $rules = [ 
                     self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR,
                     self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS
@@ -900,11 +902,11 @@ class BIBLEGET_QUOTE {
                 }
             }
 
-            if ( $this->queryContainsChapterVerseSeparator( $validatedQueries->currentQuery ) ) {
+            if ( self::queryContainsChapterVerseSeparator( $validatedQueries->currentQuery ) ) {
                 if ( $this->queryViolatesAnyRuleOf( $validatedQueries->currentQuery, [ self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS ] ) ) {
                     continue;
                 } else {
-                    $chapterIndicators = $this->getAllChapterIndicators( $validatedQueries->currentQuery );
+                    $chapterIndicators = self::getAllChapterIndicators( $validatedQueries->currentQuery );
                     if( $this->validateChapterIndicators( $chapterIndicators, $validatedQueries ) === false ){
                         continue;
                     }
@@ -926,7 +928,7 @@ class BIBLEGET_QUOTE {
                             }
                         }
 
-                        $discontinuousVerses = $this->getAllVersesAfterDiscontinuousVerseIndicator( $validatedQueries->currentQuery );
+                        $discontinuousVerses = self::getAllVersesAfterDiscontinuousVerseIndicator( $validatedQueries->currentQuery );
                         $highverse = array_pop( $discontinuousVerses[1] );
                         if( $this->highVerseOutOfBounds( $highverse, $validatedQueries, $parts ) ) {
                             continue;
@@ -956,70 +958,79 @@ class BIBLEGET_QUOTE {
 
         } //END FOREACH
 
-        //return $usedvariants;
         return $validatedQueries;
     }
 
-    private function formulateQueries( $checkedResults ) {
-        $queries          = $checkedResults->goodqueries;
-        $usedvariants     = $checkedResults->usedvariants;
-        $sqlqueries       = [];
-        $queriesversions  = [];
-        $originalquery    = [];
-        $nn               = 0;
-        $sqlquery         = "";
-        $book             = "";
-        $currentVariant   = "";
+    static private function captureBookIndicator( string &$currentQuery, bool $hasULVariants ) {
+        if( $hasULVariants ){
+            if( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $currentQuery, $ret ) ){
+                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $currentQuery );
+                return $ret;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^[1-4]{0,1}\p{L}+/u", $currentQuery, $ret ) ){
+                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $currentQuery );
+                return $ret;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    private function bestGuessBookIdx( array $matchedBook, object $formulatedQueries ) {
+        $key1 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["biblebooks"] ) : false;
+        $key2 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["abbreviations"] ) : false;
+        $key3 = self::idxOf( $matchedBook[0], $this->biblebooks );
+        if ( $key1 ) {
+            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key1];
+        } else if ( $key2 ) {
+            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key2];
+        } else if ( $key3 ) {
+            return $key3 + 1;
+        }
+    }
+
+    private function formulateSQLQueries( object $validatedQueries ) {
+
+        $formulatedQueries = new stdClass();
+        $formulatedQueries->queries             = $validatedQueries->goodqueries;
+        $formulatedQueries->currentQuery        = "";
+        $formulatedQueries->currentFullQuery    = "";
+        $formulatedQueries->usedvariants        = $validatedQueries->usedvariants;
+        $formulatedQueries->sqlqueries          = [];
+        $formulatedQueries->queriesversions     = [];
+        $formulatedQueries->originalquery       = [];
+        $formulatedQueries->nn                  = 0;
+        $formulatedQueries->i                   = -1;
+        $formulatedQueries->sqlquery            = "";
+        $formulatedQueries->previousBook        = "";
+        $formulatedQueries->currentBook         = "";
+        $formulatedQueries->currentVariant      = "";
 
         foreach ( $this->requestedVersions as $version ) {
-            $i = 0;
-            foreach ( $queries as $query ) {
-                $origquery = $query;
-                $book1 = "";
+            $formulatedQueries->i = 0;
+            foreach ( $formulatedQueries->queries as $query ) {
+                $formulatedQueries->currentQuery = $query;
+                $formulatedQueries->currentFullQuery = $query;
+
                 // Retrieve and store the book in the query string,if applicable
-                if ( preg_match( "/\p{L&}/u", $query ) ) {
-                    if ( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $query, $ret ) ) {
-                        $currentVariant = $usedvariants[$i];
-                        // Now that we have captured our book, we can erase it from the query string
-                        $query = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $query );
-                        $key1 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["biblebooks"] ) : false;
-                        $key2 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["abbreviations"] ) : false;
-                        $key3 = self::idxOf( $ret[0], $this->biblebooks );
-                        if ( $key1 ) {
-                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key1];
-                        } else if ( $key2 ) {
-                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key2];
-                        } else if ( $key3 ) {
-                            $book1 = $book = $key3 + 1;
-                        }
-                    } else {
-                        $book1 = $book;
-                    }
+                $hasULVariants = self::stringWithUpperAndLowerCaseVariants( $formulatedQueries->currentQuery );
+                $matchedBook = self::captureBookIndicator( $formulatedQueries->currentQuery, $hasULVariants );
+                if ( $matchedBook ) {
+                    $formulatedQueries->currentVariant = $formulatedQueries->usedvariants[$formulatedQueries->i];
+                    $formulatedQueries->currentBook = $this->bestGuessBookIdx( $matchedBook, $formulatedQueries );
+                    $formulatedQueries->previousBook = $formulatedQueries->currentBook;
                 } else {
-                    if ( preg_match( "/^[1-4]{0,1}\p{L}+/u", $query, $ret ) ) {
-                        $currentVariant = $usedvariants[$i];
-                        // Now that we have captured our book, we can erase it from the query string
-                        $query = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $query );
-                        $key1 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["biblebooks"] ) : false;
-                        $key2 = $currentVariant != "" ? array_search( $ret[0], $this->indexes[$currentVariant]["abbreviations"] ) : false;
-                        $key3 = self::idxOf( $ret[0], $this->biblebooks );
-                        if ( $key1 ) {
-                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key1];
-                        } else if ( $key2 ) {
-                            $book1 = $book = $this->indexes[$currentVariant]["book_num"][$key2];
-                        } else if ( $key3 ) {
-                            $book1 = $book = $key3 + 1;
-                        }
-                    } else {
-                        $book1 = $book;
-                    }
+                    $formulatedQueries->currentBook = $formulatedQueries->previousBook;
                 }
 
-                $sqlquery = "SELECT * FROM " . $version . " WHERE book = " . $book1;
+                $formulatedQueries->sqlquery = "SELECT * FROM " . $version . " WHERE book = " . $formulatedQueries->currentBook;
 
                 $preferorigin = "";
                 //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
-                if( $book1 == 19 || $book1 == "19" ){ 
+                if( $formulatedQueries->currentBook == 19 || $formulatedQueries->currentBook == "19" ){ 
                     //if a protestant version is requested, it will only have HEBREW origin, not GREEK
                     //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
                     //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
@@ -1043,11 +1054,11 @@ class BIBLEGET_QUOTE {
                 //      This symbol will be used to indicate splitting into left hand and right hand sections: <=|=>
 
                 //IF: non-consecutive verses are requested ( EXAMPLE: John 3,16.18 )
-                if ( strpos( $query, "." ) ) {
-                    $querysplit = preg_split( "/\./", $query );
+                if ( strpos( $formulatedQueries->currentQuery, "." ) ) {
+                    $querysplit = preg_split( "/\./", $formulatedQueries->currentQuery );
                     //FOREACH non-consecutive chunk requested ( John 3,16 <=|=> 18 )
                     foreach ( $querysplit as $piece ) {
-                        $originalquery[$nn] = $origquery;
+                        $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
                         //IF the chunk is not simply a single verse, but is a range of consecutive VERSES or CHAPTERS 
                         //    ( EXAMPLE: John 3,16-18.20       OR John 3,16.18-20        OR John 3,16-18.20-22 )
                         //    (         John 3,16-18 <=|=> 20 OR John 3,16 <=|=> 18-20  OR John 3,16-18 <=|=> 20-22 )
@@ -1061,7 +1072,7 @@ class BIBLEGET_QUOTE {
                                 //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
                                 $chapterverse = preg_split( "/,/", $fromto[0] );
                                 $xchapter = $chapterverse[0];
-                                $mappedReference = $this->mapReference( $version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin );
+                                $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$chapterverse[0],$chapterverse[1],$preferorigin );
                                 $chapterverse[0] = $mappedReference[0];
                                 $chapterverse[1] = $mappedReference[1];
                                 $preferorigin = $mappedReference[2];
@@ -1072,27 +1083,27 @@ class BIBLEGET_QUOTE {
                                     //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
                                     $chapterverse1 = preg_split( "/,/", $fromto[1] );
                                     $xchapter = $chapterverse1[0];
-                                    $mappedReference = $this->mapReference( $version,$book1,$chapterverse1[0],$chapterverse1[1],$preferorigin );
+                                    $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$chapterverse1[0],$chapterverse1[1],$preferorigin );
                                     $chapterverse1[0] = $mappedReference[0];
                                     $chapterverse1[1] = $mappedReference[1];
                                     $preferorigin = $mappedReference[2];
-                                    $sqlqueries[$nn] = $sqlquery . " AND ( ( chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . " )";
+                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( ( chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . " )";
                                     if( $chapterverse1[0] - $chapterverse[0] > 1 ) {
                                         for( $d=1;$d<( $chapterverse1[0] - $chapterverse[0] );$d++ ){
-                                            $sqlqueries[$nn] .= " OR ( chapter = " . ( $chapterverse[0] + $d ) . " )";
+                                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . ( $chapterverse[0] + $d ) . " )";
                                         }
                                     }
-                                    $sqlqueries[$nn] .= " OR ( chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . " ) )";
+                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . " ) )";
                                 }
                                 //ELSEIF we do NOT have a CHAPTER indicator on the right hand side of the range of consecutive verses
                                 // ( EXAMPLE: John 3,16-18.20 )
                                 else {
-                                    $mappedReference = $this->mapReference( $version,$book1,$xchapter,$fromto[1],$preferorigin );
+                                    $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$xchapter,$fromto[1],$preferorigin );
                                     $xchapter = $mappedReference[0];
                                     $fromto[1] = $mappedReference[1];
                                     $preferorigin = $mappedReference[2];
-                                    $sqlqueries[$nn] = $sqlquery . " AND ( chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . " )";
-                                    $sqlqueries[$nn] .= " AND ( chapter <= " . $xchapter . " AND verse <= " . $fromto[1] . " )";
+                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . " )";
+                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " AND ( chapter <= " . $xchapter . " AND verse <= " . $fromto[1] . " )";
                                 }
                             }
                             //ELSEIF we DO NOT have a CHAPTER indicator on the left hand side of the range of consecutive verses
@@ -1100,13 +1111,13 @@ class BIBLEGET_QUOTE {
                             //  (  John 3,16 <=|=> 18-20 )
                             //  (  18 <=> 20 )
                             else {
-                                $mappedReference = $this->mapReference( $version,$book1,$xchapter,$fromto[0],$preferorigin );
-                                $mappedReference1 = $this->mapReference( $version,$book1,$xchapter,$fromto[1],$preferorigin );
+                                $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$xchapter,$fromto[0],$preferorigin );
+                                $mappedReference1 = $this->mapReference( $version,$formulatedQueries->currentBook,$xchapter,$fromto[1],$preferorigin );
                                 $xchapter = $mappedReference[0];
                                 $fromto[0] = $mappedReference[1];
                                 $preferorigin = $mappedReference[2];
                                 $fromto[1] = $mappedReference1[1];
-                                $sqlqueries[$nn] = $sqlquery . " AND ( chapter = " . $xchapter . " AND verse >= " . $fromto[0] . " AND verse <= " . $fromto[1] . " )";
+                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $xchapter . " AND verse >= " . $fromto[0] . " AND verse <= " . $fromto[1] . " )";
                             }
                         }
                         //ELSEIF the non consecutive chunk DOES NOT contain a range of consecutive VERSEs / CHAPTERs
@@ -1120,51 +1131,51 @@ class BIBLEGET_QUOTE {
                             if ( strpos( $piece, "," ) ) {
                                 $chapterverse = preg_split( "/,/", $piece );
                                 $xchapter = $chapterverse[0];
-                                $mappedReference = $this->mapReference( $version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin );
+                                $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$chapterverse[0],$chapterverse[1],$preferorigin );
                                 $chapterverse[0] = $mappedReference[0];
                                 $chapterverse[1] = $mappedReference[1];
                                 $preferorigin = $mappedReference[2];
-                                $sqlqueries[$nn] = $sqlquery . " AND ( chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1] . " )";
+                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1] . " )";
                             } 
                             //ELSEIF the non consecutive chunk DOES NOT contain a chapter reference
                             //  ( EXAMPLE: John 3,16.18 )
                             //  (    John 3,16 <=|=> 18 )
                             //  ( 18 )
                             else {
-                                $mappedReference = $this->mapReference( $version,$book1,$xchapter,$piece,$preferorigin );
+                                $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$xchapter,$piece,$preferorigin );
                                 $xchapter = $mappedReference[0];
                                 $piece = $mappedReference[1];
                                 $preferorigin = $mappedReference[2];
-                                $sqlqueries[$nn] = $sqlquery . " AND ( chapter = " . $xchapter . " AND verse = " . $piece . " )";
+                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $xchapter . " AND verse = " . $piece . " )";
                             }
                         }
 
-                        $sqlqueries[$nn] .= $preferorigin;
+                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= $preferorigin;
 
-                        $queriesversions[$nn] = $version;
+                        $formulatedQueries->queriesversions[$formulatedQueries->nn] = $version;
                         //VERSES must be ordered by verseID in order to handle those cases where there are subverses ( usually Greek additions )
                         //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
                         //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
                         //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
                         //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
-                        $sqlqueries[$nn] .= " ORDER BY verseID";
-                        //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
+                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY verseID";
+                        //$formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
                         if ( in_array( $version, $this->copyrightversions ) ) {
-                            $sqlqueries[$nn] .= " LIMIT 30";
+                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
                         }
-                        $nn++;
+                        $formulatedQueries->nn++;
                     }
                 } 
                 //ELSEIF the request DOES NOT contain non-consecutive verses
                 //    ( EXAMPLE: John 3,16 )
                 else {
-                    //$nn++;
+                    //$formulatedQueries->nn++;
                     //IF the request DOES however contain a range of consecutive verses or chapters
                     //    ( EXAMPLE: John 3,16-18 )
                     //    (    John 3,16 <=|=> 18 )
-                    if ( strpos( $query, "-" ) ) {
-                        $originalquery[$nn] = $origquery;
-                        $fromto = preg_split( "/\-/", $query );
+                    if ( strpos( $formulatedQueries->currentQuery, "-" ) ) {
+                        $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
+                        $fromto = preg_split( "/\-/", $formulatedQueries->currentQuery );
                         //IF there is a chapter indicator on the left hand side of the range of consecutive verses
                         //    ( EXAMPLE: John 3,16-18 )
                         //    (    John 3,16 <=|=> 18 )
@@ -1173,7 +1184,7 @@ class BIBLEGET_QUOTE {
                             //echo "We have a comma in this section of query! ". $fromto[0] . "<br />";
                             $chapterverse = preg_split( "/,/", $fromto[0] );
                             $xchapter = $chapterverse[0];
-                            $mappedReference = $this->mapReference( $version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin );
+                            $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$chapterverse[0],$chapterverse[1],$preferorigin );
                             $chapterverse[0] = $mappedReference[0];
                             $chapterverse[1] = $mappedReference[1];
                             $preferorigin = $mappedReference[2];
@@ -1183,29 +1194,29 @@ class BIBLEGET_QUOTE {
                             //    (    4,5 )
                             if ( strpos( $fromto[1], "," ) ) {
                                 $chapterverse1 = preg_split( "/,/", $fromto[1] );
-                                $mappedReference = $this->mapReference( $version,$book1,$chapterverse1[0],$chapterverse1[1],$preferorigin );
+                                $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$chapterverse1[0],$chapterverse1[1],$preferorigin );
                                 $chapterverse1[0] = $mappedReference[0];
                                 $chapterverse1[1] = $mappedReference[1];
                                 $preferorigin = $mappedReference[2];
                                 //what if the difference between chapters is greater than 1? Say: John 3,16-6,2 ?
-                                $sqlqueries[$nn] = $sqlquery . " AND ( ( chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . " )";
+                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( ( chapter = " . $chapterverse[0] . " AND verse >= " . $chapterverse[1] . " )";
                                 if( $chapterverse1[0] - $chapterverse[0] > 1 ) {
                                     for( $d=1;$d<( $chapterverse1[0] - $chapterverse[0] );$d++ ){
-                                        $sqlqueries[$nn] .= " OR ( chapter = " . ( $chapterverse[0] + $d ) . " )";
+                                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . ( $chapterverse[0] + $d ) . " )";
                                     }
                                 }
-                                $sqlqueries[$nn] .= " OR ( chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . " ) )";
+                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . $chapterverse1[0] . " AND verse <= " . $chapterverse1[1] . " ) )";
                             }
                             //ELSEIF there is NOT a chapter indicator on the right hand side of the range of consecutive verses
                             //    ( EXAMPLE: John 3,16-18 )
                             //    (    John 3,16 <=|=> 18 )
                             //    (    18 )
                             else {
-                              $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
-                              $mappedReference = $this->mapReference( $version,$book1,$chapterverse[0],$fromto[1],$preferorigin );
+                              $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter >= " . $chapterverse[0] . " AND verse >= " . $chapterverse[1];
+                              $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$chapterverse[0],$fromto[1],$preferorigin );
                               $fromto[1] = $mappedReference[1];
                               $preferorigin = $mappedReference[2];
-                              $sqlqueries[$nn] .= " AND chapter <= " . $mappedReference[0] . " AND verse <= " . $fromto[1];
+                              $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " AND chapter <= " . $mappedReference[0] . " AND verse <= " . $fromto[1];
                             }
                         }
                         //ELSEIF there is NOT a chapter/verse indicator on the left hand side of the range of consecutive verses OR chapters
@@ -1213,60 +1224,61 @@ class BIBLEGET_QUOTE {
                         //     ( EXAMPLE: John 3-4 )
                         //     ( EXAMPLE: 3 <=|=> 4 )
                         else {
-                            $mappedReference1 = $this->mapReference( $version,$book1,$fromto[0],null,$preferorigin );
-                            $mappedReference2 = $this->mapReference( $version,$book1,$fromto[1],null,$preferorigin );
+                            $mappedReference1 = $this->mapReference( $version,$formulatedQueries->currentBook,$fromto[0],null,$preferorigin );
+                            $mappedReference2 = $this->mapReference( $version,$formulatedQueries->currentBook,$fromto[1],null,$preferorigin );
                             $fromto[0] = $mappedReference1[0];
                             $fromto[1] = $mappedReference2[0];
                             $preferorigin = $mappedReference1[2];
-                            $sqlqueries[$nn] = $sqlquery . " AND chapter >= " . $fromto[0] . " AND chapter <= " . $fromto[1];
+                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter >= " . $fromto[0] . " AND chapter <= " . $fromto[1];
                         }
                     }
                     //ELSEIF the request DOES NOT contain a range of consecutive verses OR chapters
                     //    ( EXAMPLE: John 3,16 )
                     else {
                         //IF we DO have a chapter/verse indicator
-                        if ( strpos( $query, "," ) ) {
-                            $originalquery[$nn] = $origquery;
-                            $chapterverse = preg_split( "/,/", $query );
+                        if ( strpos( $formulatedQueries->currentQuery, "," ) ) {
+                            $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
+                            $chapterverse = preg_split( "/,/", $formulatedQueries->currentQuery );
                             $xchapter = $chapterverse[0];
-                            $mappedReference = $this->mapReference( $version,$book1,$chapterverse[0],$chapterverse[1],$preferorigin );
+                            $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$chapterverse[0],$chapterverse[1],$preferorigin );
                             $chapterverse[0] = $mappedReference[0];
                             $chapterverse[1] = $mappedReference[1];
                             $preferorigin = $mappedReference[2];
-                            $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
+                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter = " . $chapterverse[0] . " AND verse = " . $chapterverse[1];
                         } 
                         //ELSEIF we are dealing with just a single chapter
                         //    ( EXAMPLE: John 3 )
                         else {
-                            $originalquery[$nn] = $origquery;
-                            $xchapter = $query;
-                            $mappedReference = $this->mapReference( $version,$book1,$xchapter,null,$preferorigin );
+                            $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
+                            $xchapter = $formulatedQueries->currentQuery;
+                            $mappedReference = $this->mapReference( $version,$formulatedQueries->currentBook,$xchapter,null,$preferorigin );
                             $preferorigin = $mappedReference[2];
-                            $sqlqueries[$nn] = $sqlquery . " AND chapter = " . $mappedReference[0]; // . " AND verse = " . $piece;
+                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter = " . $mappedReference[0]; // . " AND verse = " . $piece;
                         }
                     }
 
-                    $sqlqueries[$nn] .= $preferorigin;
+                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= $preferorigin;
 
-                    $queriesversions[$nn] = $version;
+                    $formulatedQueries->queriesversions[$formulatedQueries->nn] = $version;
                     //VERSES must be ordered by verseID in order to handle those cases where there are subverses ( usually Greek additions )
                     //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
                     //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
                     //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
                     //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
-                    $sqlqueries[$nn] .= " ORDER BY verseID";
-                    //$sqlqueries[$nn] .= " ORDER BY book,chapter,verse,verseequiv";
+                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY verseID";
+                    //$formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
                     if ( in_array( $version, $this->copyrightversions ) ) {
-                        $sqlqueries[$nn] .= " LIMIT 30";
+                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
                     }
-                    $nn++;
+                    $formulatedQueries->nn++;
                 }
 
-                $i++;
+                $formulatedQueries->i++;
             }
         }
-        return array( $sqlqueries, $queriesversions, $originalquery );
-        //END formulateQueries
+
+        return $formulatedQueries;
+
     }
 
     private function mapReference( $version,$book,$chapter,$verse,$preferorigin ) {
@@ -1524,7 +1536,7 @@ class BIBLEGET_QUOTE {
         $stmt->close();
     }
 
-    private function prepareResponseInfo( object $QUERY_ACTION_OBJ ) : array {
+    private function prepareResponse( object $QUERY_ACTION_OBJ ) : array {
         $currentVariant = $QUERY_ACTION_OBJ->queriesversions[$QUERY_ACTION_OBJ->i];
         $row = $QUERY_ACTION_OBJ->row;
 
@@ -1648,13 +1660,12 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    private function doQueries( array $formulatedQueries ) {
+    private function doQueries( object $formulatedQueries ) {
 
         $QUERY_ACTION_OBJ = new stdClass();
-        [ $sqlqueries, $queriesversions, $originalquery ] = $formulatedQueries;
-        $QUERY_ACTION_OBJ->sqlqueries       = $sqlqueries;
-        $QUERY_ACTION_OBJ->queriesversions  = $queriesversions;
-        $QUERY_ACTION_OBJ->originalquery    = $originalquery;
+        $QUERY_ACTION_OBJ->sqlqueries       = $formulatedQueries->sqlqueries;
+        $QUERY_ACTION_OBJ->queriesversions  = $formulatedQueries->queriesversions;
+        $QUERY_ACTION_OBJ->originalquery    = $formulatedQueries->originalquery;
 
         $QUERY_ACTION_OBJ->appid            = $this->DATA["appid"]          != "" ? $this->DATA["appid"]            : "unknown";
         $QUERY_ACTION_OBJ->domain           = $this->DATA["domain"]         != "" ? $this->DATA["domain"]           : "unknown";
@@ -1714,7 +1725,7 @@ class BIBLEGET_QUOTE {
                 while ( $row = $result->fetch_assoc() ) {
 
                     $QUERY_ACTION_OBJ->row = $row;
-                    $QUERY_ACTION_OBJ->response = $this->prepareResponseInfo( $QUERY_ACTION_OBJ );
+                    $QUERY_ACTION_OBJ->response = $this->prepareResponse( $QUERY_ACTION_OBJ );
                     $this->generateResponse( $QUERY_ACTION_OBJ );
 
                 }
@@ -1771,7 +1782,7 @@ class BIBLEGET_QUOTE {
                     $this->outputResult();
                 } else {
                     // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
-                    $formulatedQueries = $this->formulateQueries( $validatedQueries );
+                    $formulatedQueries = $this->formulateSQLQueries( $validatedQueries );
     
                     // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
                     $this->doQueries( $formulatedQueries );
