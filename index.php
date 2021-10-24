@@ -677,18 +677,16 @@ class BIBLEGET_QUOTE {
 
     private function getAllChapterIndicators( string $query ) : array {
         if( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $chapterIndicators ) ){
-            if ( !is_array( $chapterIndicators[1] ) ) {
-                $chapterIndicators[1] = [ $chapterIndicators[1] ];
-            }
+            $chapterIndicators[1] = $this->forceArray( $chapterIndicators[1] );
             return $chapterIndicators;
         } else {
             return ["",[]];
         }
     }
 
-    private function getAllVersesAfterChapterVerseSeparators( string $query ) : array {
-        if( preg_match( "/,([1-9][0-9]{0,2})/", $query, $verses ) ){
-            return $verses;
+    private function getVerseAfterChapterVerseSeparator( string $query ) : array {
+        if( preg_match( "/,([1-9][0-9]{0,2})/", $query, $verse ) ){
+            return $verse;
         } else {
             return [[],[]];
         }
@@ -696,20 +694,18 @@ class BIBLEGET_QUOTE {
 
     private function getAllVersesAfterDiscontinuousVerseIndicator( string $query ) : array {
         if( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $discontinuousVerses ) ){
-            if ( !is_array( $discontinuousVerses[1] ) ) {
-                $discontinuousVerses[1] = [ $discontinuousVerses[1] ];
-            }
+            $discontinuousVerses[1] = $this->forceArray( $discontinuousVerses[1] );
             return $discontinuousVerses;
         } else {
             return [[],[]];
         }
     }
 
-    private function isValidBookForVariant( string $thisbook, string $variant ) : bool {
-        return ( in_array( $thisbook, $this->indexes[$variant]["biblebooks"] ) || in_array( $thisbook, $this->indexes[$variant]["abbreviations"] ) );
+    private function isValidBookForVariant( string $currentBook, string $variant ) : bool {
+        return ( in_array( $currentBook, $this->indexes[$variant]["biblebooks"] ) || in_array( $currentBook, $this->indexes[$variant]["abbreviations"] ) );
     }
 
-    private function validateBibleBook( string $book, &$currentVariant, &$bookIdxBase ) : bool {
+    private function validateBibleBook( string $book, &$currentVariant, &$bookIdxBase, &$nonZeroBookIdx ) : bool {
         $bookIsValid = false;
         foreach ( $this->requestedVersions as $variant ) {
             if ( $this->isValidBookForVariant( $book, $variant ) ) {
@@ -724,11 +720,109 @@ class BIBLEGET_QUOTE {
             if( $bookIdxBase !== false){
                 $bookIsValid = true;
             } else {
-                $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $thisbook ) );
+                $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $book ) );
                 $this->incrementBadQueryCount();
             }
         }
+        $nonZeroBookIdx = $bookIdxBase + 1;
         return $bookIsValid;
+    }
+
+    private function validateChapterIndicators( array $chapterIndicators, int $nonZeroBookIdx, string $currentBook ) : bool {
+
+        foreach ( $chapterIndicators[1] as $chapterIndicator ) {
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                $bookidx = array_search( $nonZeroBookIdx, $jindex["book_num"] );
+                $chapter_limit = $jindex["chapter_limit"][$bookidx];
+                if ( $chapterIndicator > $chapter_limit ) {
+                    /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
+                    $this->addErrorMessage( sprintf( $msg, $chapterIndicator, $currentBook, $jkey, $chapter_limit ) );
+                    $this->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+
+        return true;
+
+    }
+
+    private function validateMultipleVerseSeparators( string $query, int $nonZeroBookIdx, string $currentBook ) : bool {
+        if ( !strpos( $query, '-' ) ) {
+            $this->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
+            $this->incrementBadQueryCount();
+            return false;
+        }
+        $parts = explode( "-", $query );
+        if ( count( $parts ) != 2 ) {
+            $this->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
+            $this->incrementBadQueryCount();
+            return false;
+        }
+        foreach ( $parts as $part ) {
+            $pp = array_map( "intval", explode( ",", $part ) );
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                $bookidx = array_search( $nonZeroBookIdx, $jindex["book_num"] );
+                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
+                if ( $pp[1] > $verselimit ) {
+                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                    $this->addErrorMessage( sprintf( $msg, $pp[1], $currentBook, $pp[0], $jkey, $verselimit ) );
+                    $this->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private function validateRightHandSideOfVerseSeparator( string $query, int $nonZeroBookIdx, string $currentBook, array $parts ) : bool {
+        if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $query, $matches ) ) {
+            $matches[1] = $this->forceArray( $matches[1] );
+            $highverse = intval( array_pop( $matches[1] ) );
+
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                $bookidx = array_search( $nonZeroBookIdx, $jindex["book_num"] );
+                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+
+                if ( $highverse > $verselimit ) {
+                    /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                    $this->addErrorMessage( sprintf( $msg, $highverse, $currentBook, $parts[0], $jkey, $verselimit ) );
+                    $this->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private function validateVersesAfterChapterVerseSeparators( string $query, int $nonZeroBookIdx, string $currentBook, array $parts ) : bool {
+        $versesAfterChapterVerseSeparators = $this->getVerseAfterChapterVerseSeparator( $query );
+
+        $highverse = intval( $versesAfterChapterVerseSeparators[1] );
+        foreach ( $this->indexes as $jkey => $jindex ) {
+            $bookidx = array_search( $nonZeroBookIdx, $jindex["book_num"] );
+            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+            if ( $highverse > $verselimit ) {
+                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                $this->addErrorMessage( sprintf( $msg, $highverse, $currentBook, $parts[0], $jkey, $verselimit ) );
+                $this->incrementBadQueryCount();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function forceArray( $element ) : array {
+        if ( !is_array( $element ) ) {
+            $element = [ $element ];
+        }
+        return $element;
     }
 
     private function validateQueries( $queries ) {
@@ -737,8 +831,9 @@ class BIBLEGET_QUOTE {
         $validatedQueries->usedvariants     = [];
         $validatedQueries->goodqueries      = [];
         $currentVariant                     = "";
-        $thisbook                           = "";
+        $currentBook                        = "";
         $bookIdxBase                        = -1;
+        $nonZeroBookIdx                     = -1;
 
         foreach ( $queries as $query ) {
             $fullquery = $query;
@@ -749,11 +844,11 @@ class BIBLEGET_QUOTE {
 
             $matchedBook = $this->matchBookInQuery( $query );
             if ( $matchedBook !== false ) {
-                $thisbook = $matchedBook[0];
-                if ( $this->validateBibleBook( $thisbook, $currentVariant, $bookIdxBase ) === false ) {
+                $currentBook = $matchedBook[0];
+                if ( $this->validateBibleBook( $currentBook, $currentVariant, $bookIdxBase, $nonZeroBookIdx ) === false ) {
                     continue;
                 } else {
-                    $query = str_replace( $thisbook, "", $query );
+                    $query = str_replace( $currentBook, "", $query );
                 }
             }
 
@@ -772,118 +867,37 @@ class BIBLEGET_QUOTE {
                     continue;
                 } else {
                     $chapterIndicators = $this->getAllChapterIndicators( $query );
-                    $myidx = $bookIdxBase + 1;
-                    foreach ( $chapterIndicators[1] as $chapterIndicator ) {
-                        foreach ( $this->indexes as $jkey => $jindex ) {
-                            // bibleGetWriteLog( "jindex array contains:" );
-                            // bibleGetWriteLog( $jindex );
-                            $bookidx = array_search( $myidx, $jindex["book_num"] );
-                            // bibleGetWriteLog( "bookidx for ".$jkey." = ".$bookidx );
-                            $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                            // bibleGetWriteLog( "chapter_limit for ".$jkey." = ".$chapter_limit );
-                            // bibleGetWriteLog( "match for " . $jkey . " = " . $chapterIndicator );
-                            if ( $chapterIndicator > $chapter_limit ) {
-                                //addErrorMessage( '$myidx = '.$myidx,$returntype );
-                                //addErrorMessage( '$bookidx = '.$bookidx,$returntype );
-                                /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                                $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                                $this->addErrorMessage( sprintf( $msg, $chapterIndicator, $thisbook, $jkey, $chapter_limit ) );
-                                $this->incrementBadQueryCount();
-                                continue 3;
-                            }
-                        }
+                    if( $this->validateChapterIndicators( $chapterIndicators, $bookIdxBase, $currentBook ) === false ){
+                        continue;
                     }
 
                     $chapterVerseSeparatorCount = substr_count( $query, "," );
                     if ( $chapterVerseSeparatorCount > 1 ) {
-                        if ( !strpos( $query, '-' ) ) {
-                            $this->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
-                            $this->incrementBadQueryCount();
+                        if( $this->validateMultipleVerseSeparators( $query, $nonZeroBookIdx, $currentBook ) === false ){
                             continue;
-                            //return false;
-                        }
-                        $parts = explode( "-", $query );
-                        if ( count( $parts ) != 2 ) {
-                            $this->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
-                            $this->incrementBadQueryCount();
-                            continue;
-                            //return false;
-                        }
-                        foreach ( $parts as $part ) {
-                            $pp = array_map( "intval", explode( ",", $part ) );
-                            foreach ( $this->indexes as $jkey => $jindex ) {
-                                $bookidx = array_search( $myidx, $jindex["book_num"] );
-                                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                                $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
-                                if ( $pp[1] > $verselimit ) {
-                                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                    $this->addErrorMessage( sprintf( $msg, $pp[1], $thisbook, $pp[0], $jkey, $verselimit ) );
-                                    $this->incrementBadQueryCount();
-                                    continue 3;
-                                    //return false;
-                                }
-                            }
                         }
                     } elseif ( $chapterVerseSeparatorCount == 1 ) {
-                        // bibleGetWriteLog( "commacount has been detected as 1, now exploding on comma the query[".$thisquery."]" );
                         $parts = explode( ",", $query );
-                        // bibleGetWriteLog( $parts );
-                        // bibleGetWriteLog( "checking for presence of dashes in the right-side of the comma..." );
                         if ( strpos( $parts[1], '-' ) ) {
-                            // bibleGetWriteLog( "a dash has been detected in the right-side of the comma( ".$parts[1]." )" );
-                            if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $query, $matches ) ) {
-                                if ( !is_array( $matches[1] ) ) {
-                                    $matches[1] = [ $matches[1] ];
-                                }
-                                $highverse = intval( array_pop( $matches[1] ) );
-                                // bibleGetWriteLog( "highverse = ".$highverse );
-                                foreach ( $this->indexes as $jkey => $jindex ) {
-                                    $bookidx = array_search( $myidx, $jindex["book_num"] );
-                                    $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                                    $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-                                    // bibleGetWriteLog( "verselimit for ".$jkey." = ".$verselimit );
-                                    if ( $highverse > $verselimit ) {
-                                        /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                                        $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                        $this->addErrorMessage( sprintf( $msg, $highverse, $thisbook, $parts[0], $jkey, $verselimit ) );
-                                        $this->incrementBadQueryCount();
-                                        continue 2;
-                                        //return false;
-                                    }
-                                }
-                            } /*else {
-                                // bibleGetWriteLog( "something is up with the regex check..." );
-                            }*/
-                        } else {
-                            $versesAfterChapterVerseSeparators = $this->getAllVersesAfterChapterVerseSeparators( $query );
-
-                            $highverse = intval( $versesAfterChapterVerseSeparators[1] );
-                            foreach ( $this->indexes as $jkey => $jindex ) {
-                                $bookidx = array_search( $myidx, $jindex["book_num"] );
-                                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                                $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-                                if ( $highverse > $verselimit ) {
-                                    /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                    $this->addErrorMessage( sprintf( $msg, $highverse, $thisbook, $parts[0], $jkey, $verselimit ) );
-                                    $this->incrementBadQueryCount();
-                                    continue 2;
-                                    //return false;
-                                }
+                            if( $this->validateRightHandSideOfVerseSeparator( $query, $nonZeroBookIdx, $currentBook, $parts ) === false ) {
+                                continue;
                             }
-
+                        } else {
+                            if( $this->validateVersesAfterChapterVerseSeparators( $query, $nonZeroBookIdx, $currentBook, $parts ) === false ){
+                                continue;
+                            }
                         }
 
                         $discontinuousVerses = $this->getAllVersesAfterDiscontinuousVerseIndicator( $query );
                         $highverse = array_pop( $discontinuousVerses[1] );
                         foreach ( $this->indexes as $jkey => $jindex ) {
-                            $bookidx = array_search( $myidx, $jindex["book_num"] );
+                            $bookidx = array_search( $nonZeroBookIdx, $jindex["book_num"] );
                             $chapters_verselimit = $jindex["verse_limit"][$bookidx];
                             $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
                             if ( $highverse > $verselimit ) {
                                 /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
                                 $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                                $this->addErrorMessage( sprintf( $msg, $highverse, $thisbook, $parts[0], $jkey, $verselimit ) );
+                                $this->addErrorMessage( sprintf( $msg, $highverse, $currentBook, $parts[0], $jkey, $verselimit ) );
                                 $this->incrementBadQueryCount();
                                 continue 2;
                                 //return false;
@@ -897,17 +911,17 @@ class BIBLEGET_QUOTE {
                 $chapters = explode( "-", $query );
                 foreach ( $chapters as $zchapter ) {
                     foreach ( $this->indexes as $jkey => $jindex ) {
-                        $myidx = $bookIdxBase + 1;
-                        $bookidx = array_search( $myidx, $jindex["book_num"] );
+                        
+                        $bookidx = array_search( $nonZeroBookIdx, $jindex["book_num"] );
                         $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                        //addErrorMessage( '$myidx = '.$myidx,$returntype );
+                        //addErrorMessage( '$nonZeroBookIdx = '.$nonZeroBookIdx,$returntype );
                         //addErrorMessage( '$bookidx = '.$bookidx,$returntype );
                         //addErrorMessage( '$chapter_limit = '.$chapter_limit,$returntype );
                         //addErrorMessage( '$zchapter = '.$zchapter,$returntype );
-                        //addErrorMessage( '$thisbook = '.$thisbook,$returntype );
+                        //addErrorMessage( '$currentBook = '.$currentBook,$returntype );
                         if ( intval( $zchapter ) > $chapter_limit ) {
                             $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                            $this->addErrorMessage( sprintf( $msg, $zchapter, $thisbook, $jkey, $chapter_limit ) );
+                            $this->addErrorMessage( sprintf( $msg, $zchapter, $currentBook, $jkey, $chapter_limit ) );
                             $this->incrementBadQueryCount();
                             continue 3;
                         }
