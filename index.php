@@ -675,6 +675,17 @@ class BIBLEGET_QUOTE {
         return $validation;
     }
 
+    private function queryViolatesAnyRuleOf( string $query, array $rules ) : bool {
+        foreach( $rules as $rule ) {
+            if( $this->validateRuleAgainstQuery( $rule, $query ) === false ){
+                $this->addErrorMessage( $rule );
+                $this->incrementBadQueryCount();
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function queryContainsVerseSeparator( string $query ) : bool {
         return strpos( $query, "." ) !== false;
     }
@@ -725,9 +736,7 @@ class BIBLEGET_QUOTE {
         foreach ( $queries as $query ) {
             $fullquery = $query;
 
-            if( $this->validateRuleAgainstQuery( self::VALID_CHAPTER_MUST_FOLLOW_BOOK, $query ) === false ){
-                $this->addErrorMessage( self::VALID_CHAPTER_MUST_FOLLOW_BOOK );
-                $this->incrementBadQueryCount();
+            if( $this->queryViolatesAnyRuleOf( $query, [ self::VALID_CHAPTER_MUST_FOLLOW_BOOK ] ) ){
                 return false;
             }
 
@@ -763,31 +772,18 @@ class BIBLEGET_QUOTE {
             }
 
             if ( $this->queryContainsVerseSeparator( $query ) ) {
-                if ( $this->validateRuleAgainstQuery( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR, $query ) === false ) {
-                    $this->addErrorMessage( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR );
-                    $this->incrementBadQueryCount();
+                $rules = [ 
+                    self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR,
+                    self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS
+                ];
+                if ( $this->queryViolatesAnyRuleOf( $query, $rules ) ) {
                     continue;
-                    //return false;
-                }
-                //if( preg_match_all( "/(?=[1-9][0-9]{0,2}\.[1-9][0-9]{0,2})/",$query ) != substr_count( $query,"." ) ){
-                //if( preg_match_all( "/(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/",$query ) < substr_count( $query,"." ) ){
-                if ( $this->validateRuleAgainstQuery( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS, $query ) === false ) {
-                    $this->addErrorMessage( self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS );
-                    $this->incrementBadQueryCount();
-                    continue;
-                    //return false;
                 }
             }
 
             if ( $this->queryContainsChapterVerseSeparator( $query ) ) {
-                if ( $this->validateRuleAgainstQuery( self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS , $query ) === false ) {
-                    // error message: A comma must be preceded and followed by 1 to 3 digits etc.
-                    //echo "There are ".preg_match_all( "/(?=[1-9][0-9]{0,2}\,[1-9][0-9]{0,2})/",$query )." matches for commas preceded and followed by valid 1-3 digit sequences;<br>";
-                    //echo "There are ".substr_count( $query,"," )." matches for commas in this query.";
-                    $this->addErrorMessage( self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS );
-                    $this->incrementBadQueryCount();
+                if ( $this->queryViolatesAnyRuleOf( $query, [ self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS ] ) ) {
                     continue;
-                    //return false;
                 } else {
                     $chapterIndicators = $this->getAllChapterIndicators( $query );
                     $myidx = $idx + 1;
@@ -934,33 +930,17 @@ class BIBLEGET_QUOTE {
             }
 
             if ( strpos( $query, "-" ) ) {
-                if ( $this->validateRuleAgainstQuery( self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS, $query ) === false ) {
-                    // error message: A dash must be preceded and followed by 1 to 3 digits etc.
-                    //echo "There are ".preg_match( "/( ?=[1-9][0-9]{0,2}\-[1-9][0-9]{0,2} )/",$query )." matches for dashes preceded and followed by valid 1-3 digit sequences;<br>";
-                    //echo "There are ".substr_count( $query,"-" )." matches for dashes in this query.";
-                    $this->addErrorMessage( self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS );
-                    $this->incrementBadQueryCount();
+                $rules = [
+                    self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS,
+                    self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS,
+                    self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES
+                ];
+                if ( $this->queryViolatesAnyRuleOf( $query, $rules ) ) {
                     continue;
-                    //return false;
-                }
-                if ( $this->validateRuleAgainstQuery( self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS, $query ) === false ) {
-                    // error message: there must be as many comma constructs preceding dashes as there are following dashes
-                    $this->addErrorMessage( self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS );
-                    $this->incrementBadQueryCount();
-                    continue;
-                    //return false;
-                }
-                if ( $this->validateRuleAgainstQuery( self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES, $query ) === false ) {
-                    // error message: there cannot be multiple dashes in a query if there are not as many dots minus 1.
-                    $this->incrementBadQueryCount();
-                    $this->addErrorMessage( self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES );
-                    continue;
-                    //return false;
                 }
             }
             $validatedQueries->usedvariants[] = $usedvariant;
             $validatedQueries->goodqueries[]  = $fullquery;
-            //$usedvariants[] = $usedvariant;
 
         } //END FOREACH
 
@@ -1747,8 +1727,7 @@ class BIBLEGET_QUOTE {
     
             //at least the first query must start with a book reference, which may have a number from 1 to 3 at the beginning
             //echo "matching against: ".$queries[0]."<br />";
-            if ( $this->validateRuleAgainstQuery( self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR, $queries[0] ) === false ) {
-                $this->addErrorMessage( self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR );
+            if ( $this->queryViolatesAnyRuleOf( $queries[0], [ self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR ] ) ) {
                 $this->outputResult();
             }
 
