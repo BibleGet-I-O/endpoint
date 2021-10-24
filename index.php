@@ -1498,60 +1498,179 @@ class BIBLEGET_QUOTE {
         $stmt->close();
     }
 
+    private function prepareResponseInfo( object $QUERY_ACTION_OBJ ) : array {
+        $currentVariant = $QUERY_ACTION_OBJ->queriesversions[$QUERY_ACTION_OBJ->i];
+        $row = $QUERY_ACTION_OBJ->row;
+
+        $row["version"]             = strtoupper( $currentVariant );
+        $row["testament"]           = ( int )$row["testament"];
+
+        $universal_booknum          = $row["book"];
+        $booknum                    = array_search( $row["book"], $this->indexes[$currentVariant]["book_num"] );
+        $row["bookabbrev"]          = $this->indexes[$currentVariant]["abbreviations"][$booknum];
+        $row["booknum"]             = $booknum;
+        $row["univbooknum"]         = $universal_booknum;
+        $row["book"]                = $this->indexes[$currentVariant]["biblebooks"][$booknum];
+
+        $row["section"]             = ( int ) $row["section"];
+        unset( $row["verseID"] );
+        $row["chapter"]             = ( int ) $row["chapter"];
+        $row["originalquery"]       = $QUERY_ACTION_OBJ->originalquery[$QUERY_ACTION_OBJ->i];
+
+        return $row;
+    }
+
+    private function generateResponse( object $QUERY_ACTION_OBJ ) {
+
+        $response = $QUERY_ACTION_OBJ->response;
+
+        if ( $this->returnType == "xml" ) {
+
+            $thisrow = $this->bibleQuote->results->addChild( "result" );
+            foreach ( $response as $key => $value ) {
+                $thisrow[$key] = $value;
+            }
+
+        } elseif ( $this->returnType == "json" ) {
+
+            $this->bibleQuote->results[] = $response;
+
+        } elseif ( $this->returnType == "html" ) {
+
+            if ( $response["verse"] != $QUERY_ACTION_OBJ->verse ) {
+                $QUERY_ACTION_OBJ->newverse = true;
+                $QUERY_ACTION_OBJ->verse = $response["verse"];
+            } else {
+                $QUERY_ACTION_OBJ->newverse = false;
+            }
+
+            if ( $response["chapter"] != $chapter ) {
+                $QUERY_ACTION_OBJ->newchapter = true;
+                $QUERY_ACTION_OBJ->newverse = true;
+                $chapter = $response["chapter"];
+            } else {
+                $QUERY_ACTION_OBJ->newchapter = false;
+            }
+
+            if ( $response["book"] != $book ) {
+                $QUERY_ACTION_OBJ->newbook = true;
+                $QUERY_ACTION_OBJ->newchapter = true;
+                $QUERY_ACTION_OBJ->newverse = true;
+                $book = $response["book"];
+            } else {
+                $QUERY_ACTION_OBJ->newbook = false;
+            }
+
+            if ( $response["version"] != $version ) {
+                $QUERY_ACTION_OBJ->newversion = true;
+                $QUERY_ACTION_OBJ->newbook = true;
+                $QUERY_ACTION_OBJ->newchapter = true;
+                $QUERY_ACTION_OBJ->newverse = true;
+                $version = $response["version"];
+            } else {
+                $QUERY_ACTION_OBJ->newversion = false;
+            }
+
+            if ( $QUERY_ACTION_OBJ->newversion ) {
+                $variant = $this->bibleQuote->createElement( "p", $response["version"] );
+                if ( $QUERY_ACTION_OBJ->i > 0 ) {
+                    $br = $this->bibleQuote->createElement( "br" );
+                    $variant->insertBefore( $br, $variant->firstChild );
+                }
+                $variant->setAttribute( "class", "version bibleVersion" );
+                $this->div->appendChild( $variant );
+            }
+
+            if ( $QUERY_ACTION_OBJ->newbook || $QUERY_ACTION_OBJ->newchapter ) {
+                $citation = $this->bibleQuote->createElement( "p", $response["book"] . "&nbsp;" . $response["chapter"] );
+                $citation->setAttribute( "class", "book bookChapter" );
+                $this->div->appendChild( $citation );
+                $citation1 = $this->bibleQuote->createElement( "p" );
+                $citation1->setAttribute( "class", "verses versesParagraph" );
+                $this->div->appendChild( $citation1 );
+                $metainfo = $this->bibleQuote->createElement( "input" );
+                $metainfo->setAttribute( "type", "hidden" );
+                $metainfo->setAttribute( "class", "originalQuery" );
+                $metainfo->setAttribute( "value", $response["originalquery"] );
+                $this->div->appendChild( $metainfo );
+                $metainfo1 = $this->bibleQuote->createElement( "input" );
+                $metainfo1->setAttribute( "type", "hidden" );
+                $metainfo1->setAttribute( "class", "bookAbbrev" );
+                $metainfo1->setAttribute( "value", $response["bookabbrev"] );
+                $this->div->appendChild( $metainfo1 );
+                $metainfo2 = $this->bibleQuote->createElement( "input" );
+                $metainfo2->setAttribute( "type", "hidden" );
+                $metainfo2->setAttribute( "class", "bookNum" );
+                $metainfo2->setAttribute( "value", $response["booknum"] );
+                $this->div->appendChild( $metainfo2 );
+                $metainfo3 = $this->bibleQuote->createElement( "input" );
+                $metainfo3->setAttribute( "type", "hidden" );
+                $metainfo3->setAttribute( "class", "univBookNum" );
+                $metainfo3->setAttribute( "value", $response["univbooknum"] );
+                $this->div->appendChild( $metainfo3 );
+            }
+            if ( $QUERY_ACTION_OBJ->newverse ) {
+                $versicle = $this->bibleQuote->createElement( "span", $response["verse"] );
+                $versicle->setAttribute( "class", "sup verseNum" );
+                $citation1->appendChild( $versicle );
+            }
+
+            $text = $this->bibleQuote->createElement( "span", $response["text"] );
+            $text->setAttribute( "class", "text verseText" );
+            $citation1->appendChild( $text );
+
+        }
+    }
+
     private function doQueries( array $formulatedQueries ) {
 
         $QUERY_ACTION_OBJ = new stdClass();
         [ $sqlqueries, $queriesversions, $originalquery ] = $formulatedQueries;
-        $QUERY_ACTION_OBJ->sqlqueries = $sqlqueries;
-        $QUERY_ACTION_OBJ->queriesversions = $queriesversions;
-        $QUERY_ACTION_OBJ->originalquery = $originalquery;
+        $QUERY_ACTION_OBJ->sqlqueries       = $sqlqueries;
+        $QUERY_ACTION_OBJ->queriesversions  = $queriesversions;
+        $QUERY_ACTION_OBJ->originalquery    = $originalquery;
 
-        $QUERY_ACTION_OBJ->appid          = $this->DATA["appid"] != "" ? $this->DATA["appid"] : "unknown";
-        $QUERY_ACTION_OBJ->domain         = $this->DATA["domain"] != "" ? $this->DATA["domain"] : "unknown";
-        $QUERY_ACTION_OBJ->pluginversion  = $this->DATA["pluginversion"] != "" ? $this->DATA["pluginversion"] : "unknown";
+        $QUERY_ACTION_OBJ->appid            = $this->DATA["appid"]          != "" ? $this->DATA["appid"]            : "unknown";
+        $QUERY_ACTION_OBJ->domain           = $this->DATA["domain"]         != "" ? $this->DATA["domain"]           : "unknown";
+        $QUERY_ACTION_OBJ->pluginversion    = $this->DATA["pluginversion"]  != "" ? $this->DATA["pluginversion"]    : "unknown";
 
         [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ] = $this->getIpAddress();
-        $QUERY_ACTION_OBJ->ipaddress = $ipaddress;
-        $QUERY_ACTION_OBJ->forwardedip = $forwardedip;
-        $QUERY_ACTION_OBJ->remote_address = $remote_address;
-        $QUERY_ACTION_OBJ->realip = $realip;
-        $QUERY_ACTION_OBJ->clientip = $clientip;
-        $QUERY_ACTION_OBJ->i = 0;
-        $QUERY_ACTION_OBJ->xquery = "";
+        $QUERY_ACTION_OBJ->ipaddress        = $ipaddress;
+        $QUERY_ACTION_OBJ->forwardedip      = $forwardedip;
+        $QUERY_ACTION_OBJ->remote_address   = $remote_address;
+        $QUERY_ACTION_OBJ->realip           = $realip;
+        $QUERY_ACTION_OBJ->clientip         = $clientip;
+        $QUERY_ACTION_OBJ->i                = 0;
+        $QUERY_ACTION_OBJ->xquery           = "";
 
         // First we initialize some variables and flags with default values
-        $version        = "";
-        $newversion     = false;
-        $book           = "";
-        $newbook        = false;
-        $chapter        = 0;
-        $newchapter     = false;
+        $QUERY_ACTION_OBJ->version        = "";
+        $QUERY_ACTION_OBJ->newversion     = false;
+        $QUERY_ACTION_OBJ->book           = "";
+        $QUERY_ACTION_OBJ->newbook        = false;
+        $QUERY_ACTION_OBJ->chapter        = 0;
+        $QUERY_ACTION_OBJ->newchapter     = false;
 
         if ( $this->validateIPAddress( $QUERY_ACTION_OBJ->ipaddress ) === false ) {
             $this->addErrorMessage( "The BibleGet API endpoint cannot be used behind a proxy that hides the IP address from which the request is coming. No personal or sensitive data is collected by the API, however IP addresses are monitored to prevent spam requests. If you believe there is an error because this is not the case, please contact the developers so they can look into the situtation.", $xquery );
-            $this->outputResult(); //this should exit the script right here, closing the mysql connection
+            $this->outputResult();
         }
 
         $notWhitelisted = ( $this->isWhitelisted( $QUERY_ACTION_OBJ->domain ) === false && $this->isWhitelisted( $QUERY_ACTION_OBJ->ipaddress ) === false );
 
         foreach ( $QUERY_ACTION_OBJ->sqlqueries as $xquery ) {
+
             $QUERY_ACTION_OBJ->xquery = $xquery;
-            //We don't enforce the max limit for requests from domains or IP addresses that need to do a lot of testing for plugin development
-            //These are put into and checked against a whitelist
+
             if ( $notWhitelisted ) {
                 $this->enforceQueryLimits( $QUERY_ACTION_OBJ->ipaddress, $xquery );
             }
 
-            $myversion = $QUERY_ACTION_OBJ->queriesversions[$QUERY_ACTION_OBJ->i];
-            //     echo $QUERY_ACTION_OBJ->i." ) myversion = ".$myversion."<br />";
-            //     echo "about to query the database: &lt;".$xquery."&gt;<br />";
             $result = $this->mysqli->query( $xquery );
             if ( $result ) {
-                //       echo "<p>We have results from query ".$xquery."</p>";
+
                 $this->incrementGoodQueryCount();
 
-                //if we already have a record of this IP address and we have info on it from ipinfo.io,
-                //then we don't need to get info on it from ipinfo.io again ( which has limit of 1000 requests per day )
                 if ( $this->geoIPInfoIsEmptyOrIsError() ) {
                     if ( $this->DEBUG_IPINFO === true ) {
                         file_put_contents( $this->DEBUGFILE, "Either we have not yet seen the IP address [" . $QUERY_ACTION_OBJ->ipaddress . "] in the past 2 days or we have no geo_ip info [" . $this->geoip_json. "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
@@ -1568,113 +1687,10 @@ class BIBLEGET_QUOTE {
                 $newverse = false;
                 while ( $row = $result->fetch_assoc() ) {
 
-                    $row["version"] = strtoupper( $myversion );
-                    $row["testament"] = ( int )$row["testament"];
+                    $QUERY_ACTION_OBJ->row = $row;
+                    $QUERY_ACTION_OBJ->response = $this->prepareResponseInfo( $QUERY_ACTION_OBJ );
+                    $this->generateResponse( $QUERY_ACTION_OBJ );
 
-                    $universal_booknum = $row["book"];
-                    $booknum = array_search( $row["book"], $this->indexes[$myversion]["book_num"] );
-                    $row["bookabbrev"] = $this->indexes[$myversion]["abbreviations"][$booknum];
-                    $row["booknum"] = $booknum;
-                    $row["univbooknum"] = $universal_booknum;
-                    $row["book"] = $this->indexes[$myversion]["biblebooks"][$booknum];
-
-                    $row["section"] = ( int ) $row["section"];
-                    unset( $row["verseID"] );
-                    //$row["verse"] = ( int ) $row["verse"];
-                    $row["chapter"] = ( int ) $row["chapter"];
-                    $row["originalquery"] = $QUERY_ACTION_OBJ->originalquery[$QUERY_ACTION_OBJ->i];
-
-                    if ( $this->returnType == "xml" ) {
-                        $thisrow = $this->bibleQuote->results->addChild( "result" );
-                        foreach ( $row as $key => $value ) {
-                            $thisrow[$key] = $value;
-                        }
-                    } elseif ( $this->returnType == "json" ) {
-                        $this->bibleQuote->results[] = $row;
-                    } elseif ( $this->returnType == "html" ) {
-
-                        if ( $row["verse"] != $verse ) {
-                            $newverse = true;
-                            $verse = $row["verse"];
-                        } else {
-                            $newverse = false;
-                        }
-
-                        if ( $row["chapter"] != $chapter ) {
-                            $newchapter = true;
-                            $newverse = true;
-                            $chapter = $row["chapter"];
-                        } else {
-                            $newchapter = false;
-                        }
-
-                        if ( $row["book"] != $book ) {
-                            $newbook = true;
-                            $newchapter = true;
-                            $newverse = true;
-                            $book = $row["book"];
-                        } else {
-                            $newbook = false;
-                        }
-
-                        if ( $row["version"] != $version ) {
-                            $newversion = true;
-                            $newbook = true;
-                            $newchapter = true;
-                            $newverse = true;
-                            $version = $row["version"];
-                        } else {
-                            $newversion = false;
-                        }
-
-                        if ( $newversion ) {
-                            $variant = $this->bibleQuote->createElement( "p", $row["version"] );
-                            if ( $QUERY_ACTION_OBJ->i > 0 ) {
-                                $br = $this->bibleQuote->createElement( "br" );
-                                $variant->insertBefore( $br, $variant->firstChild );
-                            }
-                            $variant->setAttribute( "class", "version bibleVersion" );
-                            $this->div->appendChild( $variant );
-                        }
-
-                        if ( $newbook || $newchapter ) {
-                            $citation = $this->bibleQuote->createElement( "p", $row["book"] . "&nbsp;" . $row["chapter"] );
-                            $citation->setAttribute( "class", "book bookChapter" );
-                            $this->div->appendChild( $citation );
-                            $citation1 = $this->bibleQuote->createElement( "p" );
-                            $citation1->setAttribute( "class", "verses versesParagraph" );
-                            $this->div->appendChild( $citation1 );
-                            $metainfo = $this->bibleQuote->createElement( "input" );
-                            $metainfo->setAttribute( "type", "hidden" );
-                            $metainfo->setAttribute( "class", "originalQuery" );
-                            $metainfo->setAttribute( "value", $row["originalquery"] );
-                            $this->div->appendChild( $metainfo );
-                            $metainfo1 = $this->bibleQuote->createElement( "input" );
-                            $metainfo1->setAttribute( "type", "hidden" );
-                            $metainfo1->setAttribute( "class", "bookAbbrev" );
-                            $metainfo1->setAttribute( "value", $row["bookabbrev"] );
-                            $this->div->appendChild( $metainfo1 );
-                            $metainfo2 = $this->bibleQuote->createElement( "input" );
-                            $metainfo2->setAttribute( "type", "hidden" );
-                            $metainfo2->setAttribute( "class", "bookNum" );
-                            $metainfo2->setAttribute( "value", $row["booknum"] );
-                            $this->div->appendChild( $metainfo2 );
-                            $metainfo3 = $this->bibleQuote->createElement( "input" );
-                            $metainfo3->setAttribute( "type", "hidden" );
-                            $metainfo3->setAttribute( "class", "univBookNum" );
-                            $metainfo3->setAttribute( "value", $row["univbooknum"] );
-                            $this->div->appendChild( $metainfo3 );
-                        }
-                        if ( $newverse ) {
-                            $versicle = $this->bibleQuote->createElement( "span", $row["verse"] );
-                            $versicle->setAttribute( "class", "sup verseNum" );
-                            $citation1->appendChild( $versicle );
-                        }
-
-                        $text = $this->bibleQuote->createElement( "span", $row["text"] );
-                        $text->setAttribute( "class", "text verseText" );
-                        $citation1->appendChild( $text );
-                    }
                 }
             } else {
                 $this->addErrorMessage( 9, $xquery );
