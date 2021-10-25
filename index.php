@@ -56,7 +56,7 @@
  * 
  * Blessed Carlo Acutis, pray for us
  * 
- * MINIMUM PHP REQUIREMENT: PHP 7.4 (allow for type declarations)
+ * MINIMUM PHP REQUIREMENT: PHP 8.1 (allow for type declarations and mixed function return types)
  */
 
 ini_set( 'display_errors', 1 );
@@ -220,7 +220,7 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    static private function idxOf( string $needle, array $haystack ) {
+    static private function idxOf( string $needle, array $haystack ) : int|bool {
         foreach ( $haystack as $index => $value ) {
             if ( is_array( $haystack[$index] ) ) {
                 foreach ( $haystack[$index] as $index2 => $value2 ) {
@@ -236,7 +236,7 @@ class BIBLEGET_QUOTE {
     }
 
 
-    static private function normalizeBibleBook( string $str ){
+    static private function normalizeBibleBook( string $str ) : string {
         return self::toProperCase( preg_replace( "/\s+/", "", trim( $str ) ) );
     }
 
@@ -299,7 +299,7 @@ class BIBLEGET_QUOTE {
         } ) );
     }
 
-    static private function matchBookInQuery( string $query ) {
+    static private function matchBookInQuery( string $query ) : array|bool {
         if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
             if( preg_match( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
                 return $res;
@@ -410,6 +410,283 @@ class BIBLEGET_QUOTE {
             return [[],[]];
         }
     }
+
+    static private function fillEmptyIPAddress( string $ipaddress ) : string {
+        return $ipaddress != "" ? $ipaddress : "0.0.0.0";
+    }
+
+    private function isValidVersion( string $version ) : bool {
+        return( in_array( $version, $this->validversions ) );
+    }
+
+    private function queryStrClean() : array {
+
+        $querystr = self::removeWhitespace( $this->DATA["query"] );
+        $querystr = trim( $querystr );
+        $querystr = self::convertAllDashesToHyphens( $querystr );
+        $this->detectedNotation = self::detectAndNormalizeNotation( $querystr );
+
+        //if there are multiple queries separated by semicolons, we explode them into an array
+        $queries = explode( ";", $querystr );
+        $queries = self::removeEmptyItems( $queries );
+        $queries = array_map( 'self::toProperCase', $queries );
+        return $queries;
+
+    }
+
+    private function queryViolatesAnyRuleOf( string $query, array $rules ) : bool {
+        foreach( $rules as $rule ) {
+            if( self::validateRuleAgainstQuery( $rule, $query ) === false ){
+                $this->addErrorMessage( $rule );
+                $this->incrementBadQueryCount();
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    private function isValidBookForVariant( string $currentBook, string $variant ) : bool {
+        return ( in_array( $currentBook, $this->indexes[$variant]["biblebooks"] ) || in_array( $currentBook, $this->indexes[$variant]["abbreviations"] ) );
+    }
+
+    private function validateBibleBook( &$validatedQueries ) : bool {
+        $bookIsValid = false;
+        foreach ( $this->requestedVersions as $variant ) {
+            if ( $this->isValidBookForVariant( $validatedQueries->currentBook, $variant ) ) {
+                $bookIsValid = true;
+                $validatedQueries->currentVariant = $variant;
+                $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->biblebooks );
+                break;
+            }
+        }
+        if( !$bookIsValid ) {
+            $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->biblebooks );
+            if( $validatedQueries->bookIdxBase !== false){
+                $bookIsValid = true;
+            } else {
+                $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $validatedQueries->currentBook ) );
+                $this->incrementBadQueryCount();
+            }
+        }
+        $validatedQueries->nonZeroBookIdx = $validatedQueries->bookIdxBase + 1;
+        return $bookIsValid;
+    }
+
+    private function validateChapterIndicators( array $chapterIndicators, object $validatedQueries ) : bool {
+
+        foreach ( $chapterIndicators[1] as $chapterIndicator ) {
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+                $chapter_limit = $jindex["chapter_limit"][$bookidx];
+                if ( $chapterIndicator > $chapter_limit ) {
+                    /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
+                    $this->addErrorMessage( sprintf( $msg, $chapterIndicator, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
+                    $this->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+
+        return true;
+
+    }
+
+    private function validateMultipleVerseSeparators( object $validatedQueries ) : bool {
+        if ( !strpos( $validatedQueries->currentQuery, '-' ) ) {
+            $this->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
+            $this->incrementBadQueryCount();
+            return false;
+        }
+        $parts = explode( "-", $validatedQueries->currentQuery );
+        if ( count( $parts ) != 2 ) {
+            $this->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
+            $this->incrementBadQueryCount();
+            return false;
+        }
+        foreach ( $parts as $part ) {
+            $pp = array_map( "intval", explode( ",", $part ) );
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
+                if ( $pp[1] > $verselimit ) {
+                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                    $this->addErrorMessage( sprintf( $msg, $pp[1], $validatedQueries->currentBook, $pp[0], $jkey, $verselimit ) );
+                    $this->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private function validateRightHandSideOfVerseSeparator( object $validatedQueries, array $parts ) : bool {
+        if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $validatedQueries->currentQuery, $matches ) ) {
+            $matches[1] = self::forceArray( $matches[1] );
+            $highverse = intval( array_pop( $matches[1] ) );
+
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+
+                if ( $highverse > $verselimit ) {
+                    /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                    $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
+                    $this->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private function validateVersesAfterChapterVerseSeparators( object $validatedQueries, array $parts ) : bool {
+        $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator( $validatedQueries->currentQuery );
+
+        $highverse = intval( $versesAfterChapterVerseSeparators[1] );
+        foreach ( $this->indexes as $jkey => $jindex ) {
+            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+            if ( $highverse > $verselimit ) {
+                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
+                $this->incrementBadQueryCount();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function highVerseOutOfBounds( $highverse, object $validatedQueries, array $parts ) : bool {
+        foreach ( $this->indexes as $jkey => $jindex ) {
+            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+            if ( $highverse > $verselimit ) {
+                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
+                $this->incrementBadQueryCount();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function chapterOutOfBounds( array $chapters, object $validatedQueries ) : bool {
+        foreach ( $chapters as $zchapter ) {
+            foreach ( $this->indexes as $jkey => $jindex ) {
+                
+                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
+                $chapter_limit = $jindex["chapter_limit"][$bookidx];
+                if ( intval( $zchapter ) > $chapter_limit ) {
+                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
+                    $this->addErrorMessage( sprintf( $msg, $zchapter, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
+                    $this->incrementBadQueryCount();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static private function captureBookIndicator( string &$currentQuery, bool $hasULVariants ) : array|bool {
+        if( $hasULVariants ){
+            if( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $currentQuery, $ret ) ){
+                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $currentQuery );
+                return $ret;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^[1-4]{0,1}\p{L}+/u", $currentQuery, $ret ) ){
+                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $currentQuery );
+                return $ret;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    private function bestGuessBookIdx( array $matchedBook, object $formulatedQueries ) : int {
+        $key1 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["biblebooks"] ) : false;
+        $key2 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["abbreviations"] ) : false;
+        $key3 = self::idxOf( $matchedBook[0], $this->biblebooks );
+        if ( $key1 ) {
+            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key1];
+        } else if ( $key2 ) {
+            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key2];
+        } else if ( $key3 ) {
+            return $key3 + 1;
+        }
+    }
+
+    private function isWhitelisted( string $domainOrIP ) : int|bool {
+        return array_search( $domainOrIP, $this->WhitelistedDomainsIPs );
+    }
+
+    private function checkIPAddressPastTwoDaysWithSameRequest( string $ipaddress, string $xquery ) : mysqli_result|bool {
+        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
+    }
+
+    private function checkQueriesFromSameIPAddress( string $ipaddress ) : mysqli_result|bool {
+        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
+    }
+
+    private function checkRequestsFromSameOrigin( string $xquery ) : mysqli_result|bool {
+        return $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+    }
+
+    private function checkDiverseRequestsFromSameOrigin() : mysqli_result|bool {
+        return $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+    }
+
+    private function validateIPAddress( string $ipaddress ) : string|bool {
+        return filter_var( $ipaddress, FILTER_VALIDATE_IP );
+    }
+
+    private function getIpAddress() : array {
+        $forwardedip = isset( $_SERVER["HTTP_X_FORWARDED_FOR"] ) ? $_SERVER["HTTP_X_FORWARDED_FOR"] : "";
+        $remote_address = isset( $_SERVER["REMOTE_ADDR"] ) ? $_SERVER["REMOTE_ADDR"] : "";
+        $realip = isset( $_SERVER["HTTP_X_REAL_IP"] ) ? $_SERVER["HTTP_X_REAL_IP"] : "";
+        $clientip = isset( $_SERVER["HTTP_CLIENT_IP"] ) ? $_SERVER["HTTP_CLIENT_IP"] : "";
+
+        //Do our best to identify an IP address associated with the incoming request, 
+        //trying first HTTP_X_FORWARDED_FOR, then REMOTE_ADDR and last resort HTTP_X_REAL_IP
+        //This is useful only to protect against high volume requests from specific IP addresses or referers
+        $ipaddress = $forwardedip != "" ? explode( ",", $forwardedip )[0] : "";
+        if ( $ipaddress == "" ) {
+            $ipaddress = $remote_address != "" ? $remote_address : "";
+        }
+        if ( $ipaddress == "" ) {
+            $ipaddress = $realip != "" ? $realip : "";
+        }
+        return [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ];
+    }
+
+    private function geoIPInfoIsEmptyOrIsError() : bool|int {
+        $pregmatch = preg_quote( '{"ERROR":"', '/' );
+        return $this->haveIPAddressOnRecord === false || $this->geoip_json == "" || $this->geoip_json === null || preg_match( "/" . $pregmatch . "/", $this->geoip_json );
+    }
+
+    private function getGeoIPFromLogs( string $ipaddress ) : mysqli_result|bool {
+        if( $ipaddress != "" ){
+            return $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" );
+        } else {
+            return false;
+        }
+    }
+
+    private function haveGeoIPResultsFromLogs( $geoIPFromLogs ) : bool {
+        return $geoIPFromLogs->num_rows > 0;
+    }
+
 
 
     private function addErrorMessage( $num, $str="" ) {
@@ -588,10 +865,6 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function isValidVersion( string $version ) : bool {
-        return( in_array( $version, $this->validversions ) );
-    }
-
     private function prepareIndexes(){
 
         $indexes = [];
@@ -701,32 +974,6 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function queryStrClean() : array {
-
-        $querystr = self::removeWhitespace( $this->DATA["query"] );
-        $querystr = trim( $querystr );
-        $querystr = self::convertAllDashesToHyphens( $querystr );
-        $this->detectedNotation = self::detectAndNormalizeNotation( $querystr );
-
-        //if there are multiple queries separated by semicolons, we explode them into an array
-        $queries = explode( ";", $querystr );
-        $queries = self::removeEmptyItems( $queries );
-        $queries = array_map( 'self::toProperCase', $queries );
-        return $queries;
-
-    }
-
-    private function queryViolatesAnyRuleOf( string $query, array $rules ) : bool {
-        foreach( $rules as $rule ) {
-            if( self::validateRuleAgainstQuery( $rule, $query ) === false ){
-                $this->addErrorMessage( $rule );
-                $this->incrementBadQueryCount();
-                return true;
-            }
-        }
-        return false;
-    }
-
     private function incrementBadQueryCount() {
         $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
     }
@@ -735,157 +982,8 @@ class BIBLEGET_QUOTE {
         $this->mysqli->query( "UPDATE counter SET good = good + 1" );
     }
 
-    private function isValidBookForVariant( string $currentBook, string $variant ) : bool {
-        return ( in_array( $currentBook, $this->indexes[$variant]["biblebooks"] ) || in_array( $currentBook, $this->indexes[$variant]["abbreviations"] ) );
-    }
 
-    private function validateBibleBook( &$validatedQueries ) : bool {
-        $bookIsValid = false;
-        foreach ( $this->requestedVersions as $variant ) {
-            if ( $this->isValidBookForVariant( $validatedQueries->currentBook, $variant ) ) {
-                $bookIsValid = true;
-                $validatedQueries->currentVariant = $variant;
-                $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->biblebooks );
-                break;
-            }
-        }
-        if( !$bookIsValid ) {
-            $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->biblebooks );
-            if( $validatedQueries->bookIdxBase !== false){
-                $bookIsValid = true;
-            } else {
-                $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $validatedQueries->currentBook ) );
-                $this->incrementBadQueryCount();
-            }
-        }
-        $validatedQueries->nonZeroBookIdx = $validatedQueries->bookIdxBase + 1;
-        return $bookIsValid;
-    }
-
-    private function validateChapterIndicators( array $chapterIndicators, object $validatedQueries ) : bool {
-
-        foreach ( $chapterIndicators[1] as $chapterIndicator ) {
-            foreach ( $this->indexes as $jkey => $jindex ) {
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                if ( $chapterIndicator > $chapter_limit ) {
-                    /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                    $this->addErrorMessage( sprintf( $msg, $chapterIndicator, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
-                    $this->incrementBadQueryCount();
-                    return false;
-                }
-            }
-        }
-
-        return true;
-
-    }
-
-    private function validateMultipleVerseSeparators( object $validatedQueries ) : bool {
-        if ( !strpos( $validatedQueries->currentQuery, '-' ) ) {
-            $this->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
-            $this->incrementBadQueryCount();
-            return false;
-        }
-        $parts = explode( "-", $validatedQueries->currentQuery );
-        if ( count( $parts ) != 2 ) {
-            $this->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
-            $this->incrementBadQueryCount();
-            return false;
-        }
-        foreach ( $parts as $part ) {
-            $pp = array_map( "intval", explode( ",", $part ) );
-            foreach ( $this->indexes as $jkey => $jindex ) {
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
-                if ( $pp[1] > $verselimit ) {
-                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                    $this->addErrorMessage( sprintf( $msg, $pp[1], $validatedQueries->currentBook, $pp[0], $jkey, $verselimit ) );
-                    $this->incrementBadQueryCount();
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private function validateRightHandSideOfVerseSeparator( object $validatedQueries, array $parts ) : bool {
-        if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $validatedQueries->currentQuery, $matches ) ) {
-            $matches[1] = self::forceArray( $matches[1] );
-            $highverse = intval( array_pop( $matches[1] ) );
-
-            foreach ( $this->indexes as $jkey => $jindex ) {
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-
-                if ( $highverse > $verselimit ) {
-                    /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                    $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
-                    $this->incrementBadQueryCount();
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private function validateVersesAfterChapterVerseSeparators( object $validatedQueries, array $parts ) : bool {
-        $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator( $validatedQueries->currentQuery );
-
-        $highverse = intval( $versesAfterChapterVerseSeparators[1] );
-        foreach ( $this->indexes as $jkey => $jindex ) {
-            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-            if ( $highverse > $verselimit ) {
-                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
-                $this->incrementBadQueryCount();
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private function highVerseOutOfBounds( $highverse, object $validatedQueries, array $parts ) : bool {
-        foreach ( $this->indexes as $jkey => $jindex ) {
-            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-            if ( $highverse > $verselimit ) {
-                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
-                $this->incrementBadQueryCount();
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private function chapterOutOfBounds( array $chapters, object $validatedQueries ) : bool {
-        foreach ( $chapters as $zchapter ) {
-            foreach ( $this->indexes as $jkey => $jindex ) {
-                
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                if ( intval( $zchapter ) > $chapter_limit ) {
-                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                    $this->addErrorMessage( sprintf( $msg, $zchapter, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
-                    $this->incrementBadQueryCount();
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private function validateQueries( $queries ) {
+    private function validateQueries( array $queries ) : object {
 
         $validatedQueries                   = new stdClass();
         $validatedQueries->usedvariants     = [];
@@ -902,7 +1000,7 @@ class BIBLEGET_QUOTE {
             $validatedQueries->currentQuery = $query;
 
             if( $this->queryViolatesAnyRuleOf( $validatedQueries->currentQuery, [ self::VALID_CHAPTER_MUST_FOLLOW_BOOK ] ) ){
-                return false;
+                return null;
             }
 
             $matchedBook = self::matchBookInQuery( $validatedQueries->currentQuery );
@@ -984,38 +1082,7 @@ class BIBLEGET_QUOTE {
         return $validatedQueries;
     }
 
-    static private function captureBookIndicator( string &$currentQuery, bool $hasULVariants ) {
-        if( $hasULVariants ){
-            if( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $currentQuery, $ret ) ){
-                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $currentQuery );
-                return $ret;
-            } else {
-                return false;
-            }
-        } else {
-            if( preg_match( "/^[1-4]{0,1}\p{L}+/u", $currentQuery, $ret ) ){
-                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $currentQuery );
-                return $ret;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    private function bestGuessBookIdx( array $matchedBook, object $formulatedQueries ) {
-        $key1 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["biblebooks"] ) : false;
-        $key2 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["abbreviations"] ) : false;
-        $key3 = self::idxOf( $matchedBook[0], $this->biblebooks );
-        if ( $key1 ) {
-            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key1];
-        } else if ( $key2 ) {
-            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key2];
-        } else if ( $key3 ) {
-            return $key3 + 1;
-        }
-    }
-
-    private function formulateSQLQueries( object $validatedQueries ) {
+    private function formulateSQLQueries( object $validatedQueries ) : object {
 
         $formulatedQueries = new stdClass();
         $formulatedQueries->queries             = $validatedQueries->goodqueries;
@@ -1098,6 +1165,7 @@ class BIBLEGET_QUOTE {
                                 //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
                                 $cvConstructLeft = self::getChapterVerseFromConstruct( $range['from'] );
                                 $formulatedQueries->currentChapter = $cvConstructLeft['chapter'];
+
                                 $formulatedQueries->currentMap['chapter'] = $cvConstructLeft['chapter'];
                                 $formulatedQueries->currentMap['verse'] = $cvConstructLeft['verse'];
                                 $mappedReference = $this->mapReference( $formulatedQueries );
@@ -1231,7 +1299,7 @@ class BIBLEGET_QUOTE {
                             //    (    John 3,16 <=|=> 4,5 )
                             //    (    4,5 )
                             if ( self::chunkContainsChapterVerseConstruct( $range['to'] ) ) {
-                                $cvConstructRight = preg_split( "/,/", $range['to'] );
+                                $cvConstructRight = self::getChapterVerseFromConstruct( $range['to'] );
                                 $formulatedQueries->currentMap['chapter'] = $cvConstructRight['chapter'];
                                 $formulatedQueries->currentMap['verse'] = $cvConstructRight['verse'];
                                 $mappedReference = $this->mapReference( $formulatedQueries );
@@ -1333,7 +1401,7 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function mapReference( $formulatedQueries ) {
+    private function mapReference( object $formulatedQueries ) : array {
         $version        = $formulatedQueries->currentRequestedVariant;
         $book           = $formulatedQueries->currentBook;
         $preferorigin   = $formulatedQueries->currentPreferOrigin;
@@ -1417,41 +1485,6 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    private function getIpAddress(){
-        $forwardedip = isset( $_SERVER["HTTP_X_FORWARDED_FOR"] ) ? $_SERVER["HTTP_X_FORWARDED_FOR"] : "";
-        $remote_address = isset( $_SERVER["REMOTE_ADDR"] ) ? $_SERVER["REMOTE_ADDR"] : "";
-        $realip = isset( $_SERVER["HTTP_X_REAL_IP"] ) ? $_SERVER["HTTP_X_REAL_IP"] : "";
-        $clientip = isset( $_SERVER["HTTP_CLIENT_IP"] ) ? $_SERVER["HTTP_CLIENT_IP"] : "";
-
-        //Do our best to identify an IP address associated with the incoming request, 
-        //trying first HTTP_X_FORWARDED_FOR, then REMOTE_ADDR and last resort HTTP_X_REAL_IP
-        //This is useful only to protect against high volume requests from specific IP addresses or referers
-        $ipaddress = $forwardedip != "" ? explode( ",", $forwardedip )[0] : "";
-        if ( $ipaddress == "" ) {
-            $ipaddress = $remote_address != "" ? $remote_address : "";
-        }
-        if ( $ipaddress == "" ) {
-            $ipaddress = $realip != "" ? $realip : "";
-        }
-        return [ $ipaddress, $forwardedip, $remote_address, $realip, $clientip ];
-    }
-
-    private function isWhitelisted( string $domainOrIP ) {
-        return array_search( $domainOrIP, $this->WhitelistedDomainsIPs );
-    }
-
-    private function haveSeenIPAddressPastTwoDaysWithSameRequest( string $ipaddress, string $xquery ) {
-        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND QUERY = '" . $xquery . "'  AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
-    }
-
-    private function tooManyQueriesFromSameIPAddress( string $ipaddress ) {
-        return $ipaddress != "" ? $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
-    }
-
-    private function validateIPAddress( string $ipaddress ) {
-        return filter_var( $ipaddress, FILTER_VALIDATE_IP );
-    }
-
     private function writeEntryToDebugFile( string $entry ) {
         file_put_contents( $this->DEBUGFILE, date( 'r' ) . "\t" . $entry . PHP_EOL, FILE_APPEND | LOCK_EX );
     }
@@ -1459,7 +1492,7 @@ class BIBLEGET_QUOTE {
     private function enforceQueryLimits( string $ipaddress, string $xquery ) {
 
         //check if we have already seen this IP Address in the past 2 days and if we have the same request already
-        $ipresult = $this->haveSeenIPAddressPastTwoDaysWithSameRequest( $ipaddress, $xquery );
+        $ipresult = $this->checkIPAddressPastTwoDaysWithSameRequest( $ipaddress, $xquery );
         if ( $ipresult ) {
             if ( $this->DEBUG_IPINFO === true ) {
                 file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with this same request [" . $xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
@@ -1479,7 +1512,7 @@ class BIBLEGET_QUOTE {
         }
 
         //and if the same IP address is making too many requests( >100? ) with different queries ( like copying the bible texts completely ), deny service
-        $ipresult = $this->tooManyQueriesFromSameIPAddress( $ipaddress );
+        $ipresult = $this->checkQueriesFromSameIPAddress( $ipaddress );
         if ( $ipresult ) {
             if ( $this->DEBUG_IPINFO === true ) {
                 file_put_contents( $this->DEBUGFILE, "We have seen the IP Address [" . $ipaddress . "] in the past 2 days with many different requests" . PHP_EOL, FILE_APPEND | LOCK_EX );
@@ -1495,7 +1528,7 @@ class BIBLEGET_QUOTE {
         }
 
         //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
-        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE QUERY = '" . $xquery . "' AND ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->checkRequestsFromSameOrigin( $xquery );
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
                 $originRow = $originres->fetch_assoc();
@@ -1510,7 +1543,7 @@ class BIBLEGET_QUOTE {
             }
         }
         //and we'll check for diverse requests from the same origin in the past couple days ( >100? )
-        $originres = $this->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->checkDiverseRequestsFromSameOrigin();
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
                 $originRow = $originres->fetch_assoc();
@@ -1522,23 +1555,6 @@ class BIBLEGET_QUOTE {
                 }
             }
         }
-    }
-
-    private function geoIPInfoIsEmptyOrIsError() {
-        $pregmatch = preg_quote( '{"ERROR":"', '/' );
-        return $this->haveIPAddressOnRecord === false || $this->geoip_json == "" || $this->geoip_json === null || preg_match( "/" . $pregmatch . "/", $this->geoip_json );
-    }
-
-    private function getGeoIPFromLogs( string $ipaddress ) {
-        if( $ipaddress != "" ){
-            return $this->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'" );
-        } else {
-            return false;
-        }
-    }
-
-    private function haveGeoIPResultsFromLogs( $geoIPFromLogs ) : bool {
-        return $geoIPFromLogs->num_rows > 0;
     }
 
     private function getGeoIPInfoFromLogsElseOnline( string $ipaddress ) {
@@ -1571,10 +1587,6 @@ class BIBLEGET_QUOTE {
             }
         }
 
-    }
-
-    private function fillEmptyIPAddress( string $ipaddress ) : string {
-        return $ipaddress != "" ? $ipaddress : "0.0.0.0";
     }
 
     private function normalizeErroredGeoIPInfo() {
@@ -1771,7 +1783,7 @@ class BIBLEGET_QUOTE {
                     $this->getGeoIPInfoFromLogsElseOnline( $QUERY_ACTION_OBJ->ipaddress );
                 }
 
-                $QUERY_ACTION_OBJ->ipaddress = $this->fillEmptyIPAddress( $QUERY_ACTION_OBJ->ipaddress );
+                $QUERY_ACTION_OBJ->ipaddress = self::fillEmptyIPAddress( $QUERY_ACTION_OBJ->ipaddress );
                 $this->normalizeErroredGeoIPInfo();
 
                 $this->logQuery( $QUERY_ACTION_OBJ );
@@ -1832,7 +1844,7 @@ class BIBLEGET_QUOTE {
 
             $validatedQueries = $this->validateQueries( $queries );
 
-            if( $validatedQueries !== false ){
+            if( $validatedQueries !== null ){
                 $usedvariants = property_exists( $validatedQueries, 'usedvariants' ) ? $validatedQueries->usedvariants : false;
                 if ( !is_array( $usedvariants ) ) {
                     $this->outputResult();
@@ -1849,7 +1861,6 @@ class BIBLEGET_QUOTE {
             } else {
                 $this->outputResult();
             }
-
 
         }
 
