@@ -1040,6 +1040,19 @@ class BIBLEGET_QUOTE {
         $this->mysqli->query( "UPDATE counter SET good = good + 1" );
     }
 
+    private function validateVerseOriginPreference( stdClass &$formulatedQueries ) {
+        $formulatedQueries->currentPreferOrigin = "";
+        //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
+        if( $formulatedQueries->currentBook == 19 || $formulatedQueries->currentBook == "19" ){ 
+            //if a protestant version is requested, it will only have HEBREW origin, not GREEK
+            //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
+            //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
+            if( in_array( $formulatedQueries->currentRequestedVariant,$this->CATHOLIC_VERSIONS ) ){
+                $formulatedQueries->currentPreferOrigin = " AND verseorigin = '" . ( $this->DATA['preferorigin'] != "" ? $this->DATA['preferorigin'] : "GREEK" ) . "'";
+            }
+        }
+    }
+
 
     private function validateQueries( array $queries ) : object {
 
@@ -1140,6 +1153,12 @@ class BIBLEGET_QUOTE {
         return $validatedQueries;
     }
 
+    private function setSQLLimit( stdClass $formulatedQueries ) {
+        if ( in_array( $formulatedQueries->currentRequestedVariant, $this->COPYRIGHT_VERSIONS ) ) {
+            $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
+        }
+    }
+
     private function formulateSQLQueries( object $validatedQueries ) : object {
 
         $formulatedQueries = new stdClass();
@@ -1181,16 +1200,7 @@ class BIBLEGET_QUOTE {
 
                 $formulatedQueries->sqlquery = "SELECT * FROM " . $formulatedQueries->currentRequestedVariant . " WHERE book = " . $formulatedQueries->currentBook;
 
-                $formulatedQueries->currentPreferOrigin = "";
-                //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
-                if( $formulatedQueries->currentBook == 19 || $formulatedQueries->currentBook == "19" ){ 
-                    //if a protestant version is requested, it will only have HEBREW origin, not GREEK
-                    //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
-                    //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
-                    if( in_array( $formulatedQueries->currentRequestedVariant,$this->CATHOLIC_VERSIONS ) ){
-                        $formulatedQueries->currentPreferOrigin = " AND verseorigin = '" . ( $this->DATA['preferorigin'] != "" ? $this->DATA['preferorigin'] : "GREEK" ) . "'";
-                    }
-                }
+                $this->validateVerseOriginPreference( $formulatedQueries );
 
                 $formulatedQueries->currentChapter = "";
                 //NOTE: all notations have been translated to EUROPEAN notation for the following calculations
@@ -1227,9 +1237,11 @@ class BIBLEGET_QUOTE {
                                 $formulatedQueries->currentMap['chapter'] = $cvConstructLeft['chapter'];
                                 $formulatedQueries->currentMap['verse'] = $cvConstructLeft['verse'];
                                 $mappedReference = $this->mapReference( $formulatedQueries );
+
                                 $cvConstructLeft['chapter'] = $mappedReference['chapter'];
                                 $cvConstructLeft['verse'] = $mappedReference['verse'];
                                 $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                                 //IF we have a CHAPTER indicator on the right hand side of the range of consecutive verses
                                 //  ( EXAMPLE: John 3,16-4,5.8 )
                                 //  ( John 3,16 <=|=> 4,5 )
@@ -1237,12 +1249,15 @@ class BIBLEGET_QUOTE {
                                     //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
                                     $cvConstructRight = self::getChapterVerseFromConstruct( $range['to'] );
                                     $formulatedQueries->currentChapter = $cvConstructRight['chapter'];
+
                                     $formulatedQueries->currentMap['chapter'] = $cvConstructRight['chapter'];
                                     $formulatedQueries->currentMap['verse'] = $cvConstructRight['verse'];
                                     $mappedReference = $this->mapReference( $formulatedQueries );
+
                                     $cvConstructRight['chapter'] = $mappedReference['chapter'];
                                     $cvConstructRight['verse'] = $mappedReference['verse'];
                                     $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                                     $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
                                     if( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] > 1 ) {
                                         for( $d=1;$d<( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] );$d++ ){
@@ -1257,9 +1272,11 @@ class BIBLEGET_QUOTE {
                                     $formulatedQueries->currentMap['chapter'] = $formulatedQueries->currentChapter;
                                     $formulatedQueries->currentMap['verse'] = $range['to'];
                                     $mappedReference = $this->mapReference( $formulatedQueries );
+
                                     $formulatedQueries->currentChapter = $mappedReference['chapter'];
                                     $range['to'] = $mappedReference['verse'];
                                     $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                                     $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
                                     $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " AND ( chapter <= " . $formulatedQueries->currentChapter . " AND verse <= " . $range['to'] . " )";
                                 }
@@ -1296,12 +1313,15 @@ class BIBLEGET_QUOTE {
                             if ( self::chunkContainsChapterVerseConstruct( $chunk ) ) {
                                 $cvConstruct = self::getChapterVerseFromConstruct( $chunk );
                                 $formulatedQueries->currentChapter = $cvConstruct['chapter'];
+
                                 $formulatedQueries->currentMap['chapter'] = $cvConstruct['chapter'];
                                 $formulatedQueries->currentMap['verse'] = $cvConstruct['verse'];
                                 $mappedReference = $this->mapReference( $formulatedQueries );
+
                                 $cvConstruct['chapter'] = $mappedReference['chapter'];
                                 $cvConstruct['verse'] = $mappedReference['verse'];
                                 $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                                 $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'] . " )";
                             } 
                             //ELSEIF the non consecutive chunk DOES NOT contain a chapter reference
@@ -1309,12 +1329,15 @@ class BIBLEGET_QUOTE {
                             //  (    John 3,16 <=|=> 18 )
                             //  ( 18 )
                             else {
+
                                 $formulatedQueries->currentMap['chapter'] = $formulatedQueries->currentChapter;
                                 $formulatedQueries->currentMap['verse'] = $chunk;
                                 $mappedReference = $this->mapReference( $formulatedQueries );
+
                                 $formulatedQueries->currentChapter = $mappedReference['chapter'];
                                 $chunk = $mappedReference['verse'];
                                 $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                                 $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $formulatedQueries->currentChapter . " AND verse = " . $chunk . " )";
                             }
                         }
@@ -1346,24 +1369,30 @@ class BIBLEGET_QUOTE {
                         if ( self::chunkContainsChapterVerseConstruct( $range['from'] ) ) {
                             $cvConstructLeft = self::getChapterVerseFromConstruct( $range['from'] );
                             $formulatedQueries->currentChapter = $cvConstructLeft['chapter'];
+
                             $formulatedQueries->currentMap['chapter'] = $cvConstructLeft['chapter'];
                             $formulatedQueries->currentMap['verse'] = $cvConstructLeft['verse'];
                             $mappedReference = $this->mapReference( $formulatedQueries );
+
                             $cvConstructLeft['chapter'] = $mappedReference['chapter'];
                             $cvConstructLeft['verse'] = $mappedReference['verse'];
                             $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                             //IF there is also a chapter indicator on the right hand side of the range of consecutive verses
                             //    ( EXAMPLE: John 3,16-4,5 )
                             //    (    John 3,16 <=|=> 4,5 )
                             //    (    4,5 )
                             if ( self::chunkContainsChapterVerseConstruct( $range['to'] ) ) {
                                 $cvConstructRight = self::getChapterVerseFromConstruct( $range['to'] );
+
                                 $formulatedQueries->currentMap['chapter'] = $cvConstructRight['chapter'];
                                 $formulatedQueries->currentMap['verse'] = $cvConstructRight['verse'];
                                 $mappedReference = $this->mapReference( $formulatedQueries );
+
                                 $cvConstructRight['chapter'] = $mappedReference['chapter'];
                                 $cvConstructRight['verse'] = $mappedReference['verse'];
                                 $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                                 //what if the difference between chapters is greater than 1? Say: John 3,16-6,2 ?
                                 $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
                                 if( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] > 1 ) {
@@ -1379,11 +1408,14 @@ class BIBLEGET_QUOTE {
                             //    (    18 )
                             else {
                               $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'];
+
                               $formulatedQueries->currentMap['chapter'] = $cvConstructLeft['chapter'];
                               $formulatedQueries->currentMap['verse'] = $range['to'];
                               $mappedReference = $this->mapReference( $formulatedQueries );
+
                               $range['to'] = $mappedReference['verse'];
                               $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                               $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " AND chapter <= " . $mappedReference['chapter'] . " AND verse <= " . $range['to'];
                             }
                         }
@@ -1403,6 +1435,7 @@ class BIBLEGET_QUOTE {
                             $range['from'] = $mappedReference1['chapter'];
                             $range['to'] = $mappedReference2['chapter'];
                             $formulatedQueries->currentPreferOrigin = $mappedReference1['preferorigin'];
+
                             $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter >= " . $range['from'] . " AND chapter <= " . $range['to'];
                         }
                     }
@@ -1414,12 +1447,15 @@ class BIBLEGET_QUOTE {
                             $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
                             $cvConstruct = self::getChapterVerseFromConstruct( $formulatedQueries->currentQuery );
                             $formulatedQueries->currentChapter = $cvConstruct['chapter'];
+
                             $formulatedQueries->currentMap['chapter'] = $cvConstruct['chapter'];
                             $formulatedQueries->currentMap['verse'] = $cvConstruct['verse'];
                             $mappedReference = $this->mapReference( $formulatedQueries );
+
                             $cvConstruct['chapter'] = $mappedReference['chapter'];
                             $cvConstruct['verse'] = $mappedReference['verse'];
                             $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                             $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'];
                         } 
                         //ELSEIF we are dealing with just a single chapter
@@ -1427,10 +1463,13 @@ class BIBLEGET_QUOTE {
                         else {
                             $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
                             $formulatedQueries->currentChapter = $formulatedQueries->currentQuery;
+
                             $formulatedQueries->currentMap['chapter'] = $formulatedQueries->currentChapter;
                             $formulatedQueries->currentMap['verse'] = null;
                             $mappedReference = $this->mapReference( $formulatedQueries );
+
                             $formulatedQueries->currentPreferOrigin = $mappedReference['preferorigin'];
+
                             $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter = " . $mappedReference['chapter']; // . " AND verse = " . $chunk;
                         }
                     }
@@ -1444,10 +1483,8 @@ class BIBLEGET_QUOTE {
                     //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
                     //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
                     $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY verseID";
-                    //$formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
-                    if ( in_array( $formulatedQueries->currentRequestedVariant, $this->COPYRIGHT_VERSIONS ) ) {
-                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
-                    }
+
+                    $this->setSQLLimit( $formulatedQueries );
                     $formulatedQueries->nn++;
                 }
 
