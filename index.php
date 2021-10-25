@@ -152,29 +152,29 @@ class BIBLEGET_QUOTE {
 
     private array $DATA                         = []; //all request parameters
     private array $requestHeaders               = [];
+    private string $jsonEncodedRequestHeaders   = "";
     private string $originHeader                = "";
     private string $acceptHeader                = "";
     private string $requestMethod               = "";
-    private string $contentType                 = "";
-    private string $returnType                  = "json";     //response Content-type ( json, xml or html )
+    private string $requestContentType          = "";
+    private string $responseContentType         = "json";     //response Content-type ( json, xml or html )
     private bool $isAjax                        = false;
-    private $bibleQuote;                        //object with json, xml or html data to return (stdClass|SimpleXMLElement|DOMDocument)
-    private mysqli $mysqli;                     //instance of database
     private array $WhitelistedDomainsIPs        = [];
-    private array $validversions                = [];
-    private array $validversions_fullname       = [];
-    private array $copyrightversions            = [];
-    private array $PROTESTANT_VERSIONS          = [];
-    private array $CATHOLIC_VERSIONS            = [];
     private string $detectedNotation            = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN" or "MIXED" (first two are valid, last value is invalid)
-    private array $biblebooks                   = [];
-    private array $requestedVersions            = [];
-    private array $requestedCopyrightedVersions = [];
-    private array $indexes                      = [];
     private string $geoip_json                  = "";
     private bool $haveIPAddressOnRecord         = false;
-    private string $jsonEncodedRequestHeaders   = "";
     private string $curYEAR                     = "";
+    private array $VALID_VERSIONS               = [];
+    private array $VALID_VERSIONS_FULLNAME      = [];
+    private array $COPYRIGHT_VERSIONS           = [];
+    private array $PROTESTANT_VERSIONS          = [];
+    private array $CATHOLIC_VERSIONS            = [];
+    private array $REQUESTED_VERSIONS           = [];
+    private array $REQUESTED_COPYRIGHTED_VERSIONS = [];
+    private array $BIBLEBOOKS                   = [];
+    private array $INDEXES                      = [];
+    private mysqli $mysqli;                     //instance of database
+    private stdClass|SimpleXMLElement|DOMDocument $bibleQuote; //object with json, xml or html data to return
     //useful for html output:
     private DOMElement $div;
     private DOMElement $err;
@@ -188,10 +188,10 @@ class BIBLEGET_QUOTE {
         $this->requestHeaders = getallheaders();
         $this->jsonEncodedRequestHeaders = json_encode( $this->requestHeaders );
         $this->originHeader = key_exists( "ORIGIN", $this->requestHeaders ) ? $this->requestHeaders["ORIGIN"] : "";
-        $this->contentType = isset( $_SERVER['CONTENT_TYPE'] ) && in_array( $_SERVER['CONTENT_TYPE'], self::$allowedContentTypes ) ? $_SERVER['CONTENT_TYPE'] : "";
+        $this->requestContentType = isset( $_SERVER['CONTENT_TYPE'] ) && in_array( $_SERVER['CONTENT_TYPE'], self::$allowedContentTypes ) ? $_SERVER['CONTENT_TYPE'] : "";
         $this->acceptHeader = isset( $this->requestHeaders["Accept"] ) && in_array( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders ) ? ( string ) $this->requestHeaders["Accept"] : "";
         $this->requestMethod = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : $_SERVER["REQUEST_METHOD"];
-        $this->returnType = ( isset( $DATA["return"] ) && in_array( strtolower( $DATA["return"] ),self::$returnTypes ) ) ? strtolower( $DATA["return"] ) : ( $this->acceptHeader !== "" ? ( string ) self::$returnTypes[array_search( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders )] : ( string ) self::$returnTypes[0] );
+        $this->responseContentType = ( isset( $DATA["return"] ) && in_array( strtolower( $DATA["return"] ),self::$returnTypes ) ) ? strtolower( $DATA["return"] ) : ( $this->acceptHeader !== "" ? ( string ) self::$returnTypes[array_search( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders )] : ( string ) self::$returnTypes[0] );
         $this->isAjax = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] );
         //let's ensure that we have at least default values for parameters
         $this->DATA = array_merge( self::$requestParameters, $DATA );
@@ -415,8 +415,26 @@ class BIBLEGET_QUOTE {
         return $ipaddress != "" ? $ipaddress : "0.0.0.0";
     }
 
+    static private function captureBookIndicator( string &$currentQuery, bool $hasULVariants ) : array|bool {
+        if( $hasULVariants ){
+            if( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $currentQuery, $ret ) ){
+                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $currentQuery );
+                return $ret;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^[1-4]{0,1}\p{L}+/u", $currentQuery, $ret ) ){
+                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $currentQuery );
+                return $ret;
+            } else {
+                return false;
+            }
+        }
+    }
+
     private function isValidVersion( string $version ) : bool {
-        return( in_array( $version, $this->validversions ) );
+        return( in_array( $version, $this->VALID_VERSIONS ) );
     }
 
     private function queryStrClean() : array {
@@ -447,21 +465,21 @@ class BIBLEGET_QUOTE {
 
 
     private function isValidBookForVariant( string $currentBook, string $variant ) : bool {
-        return ( in_array( $currentBook, $this->indexes[$variant]["biblebooks"] ) || in_array( $currentBook, $this->indexes[$variant]["abbreviations"] ) );
+        return ( in_array( $currentBook, $this->INDEXES[$variant]["biblebooks"] ) || in_array( $currentBook, $this->INDEXES[$variant]["abbreviations"] ) );
     }
 
     private function validateBibleBook( &$validatedQueries ) : bool {
         $bookIsValid = false;
-        foreach ( $this->requestedVersions as $variant ) {
+        foreach ( $this->REQUESTED_VERSIONS as $variant ) {
             if ( $this->isValidBookForVariant( $validatedQueries->currentBook, $variant ) ) {
                 $bookIsValid = true;
                 $validatedQueries->currentVariant = $variant;
-                $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->biblebooks );
+                $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->BIBLEBOOKS );
                 break;
             }
         }
         if( !$bookIsValid ) {
-            $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->biblebooks );
+            $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->BIBLEBOOKS );
             if( $validatedQueries->bookIdxBase !== false){
                 $bookIsValid = true;
             } else {
@@ -476,7 +494,7 @@ class BIBLEGET_QUOTE {
     private function validateChapterIndicators( array $chapterIndicators, object $validatedQueries ) : bool {
 
         foreach ( $chapterIndicators[1] as $chapterIndicator ) {
-            foreach ( $this->indexes as $jkey => $jindex ) {
+            foreach ( $this->INDEXES as $jkey => $jindex ) {
                 $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
                 $chapter_limit = $jindex["chapter_limit"][$bookidx];
                 if ( $chapterIndicator > $chapter_limit ) {
@@ -507,7 +525,7 @@ class BIBLEGET_QUOTE {
         }
         foreach ( $parts as $part ) {
             $pp = array_map( "intval", explode( ",", $part ) );
-            foreach ( $this->indexes as $jkey => $jindex ) {
+            foreach ( $this->INDEXES as $jkey => $jindex ) {
                 $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
                 $chapters_verselimit = $jindex["verse_limit"][$bookidx];
                 $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
@@ -527,7 +545,7 @@ class BIBLEGET_QUOTE {
             $matches[1] = self::forceArray( $matches[1] );
             $highverse = intval( array_pop( $matches[1] ) );
 
-            foreach ( $this->indexes as $jkey => $jindex ) {
+            foreach ( $this->INDEXES as $jkey => $jindex ) {
                 $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
                 $chapters_verselimit = $jindex["verse_limit"][$bookidx];
                 $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
@@ -548,7 +566,7 @@ class BIBLEGET_QUOTE {
         $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator( $validatedQueries->currentQuery );
 
         $highverse = intval( $versesAfterChapterVerseSeparators[1] );
-        foreach ( $this->indexes as $jkey => $jindex ) {
+        foreach ( $this->INDEXES as $jkey => $jindex ) {
             $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
             $chapters_verselimit = $jindex["verse_limit"][$bookidx];
             $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
@@ -564,7 +582,7 @@ class BIBLEGET_QUOTE {
     }
 
     private function highVerseOutOfBounds( $highverse, object $validatedQueries, array $parts ) : bool {
-        foreach ( $this->indexes as $jkey => $jindex ) {
+        foreach ( $this->INDEXES as $jkey => $jindex ) {
             $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
             $chapters_verselimit = $jindex["verse_limit"][$bookidx];
             $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
@@ -581,7 +599,7 @@ class BIBLEGET_QUOTE {
 
     private function chapterOutOfBounds( array $chapters, object $validatedQueries ) : bool {
         foreach ( $chapters as $zchapter ) {
-            foreach ( $this->indexes as $jkey => $jindex ) {
+            foreach ( $this->INDEXES as $jkey => $jindex ) {
                 
                 $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
                 $chapter_limit = $jindex["chapter_limit"][$bookidx];
@@ -596,32 +614,14 @@ class BIBLEGET_QUOTE {
         return false;
     }
 
-    static private function captureBookIndicator( string &$currentQuery, bool $hasULVariants ) : array|bool {
-        if( $hasULVariants ){
-            if( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $currentQuery, $ret ) ){
-                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $currentQuery );
-                return $ret;
-            } else {
-                return false;
-            }
-        } else {
-            if( preg_match( "/^[1-4]{0,1}\p{L}+/u", $currentQuery, $ret ) ){
-                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $currentQuery );
-                return $ret;
-            } else {
-                return false;
-            }
-        }
-    }
-
     private function bestGuessBookIdx( array $matchedBook, object $formulatedQueries ) : int {
-        $key1 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["biblebooks"] ) : false;
-        $key2 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->indexes[$formulatedQueries->currentVariant]["abbreviations"] ) : false;
-        $key3 = self::idxOf( $matchedBook[0], $this->biblebooks );
+        $key1 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->INDEXES[$formulatedQueries->currentVariant]["biblebooks"] ) : false;
+        $key2 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->INDEXES[$formulatedQueries->currentVariant]["abbreviations"] ) : false;
+        $key3 = self::idxOf( $matchedBook[0], $this->BIBLEBOOKS );
         if ( $key1 ) {
-            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key1];
+            return $this->INDEXES[$formulatedQueries->currentVariant]["book_num"][$key1];
         } else if ( $key2 ) {
-            return $this->indexes[$formulatedQueries->currentVariant]["book_num"][$key2];
+            return $this->INDEXES[$formulatedQueries->currentVariant]["book_num"][$key2];
         } else if ( $key3 ) {
             return $key3 + 1;
         }
@@ -754,15 +754,15 @@ class BIBLEGET_QUOTE {
             $num = 13;
         }
 
-        if ( $this->returnType === "json" ) {
+        if ( $this->responseContentType === "json" ) {
             $error = [];
             $error["errNum"] = $num;
             $error["errMessage"] = self::$errorMessages[$num] . ( $str !== "" ? " > " . $str : "" );
             $this->bibleQuote->errors[] = $error;
-        } elseif ( $this->returnType === "xml" ) {
+        } elseif ( $this->responseContentType === "xml" ) {
             $err_row = $this->bibleQuote->Errors->addChild( "error", self::$errorMessages[$num] );
             $err_row->addAttribute( "errNum", $num );
-        } elseif ( $this->returnType === "html" ) {
+        } elseif ( $this->responseContentType === "html" ) {
             $elements = [];
             $errorsTable = $this->bibleQuote->getElementById( "errorsTbl" );
             if ( $errorsTable == null ) {
@@ -800,7 +800,7 @@ class BIBLEGET_QUOTE {
 
     private function outputResult() {
 
-        switch( $this->returnType ) {
+        switch( $this->responseContentType ) {
             case "json":
                 $this->bibleQuote->info["detectedNotation"] = $this->detectedNotation;
                 echo json_encode( $this->bibleQuote, JSON_UNESCAPED_UNICODE );
@@ -864,7 +864,7 @@ class BIBLEGET_QUOTE {
 
     private function BibleQuoteInit() {
 
-        switch( $this->returnType ){
+        switch( $this->responseContentType ){
             case "json":
                 $quote = new stdClass();
                 $quote->results = [];
@@ -904,10 +904,10 @@ class BIBLEGET_QUOTE {
         $result = $this->mysqli->query( "SELECT * FROM versions_available WHERE type = 'BIBLE'" );
         if( $result ) {
             while( $row = mysqli_fetch_assoc( $result ) ) {
-                $this->validversions[] = $row["sigla"];
-                $this->validversions_fullname[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
+                $this->VALID_VERSIONS[] = $row["sigla"];
+                $this->VALID_VERSIONS_FULLNAME[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
                 if ( $row["copyright"] === 1 ) {
-                    $this->copyrightversions[] = $row["sigla"];
+                    $this->COPYRIGHT_VERSIONS[] = $row["sigla"];
                 }
                 if( $row["canon"] === "CATHOLIC" ){
                     $this->CATHOLIC_VERSIONS[] = $row["sigla"];
@@ -927,7 +927,7 @@ class BIBLEGET_QUOTE {
 
         $indexes = [];
 
-        foreach( $this->requestedVersions as $variant ){
+        foreach( $this->REQUESTED_VERSIONS as $variant ){
 
             $abbreviations  = [];
             $bbbooks        = [];
@@ -955,7 +955,7 @@ class BIBLEGET_QUOTE {
 
         }
 
-        $this->indexes = $indexes;
+        $this->INDEXES = $indexes;
 
     }
 
@@ -982,7 +982,7 @@ class BIBLEGET_QUOTE {
                 $n = 0;
                 while ( $row1 = mysqli_fetch_assoc( $result1 ) ) {
                     $row2 = mysqli_fetch_assoc( $result2 );
-                    $this->biblebooks[$n] = [];
+                    $this->BIBLEBOOKS[$n] = [];
 
                     for ( $x = 1; $x < $cols; $x++ ) {
                         $temparray = [ $row1[$names[$x]], $row2[$names[$x]] ];
@@ -993,7 +993,7 @@ class BIBLEGET_QUOTE {
                         $arr2 = explode( " | ", $row2[$names[$x]] );
                         $abbrevs = ( count( $arr2 ) > 1 ) ? array_map( 'self::normalizeBibleBook', $arr2 ) : [];
 
-                        $this->biblebooks[$n][$x] = array_merge( $temparray, $booknames, $abbrevs );
+                        $this->BIBLEBOOKS[$n][$x] = array_merge( $temparray, $booknames, $abbrevs );
                     }
                     $n++;
                 }
@@ -1012,21 +1012,21 @@ class BIBLEGET_QUOTE {
 
         foreach ( $temp as $version ) {
             if ( isset( $this->DATA["forceversion"] ) && $this->DATA["forceversion"] === "true" ) {
-                $this->requestedVersions[] = $version;
+                $this->REQUESTED_VERSIONS[] = $version;
             } else {
                 if ( $this->isValidVersion( $version ) ) {
-                    $this->requestedVersions[] = $version;
+                    $this->REQUESTED_VERSIONS[] = $version;
                 } else {
-                    $this->addErrorMessage( "Not a valid version: <" . $version . ">, valid versions are <" . implode( " | ", $this->validversions ) . ">" );
+                    $this->addErrorMessage( "Not a valid version: <" . $version . ">, valid versions are <" . implode( " | ", $this->VALID_VERSIONS ) . ">" );
                 }
             }
             if ( isset( $this->DATA["forcecopyright"] ) && $this->DATA["forcecopyright"] === "true" ) {
-                $this->requestedCopyrightedVersions[] = $version;
+                $this->REQUESTED_COPYRIGHTED_VERSIONS[] = $version;
             }
         }
 
 
-        if ( count( $this->requestedVersions ) < 1 ) {
+        if ( count( $this->REQUESTED_VERSIONS ) < 1 ) {
             $this->outputResult();
         }
 
@@ -1161,7 +1161,7 @@ class BIBLEGET_QUOTE {
             'verse'     => ''
         ];
 
-        foreach ( $this->requestedVersions as $version ) {
+        foreach ( $this->REQUESTED_VERSIONS as $version ) {
             $formulatedQueries->i = 0;
             $formulatedQueries->currentRequestedVariant = $version;
             foreach ( $formulatedQueries->queries as $query ) {
@@ -1329,7 +1329,7 @@ class BIBLEGET_QUOTE {
                         //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
                         $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY verseID";
                         //$formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
-                        if ( in_array( $formulatedQueries->currentRequestedVariant, $this->copyrightversions ) ) {
+                        if ( in_array( $formulatedQueries->currentRequestedVariant, $this->COPYRIGHT_VERSIONS ) ) {
                             $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
                         }
                         $formulatedQueries->nn++;
@@ -1445,7 +1445,7 @@ class BIBLEGET_QUOTE {
                     //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
                     $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY verseID";
                     //$formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
-                    if ( in_array( $formulatedQueries->currentRequestedVariant, $this->copyrightversions ) ) {
+                    if ( in_array( $formulatedQueries->currentRequestedVariant, $this->COPYRIGHT_VERSIONS ) ) {
                         $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
                     }
                     $formulatedQueries->nn++;
@@ -1613,11 +1613,11 @@ class BIBLEGET_QUOTE {
         $row["testament"]           = ( int )$row["testament"];
 
         $universal_booknum          = $row["book"];
-        $booknum                    = array_search( $row["book"], $this->indexes[$currentVariant]["book_num"] );
-        $row["bookabbrev"]          = $this->indexes[$currentVariant]["abbreviations"][$booknum];
+        $booknum                    = array_search( $row["book"], $this->INDEXES[$currentVariant]["book_num"] );
+        $row["bookabbrev"]          = $this->INDEXES[$currentVariant]["abbreviations"][$booknum];
         $row["booknum"]             = $booknum;
         $row["univbooknum"]         = $universal_booknum;
-        $row["book"]                = $this->indexes[$currentVariant]["biblebooks"][$booknum];
+        $row["book"]                = $this->INDEXES[$currentVariant]["biblebooks"][$booknum];
 
         $row["section"]             = ( int ) $row["section"];
         unset( $row["verseID"] );
@@ -1631,18 +1631,18 @@ class BIBLEGET_QUOTE {
 
         $response = $QUERY_ACTION_OBJ->response;
 
-        if ( $this->returnType == "xml" ) {
+        if ( $this->responseContentType == "xml" ) {
 
             $thisrow = $this->bibleQuote->results->addChild( "result" );
             foreach ( $response as $key => $value ) {
                 $thisrow[$key] = $value;
             }
 
-        } elseif ( $this->returnType == "json" ) {
+        } elseif ( $this->responseContentType == "json" ) {
 
             $this->bibleQuote->results[] = $response;
 
-        } elseif ( $this->returnType == "html" ) {
+        } elseif ( $this->responseContentType == "html" ) {
 
             if ( $response["verse"] != $QUERY_ACTION_OBJ->verse ) {
                 $QUERY_ACTION_OBJ->newverse = true;
@@ -1808,7 +1808,7 @@ class BIBLEGET_QUOTE {
 
     public function Init() {
 
-        switch( $this->returnType ){
+        switch( $this->responseContentType ){
             case "xml":
               header( 'Content-Type: application/xml; charset=utf-8' );
               break;
