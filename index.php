@@ -55,6 +55,8 @@
  * more secure, more reliable, to be of better service to mankind.
  * 
  * Blessed Carlo Acutis, pray for us
+ * 
+ * MINIMUM PHP REQUIREMENT: PHP 7.4 (allow for type declarations)
  */
 
 ini_set( 'display_errors', 1 );
@@ -91,12 +93,12 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) ) {
 
 class BIBLEGET_QUOTE {
 
-    static public $returnTypes                = [ "json", "xml", "html" ];
-    static public $allowedAcceptHeaders       = [ "application/json", "application/xml", "text/html" ];
-    static public $allowedContentTypes        = [ "application/json", "application/x-www-form-urlencoded" ];
-    static public $allowedRequestMethods      = [ "GET", "POST" ];
-    static public $allowedPreferredOrigins    = [ "GREEK", "HEBREW" ];
-    static public $requestParameters          = [
+    static public array $returnTypes                = [ "json", "xml", "html" ];
+    static public array $allowedAcceptHeaders       = [ "application/json", "application/xml", "text/html" ];
+    static public array $allowedContentTypes        = [ "application/json", "application/x-www-form-urlencoded" ];
+    static public array $allowedRequestMethods      = [ "GET", "POST" ];
+    static public array $allowedPreferredOrigins    = [ "GREEK", "HEBREW" ];
+    static public array $requestParameters          = [
       "query"         => "",
       "return"        => "",
       "version"       => "",
@@ -108,7 +110,7 @@ class BIBLEGET_QUOTE {
       "preferorigin"  => ""
     ];
 
-    static public $errorMessages = [
+    static public array $errorMessages = [
         0 => "The first query must start with a valid book indicator.",
         1 => "You must have a valid chapter following a book indicator.",
         2 => "The book indicator is not valid. Please check the documentation for a list of correct book indicators.",
@@ -148,38 +150,38 @@ class BIBLEGET_QUOTE {
     ];
     */
 
-    private $DATA                         = []; //all request parameters
-    private $returnType                   = "json";     //which type of data to return ( json, xml or html )
-    private $requestHeaders               = [];
-    private $acceptHeader                 = "";
-    private $requestMethod                = "";
-    private $contentType                  = "";
-    private $originHeader                 = "";
-    private $bibleQuote;                    //object with json, xml or html data to return
-    private $mysqli;                        //instance of database
-    private $isAjax                       = false;
-    private $WhitelistedDomainsIPs        = [];
-    private $validversions                = [];
-    private $validversions_fullname       = [];
-    private $copyrightversions            = [];
-    private $PROTESTANT_VERSIONS          = [];
-    private $CATHOLIC_VERSIONS            = [];
-    private $detectedNotation             = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN"
-    private $biblebooks                   = [];
-    private $requestedVersions            = [];
-    private $requestedCopyrightedVersions = [];
-    private $indexes                      = [];
-    private $geoip_json                   = "";
-    private $haveIPAddressOnRecord        = false;
-    private $jsonEncodedRequestHeaders    = "";
-    private $curYEAR                      = "";
+    private array $DATA                         = []; //all request parameters
+    private string $returnType                  = "json";     //which type of data to return ( json, xml or html )
+    private array $requestHeaders               = [];
+    private string $acceptHeader                = "";
+    private string $requestMethod               = "";
+    private string $contentType                 = "";
+    private string $originHeader                = "";
+    private bool $isAjax                        = false;
+    private $bibleQuote;                        //object with json, xml or html data to return (stdClass|SimpleXMLElement|DOMDocument)
+    private mysqli $mysqli;                     //instance of database
+    private array $WhitelistedDomainsIPs        = [];
+    private array $validversions                = [];
+    private array $validversions_fullname       = [];
+    private array $copyrightversions            = [];
+    private array $PROTESTANT_VERSIONS          = [];
+    private array $CATHOLIC_VERSIONS            = [];
+    private string $detectedNotation            = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN"
+    private array $biblebooks                   = [];
+    private array $requestedVersions            = [];
+    private array $requestedCopyrightedVersions = [];
+    private array $indexes                      = [];
+    private string $geoip_json                  = "";
+    private bool $haveIPAddressOnRecord         = false;
+    private string $jsonEncodedRequestHeaders   = "";
+    private string $curYEAR                     = "";
     //useful for html output:
-    private $div;
-    private $err;
-    private $inf;
-    public $DEBUG_REQUESTS                = false;
-    public $DEBUG_IPINFO                  = false;
-    public $DEBUGFILE                     = "requests.log";
+    private DOMElement $div;
+    private DOMElement $err;
+    private DOMElement $inf;
+    public bool $DEBUG_REQUESTS                 = false;
+    public bool $DEBUG_IPINFO                   = false;
+    public string $DEBUGFILE                    = "requests.log";
 
     function __construct( array $DATA ){
         $this->requestHeaders = getallheaders();
@@ -502,42 +504,38 @@ class BIBLEGET_QUOTE {
 
     private function BibleQuoteInit() {
 
-      $err = NULL;
-      $div = NULL;
-      $inf = NULL;
-
-      switch( $this->returnType ){
-          case "json":
-              $quote = new stdClass();
-              $quote->results = [];
-              $quote->errors = [];
-              $quote->info = ["ENDPOINT_VERSION" => ENDPOINT_VERSION];
-              break;
-          case "xml":
-              $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleQuote/>";
-              $quote = new simpleXMLElement( $root );
-              $errors = $quote->addChild( "errors" );
-              $info = $quote->addChild( "info" );
-              $results = $quote->addChild( "results" );
-              $info->addAttribute( "ENDPOINT_VERSION", ENDPOINT_VERSION );
-              break;
-          case "html":
-              $quote = new DOMDocument();
-              $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title><style>table#errorsTbl { border: 3px double Red; background-color:DarkGray; } table#errorsTbl td { border: 1px solid Black; background-color:LightGray; padding: 3px; } td.errNum,td.errMessage { font-weight:bold; }</style><!-- QUERY.BIBLEGET.IO ENDPOINT VERSION {ENDPOINT_VERSION} --></head><body></body>";
-              $quote->loadHTML( $html );
-              $div = $quote->createElement( "div" );
-              $div->setAttribute( "class","results bibleQuote" );
-              $err = $quote->createElement( "div" );
-              $err->setAttribute( "class","errors bibleQuote" );
-              $inf = $quote->createElement( "div" );
-              $inf->setAttribute( "class", "info bibleQuote" );
-              break;
+        switch( $this->returnType ){
+            case "json":
+                $quote = new stdClass();
+                $quote->results = [];
+                $quote->errors = [];
+                $quote->info = ["ENDPOINT_VERSION" => ENDPOINT_VERSION];
+                break;
+            case "xml":
+                $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleQuote/>";
+                $quote = new simpleXMLElement( $root );
+                $errors = $quote->addChild( "errors" );
+                $info = $quote->addChild( "info" );
+                $results = $quote->addChild( "results" );
+                $info->addAttribute( "ENDPOINT_VERSION", ENDPOINT_VERSION );
+                break;
+            case "html":
+                $quote = new DOMDocument();
+                $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title><style>table#errorsTbl { border: 3px double Red; background-color:DarkGray; } table#errorsTbl td { border: 1px solid Black; background-color:LightGray; padding: 3px; } td.errNum,td.errMessage { font-weight:bold; }</style><!-- QUERY.BIBLEGET.IO ENDPOINT VERSION {ENDPOINT_VERSION} --></head><body></body>";
+                $quote->loadHTML( $html );
+                $div = $quote->createElement( "div" );
+                $div->setAttribute( "class","results bibleQuote" );
+                $err = $quote->createElement( "div" );
+                $err->setAttribute( "class","errors bibleQuote" );
+                $inf = $quote->createElement( "div" );
+                $inf->setAttribute( "class", "info bibleQuote" );
+                $this->div        = $div;
+                $this->err        = $err;
+                $this->inf        = $inf;
+                break;
         }
 
         $this->bibleQuote = $quote;
-        $this->div        = $div;
-        $this->err        = $err;
-        $this->inf        = $inf;
 
     }
 
