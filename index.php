@@ -158,7 +158,7 @@ class BIBLEGET_QUOTE {
     private string $requestMethod               = "";
     private string $requestContentType          = "";
     private string $responseContentType         = "json";     //response Content-type ( json, xml or html )
-    private bool $isAjax                        = false;
+    //private bool $isAjax                        = false;
     private array $WhitelistedDomainsIPs        = [];
     private string $detectedNotation            = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN" or "MIXED" (first two are valid, last value is invalid)
     private string $geoip_json                  = "";
@@ -192,7 +192,7 @@ class BIBLEGET_QUOTE {
         $this->acceptHeader = isset( $this->requestHeaders["Accept"] ) && in_array( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders ) ? ( string ) $this->requestHeaders["Accept"] : "";
         $this->requestMethod = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : $_SERVER["REQUEST_METHOD"];
         $this->responseContentType = ( isset( $DATA["return"] ) && in_array( strtolower( $DATA["return"] ),self::$returnTypes ) ) ? strtolower( $DATA["return"] ) : ( $this->acceptHeader !== "" ? ( string ) self::$returnTypes[array_search( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders )] : ( string ) self::$returnTypes[0] );
-        $this->isAjax = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] );
+        //$this->isAjax = ( isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest' );
         //let's ensure that we have at least default values for parameters
         $this->DATA = array_merge( self::$requestParameters, $DATA );
         $this->DATA["preferorigin"] = in_array( $this->DATA["preferorigin"], self::$allowedPreferredOrigins ) ? $this->DATA["preferorigin"] : "";
@@ -1179,10 +1179,6 @@ class BIBLEGET_QUOTE {
         $formulatedQueries->previousBook        = "";
         $formulatedQueries->currentBook         = "";
         $formulatedQueries->currentVariant      = "";
-        $formulatedQueries->currentMap          = [
-            'chapter'   => '',
-            'verse'     => ''
-        ];
 
         foreach ( $this->REQUESTED_VERSIONS as $version ) {
             $formulatedQueries->i = 0;
@@ -1207,15 +1203,13 @@ class BIBLEGET_QUOTE {
                 $this->validateVerseOriginPreference( $formulatedQueries );
 
                 $formulatedQueries->currentChapter = "";
-                //NOTE: all notations have been translated to EUROPEAN notation for the following calculations
-                //      1 ) Therefore we will not find colons, but commas for the chapter-verse separator
-                //      2 ) We will not find commas for non consecutive verses, but dots
-                //NOTE: since a dash can have multiple meanings, whereas a dot has one meaning, 
-                //      also considering that the dot has to do with the smallest unit in a Bible reference = verse,
-                //      whereas a dash could have to do either with verses or with chapters
+                //NOTE: considering a dash can have multiple meanings (range of verses in same chapter, range of verses over chapters, range of chapters),
+                //      whereas a non-consecutive verse indicator has just one meaning;
+                //      also considering that the non-consecutive verse indicator has to do with the smallest unit in a Bible reference = verse,
+                //      whereas a dash could have to do either with verses or with chapters;
                 //      we start our interpretation of the Bible reference from what is clear and certain
                 //      and is the smallest possible unit that we have to work with.
-                //      So if there is a dot = non-consecutive verses, we start splitting up the reference around the dot ( or dots )
+                //      So if there is there are non-consecutive verses, we start splitting up the reference around the non-consecutive verses indicator ( or indicators )
                 //NOTE: We have already capture the book, so we are not dealing with the book in the following calculations
                 //      However for our own sanity, the book is included in the examples to help understand what is happening
                 //      This symbol will be used to indicate splitting into left hand and right hand sections: <=|=>
@@ -1424,7 +1418,7 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function mapReference( object $formulatedQueries, int|string|null $chapter, int|string|null $verse, int|null &$toChapter, int|null &$toVerse, bool $updatePreferOrigin ) {
+    private function mapReference( object &$formulatedQueries, int|string|null $chapter, int|string|null $verse, int|null &$toChapter, int|null &$toVerse, bool $updatePreferOrigin ) {
         $version        = $formulatedQueries->currentRequestedVariant;
         $book           = $formulatedQueries->currentBook;
         $preferorigin   = $formulatedQueries->currentPreferOrigin;
