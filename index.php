@@ -1418,7 +1418,7 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function mapReference( object &$formulatedQueries, int|string|null $chapter, int|string|null $verse, int|null &$toChapter, int|null &$toVerse, bool $updatePreferOrigin ) {
+    private function mapReference( object &$formulatedQueries, int|string|null $chapter, int|string|null $verse, int|string|null &$toChapter, int|string|null &$toVerse, bool $updatePreferOrigin ) {
         $version        = $formulatedQueries->currentRequestedVariant;
         $book           = $formulatedQueries->currentBook;
         $preferorigin   = $formulatedQueries->currentPreferOrigin;
