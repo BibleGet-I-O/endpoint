@@ -301,13 +301,31 @@ class BIBLEGET_QUOTE {
 
     static private function matchBookInQuery( string $query ) : array|bool {
         if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
-            if( preg_match( "/^([1-3]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
+            if( preg_match( "/^([1-4]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
                 return $res;
             } else {
                 return false;
             }
         } else {
-            if( preg_match( "/^([1-3]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
+            if( preg_match( "/^([1-4]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
+                return $res;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    static private function captureBookIndicator( string &$query ) : array|bool {
+        if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
+            if( preg_match( "/^([1-4]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
+                $query = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $query );
+                return $res;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^([1-4]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
+                $query = preg_replace( "/^[1-4]{0,1}(\p{L}\p{M}*)+/u", "", $query );
                 return $res;
             } else {
                 return false;
@@ -319,7 +337,7 @@ class BIBLEGET_QUOTE {
         $validation = false;
         switch( $rule ){
             case self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR :
-                $validation = (preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+/u", $query ));
+                $validation = (preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-4]{0,1}(\p{L}\p{M}*)+/u", $query ));
                 break;
             case self::VALID_CHAPTER_MUST_FOLLOW_BOOK :
                 if(self::stringWithUpperAndLowerCaseVariants( $query ) ){
@@ -413,24 +431,6 @@ class BIBLEGET_QUOTE {
 
     static private function fillEmptyIPAddress( string $ipaddress ) : string {
         return $ipaddress != "" ? $ipaddress : "0.0.0.0";
-    }
-
-    static private function captureBookIndicator( string &$currentQuery, bool $hasULVariants ) : array|bool {
-        if( $hasULVariants ){
-            if( preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $currentQuery, $ret ) ){
-                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $currentQuery );
-                return $ret;
-            } else {
-                return false;
-            }
-        } else {
-            if( preg_match( "/^[1-4]{0,1}\p{L}+/u", $currentQuery, $ret ) ){
-                $currentQuery = preg_replace( "/^[1-4]{0,1}\p{L}+/u", "", $currentQuery );
-                return $ret;
-            } else {
-                return false;
-            }
-        }
     }
 
     private function isValidVersion( string $version ) : bool {
@@ -1053,12 +1053,25 @@ class BIBLEGET_QUOTE {
         }
     }
 
+    private function validateAndSetBook( stdClass &$validatedQueries, array|bool $matchedBook ) : bool {
+        if ( $matchedBook !== false ) {
+            $validatedQueries->currentBook = $matchedBook[0];
+            if ( $this->validateBibleBook( $validatedQueries ) === false ) {
+                return false;
+            } else {
+                $validatedQueries->currentQuery = str_replace( $validatedQueries->currentBook, "", $validatedQueries->currentQuery );
+                return true;
+            }
+        } else {
+            return true;
+        }
+    }
 
     private function validateQueries( array $queries ) : object {
 
         $validatedQueries                   = new stdClass();
-        $validatedQueries->usedvariants     = [];
-        $validatedQueries->goodqueries      = [];
+        $validatedQueries->usedVariants     = [];
+        $validatedQueries->goodQueries      = [];
         $validatedQueries->currentVariant   = "";
         $validatedQueries->currentBook      = "";
         $validatedQueries->bookIdxBase      = -1;
@@ -1075,13 +1088,8 @@ class BIBLEGET_QUOTE {
             }
 
             $matchedBook = self::matchBookInQuery( $validatedQueries->currentQuery );
-            if ( $matchedBook !== false ) {
-                $validatedQueries->currentBook = $matchedBook[0];
-                if ( $this->validateBibleBook( $validatedQueries ) === false ) {
-                    continue;
-                } else {
-                    $validatedQueries->currentQuery = str_replace( $validatedQueries->currentBook, "", $validatedQueries->currentQuery );
-                }
+            if ( $this->validateAndSetBook( $validatedQueries, $matchedBook ) === false ) {
+                continue;
             }
 
             if ( self::queryContainsNonConsecutiveVerses( $validatedQueries->currentQuery ) ) {
@@ -1145,8 +1153,8 @@ class BIBLEGET_QUOTE {
                     continue;
                 }
             }
-            $validatedQueries->usedvariants[] = $validatedQueries->currentVariant;
-            $validatedQueries->goodqueries[]  = $validatedQueries->currentFullQuery;
+            $validatedQueries->usedVariants[] = $validatedQueries->currentVariant;
+            $validatedQueries->goodQueries[]  = $validatedQueries->currentFullQuery;
 
         } //END FOREACH
 
@@ -1197,10 +1205,10 @@ class BIBLEGET_QUOTE {
     private function formulateSQLQueries( object $validatedQueries ) : object {
 
         $formulatedQueries = new stdClass();
-        $formulatedQueries->queries             = $validatedQueries->goodqueries;
+        $formulatedQueries->queries             = $validatedQueries->goodQueries;
         $formulatedQueries->currentQuery        = "";
         $formulatedQueries->currentFullQuery    = "";
-        $formulatedQueries->usedVariants        = $validatedQueries->usedvariants;
+        $formulatedQueries->usedVariants        = $validatedQueries->usedVariants;
         $formulatedQueries->sqlQueries          = [];
         $formulatedQueries->queriesVersions     = [];
         $formulatedQueries->originalQuery       = [];
@@ -1220,8 +1228,7 @@ class BIBLEGET_QUOTE {
                 $formulatedQueries->currentChapter = "";
 
                 // Retrieve and store the book in the query string,if applicable
-                $hasULVariants = self::stringWithUpperAndLowerCaseVariants( $formulatedQueries->currentQuery );
-                $matchedBook = self::captureBookIndicator( $formulatedQueries->currentQuery, $hasULVariants );
+                $matchedBook = self::captureBookIndicator( $formulatedQueries->currentQuery );
 
                 $this->setBookAndVariant( $formulatedQueries, $matchedBook );
 
@@ -1807,8 +1814,8 @@ class BIBLEGET_QUOTE {
             $validatedQueries = $this->validateQueries( $queries );
 
             if( $validatedQueries !== null ){
-                $usedvariants = property_exists( $validatedQueries, 'usedvariants' ) ? $validatedQueries->usedvariants : false;
-                if ( !is_array( $usedvariants ) ) {
+                $usedVariants = property_exists( $validatedQueries, 'usedVariants' ) ? $validatedQueries->usedVariants : false;
+                if ( !is_array( $usedVariants ) ) {
                     $this->outputResult();
                 } else {
                     // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
