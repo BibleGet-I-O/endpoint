@@ -1154,12 +1154,43 @@ class BIBLEGET_QUOTE {
     }
 
     private function initSQLStatement( stdClass &$formulatedQueries ){
-        $formulatedQueries->sqlquery = "SELECT * FROM " . $formulatedQueries->currentRequestedVariant . " WHERE book = " . $formulatedQueries->currentBook;
+        $formulatedQueries->sqlQuery = "SELECT * FROM " . $formulatedQueries->currentRequestedVariant . " WHERE book = " . $formulatedQueries->currentBook;
     }
 
     private function setSQLLimit( stdClass &$formulatedQueries ) {
         if ( in_array( $formulatedQueries->currentRequestedVariant, $this->COPYRIGHT_VERSIONS ) ) {
-            $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
+            $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " LIMIT 30";
+        }
+    }
+
+    private function finalizeQuery( stdClass &$formulatedQueries ) {
+        $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= $formulatedQueries->currentPreferOrigin;
+        $formulatedQueries->queriesVersions[$formulatedQueries->nn] = $formulatedQueries->currentRequestedVariant;
+        //VERSES must be ordered by verseID in order to handle those cases where there are subverses ( usually Greek additions )
+        //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
+        //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
+        //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
+        //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
+        $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " ORDER BY verseID";
+        //$formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
+        $this->setSQLLimit( $formulatedQueries );
+    }
+
+    private function setBookAndVariant( stdClass &$formulatedQueries, bool $matchedBook ) {
+        if ( $matchedBook ) {
+            $formulatedQueries->currentVariant = $formulatedQueries->usedVariants[ $formulatedQueries->i ];
+            $formulatedQueries->currentBook = $this->bestGuessBookIdx( $matchedBook, $formulatedQueries );
+            $formulatedQueries->previousBook = $formulatedQueries->currentBook;
+        } else {
+            $formulatedQueries->currentBook = $formulatedQueries->previousBook;
+        }
+    }
+
+    private function accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight, stdClass &$formulatedQueries ) {
+        if( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] > 1 ) {
+            for( $d=1;$d<( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] );$d++ ){
+                $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " OR ( chapter = " . ( $cvConstructLeft['chapter'] + $d ) . " )";
+            }
         }
     }
 
@@ -1169,13 +1200,13 @@ class BIBLEGET_QUOTE {
         $formulatedQueries->queries             = $validatedQueries->goodqueries;
         $formulatedQueries->currentQuery        = "";
         $formulatedQueries->currentFullQuery    = "";
-        $formulatedQueries->usedvariants        = $validatedQueries->usedvariants;
-        $formulatedQueries->sqlqueries          = [];
-        $formulatedQueries->queriesversions     = [];
-        $formulatedQueries->originalquery       = [];
+        $formulatedQueries->usedVariants        = $validatedQueries->usedvariants;
+        $formulatedQueries->sqlQueries          = [];
+        $formulatedQueries->queriesVersions     = [];
+        $formulatedQueries->originalQuery       = [];
         $formulatedQueries->nn                  = 0;
         $formulatedQueries->i                   = -1;
-        $formulatedQueries->sqlquery            = "";
+        $formulatedQueries->sqlQuery            = "";
         $formulatedQueries->previousBook        = "";
         $formulatedQueries->currentBook         = "";
         $formulatedQueries->currentVariant      = "";
@@ -1186,23 +1217,18 @@ class BIBLEGET_QUOTE {
             foreach ( $formulatedQueries->queries as $query ) {
                 $formulatedQueries->currentQuery = $query;
                 $formulatedQueries->currentFullQuery = $query;
+                $formulatedQueries->currentChapter = "";
 
                 // Retrieve and store the book in the query string,if applicable
                 $hasULVariants = self::stringWithUpperAndLowerCaseVariants( $formulatedQueries->currentQuery );
                 $matchedBook = self::captureBookIndicator( $formulatedQueries->currentQuery, $hasULVariants );
-                if ( $matchedBook ) {
-                    $formulatedQueries->currentVariant = $formulatedQueries->usedvariants[ $formulatedQueries->i ];
-                    $formulatedQueries->currentBook = $this->bestGuessBookIdx( $matchedBook, $formulatedQueries );
-                    $formulatedQueries->previousBook = $formulatedQueries->currentBook;
-                } else {
-                    $formulatedQueries->currentBook = $formulatedQueries->previousBook;
-                }
+
+                $this->setBookAndVariant( $formulatedQueries, $matchedBook );
 
                 $this->initSQLStatement( $formulatedQueries );
 
                 $this->validateVerseOriginPreference( $formulatedQueries );
 
-                $formulatedQueries->currentChapter = "";
                 //NOTE: considering a dash can have multiple meanings (range of verses in same chapter, range of verses over chapters, range of chapters),
                 //      whereas a non-consecutive verse indicator has just one meaning;
                 //      also considering that the non-consecutive verse indicator has to do with the smallest unit in a Bible reference = verse,
@@ -1217,7 +1243,7 @@ class BIBLEGET_QUOTE {
                 if ( self::queryContainsNonConsecutiveVerses( $formulatedQueries->currentQuery ) ) {                        // EXAMPLE: John 3,16.18
                     $nonConsecutiveChunks = self::getNonConsecutiveChunks( $formulatedQueries->currentQuery );              // John 3,16 <=|=> 18
                     foreach ( $nonConsecutiveChunks as $chunk ) {
-                        $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
+                        $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
                         //IF the chunk is not simply a single verse, but is a range of consecutive VERSES or CHAPTERS 
                         //    ( EXAMPLE: John 3,16-18.20       OR John 3,16.18-20        OR John 3,16-18.20-22 )
                         //    (         John 3,16-18 <=|=> 20 OR John 3,16 <=|=> 18-20  OR John 3,16-18 <=|=> 20-22 )
@@ -1244,21 +1270,17 @@ class BIBLEGET_QUOTE {
 
                                     $this->mapReference( $formulatedQueries, $cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true );
 
-                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
-                                    if( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] > 1 ) {
-                                        for( $d=1;$d<( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] );$d++ ){
-                                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . ( $cvConstructLeft['chapter'] + $d ) . " )";
-                                        }
-                                    }
-                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
+                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
+                                    $this->accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight, $formulatedQueries );
+                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
                                 }
                                 //ELSEIF we do NOT have a CHAPTER indicator on the right hand side of the range of consecutive verses
                                 // ( EXAMPLE: John 3,16-18.20 )
                                 else {
-                                    $mappedReference = $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $range['to'], $formulatedQueries->currentChapter, $range['to'], true );
+                                    $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $range['to'], $formulatedQueries->currentChapter, $range['to'], true );
 
-                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
-                                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " AND ( chapter <= " . $formulatedQueries->currentChapter . " AND verse <= " . $range['to'] . " )";
+                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
+                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " AND ( chapter <= " . $formulatedQueries->currentChapter . " AND verse <= " . $range['to'] . " )";
                                 }
                             }
                             //ELSEIF we DO NOT have a CHAPTER indicator on the left hand side of the range of consecutive verses
@@ -1269,7 +1291,7 @@ class BIBLEGET_QUOTE {
                                 $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $range['from'], $formulatedQueries->currentChapter, $range['from'], true );
                                 $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $range['to'], $nullChapter, $range['to'], false );
 
-                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $formulatedQueries->currentChapter . " AND verse >= " . $range['from'] . " AND verse <= " . $range['to'] . " )";
+                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter = " . $formulatedQueries->currentChapter . " AND verse >= " . $range['from'] . " AND verse <= " . $range['to'] . " )";
                             }
                         }
                         //ELSEIF the non consecutive chunk DOES NOT contain a range of consecutive VERSEs / CHAPTERs
@@ -1286,7 +1308,7 @@ class BIBLEGET_QUOTE {
 
                                 $this->mapReference( $formulatedQueries, $cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true );
 
-                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'] . " )";
+                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'] . " )";
                             } 
                             //ELSEIF the non consecutive chunk DOES NOT contain a chapter reference
                             //  ( EXAMPLE: John 3,16.18 )
@@ -1296,29 +1318,18 @@ class BIBLEGET_QUOTE {
 
                                 $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $chunk, $formulatedQueries->currentChapter, $chunk, true );
 
-                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( chapter = " . $formulatedQueries->currentChapter . " AND verse = " . $chunk . " )";
+                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter = " . $formulatedQueries->currentChapter . " AND verse = " . $chunk . " )";
                             }
                         }
 
-                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= $formulatedQueries->currentPreferOrigin;
-
-                        $formulatedQueries->queriesversions[$formulatedQueries->nn] = $formulatedQueries->currentRequestedVariant;
-                        //VERSES must be ordered by verseID in order to handle those cases where there are subverses ( usually Greek additions )
-                        //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
-                        //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
-                        //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
-                        //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
-                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY verseID";
-                        //$formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
-                        if ( in_array( $formulatedQueries->currentRequestedVariant, $this->COPYRIGHT_VERSIONS ) ) {
-                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " LIMIT 30";
-                        }
+                        $this->finalizeQuery( $formulatedQueries );
+                        
                         $formulatedQueries->nn++;
                     }
                 }
                 else { //ELSEIF the request DOES NOT contain non-consecutive verses ( EXAMPLE: John 3,16 )
-                    if ( self::queryContainsNonConsecutiveVerses( $formulatedQueries->currentQuery ) ) {    // EXAMPLE: John 3,16-18
-                        $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
+                    if ( self::chunkContainsRange( $formulatedQueries->currentQuery ) ) {    // EXAMPLE: John 3,16-18
+                        $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
                         $range = self::getRange( $chunk );                                        // John 3,16 <=|=> 18
                         //IF there is a chapter indicator on the left hand side of the range of consecutive verses
                         //    ( EXAMPLE: John 3,16-18 )
@@ -1339,25 +1350,21 @@ class BIBLEGET_QUOTE {
 
                                 $this->mapReference( $formulatedQueries, $cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true );
 
+                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
                                 //what if the difference between chapters is greater than 1? Say: John 3,16-6,2 ?
-                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
-                                if( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] > 1 ) {
-                                    for( $d=1;$d<( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] );$d++ ){
-                                        $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . ( $cvConstructLeft['chapter'] + $d ) . " )";
-                                    }
-                                }
-                                $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
+                                $this->accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight, $formulatedQueries );
+                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
                             }
                             //ELSEIF there is NOT a chapter indicator on the right hand side of the range of consecutive verses
                             //    ( EXAMPLE: John 3,16-18 )
                             //    (    John 3,16 <=|=> 18 )
                             //    (    18 )
                             else {
-                              $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'];
+                              $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'];
 
                               $this->mapReference( $formulatedQueries, $cvConstructLeft['chapter'], $range['to'], $mappedChapter, $range['to'], true );
 
-                              $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " AND chapter <= " . $mappedChapter . " AND verse <= " . $range['to'];
+                              $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " AND chapter <= " . $mappedChapter . " AND verse <= " . $range['to'];
                             }
                         }
                         //ELSEIF there is NOT a chapter/verse indicator on the left hand side of the range of consecutive verses OR chapters
@@ -1368,7 +1375,7 @@ class BIBLEGET_QUOTE {
                             $this->mapReference( $formulatedQueries, $range['from'], null, $range['from'], $nullVerse, true );
                             $this->mapReference( $formulatedQueries, $range['to'], null, $range['to'], $nullVerse, false );
 
-                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter >= " . $range['from'] . " AND chapter <= " . $range['to'];
+                            $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter >= " . $range['from'] . " AND chapter <= " . $range['to'];
                         }
                     }
                     //ELSEIF the request DOES NOT contain a range of consecutive verses OR chapters
@@ -1376,37 +1383,28 @@ class BIBLEGET_QUOTE {
                     else {
                         //IF we DO have a chapter/verse indicator
                         if ( self::chunkContainsChapterVerseConstruct( $formulatedQueries->currentQuery ) ) {
-                            $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
+                            $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
                             $cvConstruct = self::getChapterVerseFromConstruct( $formulatedQueries->currentQuery );
                             $formulatedQueries->currentChapter = $cvConstruct['chapter'];
 
                             $this->mapReference( $formulatedQueries, $cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true );
 
-                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'];
+                            $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'];
                         } 
                         //ELSEIF we are dealing with just a single chapter
                         //    ( EXAMPLE: John 3 )
                         else {
-                            $formulatedQueries->originalquery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
+                            $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
                             $formulatedQueries->currentChapter = $formulatedQueries->currentQuery;
 
                             $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, null, $mappedChapter, $nullVerse, true );
 
-                            $formulatedQueries->sqlqueries[$formulatedQueries->nn] = $formulatedQueries->sqlquery . " AND chapter = " . $mappedChapter; // . " AND verse = " . $chunk;
+                            $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter = " . $mappedChapter;
                         }
                     }
 
-                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= $formulatedQueries->currentPreferOrigin;
+                    $this->finalizeQuery( $formulatedQueries );
 
-                    $formulatedQueries->queriesversions[$formulatedQueries->nn] = $formulatedQueries->currentRequestedVariant;
-                    //VERSES must be ordered by verseID in order to handle those cases where there are subverses ( usually Greek additions )
-                    //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
-                    //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
-                    //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
-                    //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
-                    $formulatedQueries->sqlqueries[$formulatedQueries->nn] .= " ORDER BY verseID";
-
-                    $this->setSQLLimit( $formulatedQueries );
                     $formulatedQueries->nn++;
                 }
 
@@ -1695,9 +1693,9 @@ class BIBLEGET_QUOTE {
     private function doQueries( object $formulatedQueries ) {
 
         $QUERY_ACTION_OBJ = new stdClass();
-        $QUERY_ACTION_OBJ->sqlqueries       = $formulatedQueries->sqlqueries;
-        $QUERY_ACTION_OBJ->queriesversions  = $formulatedQueries->queriesversions;
-        $QUERY_ACTION_OBJ->originalquery    = $formulatedQueries->originalquery;
+        $QUERY_ACTION_OBJ->sqlqueries       = $formulatedQueries->sqlQueries;
+        $QUERY_ACTION_OBJ->queriesversions  = $formulatedQueries->queriesVersions;
+        $QUERY_ACTION_OBJ->originalquery    = $formulatedQueries->originalQuery;
 
         $QUERY_ACTION_OBJ->appid            = $this->DATA["appid"]          != "" ? $this->DATA["appid"]            : "unknown";
         $QUERY_ACTION_OBJ->domain           = $this->DATA["domain"]         != "" ? $this->DATA["domain"]           : "unknown";
