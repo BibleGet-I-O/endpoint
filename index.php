@@ -1067,6 +1067,31 @@ class BIBLEGET_QUOTE {
         }
     }
 
+    private function validateChapterVerseConstructs( stdClass $validatedQueries ) : bool {
+        $chapterVerseConstructCount = substr_count( $validatedQueries->currentQuery, "," );
+        if ( $chapterVerseConstructCount > 1 ) {
+            return $this->validateMultipleVerseSeparators( $validatedQueries );
+        } elseif ( $chapterVerseConstructCount == 1 ) {
+            $parts = explode( ",", $validatedQueries->currentQuery );
+            if ( strpos( $parts[1], '-' ) ) {
+                if( $this->validateRightHandSideOfVerseSeparator( $validatedQueries, $parts ) === false ) {
+                    return false;
+                }
+            } else {
+                if( $this->validateVersesAfterChapterVerseSeparators( $validatedQueries, $parts ) === false ){
+                    return false;
+                }
+            }
+
+            $discontinuousVerses = self::getAllVersesAfterDiscontinuousVerseIndicator( $validatedQueries->currentQuery );
+            $highverse = array_pop( $discontinuousVerses[1] );
+            if( $this->highVerseOutOfBounds( $highverse, $validatedQueries, $parts ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private function validateQueries( array $queries ) : object {
 
         $validatedQueries                   = new stdClass();
@@ -1111,28 +1136,8 @@ class BIBLEGET_QUOTE {
                         continue;
                     }
 
-                    $chapterVerseSeparatorCount = substr_count( $validatedQueries->currentQuery, "," );
-                    if ( $chapterVerseSeparatorCount > 1 ) {
-                        if( $this->validateMultipleVerseSeparators( $validatedQueries ) === false ){
-                            continue;
-                        }
-                    } elseif ( $chapterVerseSeparatorCount == 1 ) {
-                        $parts = explode( ",", $validatedQueries->currentQuery );
-                        if ( strpos( $parts[1], '-' ) ) {
-                            if( $this->validateRightHandSideOfVerseSeparator( $validatedQueries, $parts ) === false ) {
-                                continue;
-                            }
-                        } else {
-                            if( $this->validateVersesAfterChapterVerseSeparators( $validatedQueries, $parts ) === false ){
-                                continue;
-                            }
-                        }
-
-                        $discontinuousVerses = self::getAllVersesAfterDiscontinuousVerseIndicator( $validatedQueries->currentQuery );
-                        $highverse = array_pop( $discontinuousVerses[1] );
-                        if( $this->highVerseOutOfBounds( $highverse, $validatedQueries, $parts ) ) {
-                            continue;
-                        }
+                    if( $this->validateChapterVerseConstructs( $validatedQueries ) === false ){
+                        continue;
                     }
 
                 }
