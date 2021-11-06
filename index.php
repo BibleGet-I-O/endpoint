@@ -1176,7 +1176,7 @@ class BIBLEGET_QUOTE {
         $this->setSQLLimit( $formulatedQueries );
     }
 
-    private function setBookAndVariant( stdClass &$formulatedQueries, bool $matchedBook ) {
+    private function setBookAndVariant( stdClass &$formulatedQueries, array|bool $matchedBook ) {
         if ( $matchedBook ) {
             $formulatedQueries->currentVariant = $formulatedQueries->usedVariants[ $formulatedQueries->i ];
             $formulatedQueries->currentBook = $this->bestGuessBookIdx( $matchedBook, $formulatedQueries );
