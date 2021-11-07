@@ -382,7 +382,7 @@ class QUERY_FORMULATOR {
                 else { //ELSEIF the request DOES NOT contain non-consecutive verses ( EXAMPLE: John 3,16 )
                     if ( self::chunkContainsRange( $this->currentQuery ) ) {    // EXAMPLE: John 3,16-18
                         $this->originalQueries[$this->nn] = $this->currentFullQuery;
-                        $range = self::getRange( $chunk );                                        // John 3,16 <=|=> 18
+                        $range = self::getRange( $this->currentQuery );                                        // John 3,16 <=|=> 18
                         //IF there is a chapter indicator on the left hand side of the range of consecutive verses
                         //    ( EXAMPLE: John 3,16-18 )
                         //    (    John 3,16 <=|=> 18 )
