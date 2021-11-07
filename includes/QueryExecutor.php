@@ -79,6 +79,7 @@ class QUERY_EXECUTOR {
     private int $i                  = 0;
     private bool $haveIPAddressOnRecord = false;
     private mysqli_result $currentExecutionResult;
+    private DOMElement $versesParagraph;
 
     // First we initialize some variables and flags with default values
     private string $version         = "";
@@ -402,9 +403,9 @@ class QUERY_EXECUTOR {
                 $citation = $this->BBQUOTE->bibleQuote->createElement( "p", $response["book"] . "&nbsp;" . $response["chapter"] );
                 $citation->setAttribute( "class", "book bookChapter" );
                 $this->BBQUOTE->div->appendChild( $citation );
-                $citation1 = $this->BBQUOTE->bibleQuote->createElement( "p" );
-                $citation1->setAttribute( "class", "verses versesParagraph" );
-                $this->BBQUOTE->div->appendChild( $citation1 );
+                $this->versesParagraph = $this->BBQUOTE->bibleQuote->createElement( "p" );
+                $this->versesParagraph->setAttribute( "class", "verses versesParagraph" );
+                $this->BBQUOTE->div->appendChild( $this->versesParagraph );
                 $metainfo = $this->BBQUOTE->bibleQuote->createElement( "input" );
                 $metainfo->setAttribute( "type", "hidden" );
                 $metainfo->setAttribute( "class", "originalQueries" );
@@ -429,12 +430,12 @@ class QUERY_EXECUTOR {
             if ( $this->newverse ) {
                 $versicle = $this->BBQUOTE->bibleQuote->createElement( "span", $response["verse"] );
                 $versicle->setAttribute( "class", "sup verseNum" );
-                $citation1->appendChild( $versicle );
+                $this->versesParagraph->appendChild( $versicle );
             }
 
             $text = $this->BBQUOTE->bibleQuote->createElement( "span", $response["text"] );
             $text->setAttribute( "class", "text verseText" );
-            $citation1->appendChild( $text );
+            $this->versesParagraph->appendChild( $text );
 
         }
     }

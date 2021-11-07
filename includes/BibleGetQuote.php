@@ -315,10 +315,19 @@ class BIBLEGET_QUOTE {
         switch( $this->responseContentType ) {
             case "json":
                 $this->bibleQuote->info["detectedNotation"] = $this->detectedNotation;
+                $this->bibleQuote->info["bibleVersionsInfo"] = [];
+                foreach( $this->formulatedVariants as $variant ){
+                    $this->bibleQuote->info["bibleVersionsInfo"][$variant] = $this->VALID_VERSIONS_FULLNAME[$variant];
+                }
                 echo json_encode( $this->bibleQuote, JSON_UNESCAPED_UNICODE );
                 break;
             case "xml":
                 $this->bibleQuote->info["detectedNotation"] = $this->detectedNotation;
+                $bibleVersionsInfo = [];
+                foreach( $this->formulatedVariants as $variant ){
+                    $bibleVersionsInfo[$variant] = $this->VALID_VERSIONS_FULLNAME[$variant];
+                }
+                $this->bibleQuote->info["bibleVersionsInfo"] = json_encode($bibleVersionsInfo);
                 echo $this->bibleQuote->asXML();
                 break;
             case "html":
@@ -336,6 +345,17 @@ class BIBLEGET_QUOTE {
                 $info1->setAttribute( "value", $this->detectedNotation );
                 $info1->setAttribute( "class", "BibleGetInfo" );
                 $this->inf->appendChild( $info1 );
+                $info2 = $this->bibleQuote->createElement( "input" );
+                $info2->setAttribute( "type", "hidden" );
+                $info2->setAttribute( "name", "bibleVersionsInfo" );
+                $bibleVersionsInfo = [];
+                foreach( $this->formulatedVariants as $variant ){
+                    $bibleVersionsInfo[$variant] = $this->VALID_VERSIONS_FULLNAME[$variant];
+                }
+                $info2->setAttribute( "value", json_encode($bibleVersionsInfo) );
+                $info2->setAttribute( "class", "BibleGetInfo" );
+                $this->inf->appendChild( $info2 );
+                
                 $this->bibleQuote->appendChild( $this->inf );
                 echo $this->bibleQuote->saveHTML( $this->div );
                 echo $this->bibleQuote->saveHTML( $this->err );
@@ -416,8 +436,17 @@ class BIBLEGET_QUOTE {
         $result = $this->mysqli->query( "SELECT * FROM versions_available WHERE type = 'BIBLE'" );
         if( $result ) {
             while( $row = mysqli_fetch_assoc( $result ) ) {
+                $output_info_array = [
+                    $row["fullname"],
+                    $row["year"],
+                    $row["language"],
+                    $row["imprimatur"],
+                    $row["canon"],
+                    $row["copyright_holder"],
+                    $row["notes"]
+                ];
                 $this->VALID_VERSIONS[] = $row["sigla"];
-                $this->VALID_VERSIONS_FULLNAME[$row["sigla"]] = $row["fullname"] . "|" . $row["year"];
+                $this->VALID_VERSIONS_FULLNAME[$row["sigla"]] = implode("|",$output_info_array);
                 if ( $row["copyright"] === 1 ) {
                     $this->COPYRIGHT_VERSIONS[] = $row["sigla"];
                 }
