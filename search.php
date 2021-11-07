@@ -52,6 +52,8 @@
  * I wish for the code of this engine to be open source,
  * so that men of good will might contribute to making it better,
  * more secure, more reliable, to be of better service to mankind.
+ * 
+ * Blessed Carlo Acutis, pray for us
  */
 
 //ini_set('display_errors', 1);
@@ -59,7 +61,7 @@
 
 //TODO: implement advanced search with fulltext boolean operators, multiple keywords, negating keywords...
 
-define("ENDPOINT_VERSION", "2.9");
+define("ENDPOINT_VERSION", "3.0");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -80,17 +82,17 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
         header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
 }
 
-$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
-
 
 /****************************************
  * START BUILDING BIBLEGET SEARCH CLASS * 
  ***************************************/
  
 class BIBLEGET_SEARCH {
-    
-    static private $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
-    static private $allowed_accept_headers = array("application/json", "application/xml", "text/html");
+
+    static public $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
+    static public $allowed_accept_headers = array("application/json", "application/xml", "text/html");
+    static public $allowed_content_types = array("application/json" , "application/x-www-form-urlencoded");
+    static public $allowed_request_methods = array("GET","POST");
 
     private $DATA;           //all request parameters
     private $returntype;     //which type of data to return (json, xml or html)
@@ -101,13 +103,16 @@ class BIBLEGET_SEARCH {
     private $validversions;  //array of Bible versions supported by the BibleGet project, to check against
     private $indexes;
     private $dontSearch;
+    private $is_ajax;
     
     function __construct($DATA){
-        
         $this->DATA = $DATA;
         $this->requestHeaders = getallheaders();
-        $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";        
+        $this->contenttype = isset($_SERVER['CONTENT_TYPE']) && in_array($_SERVER['CONTENT_TYPE'],self::$allowed_content_types) ? $_SERVER['CONTENT_TYPE'] : NULL;
+        $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
+        $this->is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
+        $this->exactmatch = isset($DATA["exactmatch"]) && $DATA["exactmatch"] === "true" ? true : false;
         //first add english prepositions to our dontSearch array
         $prepositions_conjunctions = ["about","above","across","after","against","ahead","along","already","also","among","and","around","as","at",
                       "back","because","behind","before","below","beside","between","both","bottom","but","by",
@@ -134,6 +139,7 @@ class BIBLEGET_SEARCH {
                       "it", "its", "itself", "this", "that", "these", "those",
                       "a", "an", "the", "they", "their", "theirs", "them", "themselves",
                       "each", "few", "many", "much", "some", "who", "whoever", "whose", "someone", "everyone", "everybody"];
+        $verbs = ["am", "is", "are", "have", "has", "had", "was", "were", "would", "can", "could", "shall", "should", "will", "might", "must", "being", "been", "do", "does", "did", "done", "be", "being", "been"];
         $congiunzioni = ["intorno","sopra","attraverso","dopo","contro","davanti","avanti","accanto","anche","tra","fra","e","come","ad",
                         "dietro","dopo","prima","sotto","vicino","però","anzi","intanto","da",
                         "oppure","per","cui","se","in","dentro","soltanto","più","meno","mai",
@@ -151,7 +157,12 @@ class BIBLEGET_SEARCH {
                           "ciascuno","ciascuna","molti","molte","alcuni","alcune","certi","certe","alcuno","alcuna","alcuni","alcune",
                           "chi","quale","quali","chiunque","qualcuno","qualcuna","qualunque","tutto","tutta","tutti","tutte","quanto","quanta","quanti","quante"
                         ];
-        $this->dontSearch = array_merge($prepositions_conjunctions, $articles_pronouns,$congiunzioni,$articoli_pronomi);
+        $verbi = ["sono", "sei", "è", "siamo", "siete", "sono", "ero", "eri", "era", "eravamo", "eravate", "erano", "sarò", "sarai", "sarà", "saremo", "sarete", "saranno", "fui", "fu", "fummo", "furono", 
+                  "ho", "hai", "ha", "abbiamo", "avete", "hanno", "avrò", "avrai", "avrà", "avremo", "avrete", "avranno", "avevo", "avevi", "aveva", "avevamo", "avevate", "avevano", "ebbi", "ebbe", "ebbero",
+                  "faccio", "fai", "fa", "facciamo", "fate", "fanno", "farò", "farai", "farà", "faremo", "farete", "faranno", "feci", "fece", "fecero", "facevo", "facevi", "faceva", "facevamo", "facevate", "facevano",
+                  "avrebbe", "dovrebbe", "potrebbe", "posso", "puoi", "può", "possiamo", "potete", "possono", "potrò", "potrai", "potrà", "potremo", "potrete", "potranno", "potevo", "potevi", "poteva", "potevamo", "potevate", "potevano", "potetti", "poté", "potemmo", "potettero",
+                  "devo", "devi", "deve", "dobbiamo", "dovete", "devono", "dovrò", "dovrai", "dovrà", "dovremo", "dovrete", "dovranno", "dovevo", "dovevi", "doveva", "dovevamo", "dovevate", "dovevano", "dovetti", "dovette", "dovemmo", "dovettero"];
+        $this->dontSearch = array_merge($prepositions_conjunctions, $articles_pronouns,$verbs,$congiunzioni,$articoli_pronomi,$verbi);
     }
     
     public function Init(){
@@ -217,7 +228,15 @@ class BIBLEGET_SEARCH {
     
         define("BIBLEGETIOQUERYSCRIPT","iknowwhythisishere");
         
-        include 'dbcredentials.php';
+        $dbCredentials = "dbcredentials.php";
+        //search for the database credentials file at least three levels up...
+        if(file_exists($dbCredentials)){
+            include $dbCredentials;
+        } else if (file_exists("../" . $dbCredentials)){
+            include "../{$dbCredentials}";
+        } else if (file_exists("../../" . $dbCredentials)){
+            include "../../{$dbCredentials}";
+        }
          
         $mysqli = new mysqli(SERVER,DBUSER,DBPASS,DATABASE);
       
@@ -225,11 +244,15 @@ class BIBLEGET_SEARCH {
           $this->addErrorMessage("Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error);
           $this->outputResult();
         }
+        $mysqli->set_charset("utf8");
+        /*
         if (!$mysqli->set_charset("utf8")) {
           //printf("Error loading character set utf8: %s\n", $mysqli->error);
-        } else {
+        }
+        else {
           //printf("Current character set: %s\n", $mysqli->character_set_name());
         }
+        */
         return $mysqli;
     }
 
@@ -313,18 +336,27 @@ class BIBLEGET_SEARCH {
       
       //we have already ensured that $version is a valid version, so let's get right to business
       // PREPARE ARRAY OF SEARCH RESULTS
+      
+      //TODO: we should be able to gather the list of latin versions available automatically+
+      // however is it worth the trouble of doing a query against the metadata endpoint?
+      // how many latin versions are we going to be adding? perhaps just easier to leave it hardcoded here...
+      if(($version == 'NVBSE' || $version == 'VGCL') && (strpos($keyword,'ae') || strpos($keyword,'oe')) ){
+        $keyword = str_replace('ae','æ',$keyword);
+        $keyword = str_replace('oe','œ',$keyword);
+      }
       $searchresults = array();
       $keyword = $this->mysqli->real_escape_string($keyword);
       $querystring = "";
-      if(isset($this->DATA["exactmatch"]) && $this->DATA["exactmatch"] === "true" && mb_strlen($keyword) > 1 && !in_array($keyword,$this->dontSearch) ){
+      if($this->exactmatch && mb_strlen($keyword) > 1 && !in_array($keyword,$this->dontSearch) ){
         $querystring = "SELECT * FROM `{$version}` WHERE text RLIKE '[[:<:]]{$keyword}[[:>:]]'";
-      } else if(mb_strlen($keyword) > 1) {
+      } else if($this->exactmatch === false && mb_strlen($keyword) > 1) {
         $querystring = "SELECT * FROM `{$version}` WHERE MATCH(text) AGAINST ('{$keyword}*' IN BOOLEAN MODE)";
       } else {
         $this->addErrorMessage("<p>Query string cannot be a single character</p>");
         $this->outputResult();
       }
-      if($result1 = $this->mysqli->query($querystring)){
+      $result1 = $this->mysqli->query($querystring);
+      if($result1){
           while($row = mysqli_fetch_assoc($result1)){
             $row["version"] = strtoupper($version);
             $universal_booknum = $row["book"];
@@ -361,22 +393,7 @@ class BIBLEGET_SEARCH {
           $TABLE = $this->search->createElement("table");
           $TABLE->setAttribute("id","SearchResultsTbl");
           $TABLE->setAttribute("class","SearchResultsTbl");
-          $this->div->appendChild($TABLE);        
-          /*
-          $THEAD = $this->search->createElement("thead");
-          $TABLE->appendChild($THEAD);
-          
-          $NEWROW = $this->search->createElement("tr");
-          $THEAD->appendChild($NEWROW);
-          
-          $NEWCOL = array();
-          $NEWCOL["BOOK"] = $this->search->createElement("td","BOOK");
-          $NEWROW->appendChild($NEWCOL["BOOK"]);
-          $NEWCOL["CHAPTER"] = $this->search->createElement("td","CHAPTER");
-          $NEWROW->appendChild($NEWCOL["CHAPTER"]);
-          $NEWCOL["VERSE"] = $this->search->createElement("td","VERSE");
-          $NEWROW->appendChild($NEWCOL["VERSE"]);
-          */
+          $this->div->appendChild($TABLE);
           $TBODY = $this->search->createElement("tbody");
           $TABLE->appendChild($TBODY);
 
@@ -397,112 +414,128 @@ class BIBLEGET_SEARCH {
 
 
     private function getValidVersions(){
-      
-      $validversions = array();
-      if($result = $this->mysqli->query("SELECT * FROM versions_available")){
-        while($row = mysqli_fetch_assoc($result)){
-          $validversions[] = $row["sigla"];
+
+        $validversions = [];
+        $result = $this->mysqli->query("SELECT * FROM versions_available");
+        if($result){
+            while($row = mysqli_fetch_assoc($result)){
+                $validversions[] = $row["sigla"];
+            }
         }
-      }
-      else{
-        $this->addErrorMessage("<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>");
-        $this->outputResult();
-      }
-      return $validversions;
+        else{
+            $this->addErrorMessage("<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>");
+            $this->outputResult();
+        }
+        return $validversions;
+
     }
 
     private function checkValidVersions($value){
-      return(in_array($value,$this->validversions));
+        return(in_array($value,$this->validversions));
     }
 
     private function prepareIndexes($versions){
-      
-      $indexes = array();
-      
-      foreach($versions as $variant){  
-        $abbreviations = array();
-        $bbbooks = array();
-        $chapter_limit = array();
-        $verse_limit = array();
-        $book_num = array();
-        
-        // fetch the index information for the requested version from the database and load it into our arrays
-        if($result = $this->mysqli->query("SELECT * FROM ".$variant."_idx")){
-          while($row = $result->fetch_assoc()){
-            $abbreviations[] = $row["abbrev"];
-            $bbbooks[] = $row["fullname"];
-            $chapter_limit[] = $row["chapters"];
-            $verse_limit[] = explode(",",$row["verses_last"]);
-            $book_num[] = $row["book"];
-          }
+
+        $indexes = [];
+
+        foreach($versions as $variant){  
+            $abbreviations  = [];
+            $bbbooks        = [];
+            $chapter_limit  = [];
+            $verse_limit    = [];
+            $book_num       = [];
+
+            // fetch the index information for the requested version from the database and load it into our arrays
+            $result = $this->mysqli->query("SELECT * FROM ".$variant."_idx");
+            if($result){
+                while($row = $result->fetch_assoc()){
+                    $abbreviations[]    = $row["abbrev"];
+                    $bbbooks[]          = $row["fullname"];
+                    $chapter_limit[]    = $row["chapters"];
+                    $verse_limit[]      = explode(",",$row["verses_last"]);
+                    $book_num[]         = $row["book"];
+                }
+            }
+
+            $indexes[$variant]["abbreviations"] = $abbreviations;
+            $indexes[$variant]["biblebooks"]    = $bbbooks;
+            $indexes[$variant]["chapter_limit"] = $chapter_limit;
+            $indexes[$variant]["verse_limit"]   = $verse_limit;
+            $indexes[$variant]["book_num"]      = $book_num;  
+
         }
-        else{
-          //error
-        }
-        
-        $indexes[$variant]["abbreviations"] = $abbreviations;
-        $indexes[$variant]["biblebooks"] = $bbbooks;
-        $indexes[$variant]["chapter_limit"] = $chapter_limit;
-        $indexes[$variant]["verse_limit"] = $verse_limit;
-        $indexes[$variant]["book_num"] = $book_num;  
-      
-      }
-      
-      return $indexes;
-      
+
+        return $indexes;
+
     }
     
     
     private function outputResult(){
-      
-      switch($this->returntype){
-        case "json":
-          //print_r($metadata->results[52]);
-          $this->search->info["keyword"] = $this->DATA["keyword"];
-          $this->search->info["version"] = $this->DATA["version"];
-          echo json_encode($this->search, JSON_UNESCAPED_UNICODE);
-        break;
-        case "xml":
-          echo $this->search->asXML();
-        break;
-        case "html":
-          $this->search->appendChild($this->err); 
-          $this->search->appendChild($this->div);
-          $info = $this->search->createElement("input");
-          $info->setAttribute("type", "hidden");
-          $info->setAttribute("name", "ENDPOINT_VERSION");
-          $info->setAttribute("value", ENDPOINT_VERSION);
-          $this->search->appendChild($info);
-          echo $this->search->saveHTML($this->div); 
-          echo $this->search->saveHTML($this->err);   
-          echo $this->search->saveHTML($info);   
-      }
-      
-      $this->mysqli->close();
-      exit(0);  
+
+        switch($this->returntype){
+            case "json":
+              //print_r($metadata->results[52]);
+              $this->search->info["keyword"] = $this->DATA["keyword"];
+              $this->search->info["version"] = $this->DATA["version"];
+              echo json_encode($this->search, JSON_UNESCAPED_UNICODE);
+              break;
+            case "xml":
+              echo $this->search->asXML();
+              break;
+            case "html":
+              $this->search->appendChild($this->err); 
+              $this->search->appendChild($this->div);
+              $info = $this->search->createElement("input");
+              $info->setAttribute("type", "hidden");
+              $info->setAttribute("name", "ENDPOINT_VERSION");
+              $info->setAttribute("value", ENDPOINT_VERSION);
+              $this->search->appendChild($info);
+              echo $this->search->saveHTML($this->div); 
+              echo $this->search->saveHTML($this->err);   
+              echo $this->search->saveHTML($info);   
+        }
+
+        $this->mysqli->close();
+        exit(0);  
     }
 
-    
+
 }
 
 /*****************************************
  *      END BIBLEGET SEARCH CLASS        *
  ****************************************/
 
-switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
-    case 'POST':
-        //echo "A post request was detected...".PHP_EOL;
-        //echo json_encode($_POST);
-        $SEARCH = new BIBLEGET_SEARCH($_POST);
+if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],BIBLEGET_SEARCH::$allowed_content_types)){
+    header($_SERVER["SERVER_PROTOCOL"]." 415 Unsupported Media Type", true, 415);
+    die('{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode(' and ',BIBLEGET_SEARCH::$allowed_content_types).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}');
+} else if (isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+    $json = file_get_contents('php://input');
+    $data = json_decode($json,true);
+    if(NULL === $json || "" === $json){
+        header($_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400);
+        die('{"error":"No JSON data received in the request: <' . $json . '>"');
+    } else if (json_last_error() !== JSON_ERROR_NONE) {
+        header($_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400);
+        die('{"error":"Malformed JSON data received in the request: <' . $json . '>, ' . json_last_error_msg() . '"}');
+    } else {
+        $SEARCH = new BIBLEGET_SEARCH($data);
         $SEARCH->Init();
-        break;
-    case 'GET':
-        $SEARCH = new BIBLEGET_SEARCH($_GET);
-        $SEARCH->Init();
-        break;
-    default:
-        exit(0);
-        break;
+    }
+} else {
+    switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
+        case 'POST':
+            $SEARCH = new BIBLEGET_SEARCH($_POST);
+            $SEARCH->Init();
+            break;
+        case 'GET':
+            $SEARCH = new BIBLEGET_SEARCH($_GET);
+            $SEARCH->Init();
+            break;
+        default:
+            header($_SERVER["SERVER_PROTOCOL"]." 405 Method Not Allowed", true, 405);
+            die('{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode(' and ',BIBLEGET_SEARCH::$allowed_request_methods).', but your Request Method was '.strtoupper($_SERVER['REQUEST_METHOD']).'"}');
+    }
 }
 
 ?>

@@ -53,10 +53,15 @@
  * I wish for the code of this engine to be open source,
  * so that men of good will might contribute to making it better,
  * more secure, more reliable, to be of better service to mankind.
+ * 
+ * Blessed Carlo Acutis, pray for us
  */
 
-//error_reporting(E_ALL);
-define("ENDPOINT_VERSION", "2.8");
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+define("ENDPOINT_VERSION", "3.0");
 
 /*************************************************************
  * SET HEADERS TO ALLOW ANY KIND OF REQUESTS FROM ANY ORIGIN * 
@@ -77,17 +82,16 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
         header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
 }
 
-$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
-
-
 /******************************************
  * START BUILDING BIBLEGET METADATA CLASS * 
  *****************************************/
  
 class BIBLEGET_METADATA {
-    
-    static private $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
-    static private $allowed_accept_headers = array("application/json", "application/xml", "text/html");
+
+    static public $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
+    static public $allowed_accept_headers = array("application/json", "application/xml", "text/html");
+    static public $allowed_content_types = array("application/json" , "application/x-www-form-urlencoded");
+    static public $allowed_request_methods = array("GET","POST");
 
     private $DATA;
     private $returntype;
@@ -95,17 +99,18 @@ class BIBLEGET_METADATA {
     private $acceptHeader;
     private $metadata;
     private $mysqli;
-    private $validversions; 
+    private $validversions;
+    private $is_ajax;
     
     function __construct($DATA){
         $this->requestHeaders = getallheaders();
         $this->DATA = $DATA;
+        $this->contenttype = isset($_SERVER['CONTENT_TYPE']) && in_array($_SERVER['CONTENT_TYPE'],self::$allowed_content_types) ? $_SERVER['CONTENT_TYPE'] : NULL;
         $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
-                
+        $this->is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
     }
 
-    
     public function Init(){
         switch($this->returntype){
           case "xml":
@@ -126,7 +131,7 @@ class BIBLEGET_METADATA {
         $this->div      = $temp[1];
         $this->err      = $temp[2];
         
-        $this->mysqli   = self::dbConnect();
+        $this->mysqli   = $this->dbConnect();
         
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
           switch($this->DATA["query"]){
@@ -150,11 +155,19 @@ class BIBLEGET_METADATA {
         
     }
 
-    static private function dbConnect(){
+    private function dbConnect(){
     
         define("BIBLEGETIOQUERYSCRIPT","iknowwhythisishere");
         
-        include 'dbcredentials.php';
+        $dbCredentials = "dbcredentials.php";
+        //search for the database credentials file at least three levels up...
+        if(file_exists($dbCredentials)){
+          include $dbCredentials;
+        } else if (file_exists("../" . $dbCredentials)){
+          include "../{$dbCredentials}";
+        } else if (file_exists("../../" . $dbCredentials)){
+          include "../../{$dbCredentials}";
+        }
          
         $mysqli = new mysqli(SERVER,DBUSER,DBPASS,DATABASE);
       
@@ -162,26 +175,33 @@ class BIBLEGET_METADATA {
           $this->addErrorMessage("Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error);
           $this->outputResult();
         }
+        $mysqli->set_charset("utf8");
+        /*
         if (!$mysqli->set_charset("utf8")) {
           //printf("Error loading character set utf8: %s\n", $mysqli->error);
         } else {
           //printf("Current character set: %s\n", $mysqli->character_set_name());
         }
+        */
         return $mysqli;
     }
 
     
     static private function toProperCase($txt){
-      preg_match("/\p{L}\p{M}*/u", $txt, $mList, PREG_OFFSET_CAPTURE);
-      $idx=$mList[0][1];
-      $chr = mb_substr($txt,$idx,1,'UTF-8');
-      if(preg_match("/\p{L&}\p{M}*/u",$chr)){
-        $post = mb_substr($txt,$idx+1,null,'UTF-8'); 
-        return mb_substr($txt,0,$idx,'UTF-8') . mb_strtoupper($chr,'UTF-8') . mb_strtolower($post,'UTF-8');
-      }
-      else{
-        return $txt;
-      }
+        preg_match( "/\p{L}\p{M}*/u", $txt, $mList, PREG_OFFSET_CAPTURE );
+        if( array_key_exists( 0, $mList ) ){
+            $idx = $mList[0][1];
+            $chr = mb_substr( $txt, $idx, 1, 'UTF-8' );
+            if( preg_match( "/\p{L&}\p{M}*/u", $chr ) ){
+                $post = mb_substr( $txt, $idx+1, null, 'UTF-8' );
+                return mb_substr( $txt, 0, $idx, 'UTF-8' ) . mb_strtoupper( $chr, 'UTF-8' ) . mb_strtolower( $post, 'UTF-8' );
+            }
+            else{
+                return $txt;
+            }
+        } else {
+            return $txt;
+        }
     }
 
 
@@ -262,14 +282,16 @@ class BIBLEGET_METADATA {
       
       // PREPARE BIBLEBOOKS ARRAY
       $biblebooks = array();
-      if($result1 = $this->mysqli->query("SELECT * FROM biblebooks_fullname")){
+      $result1 = $this->mysqli->query("SELECT * FROM biblebooks_fullname")
+      if($result1){
         $cols = mysqli_num_fields($result1);
         $names = array();
         $finfo = mysqli_fetch_fields($result1);
         foreach ($finfo as $val) {
           $names[] = $val->name;
         } 
-        if($result2 = $this->mysqli->query("SELECT * FROM biblebooks_abbr")){
+        $result2 = $this->mysqli->query("SELECT * FROM biblebooks_abbr")
+        if($result2){
           $cols2 = mysqli_num_fields($result2);
           $rows2 = mysqli_num_rows($result2);
           $names2 = array();
@@ -403,36 +425,51 @@ class BIBLEGET_METADATA {
         $THEAD->appendChild($NEWROW);
         
         $NEWCOL = array();
-        $NEWCOL["ABBREVIATION"] = $this->metadata->createElement("td","ABBREVIATION");
+        $NEWCOL["ABBREVIATION"] = $this->metadata->createElement("th","ABBREVIATION");
         $NEWROW->appendChild($NEWCOL["ABBREVIATION"]);
-        $NEWCOL["FULLNAME"] = $this->metadata->createElement("td","FULLNAME");
+        $NEWCOL["FULLNAME"] = $this->metadata->createElement("th","FULLNAME");
         $NEWROW->appendChild($NEWCOL["FULLNAME"]);
-        $NEWCOL["YEAR"] = $this->metadata->createElement("td","YEAR");
+        $NEWCOL["YEAR"] = $this->metadata->createElement("th","YEAR");
         $NEWROW->appendChild($NEWCOL["YEAR"]);
-        $NEWCOL["LANGUAGE"] = $this->metadata->createElement("td","LANGUAGE");
+        $NEWCOL["LANGUAGE"] = $this->metadata->createElement("th","LANGUAGE");
         $NEWROW->appendChild($NEWCOL["LANGUAGE"]);
-        $NEWCOL["COPYRIGHT"] = $this->metadata->createElement("td","COPYRIGHT");
+        $NEWCOL["COPYRIGHT"] = $this->metadata->createElement("th","COPYRIGHT");
         $NEWROW->appendChild($NEWCOL["COPYRIGHT"]);
+        $NEWCOL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("th","COPYRIGHT_HOLDER");
+        $NEWROW->appendChild($NEWCOL["COPYRIGHT_HOLDER"]);
+        $NEWCOL["IMPRIMATUR"] = $this->metadata->createElement("th","IMPRIMATUR");
+        $NEWROW->appendChild($NEWCOL["IMPRIMATUR"]);
+        $NEWCOL["CANON"] = $this->metadata->createElement("th","CANON");
+        $NEWROW->appendChild($NEWCOL["CANON"]);
         
         $TBODY = $this->metadata->createElement("tbody");
         $TABLE->appendChild($TBODY);
       }
-      
+
       $querystring = "SELECT * FROM versions_available";
       if($type !== ""){
         $querystring .= " WHERE type='$type'";
       }
-      if($result = $this->mysqli->query($querystring)){
+      $result = $this->mysqli->query($querystring);
+      if($result){
         $n=0;
         while($row = mysqli_fetch_assoc($result)){
-                    
+          $output_info_array = [
+            $row["fullname"],
+            $row["year"],
+            $row["language"],
+            $row["imprimatur"],
+            $row["canon"],
+            $row["copyright_holder"],
+            $row["notes"]
+          ];
           if($this->returntype == "json"){
-            $this->metadata->validversions_fullname[$row["sigla"]] = $row["fullname"]."|".$row["year"]."|".$row["language"];
+            $this->metadata->validversions_fullname[$row["sigla"]] = implode("|",$output_info_array);
             $this->metadata->validversions[] = $row["sigla"];
             if($row["copyright"]==1){ $this->metadata->copyrightversions[] = $row["sigla"]; } 
           }
           else if($this->returntype == "xml"){
-            $this->metadata->validversions_fullname->{$row["sigla"]} = $row["fullname"]."|".$row["year"]."|".$row["language"];
+            $this->metadata->validversions_fullname->{$row["sigla"]} = implode("|",$output_info_array);
             $this->metadata->validversions->{$row["sigla"]} = $row["sigla"];
             if($row["copyright"]==1){ $this->metadata->copyrightversions->{$row["sigla"]} = $row["sigla"]; } 
           }
@@ -459,6 +496,15 @@ class BIBLEGET_METADATA {
             
             $NEWCELL["COPYRIGHT"] = $this->metadata->createElement("td",$row["copyright"]);
             $NEWROW->appendChild($NEWCELL["COPYRIGHT"]);
+            
+            $NEWCELL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("td",$row["copyright_holder"]);
+            $NEWROW->appendChild($NEWCELL["COPYRIGHT_HOLDER"]);
+            
+            $NEWCELL["IMPRIMATUR"] = $this->metadata->createElement("td",$row["imprimatur"]);
+            $NEWROW->appendChild($NEWCELL["IMPRIMATUR"]);
+            
+            $NEWCELL["CANON"] = $this->metadata->createElement("td",$row["canon"]);
+            $NEWROW->appendChild($NEWCELL["CANON"]);
           }
         }
       }
@@ -473,7 +519,8 @@ class BIBLEGET_METADATA {
     private function getValidVersions(){
       
       $validversions = array();
-      if($result = $this->mysqli->query("SELECT * FROM versions_available")){
+      $result = $this->mysqli->query("SELECT * FROM versions_available");
+      if($result){
         while($row = mysqli_fetch_assoc($result)){
           $validversions[] = $row["sigla"];
         }
@@ -506,7 +553,8 @@ class BIBLEGET_METADATA {
             $book_num = array();
             
             // fetch the index information for the requested version from the database and load it into our arrays
-            if($result = $this->mysqli->query("SELECT * FROM ".$variant."_idx")){
+            $result = $this->mysqli->query("SELECT * FROM ".$variant."_idx");
+            if($result){
               while($row = $result->fetch_assoc()){
                 $abbreviations[] = $row["abbrev"];
                 $bbbooks[] = $row["fullname"];
@@ -516,7 +564,7 @@ class BIBLEGET_METADATA {
               }
             }
             else{
-              $this->addErrorMessage("<p>MySQL ERROR ".$mysqli->errno . ": " . $mysqli->error."</p>");
+              $this->addErrorMessage("<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>");
             }
             
             $indexes[$variant]["abbreviations"] = $abbreviations;
@@ -645,22 +693,36 @@ class BIBLEGET_METADATA {
 /*****************************************
  *     END BIBLEGET METADATA CLASS       * 
  ****************************************/
-
-switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
-    case 'POST':
-        //echo "A post request was detected...".PHP_EOL;
-        //echo json_encode($_POST);
-        $METADATA = new BIBLEGET_METADATA($_POST);
+if(isset($_SERVER['CONTENT_TYPE']) && !in_array($_SERVER['CONTENT_TYPE'],BIBLEGET_METADATA::$allowed_content_types)){
+    header($_SERVER["SERVER_PROTOCOL"]." 415 Unsupported Media Type", true, 415);
+    die('{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode(' and ',BIBLEGET_METADATA::$allowed_content_types).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}');
+} else if (isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+    $json = file_get_contents('php://input');
+    $data = json_decode($json,true);
+    if(NULL === $json || "" === $json){
+      header($_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400);
+      die('{"error":"No JSON data received in the request: <' . $json . '>"');
+    } else if (json_last_error() !== JSON_ERROR_NONE) {
+      header($_SERVER["SERVER_PROTOCOL"]." 400 Bad Request", true, 400);
+      die('{"error":"Malformed JSON data received in the request: <' . $json . '>, ' . json_last_error_msg() . '"}');
+    } else {
+        $METADATA = new BIBLEGET_METADATA($data);
         $METADATA->Init();
-        break;
-    case 'GET':
-        $METADATA = new BIBLEGET_METADATA($_GET);
-        $METADATA->Init();
-        break;
-    default:
-        exit(0);
-        break;
+    }
+} else {
+  switch(strtoupper($_SERVER["REQUEST_METHOD"])) {
+      case 'POST':
+          $METADATA = new BIBLEGET_METADATA($_POST);
+          $METADATA->Init();
+          break;
+      case 'GET':
+          $METADATA = new BIBLEGET_METADATA($_GET);
+          $METADATA->Init();
+          break;
+      default:
+          header($_SERVER["SERVER_PROTOCOL"]." 405 Method Not Allowed", true, 405);
+          die('{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode(' and ',BIBLEGET_METADATA::$allowed_request_methods).', but your Request Method was '.strtoupper($_SERVER['REQUEST_METHOD']).'"}');
+  }
 }
-
  
 ?>
