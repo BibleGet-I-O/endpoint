@@ -288,7 +288,7 @@ class QUERY_VALIDATOR {
         }
         foreach ( $parts as $part ) {
             $pp = array_map( "intval", explode( ",", $part ) );
-            foreach ( $this->INDEXES as $jkey => $jindex ) {
+            foreach ( $this->BBQUOTE->INDEXES as $jkey => $jindex ) {
                 $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
                 $chapters_verselimit = $jindex["verse_limit"][$bookidx];
                 $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
@@ -329,7 +329,7 @@ class QUERY_VALIDATOR {
         $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator( $this->currentQuery );
 
         $highverse = intval( $versesAfterChapterVerseSeparators[1] );
-        foreach ( $this->INDEXES as $jkey => $jindex ) {
+        foreach ( $this->BBQUOTE->INDEXES as $jkey => $jindex ) {
             $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
             $chapters_verselimit = $jindex["verse_limit"][$bookidx];
             $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
@@ -362,7 +362,7 @@ class QUERY_VALIDATOR {
 
     private function chapterOutOfBounds( array $chapters ) : bool {
         foreach ( $chapters as $zchapter ) {
-            foreach ( $this->INDEXES as $jkey => $jindex ) {
+            foreach ( $this->BBQUOTE->INDEXES as $jkey => $jindex ) {
                 
                 $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
                 $chapter_limit = $jindex["chapter_limit"][$bookidx];
