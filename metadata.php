@@ -282,14 +282,16 @@ class BIBLEGET_METADATA {
       
       // PREPARE BIBLEBOOKS ARRAY
       $biblebooks = array();
-      if($result1 = $this->mysqli->query("SELECT * FROM biblebooks_fullname")){
+      $result1 = $this->mysqli->query("SELECT * FROM biblebooks_fullname")
+      if($result1){
         $cols = mysqli_num_fields($result1);
         $names = array();
         $finfo = mysqli_fetch_fields($result1);
         foreach ($finfo as $val) {
           $names[] = $val->name;
         } 
-        if($result2 = $this->mysqli->query("SELECT * FROM biblebooks_abbr")){
+        $result2 = $this->mysqli->query("SELECT * FROM biblebooks_abbr")
+        if($result2){
           $cols2 = mysqli_num_fields($result2);
           $rows2 = mysqli_num_rows($result2);
           $names2 = array();
@@ -448,7 +450,8 @@ class BIBLEGET_METADATA {
       if($type !== ""){
         $querystring .= " WHERE type='$type'";
       }
-      if($result = $this->mysqli->query($querystring)){
+      $result = $this->mysqli->query($querystring);
+      if($result){
         $n=0;
         while($row = mysqli_fetch_assoc($result)){
           $output_info_array = [
@@ -516,7 +519,8 @@ class BIBLEGET_METADATA {
     private function getValidVersions(){
       
       $validversions = array();
-      if($result = $this->mysqli->query("SELECT * FROM versions_available")){
+      $result = $this->mysqli->query("SELECT * FROM versions_available");
+      if($result){
         while($row = mysqli_fetch_assoc($result)){
           $validversions[] = $row["sigla"];
         }
@@ -549,7 +553,8 @@ class BIBLEGET_METADATA {
             $book_num = array();
             
             // fetch the index information for the requested version from the database and load it into our arrays
-            if($result = $this->mysqli->query("SELECT * FROM ".$variant."_idx")){
+            $result = $this->mysqli->query("SELECT * FROM ".$variant."_idx");
+            if($result){
               while($row = $result->fetch_assoc()){
                 $abbreviations[] = $row["abbrev"];
                 $bbbooks[] = $row["fullname"];

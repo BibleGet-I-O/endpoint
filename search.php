@@ -355,7 +355,8 @@ class BIBLEGET_SEARCH {
         $this->addErrorMessage("<p>Query string cannot be a single character</p>");
         $this->outputResult();
       }
-      if($result1 = $this->mysqli->query($querystring)){
+      $result1 = $this->mysqli->query($querystring);
+      if($result1){
           while($row = mysqli_fetch_assoc($result1)){
             $row["version"] = strtoupper($version);
             $universal_booknum = $row["book"];
@@ -415,7 +416,8 @@ class BIBLEGET_SEARCH {
     private function getValidVersions(){
 
         $validversions = [];
-        if($result = $this->mysqli->query("SELECT * FROM versions_available")){
+        $result = $this->mysqli->query("SELECT * FROM versions_available");
+        if($result){
             while($row = mysqli_fetch_assoc($result)){
                 $validversions[] = $row["sigla"];
             }
@@ -444,7 +446,8 @@ class BIBLEGET_SEARCH {
             $book_num       = [];
 
             // fetch the index information for the requested version from the database and load it into our arrays
-            if($result = $this->mysqli->query("SELECT * FROM ".$variant."_idx")){
+            $result = $this->mysqli->query("SELECT * FROM ".$variant."_idx");
+            if($result){
                 while($row = $result->fetch_assoc()){
                     $abbreviations[]    = $row["abbrev"];
                     $bbbooks[]          = $row["fullname"];
