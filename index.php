@@ -87,6 +87,7 @@ if ( isset( $_SERVER['HTTP_ORIGIN'] ) ) {
     header( 'Access-Control-Allow-Credentials: true' );
     header( 'Access-Control-Max-Age: 86400' );    // cache for 1 day
 }
+
 // Access-Control headers are received during OPTIONS requests
 if ( isset( $_SERVER['REQUEST_METHOD'] ) ) {
     if ( isset( $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] ) )
@@ -94,8 +95,6 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) ) {
     if ( isset( $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'] ) )
         header( "Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}" );
 }
-
-
 
 if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BIBLEGET_QUOTE::$allowedContentTypes ) ){
     header( $_SERVER["SERVER_PROTOCOL"]." 415 Unsupported Media Type", true, 415 );
@@ -131,4 +130,3 @@ if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BI
           die( '{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode( ' and ',BIBLEGET_QUOTE::$allowedRequestMethods ).', but your Request Method was '.strtoupper( $_SERVER['REQUEST_METHOD'] ).'"}' );
   }
 }
-
