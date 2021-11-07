@@ -126,29 +126,6 @@ class BIBLEGET_QUOTE {
         12 => "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management."
     ];
 
-    const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                            = 0;
-    const VALID_CHAPTER_MUST_FOLLOW_BOOK                                        = 1;
-    const IS_VALID_BOOK_INDICATOR                                               = 2;
-    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR           = 3;
-    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS                     = 4;
-    const CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS             = 5;
-    const VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS                          = 6;
-    const CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS   = 7;
-    const CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES              = 8;
-
-    /*
-    static public $sections = [
-        "Pentateuco",
-        "Storici",
-        "Sapienziali",
-        "Profeti",
-        "Vangeli",
-        "Atti degli Apostoli",
-        "Lettere Paoline",
-        "Lettere Cattoliche",
-        "Apocalisse"
-    ];
-    */
 
     private array $DATA                         = []; //all request parameters
     private array $requestHeaders               = [];
@@ -164,15 +141,6 @@ class BIBLEGET_QUOTE {
     private string $geoip_json                  = "";
     private bool $haveIPAddressOnRecord         = false;
     private string $curYEAR                     = "";
-    private array $VALID_VERSIONS               = [];
-    private array $VALID_VERSIONS_FULLNAME      = [];
-    private array $COPYRIGHT_VERSIONS           = [];
-    private array $PROTESTANT_VERSIONS          = [];
-    private array $CATHOLIC_VERSIONS            = [];
-    private array $REQUESTED_VERSIONS           = [];
-    private array $REQUESTED_COPYRIGHTED_VERSIONS = [];
-    private array $BIBLEBOOKS                   = [];
-    private array $INDEXES                      = [];
     private mysqli $mysqli;                     //instance of database
     private stdClass|SimpleXMLElement|DOMDocument $bibleQuote; //object with json, xml or html data to return
     //useful for html output:
@@ -180,6 +148,21 @@ class BIBLEGET_QUOTE {
     private DOMElement $err;
     private DOMElement $inf;
 
+    public array $queries                       = [];
+    public array $validatedQueries              = [];
+    public array $validatedVariants             = [];
+    public array $formulatedQueries             = [];
+    public array $formulatedVariants            = [];
+    public array $originalQueries               = [];
+    public array $VALID_VERSIONS                = [];
+    public array $VALID_VERSIONS_FULLNAME       = [];
+    public array $COPYRIGHT_VERSIONS            = [];
+    public array $PROTESTANT_VERSIONS           = [];
+    public array $CATHOLIC_VERSIONS             = [];
+    public array $REQUESTED_VERSIONS            = [];
+    public array $REQUESTED_COPYRIGHTED_VERSIONS = [];
+    public array $BIBLEBOOKS                    = [];
+    public array $INDEXES                       = [];
     public bool $DEBUG_REQUESTS                 = false;
     public bool $DEBUG_IPINFO                   = false;
     public string $DEBUGFILE                    = "requests.log";
@@ -200,12 +183,12 @@ class BIBLEGET_QUOTE {
     }
 
 
-    static private function stringWithUpperAndLowerCaseVariants( string $str ) : bool {
+    static public function stringWithUpperAndLowerCaseVariants( string $str ) : bool {
         return preg_match( "/\p{L&}/u", $str );
     }
 
     static private function toProperCase( string $txt ) : string {
-        if( self::stringWithUpperAndLowerCaseVariants( $txt ) === false ){
+        if( BIBLEGET_QUOTE::stringWithUpperAndLowerCaseVariants( $txt ) === false ){
             return $txt;
         } else {
             preg_match( "/\p{L&}/u", $txt, $mList, PREG_OFFSET_CAPTURE );
@@ -220,7 +203,7 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    static private function idxOf( string $needle, array $haystack ) : int|bool {
+    static public function idxOf( string $needle, array $haystack ) : int|bool {
         foreach ( $haystack as $index => $value ) {
             if ( is_array( $haystack[$index] ) ) {
                 foreach ( $haystack[$index] as $index2 => $value2 ) {
@@ -238,13 +221,6 @@ class BIBLEGET_QUOTE {
 
     static private function normalizeBibleBook( string $str ) : string {
         return self::toProperCase( preg_replace( "/\s+/", "", trim( $str ) ) );
-    }
-
-    static private function forceArray( $element ) : array {
-        if ( !is_array( $element ) ) {
-            $element = [ $element ];
-        }
-        return $element;
     }
 
     static private function detectAndNormalizeNotation( string &$querystr ) : string {
@@ -299,136 +275,6 @@ class BIBLEGET_QUOTE {
         } ) );
     }
 
-    static private function matchBookInQuery( string $query ) : array|bool {
-        if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
-            if( preg_match( "/^([1-4]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
-                return $res;
-            } else {
-                return false;
-            }
-        } else {
-            if( preg_match( "/^([1-4]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
-                return $res;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    static private function captureBookIndicator( string &$query ) : array|bool {
-        if( self::stringWithUpperAndLowerCaseVariants( $query ) ){
-            if( preg_match( "/^([1-4]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
-                $query = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $query );
-                return $res;
-            } else {
-                return false;
-            }
-        } else {
-            if( preg_match( "/^([1-4]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
-                $query = preg_replace( "/^[1-4]{0,1}(\p{L}\p{M}*)+/u", "", $query );
-                return $res;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    static private function validateRuleAgainstQuery( int $rule, string $query ) : bool {
-        $validation = false;
-        switch( $rule ){
-            case self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR :
-                $validation = (preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-4]{0,1}(\p{L}\p{M}*)+/u", $query ));
-                break;
-            case self::VALID_CHAPTER_MUST_FOLLOW_BOOK :
-                if(self::stringWithUpperAndLowerCaseVariants( $query ) ){
-                    $validation = ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query ) );
-                } else {
-                    $validation = ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query ) );
-                }
-                break;
-            /*case self::IS_VALID_BOOK_INDICATOR :
-                $validation = (1===1);
-                break;*/
-            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR :
-                $validation = !( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) );
-                break;
-            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
-                $validation = ( preg_match_all( "/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/", $query ) === substr_count( $query, "." ) );
-                break;
-            case self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
-                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "," ) );
-                break;
-            case self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS :
-                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "-" ) );
-                break;
-            case self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS :
-                $validation = !( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/(?=\,[1-9][0-9]{0,2}\-)/", $query ) > preg_match_all( "/(?=\-[1-9][0-9]{0,2}\,)/", $query ) ) );
-                break;
-            case self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES :
-                $validation = !( substr_count( $query, "-" ) > 1 && ( !strpos( $query, "." ) || ( substr_count( $query, "-" ) - 1 > substr_count( $query, "." ) ) ) );
-                break;
-        }
-        return $validation;
-    }
-
-    static private function queryContainsNonConsecutiveVerses( string $query ) : bool {
-        return strpos( $query, "." ) !== false;
-    }
-
-    static private function getNonConsecutiveChunks( string $query ) : array {
-        return preg_split( "/\./", $query );
-    }
-
-    static private function chunkContainsRange( string $chunk ) : bool {
-        return strpos( $chunk, "-" ) !== false;
-    }
-
-    static private function chunkContainsChapterVerseConstruct( string $chunk ) : bool {
-        return strpos( $chunk, "," ) !== false;
-    }
-
-    static private function getRange( string $chunk ) : array {
-        [ $from, $to ] = preg_split( "/\-/", $chunk );
-        return [
-            'from'  => $from,
-            'to'    => $to
-        ];
-    }
-
-    static private function getChapterVerseFromConstruct( string $construct ) : array {
-        [ $chapter, $verse ] = preg_split( "/,/", $construct );
-        return [
-            'chapter'   => $chapter,
-            'verse'     => $verse
-        ];
-    }
-
-    static private function getAllChapterIndicators( string $query ) : array {
-        if( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $chapterIndicators ) ){
-            $chapterIndicators[1] = self::forceArray( $chapterIndicators[1] );
-            return $chapterIndicators;
-        } else {
-            return ["",[]];
-        }
-    }
-
-    static private function getVerseAfterChapterVerseSeparator( string $query ) : array {
-        if( preg_match( "/,([1-9][0-9]{0,2})/", $query, $verse ) ){
-            return $verse;
-        } else {
-            return [[],[]];
-        }
-    }
-
-    static private function getAllVersesAfterDiscontinuousVerseIndicator( string $query ) : array {
-        if( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $discontinuousVerses ) ){
-            $discontinuousVerses[1] = self::forceArray( $discontinuousVerses[1] );
-            return $discontinuousVerses;
-        } else {
-            return [[],[]];
-        }
-    }
-
     static private function fillEmptyIPAddress( string $ipaddress ) : string {
         return $ipaddress != "" ? $ipaddress : "0.0.0.0";
     }
@@ -437,7 +283,7 @@ class BIBLEGET_QUOTE {
         return( in_array( $version, $this->VALID_VERSIONS ) );
     }
 
-    private function queryStrClean() : array {
+    private function queryStrClean() {
 
         $querystr = self::removeWhitespace( $this->DATA["query"] );
         $querystr = trim( $querystr );
@@ -448,183 +294,8 @@ class BIBLEGET_QUOTE {
         $queries = explode( ";", $querystr );
         $queries = self::removeEmptyItems( $queries );
         $queries = array_map( 'self::toProperCase', $queries );
-        return $queries;
+        $this->queries = $queries;
 
-    }
-
-    private function queryViolatesAnyRuleOf( string $query, array $rules ) : bool {
-        foreach( $rules as $rule ) {
-            if( self::validateRuleAgainstQuery( $rule, $query ) === false ){
-                $this->addErrorMessage( $rule );
-                $this->incrementBadQueryCount();
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-    private function isValidBookForVariant( string $currentBook, string $variant ) : bool {
-        return ( in_array( $currentBook, $this->INDEXES[$variant]["biblebooks"] ) || in_array( $currentBook, $this->INDEXES[$variant]["abbreviations"] ) );
-    }
-
-    private function validateBibleBook( &$validatedQueries ) : bool {
-        $bookIsValid = false;
-        foreach ( $this->REQUESTED_VERSIONS as $variant ) {
-            if ( $this->isValidBookForVariant( $validatedQueries->currentBook, $variant ) ) {
-                $bookIsValid = true;
-                $validatedQueries->currentVariant = $variant;
-                $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->BIBLEBOOKS );
-                break;
-            }
-        }
-        if( !$bookIsValid ) {
-            $validatedQueries->bookIdxBase = self::idxOf( $validatedQueries->currentBook, $this->BIBLEBOOKS );
-            if( $validatedQueries->bookIdxBase !== false){
-                $bookIsValid = true;
-            } else {
-                $this->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $validatedQueries->currentBook ) );
-                $this->incrementBadQueryCount();
-            }
-        }
-        $validatedQueries->nonZeroBookIdx = $validatedQueries->bookIdxBase + 1;
-        return $bookIsValid;
-    }
-
-    private function validateChapterIndicators( array $chapterIndicators, object $validatedQueries ) : bool {
-
-        foreach ( $chapterIndicators[1] as $chapterIndicator ) {
-            foreach ( $this->INDEXES as $jkey => $jindex ) {
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                if ( $chapterIndicator > $chapter_limit ) {
-                    /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                    $this->addErrorMessage( sprintf( $msg, $chapterIndicator, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
-                    $this->incrementBadQueryCount();
-                    return false;
-                }
-            }
-        }
-
-        return true;
-
-    }
-
-    private function validateMultipleVerseSeparators( object $validatedQueries ) : bool {
-        if ( !strpos( $validatedQueries->currentQuery, '-' ) ) {
-            $this->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
-            $this->incrementBadQueryCount();
-            return false;
-        }
-        $parts = explode( "-", $validatedQueries->currentQuery );
-        if ( count( $parts ) != 2 ) {
-            $this->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
-            $this->incrementBadQueryCount();
-            return false;
-        }
-        foreach ( $parts as $part ) {
-            $pp = array_map( "intval", explode( ",", $part ) );
-            foreach ( $this->INDEXES as $jkey => $jindex ) {
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
-                if ( $pp[1] > $verselimit ) {
-                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                    $this->addErrorMessage( sprintf( $msg, $pp[1], $validatedQueries->currentBook, $pp[0], $jkey, $verselimit ) );
-                    $this->incrementBadQueryCount();
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private function validateRightHandSideOfVerseSeparator( object $validatedQueries, array $parts ) : bool {
-        if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $validatedQueries->currentQuery, $matches ) ) {
-            $matches[1] = self::forceArray( $matches[1] );
-            $highverse = intval( array_pop( $matches[1] ) );
-
-            foreach ( $this->INDEXES as $jkey => $jindex ) {
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-                $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-
-                if ( $highverse > $verselimit ) {
-                    /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                    $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
-                    $this->incrementBadQueryCount();
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private function validateVersesAfterChapterVerseSeparators( object $validatedQueries, array $parts ) : bool {
-        $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator( $validatedQueries->currentQuery );
-
-        $highverse = intval( $versesAfterChapterVerseSeparators[1] );
-        foreach ( $this->INDEXES as $jkey => $jindex ) {
-            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-            if ( $highverse > $verselimit ) {
-                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
-                $this->incrementBadQueryCount();
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private function highVerseOutOfBounds( $highverse, object $validatedQueries, array $parts ) : bool {
-        foreach ( $this->INDEXES as $jkey => $jindex ) {
-            $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
-            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
-            if ( $highverse > $verselimit ) {
-                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
-                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
-                $this->addErrorMessage( sprintf( $msg, $highverse, $validatedQueries->currentBook, $parts[0], $jkey, $verselimit ) );
-                $this->incrementBadQueryCount();
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private function chapterOutOfBounds( array $chapters, object $validatedQueries ) : bool {
-        foreach ( $chapters as $zchapter ) {
-            foreach ( $this->INDEXES as $jkey => $jindex ) {
-                
-                $bookidx = array_search( $validatedQueries->nonZeroBookIdx, $jindex["book_num"] );
-                $chapter_limit = $jindex["chapter_limit"][$bookidx];
-                if ( intval( $zchapter ) > $chapter_limit ) {
-                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
-                    $this->addErrorMessage( sprintf( $msg, $zchapter, $validatedQueries->currentBook, $jkey, $chapter_limit ) );
-                    $this->incrementBadQueryCount();
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private function bestGuessBookIdx( array $matchedBook, object $formulatedQueries ) : int {
-        $key1 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->INDEXES[$formulatedQueries->currentVariant]["biblebooks"] ) : false;
-        $key2 = $formulatedQueries->currentVariant != "" ? array_search( $matchedBook[0], $this->INDEXES[$formulatedQueries->currentVariant]["abbreviations"] ) : false;
-        $key3 = self::idxOf( $matchedBook[0], $this->BIBLEBOOKS );
-        if ( $key1 ) {
-            return $this->INDEXES[$formulatedQueries->currentVariant]["book_num"][$key1];
-        } else if ( $key2 ) {
-            return $this->INDEXES[$formulatedQueries->currentVariant]["book_num"][$key2];
-        } else if ( $key3 ) {
-            return $key3 + 1;
-        }
     }
 
     private function isWhitelisted( string $domainOrIP ) : int|bool {
@@ -745,9 +416,7 @@ class BIBLEGET_QUOTE {
         return $geoIPFromLogs->num_rows > 0;
     }
 
-
-
-    private function addErrorMessage( $num, $str="" ) {
+    public function addErrorMessage( $num, $str="" ) {
 
         if ( gettype( $num ) === "string" ) {
             self::$errorMessages[13] = $num;
@@ -1032,460 +701,15 @@ class BIBLEGET_QUOTE {
 
     }
 
-    private function incrementBadQueryCount() {
+    public function incrementBadQueryCount() {
         $this->mysqli->query( "UPDATE counter SET bad = bad + 1" );
     }
 
-    private function incrementGoodQueryCount() {
+    public function incrementGoodQueryCount() {
         $this->mysqli->query( "UPDATE counter SET good = good + 1" );
     }
 
-    private function validateVerseOriginPreference( stdClass &$formulatedQueries ) {
-        $formulatedQueries->currentPreferOrigin = "";
-        //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
-        if( $formulatedQueries->currentBook == 19 || $formulatedQueries->currentBook == "19" ){ 
-            //if a protestant version is requested, it will only have HEBREW origin, not GREEK
-            //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
-            //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
-            if( in_array( $formulatedQueries->currentRequestedVariant,$this->CATHOLIC_VERSIONS ) ){
-                $formulatedQueries->currentPreferOrigin = " AND verseorigin = '" . ( $this->DATA['preferorigin'] != "" ? $this->DATA['preferorigin'] : "GREEK" ) . "'";
-            }
-        }
-    }
 
-    private function validateAndSetBook( stdClass &$validatedQueries, array|bool $matchedBook ) : bool {
-        if ( $matchedBook !== false ) {
-            $validatedQueries->currentBook = $matchedBook[0];
-            if ( $this->validateBibleBook( $validatedQueries ) === false ) {
-                return false;
-            } else {
-                $validatedQueries->currentQuery = str_replace( $validatedQueries->currentBook, "", $validatedQueries->currentQuery );
-                return true;
-            }
-        } else {
-            return true;
-        }
-    }
-
-    private function validateChapterVerseConstructs( stdClass $validatedQueries ) : bool {
-        $chapterVerseConstructCount = substr_count( $validatedQueries->currentQuery, "," );
-        if ( $chapterVerseConstructCount > 1 ) {
-            return $this->validateMultipleVerseSeparators( $validatedQueries );
-        } elseif ( $chapterVerseConstructCount == 1 ) {
-            $parts = explode( ",", $validatedQueries->currentQuery );
-            if ( strpos( $parts[1], '-' ) ) {
-                if( $this->validateRightHandSideOfVerseSeparator( $validatedQueries, $parts ) === false ) {
-                    return false;
-                }
-            } else {
-                if( $this->validateVersesAfterChapterVerseSeparators( $validatedQueries, $parts ) === false ){
-                    return false;
-                }
-            }
-
-            $discontinuousVerses = self::getAllVersesAfterDiscontinuousVerseIndicator( $validatedQueries->currentQuery );
-            $highverse = array_pop( $discontinuousVerses[1] );
-            if( $this->highVerseOutOfBounds( $highverse, $validatedQueries, $parts ) ) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private function validateQueries( array $queries ) : object {
-
-        $validatedQueries                   = new stdClass();
-        $validatedQueries->usedVariants     = [];
-        $validatedQueries->goodQueries      = [];
-        $validatedQueries->currentVariant   = "";
-        $validatedQueries->currentBook      = "";
-        $validatedQueries->bookIdxBase      = -1;
-        $validatedQueries->nonZeroBookIdx   = -1;
-        $validatedQueries->currentQuery     = "";
-        $validatedQueries->currentFullQuery = "";
-
-        foreach ( $queries as $query ) {
-            $validatedQueries->currentFullQuery = $query;
-            $validatedQueries->currentQuery = $query;
-
-            if( $this->queryViolatesAnyRuleOf( $validatedQueries->currentQuery, [ self::VALID_CHAPTER_MUST_FOLLOW_BOOK ] ) ){
-                return null;
-            }
-
-            $matchedBook = self::matchBookInQuery( $validatedQueries->currentQuery );
-            if ( $this->validateAndSetBook( $validatedQueries, $matchedBook ) === false ) {
-                continue;
-            }
-
-            if ( self::queryContainsNonConsecutiveVerses( $validatedQueries->currentQuery ) ) {
-                $rules = [ 
-                    self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR,
-                    self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS
-                ];
-                if ( $this->queryViolatesAnyRuleOf( $validatedQueries->currentQuery, $rules ) ) {
-                    continue;
-                }
-            }
-
-            if ( self::chunkContainsChapterVerseConstruct( $validatedQueries->currentQuery ) ) {
-                if ( $this->queryViolatesAnyRuleOf( $validatedQueries->currentQuery, [ self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS ] ) ) {
-                    continue;
-                } else {
-                    $chapterIndicators = self::getAllChapterIndicators( $validatedQueries->currentQuery );
-                    if( $this->validateChapterIndicators( $chapterIndicators, $validatedQueries ) === false ){
-                        continue;
-                    }
-
-                    if( $this->validateChapterVerseConstructs( $validatedQueries ) === false ){
-                        continue;
-                    }
-
-                }
-            } else {
-                $chapters = explode( "-", $validatedQueries->currentQuery );
-                if( $this->chapterOutOfBounds( $chapters, $validatedQueries ) ){
-                    continue;
-                }
-            }
-
-            if ( strpos( $validatedQueries->currentQuery, "-" ) ) {
-                $rules = [
-                    self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS,
-                    self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS,
-                    self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES
-                ];
-                if ( $this->queryViolatesAnyRuleOf( $validatedQueries->currentQuery, $rules ) ) {
-                    continue;
-                }
-            }
-            $validatedQueries->usedVariants[] = $validatedQueries->currentVariant;
-            $validatedQueries->goodQueries[]  = $validatedQueries->currentFullQuery;
-
-        } //END FOREACH
-
-        return $validatedQueries;
-    }
-
-    private function initSQLStatement( stdClass &$formulatedQueries ){
-        $formulatedQueries->sqlQuery = "SELECT * FROM " . $formulatedQueries->currentRequestedVariant . " WHERE book = " . $formulatedQueries->currentBook;
-    }
-
-    private function setSQLLimit( stdClass &$formulatedQueries ) {
-        if ( in_array( $formulatedQueries->currentRequestedVariant, $this->COPYRIGHT_VERSIONS ) ) {
-            $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " LIMIT 30";
-        }
-    }
-
-    private function finalizeQuery( stdClass &$formulatedQueries ) {
-        $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= $formulatedQueries->currentPreferOrigin;
-        $formulatedQueries->queriesVersions[$formulatedQueries->nn] = $formulatedQueries->currentRequestedVariant;
-        //VERSES must be ordered by verseID in order to handle those cases where there are subverses ( usually Greek additions )
-        //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
-        //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
-        //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
-        //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
-        $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " ORDER BY verseID";
-        //$formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " ORDER BY book,chapter,verse,verseequiv";
-        $this->setSQLLimit( $formulatedQueries );
-    }
-
-    private function setBookAndVariant( stdClass &$formulatedQueries, array|bool $matchedBook ) {
-        if ( $matchedBook ) {
-            $formulatedQueries->currentVariant = $formulatedQueries->usedVariants[ $formulatedQueries->i ];
-            $formulatedQueries->currentBook = $this->bestGuessBookIdx( $matchedBook, $formulatedQueries );
-            $formulatedQueries->previousBook = $formulatedQueries->currentBook;
-        } else {
-            $formulatedQueries->currentBook = $formulatedQueries->previousBook;
-        }
-    }
-
-    private function accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight, stdClass &$formulatedQueries ) {
-        if( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] > 1 ) {
-            for( $d=1;$d<( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] );$d++ ){
-                $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " OR ( chapter = " . ( $cvConstructLeft['chapter'] + $d ) . " )";
-            }
-        }
-    }
-
-    private function formulateSQLQueries( object $validatedQueries ) : object {
-
-        $formulatedQueries = new stdClass();
-        $formulatedQueries->queries             = $validatedQueries->goodQueries;
-        $formulatedQueries->currentQuery        = "";
-        $formulatedQueries->currentFullQuery    = "";
-        $formulatedQueries->usedVariants        = $validatedQueries->usedVariants;
-        $formulatedQueries->sqlQueries          = [];
-        $formulatedQueries->queriesVersions     = [];
-        $formulatedQueries->originalQuery       = [];
-        $formulatedQueries->nn                  = 0;
-        $formulatedQueries->i                   = -1;
-        $formulatedQueries->sqlQuery            = "";
-        $formulatedQueries->previousBook        = "";
-        $formulatedQueries->currentBook         = "";
-        $formulatedQueries->currentVariant      = "";
-
-        foreach ( $this->REQUESTED_VERSIONS as $version ) {
-            $formulatedQueries->i = 0;
-            $formulatedQueries->currentRequestedVariant = $version;
-            foreach ( $formulatedQueries->queries as $query ) {
-                $formulatedQueries->currentQuery = $query;
-                $formulatedQueries->currentFullQuery = $query;
-                $formulatedQueries->currentChapter = "";
-
-                // Retrieve and store the book in the query string,if applicable
-                $matchedBook = self::captureBookIndicator( $formulatedQueries->currentQuery );
-
-                $this->setBookAndVariant( $formulatedQueries, $matchedBook );
-
-                $this->initSQLStatement( $formulatedQueries );
-
-                $this->validateVerseOriginPreference( $formulatedQueries );
-
-                //NOTE: considering a dash can have multiple meanings (range of verses in same chapter, range of verses over chapters, range of chapters),
-                //      whereas a non-consecutive verse indicator has just one meaning;
-                //      also considering that the non-consecutive verse indicator has to do with the smallest unit in a Bible reference = verse,
-                //      whereas a dash could have to do either with verses or with chapters;
-                //      we start our interpretation of the Bible reference from what is clear and certain
-                //      and is the smallest possible unit that we have to work with.
-                //      So if there is there are non-consecutive verses, we start splitting up the reference around the non-consecutive verses indicator ( or indicators )
-                //NOTE: We have already capture the book, so we are not dealing with the book in the following calculations
-                //      However for our own sanity, the book is included in the examples to help understand what is happening
-                //      This symbol will be used to indicate splitting into left hand and right hand sections: <=|=>
-
-                if ( self::queryContainsNonConsecutiveVerses( $formulatedQueries->currentQuery ) ) {                        // EXAMPLE: John 3,16.18
-                    $nonConsecutiveChunks = self::getNonConsecutiveChunks( $formulatedQueries->currentQuery );              // John 3,16 <=|=> 18
-                    foreach ( $nonConsecutiveChunks as $chunk ) {
-                        $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
-                        //IF the chunk is not simply a single verse, but is a range of consecutive VERSES or CHAPTERS 
-                        //    ( EXAMPLE: John 3,16-18.20       OR John 3,16.18-20        OR John 3,16-18.20-22 )
-                        //    (         John 3,16-18 <=|=> 20 OR John 3,16 <=|=> 18-20  OR John 3,16-18 <=|=> 20-22 )
-                        if ( self::chunkContainsRange( $chunk ) ) {
-                            $range = self::getRange( $chunk );
-                            //IF we have a CHAPTER indicator on the left hand side of the range of consecutive verses
-                            //  ( EXAMPLE: John 3,16-18.20 )
-                            //  ( John 3,16-18 <=|=> 20 )
-                            //  ( John 3 <=> 16-18 )
-                            if ( self::chunkContainsChapterVerseConstruct( $range['from'] ) ) {
-                                //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
-                                $cvConstructLeft = self::getChapterVerseFromConstruct( $range['from'] );
-                                $formulatedQueries->currentChapter = $cvConstructLeft['chapter'];
-
-                                $this->mapReference( $formulatedQueries, $cvConstructLeft['chapter'], $cvConstructLeft['verse'], $cvConstructLeft['chapter'], $cvConstructLeft['verse'], true );
-
-                                //IF we have a CHAPTER indicator on the right hand side of the range of consecutive verses
-                                //  ( EXAMPLE: John 3,16-4,5.8 )
-                                //  ( John 3,16 <=|=> 4,5 )
-                                if ( self::chunkContainsChapterVerseConstruct( $range['to'] ) ) {
-                                    //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
-                                    $cvConstructRight = self::getChapterVerseFromConstruct( $range['to'] );
-                                    $formulatedQueries->currentChapter = $cvConstructRight['chapter'];
-
-                                    $this->mapReference( $formulatedQueries, $cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true );
-
-                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
-                                    $this->accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight, $formulatedQueries );
-                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
-                                }
-                                //ELSEIF we do NOT have a CHAPTER indicator on the right hand side of the range of consecutive verses
-                                // ( EXAMPLE: John 3,16-18.20 )
-                                else {
-                                    $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $range['to'], $formulatedQueries->currentChapter, $range['to'], true );
-
-                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
-                                    $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " AND ( chapter <= " . $formulatedQueries->currentChapter . " AND verse <= " . $range['to'] . " )";
-                                }
-                            }
-                            //ELSEIF we DO NOT have a CHAPTER indicator on the left hand side of the range of consecutive verses
-                            //  ( EXAMPLE: John 3,16.18-20 )
-                            //  (  John 3,16 <=|=> 18-20 )
-                            //  (  18 <=> 20 )
-                            else {
-                                $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $range['from'], $formulatedQueries->currentChapter, $range['from'], true );
-                                $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $range['to'], $nullChapter, $range['to'], false );
-
-                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter = " . $formulatedQueries->currentChapter . " AND verse >= " . $range['from'] . " AND verse <= " . $range['to'] . " )";
-                            }
-                        }
-                        //ELSEIF the non consecutive chunk DOES NOT contain a range of consecutive VERSEs / CHAPTERs
-                        //    ( EXAMPLE: John 3,16.18 )
-                        //    (   John 3,16 <=|=> 18 )
-                        else {
-                            //IF the non consecutive chunk however DOES contain a chapter reference
-                            //  ( EXAMPLE: John 3,16.18 )
-                            //  (   John 3,16 <=|=> 18 )
-                            //  (   John 3 <=> 16 )
-                            if ( self::chunkContainsChapterVerseConstruct( $chunk ) ) {
-                                $cvConstruct = self::getChapterVerseFromConstruct( $chunk );
-                                $formulatedQueries->currentChapter = $cvConstruct['chapter'];
-
-                                $this->mapReference( $formulatedQueries, $cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true );
-
-                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'] . " )";
-                            } 
-                            //ELSEIF the non consecutive chunk DOES NOT contain a chapter reference
-                            //  ( EXAMPLE: John 3,16.18 )
-                            //  (    John 3,16 <=|=> 18 )
-                            //  ( 18 )
-                            else {
-
-                                $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, $chunk, $formulatedQueries->currentChapter, $chunk, true );
-
-                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( chapter = " . $formulatedQueries->currentChapter . " AND verse = " . $chunk . " )";
-                            }
-                        }
-
-                        $this->finalizeQuery( $formulatedQueries );
-                        
-                        $formulatedQueries->nn++;
-                    }
-                }
-                else { //ELSEIF the request DOES NOT contain non-consecutive verses ( EXAMPLE: John 3,16 )
-                    if ( self::chunkContainsRange( $formulatedQueries->currentQuery ) ) {    // EXAMPLE: John 3,16-18
-                        $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
-                        $range = self::getRange( $chunk );                                        // John 3,16 <=|=> 18
-                        //IF there is a chapter indicator on the left hand side of the range of consecutive verses
-                        //    ( EXAMPLE: John 3,16-18 )
-                        //    (    John 3,16 <=|=> 18 )
-                        //    (    John 3,16 )
-                        if ( self::chunkContainsChapterVerseConstruct( $range['from'] ) ) {
-                            $cvConstructLeft = self::getChapterVerseFromConstruct( $range['from'] );
-                            $formulatedQueries->currentChapter = $cvConstructLeft['chapter'];
-
-                            $this->mapReference( $formulatedQueries, $cvConstructLeft['chapter'], $cvConstructLeft['verse'], $cvConstructLeft['chapter'], $cvConstructLeft['verse'], true );
-
-                            //IF there is also a chapter indicator on the right hand side of the range of consecutive verses
-                            //    ( EXAMPLE: John 3,16-4,5 )
-                            //    (    John 3,16 <=|=> 4,5 )
-                            //    (    4,5 )
-                            if ( self::chunkContainsChapterVerseConstruct( $range['to'] ) ) {
-                                $cvConstructRight = self::getChapterVerseFromConstruct( $range['to'] );
-
-                                $this->mapReference( $formulatedQueries, $cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true );
-
-                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
-                                //what if the difference between chapters is greater than 1? Say: John 3,16-6,2 ?
-                                $this->accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight, $formulatedQueries );
-                                $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
-                            }
-                            //ELSEIF there is NOT a chapter indicator on the right hand side of the range of consecutive verses
-                            //    ( EXAMPLE: John 3,16-18 )
-                            //    (    John 3,16 <=|=> 18 )
-                            //    (    18 )
-                            else {
-                              $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'];
-
-                              $this->mapReference( $formulatedQueries, $cvConstructLeft['chapter'], $range['to'], $mappedChapter, $range['to'], true );
-
-                              $formulatedQueries->sqlQueries[$formulatedQueries->nn] .= " AND chapter <= " . $mappedChapter . " AND verse <= " . $range['to'];
-                            }
-                        }
-                        //ELSEIF there is NOT a chapter/verse indicator on the left hand side of the range of consecutive verses OR chapters
-                        //    this means that we are dealing with consecutive CHAPTERS and not VERSES
-                        //     ( EXAMPLE: John 3-4 )
-                        //     ( EXAMPLE: 3 <=|=> 4 )
-                        else {
-                            $this->mapReference( $formulatedQueries, $range['from'], null, $range['from'], $nullVerse, true );
-                            $this->mapReference( $formulatedQueries, $range['to'], null, $range['to'], $nullVerse, false );
-
-                            $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter >= " . $range['from'] . " AND chapter <= " . $range['to'];
-                        }
-                    }
-                    //ELSEIF the request DOES NOT contain a range of consecutive verses OR chapters
-                    //    ( EXAMPLE: John 3,16 )
-                    else {
-                        //IF we DO have a chapter/verse indicator
-                        if ( self::chunkContainsChapterVerseConstruct( $formulatedQueries->currentQuery ) ) {
-                            $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
-                            $cvConstruct = self::getChapterVerseFromConstruct( $formulatedQueries->currentQuery );
-                            $formulatedQueries->currentChapter = $cvConstruct['chapter'];
-
-                            $this->mapReference( $formulatedQueries, $cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true );
-
-                            $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'];
-                        } 
-                        //ELSEIF we are dealing with just a single chapter
-                        //    ( EXAMPLE: John 3 )
-                        else {
-                            $formulatedQueries->originalQuery[$formulatedQueries->nn] = $formulatedQueries->currentFullQuery;
-                            $formulatedQueries->currentChapter = $formulatedQueries->currentQuery;
-
-                            $this->mapReference( $formulatedQueries, $formulatedQueries->currentChapter, null, $mappedChapter, $nullVerse, true );
-
-                            $formulatedQueries->sqlQueries[$formulatedQueries->nn] = $formulatedQueries->sqlQuery . " AND chapter = " . $mappedChapter;
-                        }
-                    }
-
-                    $this->finalizeQuery( $formulatedQueries );
-
-                    $formulatedQueries->nn++;
-                }
-
-                $formulatedQueries->i++;
-            }
-        }
-
-        return $formulatedQueries;
-
-    }
-
-    private function mapReference( object &$formulatedQueries, int|string|null $chapter, int|string|null $verse, int|string|null &$toChapter, int|string|null &$toVerse, bool $updatePreferOrigin ) {
-        $version        = $formulatedQueries->currentRequestedVariant;
-        $book           = $formulatedQueries->currentBook;
-        $preferorigin   = $formulatedQueries->currentPreferOrigin;
-
-        if( in_array( $version, $this->CATHOLIC_VERSIONS ) ){
-            if( $book == 19 || $book == "19" ){ //19 == Esther
-                //first let's make sure that $fromChapter is a number
-                if( gettype( $fromChapter ) == 'string' ){
-                    //the USCCB uses letters A-F to indicate the Greek additions to Esther
-                    //however, the BibleGet engine does not allow chapters that are not numbers
-                    //therefore these verses have been added to the database in the same fashion as the CEI2008 layout
-                    //TODO: see if there is any way of allowing letters as chapter indicators and then map them to the CEI2008 layout
-                    $fromChapter = intval( $fromChapter ); 
-                }
-                if( $version == 'VGCL' || $version == 'DRB' ){
-                    if( ( $chapter == 10 && ( ( $verse >= 4 && $verse <= 13 ) || $verse == null ) ) || ( $chapter == 11 && ( $verse == 1 || $verse == null ) ) ){
-                        $chapter = 10;
-                        $verse = 3;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    } else if( ( $chapter == 11 && ( ( $verse >= 2 && $verse <= 12 ) || $verse == null ) ) || ( $chapter == 12 && ( ( $verse >=1 && $verse <= 6 ) || $verse == null ) ) ){
-                        $chapter = 1;
-                        $verse = 1;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    } else if( $chapter == 13 && ( ( $verse >= 1 && $verse <= 7 ) || $verse == null ) ){
-                        $chapter = 3;
-                        $verse = 13;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    } else if( ( $chapter == 13 && ( ( $verse >= 8 && $verse <= 18 ) || $verse == null ) ) || ( $chapter == 14 && ( ( $verse <= 1 && $verse >= 19 ) || $verse == null ) ) ){
-                        $chapter = 4;
-                        $verse = 17;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    } else if( $chapter == 15 && ( ( $verse >= 1 && $verse <= 3 ) || $verse == null ) ){
-                        $chapter = 4;
-                        $verse = 8;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    } else if( $chapter == 15 && ( ( $verse >= 4 && $verse <= 14 ) || $verse == null ) ){
-                        $chapter = 5;
-                        $verse = 1;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    } else if( $chapter == 15 && ( ( $verse >= 15 && $verse <= 19 ) || $verse == null ) ){
-                        $chapter = 5;
-                        $verse = 2;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    } else if( $chapter == 16 ){
-                        $chapter = 8;
-                        $verse = 12;
-                        $preferorigin = " AND verseorigin = 'GREEK'";
-                    }
-                }
-            }
-        }
-        if( $updatePreferOrigin ){
-            $formulatedQueries->currentPreferOrigin = $preferorigin;
-        }
-        $toChapter = $chapter;
-        $toVerse = $verse;
-    }
 
     private function getGeoIpInfo( $ipaddress ) {
         $ch = curl_init( "https://ipinfo.io/" . $ipaddress . "?token=" . IPINFO_ACCESS_TOKEN );
@@ -1670,7 +894,7 @@ class BIBLEGET_QUOTE {
                 $this->div->appendChild( $citation1 );
                 $metainfo = $this->bibleQuote->createElement( "input" );
                 $metainfo->setAttribute( "type", "hidden" );
-                $metainfo->setAttribute( "class", "originalQuery" );
+                $metainfo->setAttribute( "class", "originalQueries" );
                 $metainfo->setAttribute( "value", $response["originalquery"] );
                 $this->div->appendChild( $metainfo );
                 $metainfo1 = $this->bibleQuote->createElement( "input" );
@@ -1702,12 +926,12 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    private function doQueries( object $formulatedQueries ) {
+    private function doQueries() {
 
         $QUERY_ACTION_OBJ = new stdClass();
-        $QUERY_ACTION_OBJ->sqlqueries       = $formulatedQueries->sqlQueries;
-        $QUERY_ACTION_OBJ->queriesversions  = $formulatedQueries->queriesVersions;
-        $QUERY_ACTION_OBJ->originalquery    = $formulatedQueries->originalQuery;
+        $QUERY_ACTION_OBJ->sqlqueries       = $this->formulatedQueries;
+        $QUERY_ACTION_OBJ->queriesversions  = $this->formulatedVariants;
+        $QUERY_ACTION_OBJ->originalquery    = $this->originalQueries;
 
         $QUERY_ACTION_OBJ->appid            = $this->DATA["appid"]          != "" ? $this->DATA["appid"]            : "unknown";
         $QUERY_ACTION_OBJ->domain           = $this->DATA["domain"]         != "" ? $this->DATA["domain"]           : "unknown";
@@ -1804,36 +1028,43 @@ class BIBLEGET_QUOTE {
 
         if ( isset( $this->DATA["query"] ) && $this->DATA["query"] !== "" ) {
 
-            $queries = $this->queryStrClean();
+            $this->queryStrClean();
+
             if( $this->detectedNotation === "MIXED" ){
+
                 $this->addErrorMessage( "Mixed notations have been detected, please use either english or european notation." );
                 $this->outputResult();
+
             }
-    
-            //at least the first query must start with a book reference, which may have a number from 1 to 3 at the beginning
-            //echo "matching against: ".$queries[0]."<br />";
-            if ( $this->queryViolatesAnyRuleOf( $queries[0], [ self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR ] ) ) {
+
+            $QUERY_VALIDATOR = new QUERY_VALIDATOR( $this );
+
+            if( $QUERY_VALIDATOR->ValidateQueries() === false ){
+
                 $this->outputResult();
-            }
 
-            $validatedQueries = $this->validateQueries( $queries );
+            } else {
 
-            if( $validatedQueries !== null ){
-                $usedVariants = property_exists( $validatedQueries, 'usedVariants' ) ? $validatedQueries->usedVariants : false;
-                if ( !is_array( $usedVariants ) ) {
+                if ( !is_array( $this->validatedVariants ) ) {
+
                     $this->outputResult();
+
                 } else {
+
                     // 3 -> TRANSLATE BIBLE NOTATION QUERIES TO MYSQL QUERIES
-                    $formulatedQueries = $this->formulateSQLQueries( $validatedQueries );
+                    $SQL_QUERY_FORMULATOR = new QUERY_FORMULATOR( $this );
+                    $SQL_QUERY_FORMULATOR->FormulateSQLQueries();
     
                     // 5 -> DO MYSQL QUERIES AND COLLECT RESULTS IN OBJECT 
-                    $this->doQueries( $formulatedQueries );
+                    //$SQL_QUERY_EXECUTOR = new QUERY_EXECUTOR( $this );
+                    //$SQL_QUERY_EXECUTOR->ExecuteSQLQueries();
+                    $this->doQueries();
     
                     // 6 -> OUTPUT RESULTS FORMATTED ACCORDING TO REQUESTED RETURN TYPE
                     $this->outputResult();
+
                 }
-            } else {
-                $this->outputResult();
+
             }
 
         }
@@ -1842,7 +1073,814 @@ class BIBLEGET_QUOTE {
 
 }
 
+class QUERY_VALIDATOR {
 
+    private string $currentVariant      = "";
+    private string $currentBook         = "";
+    private int $bookIdxBase            = -1;
+    private int $nonZeroBookIdx         = -1;
+    private string $currentQuery        = "";
+    private string $currentFullQuery    = "";
+    private BIBLEGET_QUOTE $BBQUOTE;
+
+    const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                            = 0;
+    const VALID_CHAPTER_MUST_FOLLOW_BOOK                                        = 1;
+    const IS_VALID_BOOK_INDICATOR                                               = 2;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR           = 3;
+    const VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS                     = 4;
+    const CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS             = 5;
+    const VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS                          = 6;
+    const CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS   = 7;
+    const CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES              = 8;
+
+    function __construct( BIBLEGET_QUOTE $BBQUOTE ) {
+        $this->BBQUOTE = $BBQUOTE;
+    }
+
+    static private function matchBookInQuery( string $query ) : array|bool {
+        if( BIBLEGET_QUOTE::stringWithUpperAndLowerCaseVariants( $query ) ){
+            if( preg_match( "/^([1-4]{0,1}((\p{Lu}\p{Ll}*)+))/u", $query, $res ) ){
+                return $res;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^([1-4]{0,1}((\p{L}\p{M}*)+))/u", $query, $res ) ){
+                return $res;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    static private function validateRuleAgainstQuery( int $rule, string $query ) : bool {
+        $validation = false;
+        switch( $rule ){
+            case self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR :
+                $validation = (preg_match( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", $query ) || preg_match( "/^[1-4]{0,1}(\p{L}\p{M}*)+/u", $query ));
+                break;
+            case self::VALID_CHAPTER_MUST_FOLLOW_BOOK :
+                if(BIBLEGET_QUOTE::stringWithUpperAndLowerCaseVariants( $query ) ){
+                    $validation = ( preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*/u", $query ) == preg_match( "/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u", $query ) );
+                } else {
+                    $validation = ( preg_match( "/^[1-3]{0,1}( \p{L}\p{M}* )+/u", $query ) == preg_match( "/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u", $query ) );
+                }
+                break;
+            /*case self::IS_VALID_BOOK_INDICATOR :
+                $validation = (1===1);
+                break;*/
+            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR :
+                $validation = !( !strpos( $query, "," ) || strpos( $query, "," ) > strpos( $query, "." ) );
+                break;
+            case self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
+                $validation = ( preg_match_all( "/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/", $query ) === substr_count( $query, "." ) );
+                break;
+            case self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS :
+                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "," ) );
+                break;
+            case self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS :
+                $validation = ( preg_match_all( "/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/", $query ) === substr_count( $query, "-" ) );
+                break;
+            case self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS :
+                $validation = !( preg_match( "/\-[1-9][0-9]{0,2}\,/", $query ) && ( !preg_match( "/\,[1-9][0-9]{0,2}\-/", $query ) || preg_match_all( "/(?=\,[1-9][0-9]{0,2}\-)/", $query ) > preg_match_all( "/(?=\-[1-9][0-9]{0,2}\,)/", $query ) ) );
+                break;
+            case self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES :
+                $validation = !( substr_count( $query, "-" ) > 1 && ( !strpos( $query, "." ) || ( substr_count( $query, "-" ) - 1 > substr_count( $query, "." ) ) ) );
+                break;
+        }
+        return $validation;
+    }
+
+    static private function queryContainsNonConsecutiveVerses( string $query ) : bool {
+        return strpos( $query, "." ) !== false;
+    }
+
+    static private function forceArray( $element ) : array {
+        if ( !is_array( $element ) ) {
+            $element = [ $element ];
+        }
+        return $element;
+    }
+
+    static private function getAllVersesAfterDiscontinuousVerseIndicator( string $query ) : array {
+        if( preg_match_all( "/\.([1-9][0-9]{0,2})$/", $query, $discontinuousVerses ) ){
+            $discontinuousVerses[1] = self::forceArray( $discontinuousVerses[1] );
+            return $discontinuousVerses;
+        } else {
+            return [[],[]];
+        }
+    }
+
+    static private function getVerseAfterChapterVerseSeparator( string $query ) : array {
+        if( preg_match( "/,([1-9][0-9]{0,2})/", $query, $verse ) ){
+            return $verse;
+        } else {
+            return [[],[]];
+        }
+    }
+
+    static private function chunkContainsChapterVerseConstruct( string $chunk ) : bool {
+        return strpos( $chunk, "," ) !== false;
+    }
+
+    static private function getAllChapterIndicators( string $query ) : array {
+        if( preg_match_all( "/([1-9][0-9]{0,2})\,/", $query, $chapterIndicators ) ){
+            $chapterIndicators[1] = self::forceArray( $chapterIndicators[1] );
+            return $chapterIndicators;
+        } else {
+            return ["",[]];
+        }
+    }
+
+    private function validateAndSetBook( array|bool $matchedBook ) : bool {
+        if ( $matchedBook !== false ) {
+            $this->currentBook = $matchedBook[0];
+            if ( $this->validateBibleBook() === false ) {
+                return false;
+            } else {
+                $this->currentQuery = str_replace( $this->currentBook, "", $this->currentQuery );
+                return true;
+            }
+        } else {
+            return true;
+        }
+    }
+
+    private function validateChapterVerseConstructs() : bool {
+        $chapterVerseConstructCount = substr_count( $this->currentQuery, "," );
+        if ( $chapterVerseConstructCount > 1 ) {
+            return $this->validateMultipleVerseSeparators();
+        } elseif ( $chapterVerseConstructCount == 1 ) {
+            $parts = explode( ",", $this->currentQuery );
+            if ( strpos( $parts[1], '-' ) ) {
+                if( $this->validateRightHandSideOfVerseSeparator( $parts ) === false ) {
+                    return false;
+                }
+            } else {
+                if( $this->validateVersesAfterChapterVerseSeparators( $parts ) === false ){
+                    return false;
+                }
+            }
+
+            $discontinuousVerses = self::getAllVersesAfterDiscontinuousVerseIndicator( $this->currentQuery );
+            $highverse = array_pop( $discontinuousVerses[1] );
+            if( $this->highVerseOutOfBounds( $highverse, $parts ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function queryViolatesAnyRuleOf( string $query, array $rules ) : bool {
+        foreach( $rules as $rule ) {
+            if( self::validateRuleAgainstQuery( $rule, $query ) === false ){
+                $this->BBQUOTE->addErrorMessage( $rule );
+                $this->BBQUOTE->incrementBadQueryCount();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function isValidBookForVariant( string $variant ) : bool {
+        return ( in_array( $this->currentBook, $this->BBQUOTE->INDEXES[$variant]["biblebooks"] ) || in_array( $this->currentBook, $this->BBQUOTE->INDEXES[$variant]["abbreviations"] ) );
+    }
+
+    private function validateBibleBook() : bool {
+        $bookIsValid = false;
+        foreach ( $this->BBQUOTE->REQUESTED_VERSIONS as $variant ) {
+            if ( $this->isValidBookForVariant( $variant ) ) {
+                $bookIsValid = true;
+                $this->currentVariant = $variant;
+                $this->bookIdxBase = $this->BBQUOTE::idxOf( $this->currentBook, $this->BBQUOTE->BIBLEBOOKS );
+                break;
+            }
+        }
+        if( !$bookIsValid ) {
+            $this->bookIdxBase = $this->BBQUOTE::idxOf( $this->currentBook, $this->BBQUOTE->BIBLEBOOKS );
+            if( $this->bookIdxBase !== false){
+                $bookIsValid = true;
+            } else {
+                $this->BBQUOTE->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $this->currentBook ) );
+                $this->BBQUOTE->incrementBadQueryCount();
+            }
+        }
+        $this->nonZeroBookIdx = $this->bookIdxBase + 1;
+        return $bookIsValid;
+    }
+
+    private function validateChapterIndicators( array $chapterIndicators ) : bool {
+
+        foreach ( $chapterIndicators[1] as $chapterIndicator ) {
+            foreach ( $this->BBQUOTE->INDEXES as $jkey => $jindex ) {
+                $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
+                $chapter_limit = $jindex["chapter_limit"][$bookidx];
+                if ( $chapterIndicator > $chapter_limit ) {
+                    /* translators: the expressions <%1$d>, <%2$s>, <%3$s>, and <%4$d> must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
+                    $this->BBQUOTE->addErrorMessage( sprintf( $msg, $chapterIndicator, $this->currentBook, $jkey, $chapter_limit ) );
+                    $this->BBQUOTE->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+
+        return true;
+
+    }
+
+    private function validateMultipleVerseSeparators() : bool {
+        if ( !strpos( $this->currentQuery, '-' ) ) {
+            $this->BBQUOTE->addErrorMessage( "You cannot have more than one comma and not have a dash!" );
+            $this->BBQUOTE->incrementBadQueryCount();
+            return false;
+        }
+        $parts = explode( "-", $this->currentQuery );
+        if ( count( $parts ) != 2 ) {
+            $this->BBQUOTE->addErrorMessage( "You seem to have a malformed querystring, there should be only one dash." );
+            $this->BBQUOTE->incrementBadQueryCount();
+            return false;
+        }
+        foreach ( $parts as $part ) {
+            $pp = array_map( "intval", explode( ",", $part ) );
+            foreach ( $this->INDEXES as $jkey => $jindex ) {
+                $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
+                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                $verselimit = intval( $chapters_verselimit[$pp[0] - 1] );
+                if ( $pp[1] > $verselimit ) {
+                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                    $this->BBQUOTE->addErrorMessage( sprintf( $msg, $pp[1], $this->currentBook, $pp[0], $jkey, $verselimit ) );
+                    $this->BBQUOTE->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private function validateRightHandSideOfVerseSeparator( array $parts ) : bool {
+        if ( preg_match_all( "/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/", $this->currentQuery, $matches ) ) {
+            $matches[1] = self::forceArray( $matches[1] );
+            $highverse = intval( array_pop( $matches[1] ) );
+
+            foreach ( $this->BBQUOTE->INDEXES as $jkey => $jindex ) {
+                $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
+                $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+                $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+
+                if ( $highverse > $verselimit ) {
+                    /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                    $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                    $this->BBQUOTE->addErrorMessage( sprintf( $msg, $highverse, $this->currentBook, $parts[0], $jkey, $verselimit ) );
+                    $this->BBQUOTE->incrementBadQueryCount();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private function validateVersesAfterChapterVerseSeparators( array $parts ) : bool {
+        $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator( $this->currentQuery );
+
+        $highverse = intval( $versesAfterChapterVerseSeparators[1] );
+        foreach ( $this->INDEXES as $jkey => $jindex ) {
+            $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
+            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+            if ( $highverse > $verselimit ) {
+                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                $this->BBQUOTE->addErrorMessage( sprintf( $msg, $highverse, $this->currentBook, $parts[0], $jkey, $verselimit ) );
+                $this->BBQUOTE->incrementBadQueryCount();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function highVerseOutOfBounds( $highverse, array $parts ) : bool {
+        foreach ( $this->BBQUOTE->INDEXES as $jkey => $jindex ) {
+            $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
+            $chapters_verselimit = $jindex["verse_limit"][$bookidx];
+            $verselimit = intval( $chapters_verselimit[intval( $parts[0] ) - 1] );
+            if ( $highverse > $verselimit ) {
+                /* translators: the expressions <%1$d>, <%2$s>, <%3$d>, <%4$s> and %5$d must be left as is, they will be substituted dynamically by values in the script. See http://php.net/sprintf. */
+                $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
+                $this->BBQUOTE->addErrorMessage( sprintf( $msg, $highverse, $this->currentBook, $parts[0], $jkey, $verselimit ) );
+                $this->BBQUOTE->incrementBadQueryCount();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function chapterOutOfBounds( array $chapters ) : bool {
+        foreach ( $chapters as $zchapter ) {
+            foreach ( $this->INDEXES as $jkey => $jindex ) {
+                
+                $bookidx = array_search( $this->nonZeroBookIdx, $jindex["book_num"] );
+                $chapter_limit = $jindex["chapter_limit"][$bookidx];
+                if ( intval( $zchapter ) > $chapter_limit ) {
+                    $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
+                    $this->BBQUOTE->addErrorMessage( sprintf( $msg, $zchapter, $this->currentBook, $jkey, $chapter_limit ) );
+                    $this->BBQUOTE->incrementBadQueryCount();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public function ValidateQueries() : bool {
+        //at least the first query must start with a book reference, which may have a number from 1 to 3 at the beginning
+        //echo "matching against: ".$queries[0]."<br />";
+        if ( $this->queryViolatesAnyRuleOf( $this->BBQUOTE->queries[0], [ self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR ] ) ) {
+            $this->BBQUOTE->outputResult();
+        }
+
+
+        foreach ( $this->BBQUOTE->queries as $query ) {
+            $this->currentFullQuery = $query;
+            $this->currentQuery = $query;
+
+            if( $this->queryViolatesAnyRuleOf( $this->currentQuery, [ self::VALID_CHAPTER_MUST_FOLLOW_BOOK ] ) ){
+                return false;
+            }
+
+            $matchedBook = self::matchBookInQuery( $this->currentQuery );
+            if ( $this->validateAndSetBook( $matchedBook ) === false ) {
+                continue;
+            }
+
+            if ( self::queryContainsNonConsecutiveVerses( $this->currentQuery ) ) {
+                $rules = [ 
+                    self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR,
+                    self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS
+                ];
+                if ( $this->queryViolatesAnyRuleOf( $this->currentQuery, $rules ) ) {
+                    continue;
+                }
+            }
+
+            if ( self::chunkContainsChapterVerseConstruct( $this->currentQuery ) ) {
+                if ( $this->queryViolatesAnyRuleOf( $this->currentQuery, [ self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS ] ) ) {
+                    continue;
+                } else {
+                    $chapterIndicators = self::getAllChapterIndicators( $this->currentQuery );
+                    if( $this->validateChapterIndicators( $chapterIndicators ) === false ){
+                        continue;
+                    }
+
+                    if( $this->validateChapterVerseConstructs() === false ){
+                        continue;
+                    }
+
+                }
+            } else {
+                $chapters = explode( "-", $this->currentQuery );
+                if( $this->chapterOutOfBounds( $chapters ) ){
+                    continue;
+                }
+            }
+
+            if ( strpos( $this->currentQuery, "-" ) ) {
+                $rules = [
+                    self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS,
+                    self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS,
+                    self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES
+                ];
+                if ( $this->queryViolatesAnyRuleOf( $this->currentQuery, $rules ) ) {
+                    continue;
+                }
+            }
+            $this->BBQUOTE->validatedVariants[] = $this->currentVariant;
+            $this->BBQUOTE->validatedQueries[]  = $this->currentFullQuery;
+
+        } //END FOREACH
+        return true;
+    }
+}
+
+class QUERY_FORMULATOR {
+
+    private int $nn                     = 0;
+    private int $i                      = -1;
+    private string $currentQuery        = "";
+    private string $currentFullQuery    = "";
+    private string $sqlQuery            = "";
+    private string $previousBook        = "";
+    private string $currentBook         = "";
+    private string $currentVariant      = "";
+    private string $currentPreferOrigin = "";
+    private BIBLEGET_QUOTE $BBQUOTE;
+    public array $sqlQueries            = [];
+    public array $queriesVersions       = [];
+    public array $originalQueries       = [];
+    public array $queries               = [];
+
+    function __construct( BIBLEGET_QUOTE $BBQUOTE ) {
+        $this->BBQUOTE = $BBQUOTE;
+        $this->queries = $BBQUOTE->validatedQueries;
+    }
+
+    static private function queryContainsNonConsecutiveVerses( string $query ) : bool {
+        return strpos( $query, "." ) !== false;
+    }
+
+    static private function getNonConsecutiveChunks( string $query ) : array {
+        return preg_split( "/\./", $query );
+    }
+
+    static private function chunkContainsRange( string $chunk ) : bool {
+        return strpos( $chunk, "-" ) !== false;
+    }
+
+    static private function chunkContainsChapterVerseConstruct( string $chunk ) : bool {
+        return strpos( $chunk, "," ) !== false;
+    }
+
+    static private function getRange( string $chunk ) : array {
+        [ $from, $to ] = preg_split( "/\-/", $chunk );
+        return [
+            'from'  => $from,
+            'to'    => $to
+        ];
+    }
+
+    static private function getChapterVerseFromConstruct( string $construct ) : array {
+        [ $chapter, $verse ] = preg_split( "/,/", $construct );
+        return [
+            'chapter'   => $chapter,
+            'verse'     => $verse
+        ];
+    }
+
+    static private function forceArray( $element ) : array {
+        if ( !is_array( $element ) ) {
+            $element = [ $element ];
+        }
+        return $element;
+    }
+
+    private function captureBookIndicator() : array|bool {
+        if( $this->BBQUOTE::stringWithUpperAndLowerCaseVariants( $this->currentQuery ) ){
+            if( preg_match( "/^([1-4]{0,1}((\p{Lu}\p{Ll}*)+))/u", $this->currentQuery, $res ) ){
+                $this->currentQuery = preg_replace( "/^[1-4]{0,1}\p{Lu}\p{Ll}*/u", "", $this->currentQuery );
+                return $res;
+            } else {
+                return false;
+            }
+        } else {
+            if( preg_match( "/^([1-4]{0,1}((\p{L}\p{M}*)+))/u", $this->currentQuery, $res ) ){
+                $this->currentQuery = preg_replace( "/^[1-4]{0,1}(\p{L}\p{M}*)+/u", "", $this->currentQuery );
+                return $res;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    private function validateVerseOriginPreference() {
+        $this->currentPreferOrigin = "";
+        //if we are dealing with a book that has greek and hebrew variants, we need to distinguish between the two
+        if( $this->currentBook == 19 || $this->currentBook == "19" ){ 
+            //if a protestant version is requested, it will only have HEBREW origin, not GREEK
+            //if preferorigin is not explicitly set, but chapters 11-20 are requested for Esther,
+            //then obviously the HEBREW version is being preferred, we will need to translate this request when we know which chapter we are dealing with
+            if( in_array( $this->currentRequestedVariant,$this->BBQUOTE->CATHOLIC_VERSIONS ) ){
+                $this->currentPreferOrigin = " AND verseorigin = '" . ( $this->BBQUOTE->DATA['preferorigin'] != "" ? $this->BBQUOTE->DATA['preferorigin'] : "GREEK" ) . "'";
+            }
+        }
+    }
+
+    private function initSQLStatement() {
+        $this->sqlQuery = "SELECT * FROM " . $this->currentRequestedVariant . " WHERE book = " . $this->currentBook;
+    }
+
+    private function setSQLLimit() {
+        if ( in_array( $this->currentRequestedVariant, $this->BBQUOTE->COPYRIGHT_VERSIONS ) ) {
+            $this->sqlQueries[$this->nn] .= " LIMIT 30";
+        }
+    }
+
+    private function finalizeQuery() {
+        $this->sqlQueries[$this->nn] .= $this->currentPreferOrigin;
+        $this->queriesVersions[$this->nn] = $this->currentRequestedVariant;
+        //VERSES must be ordered by verseID in order to handle those cases where there are subverses ( usually Greek additions )
+        //In these cases, the subverses sometimes come before, sometimes come after the "main" verse
+        //Ex. Esther 1,1a-1r precedes Esther 1,1 but Esther 3,13 precedes Esther 3,13a-13g
+        //Being this the case, it would not be possible to have coherent ordering by book,chapter,verse,verseequiv
+        //The only solution is to make sure the verses are ordered correctly in the table with a unique verseID
+        $this->sqlQueries[$this->nn] .= " ORDER BY verseID";
+        //$this->sqlQueries[$this->nn] .= " ORDER BY book,chapter,verse,verseequiv";
+        $this->setSQLLimit();
+    }
+
+    private function bestGuessBookIdx( array $matchedBook ) : int {
+        $key1 = $this->currentVariant != "" ? array_search( $matchedBook[0], $this->BBQUOTE->INDEXES[$this->currentVariant]["biblebooks"] ) : false;
+        $key2 = $this->currentVariant != "" ? array_search( $matchedBook[0], $this->BBQUOTE->INDEXES[$this->currentVariant]["abbreviations"] ) : false;
+        $key3 = $this->BBQUOTE::idxOf( $matchedBook[0], $this->BBQUOTE->BIBLEBOOKS );
+        if ( $key1 ) {
+            return $this->BBQUOTE->INDEXES[$this->currentVariant]["book_num"][$key1];
+        } else if ( $key2 ) {
+            return $this->BBQUOTE->INDEXES[$this->currentVariant]["book_num"][$key2];
+        } else if ( $key3 ) {
+            return $key3 + 1;
+        }
+    }
+
+    private function setBookAndVariant( array|bool $matchedBook ) {
+        if ( $matchedBook ) {
+            $this->currentVariant = $this->BBQUOTE->validatedVariants[ $this->i ];
+            $this->currentBook = $this->bestGuessBookIdx( $matchedBook );
+            $this->previousBook = $this->currentBook;
+        } else {
+            $this->currentBook = $this->previousBook;
+        }
+    }
+
+    private function accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight ) {
+        if( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] > 1 ) {
+            for( $d=1;$d<( $cvConstructRight['chapter'] - $cvConstructLeft['chapter'] );$d++ ){
+                $this->sqlQueries[$this->nn] .= " OR ( chapter = " . ( $cvConstructLeft['chapter'] + $d ) . " )";
+            }
+        }
+    }
+
+    private function mapReference( int|string|null $chapter, int|string|null $verse, int|string|null &$toChapter, int|string|null &$toVerse, bool $updatePreferOrigin ) {
+        $version        = $this->currentRequestedVariant;
+        $book           = $this->currentBook;
+        $preferorigin   = $this->currentPreferOrigin;
+
+        if( in_array( $version, $this->BBQUOTE->CATHOLIC_VERSIONS ) ){
+            if( $book == 19 || $book == "19" ){ //19 == Esther
+                //first let's make sure that $fromChapter is a number
+                if( gettype( $fromChapter ) == 'string' ){
+                    //the USCCB uses letters A-F to indicate the Greek additions to Esther
+                    //however, the BibleGet engine does not allow chapters that are not numbers
+                    //therefore these verses have been added to the database in the same fashion as the CEI2008 layout
+                    //TODO: see if there is any way of allowing letters as chapter indicators and then map them to the CEI2008 layout
+                    $fromChapter = intval( $fromChapter ); 
+                }
+                if( $version == 'VGCL' || $version == 'DRB' ){
+                    if( ( $chapter == 10 && ( ( $verse >= 4 && $verse <= 13 ) || $verse == null ) ) || ( $chapter == 11 && ( $verse == 1 || $verse == null ) ) ){
+                        $chapter = 10;
+                        $verse = 3;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if( ( $chapter == 11 && ( ( $verse >= 2 && $verse <= 12 ) || $verse == null ) ) || ( $chapter == 12 && ( ( $verse >=1 && $verse <= 6 ) || $verse == null ) ) ){
+                        $chapter = 1;
+                        $verse = 1;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if( $chapter == 13 && ( ( $verse >= 1 && $verse <= 7 ) || $verse == null ) ){
+                        $chapter = 3;
+                        $verse = 13;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if( ( $chapter == 13 && ( ( $verse >= 8 && $verse <= 18 ) || $verse == null ) ) || ( $chapter == 14 && ( ( $verse <= 1 && $verse >= 19 ) || $verse == null ) ) ){
+                        $chapter = 4;
+                        $verse = 17;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if( $chapter == 15 && ( ( $verse >= 1 && $verse <= 3 ) || $verse == null ) ){
+                        $chapter = 4;
+                        $verse = 8;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if( $chapter == 15 && ( ( $verse >= 4 && $verse <= 14 ) || $verse == null ) ){
+                        $chapter = 5;
+                        $verse = 1;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if( $chapter == 15 && ( ( $verse >= 15 && $verse <= 19 ) || $verse == null ) ){
+                        $chapter = 5;
+                        $verse = 2;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    } else if( $chapter == 16 ){
+                        $chapter = 8;
+                        $verse = 12;
+                        $preferorigin = " AND verseorigin = 'GREEK'";
+                    }
+                }
+            }
+        }
+        if( $updatePreferOrigin ){
+            $this->currentPreferOrigin = $preferorigin;
+        }
+        $toChapter = $chapter;
+        $toVerse = $verse;
+    }
+
+    public function FormulateSQLQueries(){
+        foreach ( $this->BBQUOTE->REQUESTED_VERSIONS as $version ) {
+            $this->i = 0;
+            $this->currentRequestedVariant = $version;
+            foreach ( $this->queries as $query ) {
+                $this->currentQuery = $query;
+                $this->currentFullQuery = $query;
+                $this->currentChapter = "";
+
+                // Retrieve and store the book in the query string,if applicable
+                $matchedBook = $this->captureBookIndicator();
+
+                $this->setBookAndVariant( $matchedBook );
+
+                $this->initSQLStatement();
+
+                $this->validateVerseOriginPreference();
+
+                //NOTE: considering a dash can have multiple meanings (range of verses in same chapter, range of verses over chapters, range of chapters),
+                //      whereas a non-consecutive verse indicator has just one meaning;
+                //      also considering that the non-consecutive verse indicator has to do with the smallest unit in a Bible reference = verse,
+                //      whereas a dash could have to do either with verses or with chapters;
+                //      we start our interpretation of the Bible reference from what is clear and certain
+                //      and is the smallest possible unit that we have to work with.
+                //      So if there is there are non-consecutive verses, we start splitting up the reference around the non-consecutive verses indicator ( or indicators )
+                //NOTE: We have already capture the book, so we are not dealing with the book in the following calculations
+                //      However for our own sanity, the book is included in the examples to help understand what is happening
+                //      This symbol will be used to indicate splitting into left hand and right hand sections: <=|=>
+
+                if ( self::queryContainsNonConsecutiveVerses( $this->currentQuery ) ) {                        // EXAMPLE: John 3,16.18
+                    $nonConsecutiveChunks = self::getNonConsecutiveChunks( $this->currentQuery );              // John 3,16 <=|=> 18
+                    foreach ( $nonConsecutiveChunks as $chunk ) {
+                        $this->originalQueries[$this->nn] = $this->currentFullQuery;
+                        //IF the chunk is not simply a single verse, but is a range of consecutive VERSES or CHAPTERS 
+                        //    ( EXAMPLE: John 3,16-18.20       OR John 3,16.18-20        OR John 3,16-18.20-22 )
+                        //    (         John 3,16-18 <=|=> 20 OR John 3,16 <=|=> 18-20  OR John 3,16-18 <=|=> 20-22 )
+                        if ( self::chunkContainsRange( $chunk ) ) {
+                            $range = self::getRange( $chunk );
+                            //IF we have a CHAPTER indicator on the left hand side of the range of consecutive verses
+                            //  ( EXAMPLE: John 3,16-18.20 )
+                            //  ( John 3,16-18 <=|=> 20 )
+                            //  ( John 3 <=> 16-18 )
+                            if ( self::chunkContainsChapterVerseConstruct( $range['from'] ) ) {
+                                //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
+                                $cvConstructLeft = self::getChapterVerseFromConstruct( $range['from'] );
+                                $this->currentChapter = $cvConstructLeft['chapter'];
+
+                                $this->mapReference( $cvConstructLeft['chapter'], $cvConstructLeft['verse'], $cvConstructLeft['chapter'], $cvConstructLeft['verse'], true );
+
+                                //IF we have a CHAPTER indicator on the right hand side of the range of consecutive verses
+                                //  ( EXAMPLE: John 3,16-4,5.8 )
+                                //  ( John 3,16 <=|=> 4,5 )
+                                if ( self::chunkContainsChapterVerseConstruct( $range['to'] ) ) {
+                                    //THEN we capture the CHAPTER from the left hand side and the range of consecutive VERSEs from the right hand side
+                                    $cvConstructRight = self::getChapterVerseFromConstruct( $range['to'] );
+                                    $this->currentChapter = $cvConstructRight['chapter'];
+
+                                    $this->mapReference( $cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true );
+
+                                    $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
+                                    $this->accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight );
+                                    $this->sqlQueries[$this->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
+                                }
+                                //ELSEIF we do NOT have a CHAPTER indicator on the right hand side of the range of consecutive verses
+                                // ( EXAMPLE: John 3,16-18.20 )
+                                else {
+                                    $this->mapReference( $this->currentChapter, $range['to'], $this->currentChapter, $range['to'], true );
+
+                                    $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND ( chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
+                                    $this->sqlQueries[$this->nn] .= " AND ( chapter <= " . $this->currentChapter . " AND verse <= " . $range['to'] . " )";
+                                }
+                            }
+                            //ELSEIF we DO NOT have a CHAPTER indicator on the left hand side of the range of consecutive verses
+                            //  ( EXAMPLE: John 3,16.18-20 )
+                            //  (  John 3,16 <=|=> 18-20 )
+                            //  (  18 <=> 20 )
+                            else {
+                                $this->mapReference( $this->currentChapter, $range['from'], $this->currentChapter, $range['from'], true );
+                                $this->mapReference( $this->currentChapter, $range['to'], $nullChapter, $range['to'], false );
+
+                                $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND ( chapter = " . $this->currentChapter . " AND verse >= " . $range['from'] . " AND verse <= " . $range['to'] . " )";
+                            }
+                        }
+                        //ELSEIF the non consecutive chunk DOES NOT contain a range of consecutive VERSEs / CHAPTERs
+                        //    ( EXAMPLE: John 3,16.18 )
+                        //    (   John 3,16 <=|=> 18 )
+                        else {
+                            //IF the non consecutive chunk however DOES contain a chapter reference
+                            //  ( EXAMPLE: John 3,16.18 )
+                            //  (   John 3,16 <=|=> 18 )
+                            //  (   John 3 <=> 16 )
+                            if ( self::chunkContainsChapterVerseConstruct( $chunk ) ) {
+                                $cvConstruct = self::getChapterVerseFromConstruct( $chunk );
+                                $this->currentChapter = $cvConstruct['chapter'];
+
+                                $this->mapReference( $cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true );
+
+                                $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND ( chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'] . " )";
+                            } 
+                            //ELSEIF the non consecutive chunk DOES NOT contain a chapter reference
+                            //  ( EXAMPLE: John 3,16.18 )
+                            //  (    John 3,16 <=|=> 18 )
+                            //  ( 18 )
+                            else {
+
+                                $this->mapReference( $this->currentChapter, $chunk, $this->currentChapter, $chunk, true );
+
+                                $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND ( chapter = " . $this->currentChapter . " AND verse = " . $chunk . " )";
+                            }
+                        }
+
+                        $this->finalizeQuery();
+                        
+                        $this->nn++;
+                    }
+                }
+                else { //ELSEIF the request DOES NOT contain non-consecutive verses ( EXAMPLE: John 3,16 )
+                    if ( self::chunkContainsRange( $this->currentQuery ) ) {    // EXAMPLE: John 3,16-18
+                        $this->originalQueries[$this->nn] = $this->currentFullQuery;
+                        $range = self::getRange( $chunk );                                        // John 3,16 <=|=> 18
+                        //IF there is a chapter indicator on the left hand side of the range of consecutive verses
+                        //    ( EXAMPLE: John 3,16-18 )
+                        //    (    John 3,16 <=|=> 18 )
+                        //    (    John 3,16 )
+                        if ( self::chunkContainsChapterVerseConstruct( $range['from'] ) ) {
+                            $cvConstructLeft = self::getChapterVerseFromConstruct( $range['from'] );
+                            $this->currentChapter = $cvConstructLeft['chapter'];
+
+                            $this->mapReference( $cvConstructLeft['chapter'], $cvConstructLeft['verse'], $cvConstructLeft['chapter'], $cvConstructLeft['verse'], true );
+
+                            //IF there is also a chapter indicator on the right hand side of the range of consecutive verses
+                            //    ( EXAMPLE: John 3,16-4,5 )
+                            //    (    John 3,16 <=|=> 4,5 )
+                            //    (    4,5 )
+                            if ( self::chunkContainsChapterVerseConstruct( $range['to'] ) ) {
+                                $cvConstructRight = self::getChapterVerseFromConstruct( $range['to'] );
+
+                                $this->mapReference( $cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true );
+
+                                $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND ( ( chapter = " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'] . " )";
+                                //what if the difference between chapters is greater than 1? Say: John 3,16-6,2 ?
+                                $this->accountForMultipleChapterDifference( $cvConstructLeft, $cvConstructRight );
+                                $this->sqlQueries[$this->nn] .= " OR ( chapter = " . $cvConstructRight['chapter'] . " AND verse <= " . $cvConstructRight['verse'] . " ) )";
+                            }
+                            //ELSEIF there is NOT a chapter indicator on the right hand side of the range of consecutive verses
+                            //    ( EXAMPLE: John 3,16-18 )
+                            //    (    John 3,16 <=|=> 18 )
+                            //    (    18 )
+                            else {
+                              $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND chapter >= " . $cvConstructLeft['chapter'] . " AND verse >= " . $cvConstructLeft['verse'];
+
+                              $this->mapReference( $cvConstructLeft['chapter'], $range['to'], $mappedChapter, $range['to'], true );
+
+                              $this->sqlQueries[$this->nn] .= " AND chapter <= " . $mappedChapter . " AND verse <= " . $range['to'];
+                            }
+                        }
+                        //ELSEIF there is NOT a chapter/verse indicator on the left hand side of the range of consecutive verses OR chapters
+                        //    this means that we are dealing with consecutive CHAPTERS and not VERSES
+                        //     ( EXAMPLE: John 3-4 )
+                        //     ( EXAMPLE: 3 <=|=> 4 )
+                        else {
+                            $this->mapReference( $range['from'], null, $range['from'], $nullVerse, true );
+                            $this->mapReference( $range['to'], null, $range['to'], $nullVerse, false );
+
+                            $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND chapter >= " . $range['from'] . " AND chapter <= " . $range['to'];
+                        }
+                    }
+                    //ELSEIF the request DOES NOT contain a range of consecutive verses OR chapters
+                    //    ( EXAMPLE: John 3,16 )
+                    else {
+                        //IF we DO have a chapter/verse indicator
+                        if ( self::chunkContainsChapterVerseConstruct( $this->currentQuery ) ) {
+                            $this->originalQueries[$this->nn] = $this->currentFullQuery;
+                            $cvConstruct = self::getChapterVerseFromConstruct( $this->currentQuery );
+                            $this->currentChapter = $cvConstruct['chapter'];
+
+                            $this->mapReference( $cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true );
+
+                            $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND chapter = " . $cvConstruct['chapter'] . " AND verse = " . $cvConstruct['verse'];
+                        } 
+                        //ELSEIF we are dealing with just a single chapter
+                        //    ( EXAMPLE: John 3 )
+                        else {
+                            $this->originalQueries[$this->nn] = $this->currentFullQuery;
+                            $this->currentChapter = $this->currentQuery;
+
+                            $this->mapReference( $this->currentChapter, null, $mappedChapter, $nullVerse, true );
+
+                            $this->sqlQueries[$this->nn] = $this->sqlQuery . " AND chapter = " . $mappedChapter;
+                        }
+                    }
+
+                    $this->finalizeQuery();
+
+                    $this->nn++;
+                }
+
+                $this->i++;
+            }
+
+        }
+
+        $this->BBQUOTE->formulatedQueries = $this->sqlQueries;
+        $this->BBQUOTE->originalQueries = $this->originalQueries;
+        $this->BBQUOTE->formulatedVariants = $this->queriesVersions;
+    }
+
+}
+/*
+class QUERY_EXECUTOR {
+
+    function __construct(){}
+}
+*/
 
 if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BIBLEGET_QUOTE::$allowedContentTypes ) ){
     header( $_SERVER["SERVER_PROTOCOL"]." 415 Unsupported Media Type", true, 415 );
