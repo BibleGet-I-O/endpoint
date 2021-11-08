@@ -282,7 +282,7 @@ class BIBLEGET_METADATA {
       
       // PREPARE BIBLEBOOKS ARRAY
       $biblebooks = array();
-      $result1 = $this->mysqli->query("SELECT * FROM biblebooks_fullname")
+      $result1 = $this->mysqli->query("SELECT * FROM biblebooks_fullname");
       if($result1){
         $cols = mysqli_num_fields($result1);
         $names = array();
@@ -290,7 +290,7 @@ class BIBLEGET_METADATA {
         foreach ($finfo as $val) {
           $names[] = $val->name;
         } 
-        $result2 = $this->mysqli->query("SELECT * FROM biblebooks_abbr")
+        $result2 = $this->mysqli->query("SELECT * FROM biblebooks_abbr");
         if($result2){
           $cols2 = mysqli_num_fields($result2);
           $rows2 = mysqli_num_rows($result2);
