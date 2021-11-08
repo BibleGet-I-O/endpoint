@@ -5,10 +5,10 @@ Starting with the v3 release, the v2 endpoints will ONLY be available at https:/
 
 Along with the information provided below, Swaggerhub documentation [can be found here](https://www.bibleget.io/swaggerdocs/dist/) (kudos to @MichaelRShelton for generating the docs from the Swagger docker image).
 
-***Code quality***
-| Main branch | Development branch |
-| :---------: | :----------------: |
-| [![CodeFactor](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/badge/master)](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/overview/master) | [![CodeFactor](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/badge/development)](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/overview/development) |
+***Code quality and Endpoint validity***
+| Main branch | Development branch | OpenAPI validation |
+| :---------: | :----------------: | :----------------: |
+| [![CodeFactor](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/badge/master)](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/overview/master) | [![CodeFactor](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/badge/development)](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/overview/development) | [![OpenAPI](https://validator.swagger.io/validator?url=https://raw.githubusercontent.com/BibleGet-I-O/endpoint/master/openapi.json)](https://validator.swagger.io/validator?url=https://raw.githubusercontent.com/BibleGet-I-O/endpoint/master/openapi.json) |
 
 ## [index.php](https://github.com/BibleGet-I-O/endpoint/blob/master/index.php)
 This is the main API endpoint for all queries for biblical texts and quotes, reachable at the URL https://query.bibleget.io/.
