@@ -37,6 +37,8 @@
           "$ref" : "#/components/parameters/pluginversion"
         }, {
           "$ref" : "#/components/parameters/domain"
+        }, {
+          "$ref" : "#/components/parameters/preferorigin"
         } ],
         "responses" : {
           "200" : {
@@ -44,20 +46,29 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/BibleQuoteJSON"
+                  "$ref" : "#/components/schemas/BibleQuoteResponseJSON"
                 }
               },
               "application/xml" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/BibleQuoteXML"
+                  "$ref" : "#/components/schemas/BibleQuoteResponseXML"
                 }
               },
               "text/html" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/BibleQuoteJSON"
+                  "$ref" : "#/components/schemas/BibleQuoteResponseJSON"
                 }
               }
             }
+          },
+          "415" : {
+            "description" : "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+          },
+          "400" : {
+            "description" : "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
+          },
+          "405" : {
+            "description" : "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
           }
         }
       },
@@ -173,20 +184,29 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/BibleQuoteJSON"
+                  "$ref" : "#/components/schemas/BibleQuoteResponseJSON"
                 }
               },
               "application/xml" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/BibleQuoteXML"
+                  "$ref" : "#/components/schemas/BibleQuoteResponseXML"
                 }
               },
               "text/html" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/BibleQuoteJSON"
+                  "$ref" : "#/components/schemas/BibleQuoteResponseJSON"
                 }
               }
             }
+          },
+          "415" : {
+            "description" : "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+          },
+          "400" : {
+            "description" : "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
+          },
+          "405" : {
+            "description" : "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
           }
         }
       }
@@ -307,6 +327,15 @@
                 }
               }
             }
+          },
+          "415" : {
+            "description" : "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+          },
+          "400" : {
+            "description" : "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
+          },
+          "405" : {
+            "description" : "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
           }
         }
       },
@@ -319,38 +348,18 @@
           "content" : {
             "application/x-www-form-urlencoded" : {
               "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "query" : {
-                    "type" : "string",
-                    "description" : "Specifies the subset of metadata to retrieve. **`biblebooks`**: retrieve the list of valid **book names** and **abbreviations** in various languages that are currently supported / recognized by the main BibleGet API endpoint. **`bibleversions`**: retrieve the list of **Bible versions** that are currently supported by the main BibleGet API endpoint. **`versionindex`**: retrieve the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine (this value requires the usage of a second parameter `versions`).",
-                    "enum" : [ "biblebooks", "bibleversions", "versionindex" ],
-                    "example" : "bibleversions"
-                  },
-                  "versions" : {
-                    "type" : "array",
-                    "description" : "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `metadata.php` API using `query=bibleversions`",
-                    "items" : {
-                      "type" : "string"
-                    },
-                    "example" : [ "NABRE", "NVBSE" ],
-                    "default" : [ "CEI2008" ]
-                  },
-                  "return" : {
-                    "type" : "string",
-                    "description" : "Type of data that should be returned in the response",
-                    "enum" : [ "json", "xml", "html" ],
-                    "example" : "json",
-                    "default" : "json"
-                  }
-                },
-                "required" : [ "query" ]
+                "$ref" : "#/components/schemas/MetadataPOST"
               },
               "encoding" : {
                 "versions" : {
                   "style" : "form",
                   "explode" : false
                 }
+              }
+            },
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MetadataPOST"
               }
             }
           }
@@ -393,6 +402,15 @@
                 }
               }
             }
+          },
+          "415" : {
+            "description" : "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+          },
+          "400" : {
+            "description" : "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
+          },
+          "405" : {
+            "description" : "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
           }
         }
       }
@@ -499,25 +517,34 @@
               "application/json" : {
                 "schema" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/KeywordSearchJSON"
+                    "$ref" : "#/components/schemas/KeywordSearchResponseJSON"
                   } ]
                 }
               },
               "application/xml" : {
                 "schema" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/KeywordSearchXML"
+                    "$ref" : "#/components/schemas/KeywordSearchResponseXML"
                   } ]
                 }
               },
               "application/html" : {
                 "schema" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/KeywordSearchJSON"
+                    "$ref" : "#/components/schemas/KeywordSearchResponseJSON"
                   } ]
                 }
               }
             }
+          },
+          "415" : {
+            "description" : "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+          },
+          "400" : {
+            "description" : "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
+          },
+          "405" : {
+            "description" : "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
           }
         }
       },
@@ -530,38 +557,12 @@
           "content" : {
             "application/x-www-form-urlencoded" : {
               "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "query" : {
-                    "type" : "string",
-                    "description" : "Specifies the kind of search to perform. As of v2.8 of the search API only a value of `keywordsearch` is available.",
-                    "enum" : [ "keywordsearch" ],
-                    "example" : "keywordsearch"
-                  },
-                  "keyword" : {
-                    "type" : "string",
-                    "description" : "*(required when `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses",
-                    "example" : "creation"
-                  },
-                  "version" : {
-                    "type" : "string",
-                    "description" : "The acronym of the Bible version within which to perform the search by keyword. Can only be a single value, not a comma delimited list of values.",
-                    "example" : "NVBSE"
-                  },
-                  "exactmatch" : {
-                    "type" : "boolean",
-                    "description" : "since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded)",
-                    "example" : "true"
-                  },
-                  "return" : {
-                    "type" : "string",
-                    "description" : "Type of data that should be returned in the response",
-                    "enum" : [ "json", "xml", "html" ],
-                    "example" : "json",
-                    "default" : "json"
-                  }
-                },
-                "required" : [ "query", "version" ]
+                "$ref" : "#/components/schemas/KeywordSearchPOST"
+              }
+            },
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/KeywordSearchPOST"
               }
             }
           }
@@ -573,25 +574,34 @@
               "application/json" : {
                 "schema" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/KeywordSearchJSON"
+                    "$ref" : "#/components/schemas/KeywordSearchResponseJSON"
                   } ]
                 }
               },
               "application/xml" : {
                 "schema" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/KeywordSearchXML"
+                    "$ref" : "#/components/schemas/KeywordSearchResponseXML"
                   } ]
                 }
               },
               "application/html" : {
                 "schema" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/KeywordSearchJSON"
+                    "$ref" : "#/components/schemas/KeywordSearchResponseJSON"
                   } ]
                 }
               }
             }
+          },
+          "415" : {
+            "description" : "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+          },
+          "400" : {
+            "description" : "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
+          },
+          "405" : {
+            "description" : "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
           }
         }
       }
@@ -617,7 +627,7 @@
           },
           "return" : {
             "type" : "string",
-            "description" : "Desired content type for the response data. An accept header can be used instead, and should be preferred to using the parameter",
+            "description" : "Desired content type for the response data. An `Accept` header can be used instead, and should be preferred to using the `return` parameter / property",
             "enum" : [ "json", "xml", "html" ],
             "example" : "json",
             "default" : "json"
@@ -646,7 +656,7 @@
         },
         "required" : [ "query", "version", "appid" ]
       },
-      "BibleQuoteJSON" : {
+      "BibleQuoteResponseJSON" : {
         "type" : "object",
         "properties" : {
           "results" : {
@@ -807,7 +817,7 @@
           }
         }
       },
-      "BibleQuoteXML" : {
+      "BibleQuoteResponseXML" : {
         "type" : "object",
         "properties" : {
           "results" : {
@@ -1144,7 +1154,7 @@
           }
         }
       },
-      "KeywordSearchJSON" : {
+      "KeywordSearchResponseJSON" : {
         "type" : "object",
         "properties" : {
           "results" : {
@@ -1304,7 +1314,7 @@
           }
         }
       },
-      "KeywordSearchXML" : {
+      "KeywordSearchResponseXML" : {
         "type" : "object",
         "properties" : {
           "results" : {
@@ -1347,6 +1357,68 @@
         "xml" : {
           "name" : "BibleQuote"
         }
+      },
+      "MetadataPOST" : {
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "type" : "string",
+            "description" : "Specifies the subset of metadata to retrieve. **`biblebooks`**: retrieve the list of valid **book names** and **abbreviations** in various languages that are currently supported / recognized by the main BibleGet API endpoint. **`bibleversions`**: retrieve the list of **Bible versions** that are currently supported by the main BibleGet API endpoint. **`versionindex`**: retrieve the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine (this value requires the usage of a second parameter `versions`).",
+            "enum" : [ "biblebooks", "bibleversions", "versionindex" ],
+            "example" : "bibleversions"
+          },
+          "versions" : {
+            "type" : "array",
+            "description" : "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `metadata.php` API using `query=bibleversions`",
+            "items" : {
+              "type" : "string"
+            },
+            "example" : [ "NABRE", "NVBSE" ],
+            "default" : [ "CEI2008" ]
+          },
+          "return" : {
+            "type" : "string",
+            "description" : "Type of data that should be returned in the response",
+            "enum" : [ "json", "xml", "html" ],
+            "example" : "json",
+            "default" : "json"
+          }
+        },
+        "required" : [ "query" ]
+      },
+      "KeywordSearchPOST" : {
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "type" : "string",
+            "description" : "Specifies the kind of search to perform. As of v2.8 of the search API only a value of `keywordsearch` is available.",
+            "enum" : [ "keywordsearch" ],
+            "example" : "keywordsearch"
+          },
+          "keyword" : {
+            "type" : "string",
+            "description" : "*(required when `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses",
+            "example" : "creation"
+          },
+          "version" : {
+            "type" : "string",
+            "description" : "The acronym of the Bible version within which to perform the search by keyword. Can only be a single value, not a comma delimited list of values.",
+            "example" : "NVBSE"
+          },
+          "exactmatch" : {
+            "type" : "boolean",
+            "description" : "since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded)",
+            "example" : "true"
+          },
+          "return" : {
+            "type" : "string",
+            "description" : "Type of data that should be returned in the response",
+            "enum" : [ "json", "xml", "html" ],
+            "example" : "json",
+            "default" : "json"
+          }
+        },
+        "required" : [ "query", "version" ]
       }
     },
     "parameters" : {
@@ -1455,6 +1527,17 @@
           "type" : "string"
         },
         "example" : "app.swaggerhub.com"
+      },
+      "preferorigin" : {
+        "name" : "preferorigin",
+        "in" : "query",
+        "description" : "",
+        "required" : false,
+        "schema" : {
+          "type" : "string",
+          "enum" : [ "GREEK", "HEBREW" ]
+        },
+        "example" : "GREEK"
       }
     }
   }
