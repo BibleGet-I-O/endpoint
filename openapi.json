@@ -1,7 +1,7 @@
 {
   "openapi" : "3.0.3",
   "info" : {
-    "version" : "2.8",
+    "version" : "3.0",
     "title" : "BibleGet",
     "description" : "Get Bible quotes from different Bible versions either requesting by reference (book - chapter - verse) or searching by keyword",
     "license" : {
@@ -16,7 +16,7 @@
     }
   },
   "servers" : [ {
-    "url" : "https://query.bibleget.io"
+    "url" : "https://query.bibleget.io/v3"
   } ],
   "paths" : {
     "/index.php" : {
@@ -76,6 +76,92 @@
                 "version" : {
                   "style" : "form",
                   "explode" : false
+                }
+              }
+            },
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BibleQuotePOST"
+              },
+              "examples" : {
+                "SimpleRequest" : {
+                  "value" : {
+                    "query" : "John3:16",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestVerseRange" : {
+                  "value" : {
+                    "query" : "1Corinthians13:4-8",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestDiscontinuousVerses" : {
+                  "value" : {
+                    "query" : "1Corinthians13:4,8",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestVerseRangeAndDiscontinuousVerse" : {
+                  "value" : {
+                    "query" : "1Corinthians13:4-8,13",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestDiscontinousVerseRanges" : {
+                  "value" : {
+                    "query" : "1Corinthians13:4-8,11-12",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestMultipleChaptersSameBook" : {
+                  "value" : {
+                    "query" : "1Corinthians13:4-8;14:1",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestMultipleBooks" : {
+                  "value" : {
+                    "query" : "John3:16;1John4:7-8",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestMultipleVersions" : {
+                  "value" : {
+                    "query" : "John3:16",
+                    "version" : "NABRE,DRB",
+                    "appid" : "swaggerhub"
+                  }
+                },
+                "RequestGreekOrigin" : {
+                  "value" : {
+                    "query" : "Esther1:1",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub",
+                    "preferorigin" : "GREEK"
+                  }
+                },
+                "RequestHebrewOrigin" : {
+                  "value" : {
+                    "query" : "Esther1:1",
+                    "version" : "NABRE",
+                    "appid" : "swaggerhub",
+                    "preferorigin" : "HEBREW"
+                  }
+                },
+                "RequestEuropeanFormat" : {
+                  "value" : {
+                    "query" : "Giovanni3,16;1Gv4,7-8",
+                    "version" : "CEI2008",
+                    "appid" : "swaggerhub"
+                  }
                 }
               }
             }
@@ -531,7 +617,7 @@
           },
           "return" : {
             "type" : "string",
-            "description" : "Type of data that should be returned in the response",
+            "description" : "Desired content type for the response data. An accept header can be used instead, and should be preferred to using the parameter",
             "enum" : [ "json", "xml", "html" ],
             "example" : "json",
             "default" : "json"
@@ -550,6 +636,12 @@
             "type" : "string",
             "description" : "In the case of web based applications, should indicate the domain from which the request is generated. Currently used by the official plugin for WordPress to better understand usage of the plugin and monitor requests. When the application or plugin making the request can be installed on different domains (as is the case with the WordPress plugin), this value should be generated dynamically from a server variable identifying the domain. If instead it will always be the same domain making the requests, the value can be hardcoded with the actual domain.",
             "example" : "app.swaggerhub.com"
+          },
+          "preferorigin" : {
+            "type" : "string",
+            "description" : "whether to retrieve Bible verses that are based on the GREEK original text or on the HEBREW original text, when there are multiple possibilities. This occurs generally in Catholic versions of the Bible for certain Books and chapters (e.g. Esther)",
+            "enum" : [ "GREEK", "HEBREW" ],
+            "example" : "GREEK"
           }
         },
         "required" : [ "query", "version", "appid" ]
@@ -700,6 +792,16 @@
             "properties" : {
               "ENDPOINT_VERSION" : {
                 "type" : "string"
+              },
+              "detectedNotation" : {
+                "type" : "string"
+              },
+              "bibleVersionsInfo" : {
+                "type" : "object",
+                "description" : "key-value pairs where the keys will be the abbreviated form of the requested Bible versions, and the values will be a pipe separated list containing information about the relative Bible version",
+                "additionalProperties" : {
+                  "type" : "string"
+                }
               }
             }
           }
