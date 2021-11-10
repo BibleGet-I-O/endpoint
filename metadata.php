@@ -88,27 +88,30 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
  
 class BIBLEGET_METADATA {
 
-    static public $returntypes = array("json","xml","html"); // only json and xml will be actually supported, html makes no sense for metadata
-    static public $allowed_accept_headers = array("application/json", "application/xml", "text/html");
-    static public $allowed_content_types = array("application/json" , "application/x-www-form-urlencoded");
-    static public $allowed_request_methods = array("GET","POST");
+    static public array $returntypes = [ "json", "xml", "html" ]; // only json and xml will be actually supported, html makes no sense for metadata
+    static public array $allowed_accept_headers = [ "application/json", "application/xml", "text/html" ];
+    static public array $allowed_content_types = [ "application/json" , "application/x-www-form-urlencoded" ];
+    static public array $allowed_request_methods = [ "GET", "POST" ];
 
-    private $DATA;
-    private $returntype;
-    private $requestHeaders;
-    private $acceptHeader;
-    private $metadata;
-    private $mysqli;
-    private $validversions;
-    private $is_ajax;
-    
+    private array $DATA;
+    private array $requestHeaders;
+    private string $returntype;
+    private string $acceptHeader;
+    private mysqli $mysqli;
+    private array $validversions;
+    //private bool $is_ajax;
+    private stdClass|simpleXMLElement|DOMDocument $metadata;         //object with json, xml or html data to return
+    private DOMElement $div;
+    private DOMElement $err;
+    private DOMElement $inf;
+
     function __construct($DATA){
         $this->requestHeaders = getallheaders();
         $this->DATA = $DATA;
         $this->contenttype = isset($_SERVER['CONTENT_TYPE']) && in_array($_SERVER['CONTENT_TYPE'],self::$allowed_content_types) ? $_SERVER['CONTENT_TYPE'] : NULL;
         $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"],self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"],self::$allowed_accept_headers)] : "";
         $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]),self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
-        $this->is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
+        //$this->isAjax = ( isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest' );
     }
 
     public function Init(){
@@ -126,13 +129,10 @@ class BIBLEGET_METADATA {
             header('Content-Type: application/json; charset=utf-8');
         }
         
-        $temp = $this->MetaDataInit();
-        $this->metadata = $temp[0];
-        $this->div      = $temp[1];
-        $this->err      = $temp[2];
-        
+        $this->MetaDataInit();
+
         $this->mysqli   = $this->dbConnect();
-        
+
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
           switch($this->DATA["query"]){
             case "biblebooks":
@@ -207,73 +207,75 @@ class BIBLEGET_METADATA {
 
     private function MetaDataInit(){
 
-      $err = NULL;
-      $div = NULL;
+      switch( $this->returntype ) {
 
-      if($this->returntype == "json"){
-        $metadata = new stdClass();
-        $metadata->results = array();
-        $metadata->errors = array();
-        $metadata->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
+        case "json":
+          $metadata = new stdClass();
+          $metadata->results = array();
+          $metadata->errors = array();
+          $metadata->info = array();
+        break;
+        case "xml":
+          $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleGetMetadata/>";
+          $metadata = new simpleXMLElement( $root );
+          $metadata->addChild( "errors" );
+          $metadata->addChild( "info" );
+        break;
+        case "html":
+          $metadata = new DOMDocument();
+          $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title></head><body></body>";
+          $metadata->loadHTML($html);
+          $div = $metadata->createElement("div");
+          $div->setAttribute("class","results bibleMetadata");
+          $err = $metadata->createElement("div");
+          $err->setAttribute("class","errors bibleMetadata");
+          $inf = $metadata->createElement("div");
+          $inf->setAttribute("class","info bibleMetadata");
+          $this->div        = $div;
+          $this->err        = $err;
+          $this->inf        = $inf;
+        break;
       }
-      else if($this->returntype == "xml"){
-        $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleGetMetadata/>";
-        $metadata = new simpleXMLElement($root);
-        $metadata->addChild("errors");
-        $info = $metadata->addChild("info");
-        $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
-      }
-      else if($this->returntype == "html"){
-        $metadata = new DOMDocument();
-        $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title></head><body></body>";
-        $metadata->loadHTML($html);
-        $div = $metadata->createElement("div");
-        $div->setAttribute("class","results");
-        $div->setAttribute("id","results");
-        $err = $metadata->createElement("div");
-        $err->setAttribute("class","errors");
-        $err->setAttribute("id","errors");
-      }
-      
-      return array($metadata,$div,$err);
+
+      $this->metadata = $metadata;
 
     }
     
 
-    private function addErrorMessage($str){  
-    
-      if($this->returntype=="json"){
-        $error = array();
-        $error["errMessage"] = $str;    
-        $this->metadata->errors[] = $error;
-      }
-      elseif($this->returntype=="xml"){
-        $err_row = $this->metadata->Errors->addChild("error",$str);
-      }
-      elseif($this->returntype=="html"){
-    
-        $elements = array();
-        $attributes = array();
-    
-        $elements[0] = $this->metadata->createElement("table");
-        $elements[0]->setAttribute("id","errorsTbl");
-        $elements[0]->setAttribute("class","errorsTbl");
-        $this->err->appendChild($elements[0]);
-        
-        $elements[1] = $this->metadata->createElement("tr");
-        $elements[1]->setAttribute("id","errorsRow1");
-        $elements[1]->setAttribute("class","errorsRow1");
-        $elements[0]->appendChild($elements[1]);
-        
-        $elements[2] = $this->metadata->createElement("td","errMessage");
-        $elements[2]->setAttribute("class","errMessage");
-        $elements[2]->setAttribute("id","errMessage");
-        $elements[1]->appendChild($elements[2]);
-    
-        $elements[3] = $this->metadata->createElement("td",$str);
-        $elements[3]->setAttribute("class","errMessageVal");
-        $elements[3]->setAttribute("id","errMessageVal");
-        $elements[1]->appendChild($elements[3]);
+    private function addErrorMessage($str){
+
+      switch($this->returntype) {
+        case "json":
+          $error = array();
+          $error["errMessage"] = $str;
+          $this->metadata->errors[] = $error;
+        break;
+        case "xml":
+          $err_row = $this->metadata->errors->addChild( "error", $str );
+        break;
+        case "html":
+          $elements = array();
+      
+          $elements[0] = $this->metadata->createElement("table");
+          $elements[0]->setAttribute("id","errorsTbl");
+          $elements[0]->setAttribute("class","errorsTbl");
+          $this->err->appendChild($elements[0]);
+          
+          $elements[1] = $this->metadata->createElement("tr");
+          $elements[1]->setAttribute("id","errorsRow1");
+          $elements[1]->setAttribute("class","errorsRow1");
+          $elements[0]->appendChild($elements[1]);
+          
+          $elements[2] = $this->metadata->createElement("td","errMessage");
+          $elements[2]->setAttribute("class","errMessage");
+          $elements[2]->setAttribute("id","errMessage");
+          $elements[1]->appendChild($elements[2]);
+      
+          $elements[3] = $this->metadata->createElement("td",$str);
+          $elements[3]->setAttribute("class","errMessageVal");
+          $elements[3]->setAttribute("id","errMessageVal");
+          $elements[1]->appendChild($elements[3]);
+        break;
       }
     }
     
@@ -333,117 +335,120 @@ class BIBLEGET_METADATA {
         $this->outputResult();
       }
       
-      if($this->returntype=="json"){
-        $this->metadata->results = $biblebooks;
-        $z = array_shift($names);
-        $this->metadata->languages = $names;
-        //$this->metadata->results->biblebooks = $biblebooks;
-      } 
-      else if($this->returntype=="xml"){
-        foreach($biblebooks as $key => $value){
-            $this->metadata->{"Book".$key} = new stdClass();
-            foreach($value as $langKey => $langValue){
-                $this->metadata->{"Book".$key}->{$names[$langKey+1]} = json_encode($langValue, JSON_UNESCAPED_UNICODE);
-            }
-        }
-      }
-      else if($this->returntype=="html"){
-        
-        $TABLE = $this->metadata->createElement("table");
-        $TABLE->setAttribute("id","BibleBooksTbl");
-        $TABLE->setAttribute("class","BibleBooksTbl");
-        $this->div->appendChild($TABLE);        
-        
-        $THEAD = $this->metadata->createElement("thead");
-        $TABLE->appendChild($THEAD);
-        
-        $NEWROW = $this->metadata->createElement("tr");
-        $THEAD->appendChild($NEWROW);
-        
-        $NEWCOL = array();
-        $NEWCOL["BOOKIDX"] = $this->metadata->createElement("td","BOOK INDEX");
-        $NEWROW->appendChild($NEWCOL["BOOKIDX"]);
-        $NEWCOL["LANGUAGE"] = $this->metadata->createElement("td","LANGUAGE");
-        $NEWROW->appendChild($NEWCOL["LANGUAGE"]);
-        $NEWCOL["VALUE"] = $this->metadata->createElement("td","VALUE");
-        $NEWROW->appendChild($NEWCOL["VALUE"]);
-        
-        $TBODY = $this->metadata->createElement("tbody");
-        $TABLE->appendChild($TBODY);
+      switch( $this->returntype ) {
+        case "json":
+          $this->metadata->results = $biblebooks;
+          $z = array_shift($names);
+          $this->metadata->languages = $names;
+          //$this->metadata->results->biblebooks = $biblebooks;
+        break;
+        case "xml":
+          foreach($biblebooks as $key => $value){
+              $this->metadata->{"Book".$key} = new stdClass();
+              foreach($value as $langKey => $langValue){
+                  $this->metadata->{"Book".$key}->{$names[$langKey+1]} = json_encode($langValue, JSON_UNESCAPED_UNICODE);
+              }
+          }
+        break;
+        case "html":
+          $TABLE = $this->metadata->createElement("table");
+          $TABLE->setAttribute("id","BibleBooksTbl");
+          $TABLE->setAttribute("class","BibleBooksTbl");
+          $this->div->appendChild($TABLE);
 
-        foreach($biblebooks as $key => $value){
-            $NEWROW = $this->metadata->createElement("tr");
-            $TBODY->appendChild($NEWROW);
-            
-            $NEWCELL = $this->metadata->createElement("td","Book ".$key);
-            $NEWCELL->setAttribute("rowspan",25);
-            $NEWROW->appendChild($NEWCELL);
-        
-            foreach($value as $langKey => $langValue){
-                $NEWCELL = $this->metadata->createElement("td",$names[$langKey+1]);
-                $NEWROW->appendChild($NEWCELL);
-                
-                $NEWCELL = $this->metadata->createElement("td",json_encode($langValue, JSON_UNESCAPED_UNICODE));
-                $NEWROW->appendChild($NEWCELL);
-                
-                if($langKey < 24){
-                  $NEWROW  = $this->metadata->createElement("tr");
-                  $TBODY->appendChild($NEWROW);
-                }
-            }
-        }
-      } 
+          $THEAD = $this->metadata->createElement("thead");
+          $TABLE->appendChild($THEAD);
+
+          $NEWROW = $this->metadata->createElement("tr");
+          $THEAD->appendChild($NEWROW);
+
+          $NEWCOL = array();
+          $NEWCOL["BOOKIDX"] = $this->metadata->createElement("td","BOOK INDEX");
+          $NEWROW->appendChild($NEWCOL["BOOKIDX"]);
+          $NEWCOL["LANGUAGE"] = $this->metadata->createElement("td","LANGUAGE");
+          $NEWROW->appendChild($NEWCOL["LANGUAGE"]);
+          $NEWCOL["VALUE"] = $this->metadata->createElement("td","VALUE");
+          $NEWROW->appendChild($NEWCOL["VALUE"]);
+
+          $TBODY = $this->metadata->createElement("tbody");
+          $TABLE->appendChild($TBODY);
+
+          foreach($biblebooks as $key => $value){
+              $NEWROW = $this->metadata->createElement("tr");
+              $TBODY->appendChild($NEWROW);
+
+              $NEWCELL = $this->metadata->createElement("td","Book ".$key);
+              $NEWCELL->setAttribute("rowspan",25);
+              $NEWROW->appendChild($NEWCELL);
+
+              foreach($value as $langKey => $langValue){
+                  $NEWCELL = $this->metadata->createElement("td",$names[$langKey+1]);
+                  $NEWROW->appendChild($NEWCELL);
+
+                  $NEWCELL = $this->metadata->createElement("td",json_encode($langValue, JSON_UNESCAPED_UNICODE));
+                  $NEWROW->appendChild($NEWCELL);
+
+                  if($langKey < 24){
+                    $NEWROW  = $this->metadata->createElement("tr");
+                    $TBODY->appendChild($NEWROW);
+                  }
+              }
+          }
+        break;
+      }
+
       $this->outputResult();
-      
+
     }
 
 
     private function getBibleVersions($type=""){
       
       // PREPARE VALIDVERSIONS ARRAY
-      if($this->returntype == "json"){
-        $this->metadata->validversions = array();
-        $this->metadata->validversions_fullname = array();
-        $this->metadata->copyrightversions = array();
-      }
-      else if($this->returntype == "xml"){
-        $this->metadata->validversions = new stdClass();
-        $this->metadata->validversions_fullname = new stdClass();
-        $this->metadata->copyrightversions = new stdClass();
-      }
-      else if($this->returntype == "html"){
-    
-        $TABLE = $this->metadata->createElement("table");
-        $TABLE->setAttribute("id","BibleVersionsTbl");
-        $TABLE->setAttribute("class","BibleVersionsTbl");
-        $this->div->appendChild($TABLE);        
-        
-        $THEAD = $this->metadata->createElement("thead");
-        $TABLE->appendChild($THEAD);
-        
-        $NEWROW = $this->metadata->createElement("tr");
-        $THEAD->appendChild($NEWROW);
-        
-        $NEWCOL = array();
-        $NEWCOL["ABBREVIATION"] = $this->metadata->createElement("th","ABBREVIATION");
-        $NEWROW->appendChild($NEWCOL["ABBREVIATION"]);
-        $NEWCOL["FULLNAME"] = $this->metadata->createElement("th","FULLNAME");
-        $NEWROW->appendChild($NEWCOL["FULLNAME"]);
-        $NEWCOL["YEAR"] = $this->metadata->createElement("th","YEAR");
-        $NEWROW->appendChild($NEWCOL["YEAR"]);
-        $NEWCOL["LANGUAGE"] = $this->metadata->createElement("th","LANGUAGE");
-        $NEWROW->appendChild($NEWCOL["LANGUAGE"]);
-        $NEWCOL["COPYRIGHT"] = $this->metadata->createElement("th","COPYRIGHT");
-        $NEWROW->appendChild($NEWCOL["COPYRIGHT"]);
-        $NEWCOL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("th","COPYRIGHT_HOLDER");
-        $NEWROW->appendChild($NEWCOL["COPYRIGHT_HOLDER"]);
-        $NEWCOL["IMPRIMATUR"] = $this->metadata->createElement("th","IMPRIMATUR");
-        $NEWROW->appendChild($NEWCOL["IMPRIMATUR"]);
-        $NEWCOL["CANON"] = $this->metadata->createElement("th","CANON");
-        $NEWROW->appendChild($NEWCOL["CANON"]);
-        
-        $TBODY = $this->metadata->createElement("tbody");
-        $TABLE->appendChild($TBODY);
+      switch( $this->returntype ) {
+        case "json":
+          $this->metadata->validversions = array();
+          $this->metadata->validversions_fullname = array();
+          $this->metadata->copyrightversions = array();
+        break;
+        case "xml":
+          $this->metadata->validversions = new stdClass();
+          $this->metadata->validversions_fullname = new stdClass();
+          $this->metadata->copyrightversions = new stdClass();
+        break;
+        case "html":
+          $TABLE = $this->metadata->createElement("table");
+          $TABLE->setAttribute("id","BibleVersionsTbl");
+          $TABLE->setAttribute("class","BibleVersionsTbl");
+          $this->div->appendChild($TABLE);        
+
+          $THEAD = $this->metadata->createElement("thead");
+          $TABLE->appendChild($THEAD);
+
+          $NEWROW = $this->metadata->createElement("tr");
+          $THEAD->appendChild($NEWROW);
+
+          $NEWCOL = array();
+          $NEWCOL["ABBREVIATION"] = $this->metadata->createElement("th","ABBREVIATION");
+          $NEWROW->appendChild($NEWCOL["ABBREVIATION"]);
+          $NEWCOL["FULLNAME"] = $this->metadata->createElement("th","FULLNAME");
+          $NEWROW->appendChild($NEWCOL["FULLNAME"]);
+          $NEWCOL["YEAR"] = $this->metadata->createElement("th","YEAR");
+          $NEWROW->appendChild($NEWCOL["YEAR"]);
+          $NEWCOL["LANGUAGE"] = $this->metadata->createElement("th","LANGUAGE");
+          $NEWROW->appendChild($NEWCOL["LANGUAGE"]);
+          $NEWCOL["COPYRIGHT"] = $this->metadata->createElement("th","COPYRIGHT");
+          $NEWROW->appendChild($NEWCOL["COPYRIGHT"]);
+          $NEWCOL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("th","COPYRIGHT_HOLDER");
+          $NEWROW->appendChild($NEWCOL["COPYRIGHT_HOLDER"]);
+          $NEWCOL["IMPRIMATUR"] = $this->metadata->createElement("th","IMPRIMATUR");
+          $NEWROW->appendChild($NEWCOL["IMPRIMATUR"]);
+          $NEWCOL["CANON"] = $this->metadata->createElement("th","CANON");
+          $NEWROW->appendChild($NEWCOL["CANON"]);
+          
+          $TBODY = $this->metadata->createElement("tbody");
+          $TABLE->appendChild($TBODY);
+        break;
       }
 
       $querystring = "SELECT * FROM versions_available";
@@ -463,48 +468,50 @@ class BIBLEGET_METADATA {
             $row["copyright_holder"],
             $row["notes"]
           ];
-          if($this->returntype == "json"){
-            $this->metadata->validversions_fullname[$row["sigla"]] = implode("|",$output_info_array);
-            $this->metadata->validversions[] = $row["sigla"];
-            if($row["copyright"]==1){ $this->metadata->copyrightversions[] = $row["sigla"]; } 
-          }
-          else if($this->returntype == "xml"){
-            $this->metadata->validversions_fullname->{$row["sigla"]} = implode("|",$output_info_array);
-            $this->metadata->validversions->{$row["sigla"]} = $row["sigla"];
-            if($row["copyright"]==1){ $this->metadata->copyrightversions->{$row["sigla"]} = $row["sigla"]; } 
-          }
-          else if($this->returntype == "html"){
-            $n++;
-            $NEWROW = $this->metadata->createElement("tr");
-            $NEWROW->setAttribute("id","ValidVersionRow".$n);
-            $NEWROW->setAttribute("class","ValidVersionRow");
-            $TBODY->appendChild($NEWROW);
-            
-            $NEWCELL = array();
-            
-            $NEWCELL["ABBREVIATION"] = $this->metadata->createElement("td",$row["sigla"]);
-            $NEWROW->appendChild($NEWCELL["ABBREVIATION"]);
-            
-            $NEWCELL["FULLNAME"] = $this->metadata->createElement("td",$row["fullname"]);
-            $NEWROW->appendChild($NEWCELL["FULLNAME"]);
-            
-            $NEWCELL["YEAR"] = $this->metadata->createElement("td",$row["year"]);
-            $NEWROW->appendChild($NEWCELL["YEAR"]);
-            
-            $NEWCELL["LANGUAGE"] = $this->metadata->createElement("td",$row["language"]);
-            $NEWROW->appendChild($NEWCELL["LANGUAGE"]);
-            
-            $NEWCELL["COPYRIGHT"] = $this->metadata->createElement("td",$row["copyright"]);
-            $NEWROW->appendChild($NEWCELL["COPYRIGHT"]);
-            
-            $NEWCELL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("td",$row["copyright_holder"]);
-            $NEWROW->appendChild($NEWCELL["COPYRIGHT_HOLDER"]);
-            
-            $NEWCELL["IMPRIMATUR"] = $this->metadata->createElement("td",$row["imprimatur"]);
-            $NEWROW->appendChild($NEWCELL["IMPRIMATUR"]);
-            
-            $NEWCELL["CANON"] = $this->metadata->createElement("td",$row["canon"]);
-            $NEWROW->appendChild($NEWCELL["CANON"]);
+          switch( $this->returntype ) {
+            case "json":
+              $this->metadata->validversions_fullname[$row["sigla"]] = implode("|",$output_info_array);
+              $this->metadata->validversions[] = $row["sigla"];
+              if($row["copyright"]==1){ $this->metadata->copyrightversions[] = $row["sigla"]; }
+            break;
+            case "xml":
+              $this->metadata->validversions_fullname->{$row["sigla"]} = implode("|",$output_info_array);
+              $this->metadata->validversions->{$row["sigla"]} = $row["sigla"];
+              if($row["copyright"]==1){ $this->metadata->copyrightversions->{$row["sigla"]} = $row["sigla"]; }
+            break;
+            case "html":
+              $n++;
+              $NEWROW = $this->metadata->createElement("tr");
+              $NEWROW->setAttribute("id","ValidVersionRow".$n);
+              $NEWROW->setAttribute("class","ValidVersionRow");
+              $TBODY->appendChild($NEWROW);
+
+              $NEWCELL = array();
+
+              $NEWCELL["ABBREVIATION"] = $this->metadata->createElement("td",$row["sigla"]);
+              $NEWROW->appendChild($NEWCELL["ABBREVIATION"]);
+
+              $NEWCELL["FULLNAME"] = $this->metadata->createElement("td",$row["fullname"]);
+              $NEWROW->appendChild($NEWCELL["FULLNAME"]);
+
+              $NEWCELL["YEAR"] = $this->metadata->createElement("td",$row["year"]);
+              $NEWROW->appendChild($NEWCELL["YEAR"]);
+
+              $NEWCELL["LANGUAGE"] = $this->metadata->createElement("td",$row["language"]);
+              $NEWROW->appendChild($NEWCELL["LANGUAGE"]);
+
+              $NEWCELL["COPYRIGHT"] = $this->metadata->createElement("td",$row["copyright"]);
+              $NEWROW->appendChild($NEWCELL["COPYRIGHT"]);
+
+              $NEWCELL["COPYRIGHT_HOLDER"] = $this->metadata->createElement("td",$row["copyright_holder"]);
+              $NEWROW->appendChild($NEWCELL["COPYRIGHT_HOLDER"]);
+
+              $NEWCELL["IMPRIMATUR"] = $this->metadata->createElement("td",$row["imprimatur"]);
+              $NEWROW->appendChild($NEWCELL["IMPRIMATUR"]);
+
+              $NEWCELL["CANON"] = $this->metadata->createElement("td",$row["canon"]);
+              $NEWROW->appendChild($NEWCELL["CANON"]);
+            break;
           }
         }
       }
@@ -537,7 +544,7 @@ class BIBLEGET_METADATA {
     }
 
     private function getVersionIndex(){
-      
+
       if(isset($this->DATA["versions"]) && $this->DATA["versions"]!=""){
         $versions = explode(",",$this->DATA["versions"]);
       }
@@ -551,7 +558,7 @@ class BIBLEGET_METADATA {
             $chapter_limit = array();
             $verse_limit = array();
             $book_num = array();
-            
+
             // fetch the index information for the requested version from the database and load it into our arrays
             $result = $this->mysqli->query("SELECT * FROM ".$variant."_idx");
             if($result){
@@ -566,86 +573,87 @@ class BIBLEGET_METADATA {
             else{
               $this->addErrorMessage("<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>");
             }
-            
+
             $indexes[$variant]["abbreviations"] = $abbreviations;
             $indexes[$variant]["biblebooks"] = $bbbooks;
             $indexes[$variant]["chapter_limit"] = $chapter_limit;
             $indexes[$variant]["verse_limit"] = $verse_limit;
             $indexes[$variant]["book_num"] = $book_num;  
-          
+
           }
-          if($this->returntype=="json"){
-            $this->metadata->indexes = $indexes;
-          }
-          else if($this->returntype=="xml"){
-            foreach($indexes as $idxvariant => $idxvalue){
-                $this->metadata->indexes->{$idxvariant}->Abbreviations = json_encode($idxvalue["abbreviations"]);
-                $this->metadata->indexes->{$idxvariant}->BibleBooks = json_encode($idxvalue["biblebooks"]);
-                $this->metadata->indexes->{$idxvariant}->ChapterLimit = json_encode($idxvalue["chapter_limit"]);
-                $this->metadata->indexes->{$idxvariant}->VerseLimit = json_encode($idxvalue["verse_limit"]);
-                $this->metadata->indexes->{$idxvariant}->BookNum = json_encode($idxvalue["book_num"]);
-            }
-          }
-          else if($this->returntype=="html"){
-            $TABLE = $this->metadata->createElement("table");
-            $TABLE->setAttribute("id","VersionIndexesTbl");
-            $TABLE->setAttribute("class","VersionIndexesTbl");
-            $this->div->appendChild($TABLE);        
-            
-            $THEAD = $this->metadata->createElement("thead");
-            $TABLE->appendChild($THEAD);
-            
-            $NEWROW = $this->metadata->createElement("tr");
-            $THEAD->appendChild($NEWROW);
-            
-            $NEWCOL = array();
-            $NEWCOL["VERSION"] = $this->metadata->createElement("td","VERSION");
-            $NEWROW->appendChild($NEWCOL["VERSION"]);
-            
-            $NEWCOL["BIBLEBOOKS"] = $this->metadata->createElement("td","BIBLEBOOKS");
-            $NEWROW->appendChild($NEWCOL["BIBLEBOOKS"]);
-            
-            $NEWCOL["ABBREVIATIONS"] = $this->metadata->createElement("td","ABBREVIATIONS");
-            $NEWROW->appendChild($NEWCOL["ABBREVIATIONS"]);
-            
-            $NEWCOL["CHAPTERLIMIT"] = $this->metadata->createElement("td","CHAPTER_LIMIT");
-            $NEWROW->appendChild($NEWCOL["CHAPTERLIMIT"]);
-            
-            $NEWCOL["VERSELIMIT"] = $this->metadata->createElement("td","VERSE_LIMIT");
-            $NEWROW->appendChild($NEWCOL["VERSELIMIT"]);
-            
-            $NEWCOL["BOOKNUM"] = $this->metadata->createElement("td","BOOK_NUM");
-            $NEWROW->appendChild($NEWCOL["BOOKNUM"]);
-            
-            $TBODY = $this->metadata->createElement("tbody");
-            $TABLE->appendChild($TBODY);
-            
-            foreach($indexes as $idxvariant => $idxvalue){
-                
-                $NEWROW = $this->metadata->createElement("tr");
-                $TBODY->appendChild($NEWROW);
-                
-                $NEWCELL = array();
-                
-                $NEWCELL["VERSION"] = $this->metadata->createElement("td",$idxvariant);
-                $NEWROW->appendChild($NEWCELL["VERSION"]);
-                
-                $NEWCELL["BIBLEBOOKS"] = $this->metadata->createElement("td",json_encode($idxvalue["biblebooks"], JSON_UNESCAPED_UNICODE));
-                $NEWROW->appendChild($NEWCELL["BIBLEBOOKS"]);
-                
-                $NEWCELL["ABBREVIATIONS"] = $this->metadata->createElement("td",json_encode($idxvalue["abbreviations"], JSON_UNESCAPED_UNICODE));
-                $NEWROW->appendChild($NEWCELL["ABBREVIATIONS"]);
-                
-                $NEWCELL["CHAPTERLIMIT"] = $this->metadata->createElement("td",json_encode($idxvalue["chapter_limit"]));
-                $NEWROW->appendChild($NEWCELL["CHAPTERLIMIT"]);
-                
-                $NEWCELL["VERSELIMIT"] = $this->metadata->createElement("td",json_encode($idxvalue["verse_limit"]));
-                $NEWROW->appendChild($NEWCELL["VERSELIMIT"]);
-                
-                $NEWCELL["BOOKNUM"] = $this->metadata->createElement("td",json_encode($idxvalue["book_num"]));
-                $NEWROW->appendChild($NEWCELL["BOOKNUM"]);
-            }
-            
+          switch( $this->returntype ) {
+            case "json":
+              $this->metadata->indexes = $indexes;
+            break;
+            case "xml":
+              foreach($indexes as $idxvariant => $idxvalue){
+                  $this->metadata->indexes->{$idxvariant}->Abbreviations = json_encode($idxvalue["abbreviations"]);
+                  $this->metadata->indexes->{$idxvariant}->BibleBooks = json_encode($idxvalue["biblebooks"]);
+                  $this->metadata->indexes->{$idxvariant}->ChapterLimit = json_encode($idxvalue["chapter_limit"]);
+                  $this->metadata->indexes->{$idxvariant}->VerseLimit = json_encode($idxvalue["verse_limit"]);
+                  $this->metadata->indexes->{$idxvariant}->BookNum = json_encode($idxvalue["book_num"]);
+              }
+            break;
+            case "html":
+              $TABLE = $this->metadata->createElement("table");
+              $TABLE->setAttribute("id","VersionIndexesTbl");
+              $TABLE->setAttribute("class","VersionIndexesTbl");
+              $this->div->appendChild($TABLE);
+
+              $THEAD = $this->metadata->createElement("thead");
+              $TABLE->appendChild($THEAD);
+
+              $NEWROW = $this->metadata->createElement("tr");
+              $THEAD->appendChild($NEWROW);
+
+              $NEWCOL = array();
+              $NEWCOL["VERSION"] = $this->metadata->createElement("td","VERSION");
+              $NEWROW->appendChild($NEWCOL["VERSION"]);
+
+              $NEWCOL["BIBLEBOOKS"] = $this->metadata->createElement("td","BIBLEBOOKS");
+              $NEWROW->appendChild($NEWCOL["BIBLEBOOKS"]);
+
+              $NEWCOL["ABBREVIATIONS"] = $this->metadata->createElement("td","ABBREVIATIONS");
+              $NEWROW->appendChild($NEWCOL["ABBREVIATIONS"]);
+
+              $NEWCOL["CHAPTERLIMIT"] = $this->metadata->createElement("td","CHAPTER_LIMIT");
+              $NEWROW->appendChild($NEWCOL["CHAPTERLIMIT"]);
+
+              $NEWCOL["VERSELIMIT"] = $this->metadata->createElement("td","VERSE_LIMIT");
+              $NEWROW->appendChild($NEWCOL["VERSELIMIT"]);
+
+              $NEWCOL["BOOKNUM"] = $this->metadata->createElement("td","BOOK_NUM");
+              $NEWROW->appendChild($NEWCOL["BOOKNUM"]);
+
+              $TBODY = $this->metadata->createElement("tbody");
+              $TABLE->appendChild($TBODY);
+
+              foreach($indexes as $idxvariant => $idxvalue){
+
+                  $NEWROW = $this->metadata->createElement("tr");
+                  $TBODY->appendChild($NEWROW);
+
+                  $NEWCELL = array();
+
+                  $NEWCELL["VERSION"] = $this->metadata->createElement("td",$idxvariant);
+                  $NEWROW->appendChild($NEWCELL["VERSION"]);
+
+                  $NEWCELL["BIBLEBOOKS"] = $this->metadata->createElement("td",json_encode($idxvalue["biblebooks"], JSON_UNESCAPED_UNICODE));
+                  $NEWROW->appendChild($NEWCELL["BIBLEBOOKS"]);
+
+                  $NEWCELL["ABBREVIATIONS"] = $this->metadata->createElement("td",json_encode($idxvalue["abbreviations"], JSON_UNESCAPED_UNICODE));
+                  $NEWROW->appendChild($NEWCELL["ABBREVIATIONS"]);
+
+                  $NEWCELL["CHAPTERLIMIT"] = $this->metadata->createElement("td",json_encode($idxvalue["chapter_limit"]));
+                  $NEWROW->appendChild($NEWCELL["CHAPTERLIMIT"]);
+
+                  $NEWCELL["VERSELIMIT"] = $this->metadata->createElement("td",json_encode($idxvalue["verse_limit"]));
+                  $NEWROW->appendChild($NEWCELL["VERSELIMIT"]);
+
+                  $NEWCELL["BOOKNUM"] = $this->metadata->createElement("td",json_encode($idxvalue["book_num"]));
+                  $NEWROW->appendChild($NEWCELL["BOOKNUM"]);
+              }
+            break;
           }
         }
         else{
@@ -655,39 +663,44 @@ class BIBLEGET_METADATA {
       else{
         $this->addErrorMessage("Sorry but there isn't a single version in this request.");
       }
-        
-      $this->outputResult();    
+
+      $this->outputResult();
     }
 
-    
-    
+
     private function outputResult(){
-      
-      if($this->returntype == "json"){
-        //print_r($metadata->results[52]); 
-        echo json_encode($this->metadata, JSON_UNESCAPED_UNICODE);
-      }
-      else if($this->returntype == "xml"){
-        echo $this->metadata->asXML();
-      }
-      else if($this->returntype == "html"){
-        $this->metadata->appendChild($this->err); 
-        $this->metadata->appendChild($this->div);
-        $info = $this->metadata->createElement("input");
-        $info->setAttribute("type", "hidden");
-        $info->setAttribute("value", ENDPOINT_VERSION);
-        $info->setAttribute("name", "ENDPOINT_VERSION");
-        $this->metadata->appendChild($info);
-        echo $this->metadata->saveHTML($this->div); 
-        echo $this->metadata->saveHTML($this->err);
-        echo $this->metadata->saveHTML($info);
+
+      switch( $this->returntype ) {
+        case "json":
+          //print_r($metadata->results[52]);
+          $this->metadata->info["ENDPOINT_VERSION"] = ENDPOINT_VERSION;
+          echo json_encode( $this->metadata, JSON_UNESCAPED_UNICODE );
+          break;
+        case "xml":
+          $this->metadata->info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
+          echo $this->metadata->asXML();
+          break;
+        case "html":
+          $this->metadata->appendChild( $this->err );
+          $this->metadata->appendChild( $this->div );
+
+          $info = $this->metadata->createElement( "input" );
+          $info->setAttribute( "type", "hidden" );
+          $info->setAttribute( "name", "ENDPOINT_VERSION" );
+          $info->setAttribute( "value", ENDPOINT_VERSION );
+          $this->inf->appendChild( $info );
+          $this->metadata->appendChild( $this->inf );
+
+          echo $this->metadata->saveHTML( $this->div );
+          echo $this->metadata->saveHTML( $this->err );
+          echo $this->metadata->saveHTML( $this->inf );
+          break;
       }
       
       $this->mysqli->close();
-      exit(0);  
+      exit(0);
     }
 
-    
 }
 
 /*****************************************

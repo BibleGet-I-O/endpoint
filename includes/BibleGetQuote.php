@@ -266,47 +266,50 @@ class BIBLEGET_QUOTE {
             $num = 13;
         }
 
-        if ( $this->responseContentType === "json" ) {
-            $error = [];
-            $error["errNum"] = $num;
-            $error["errMessage"] = self::$errorMessages[$num] . ( $str !== "" ? " > " . $str : "" );
-            $this->bibleQuote->errors[] = $error;
-        } elseif ( $this->responseContentType === "xml" ) {
-            $err_row = $this->bibleQuote->Errors->addChild( "error", self::$errorMessages[$num] );
-            $err_row->addAttribute( "errNum", $num );
-        } elseif ( $this->responseContentType === "html" ) {
-            $elements = [];
-            $errorsTable = $this->bibleQuote->getElementById( "errorsTbl" );
-            if ( $errorsTable == null ) {
-                $elements[0] = $this->bibleQuote->createElement( "table" );
-                $elements[0]->setAttribute( "id","errorsTbl" );
-                $elements[0]->setAttribute( "class","errorsTbl" );
-                $this->err->appendChild( $elements[0] );
-            } else {
-                $elements[0] = $errorsTable;
-            }
+        switch( $this->responseContentType ) {
+            case "json":
+                $error = [];
+                $error["errNum"] = $num;
+                $error["errMessage"] = self::$errorMessages[$num] . ( $str !== "" ? " > " . $str : "" );
+                $this->bibleQuote->errors[] = $error;
+            break;
+            case "xml":
+                $err_row = $this->bibleQuote->errors->addChild( "error", self::$errorMessages[$num] );
+                $err_row->addAttribute( "errNum", $num );
+            break;
+            case "html":
+                $elements = [];
+                $errorsTable = $this->bibleQuote->getElementById( "errorsTbl" );
+                if ( $errorsTable == null ) {
+                    $elements[0] = $this->bibleQuote->createElement( "table" );
+                    $elements[0]->setAttribute( "id","errorsTbl" );
+                    $elements[0]->setAttribute( "class","errorsTbl" );
+                    $this->err->appendChild( $elements[0] );
+                } else {
+                    $elements[0] = $errorsTable;
+                }
 
-            $elements[1] = $this->bibleQuote->createElement( "tr" );
-            $elements[1]->setAttribute( "id","errorsRow" );
-            $elements[1]->setAttribute( "class","errorsRow" );
-            $elements[0]->appendChild( $elements[1] );
+                $elements[1] = $this->bibleQuote->createElement( "tr" );
+                $elements[1]->setAttribute( "id","errorsRow" );
+                $elements[1]->setAttribute( "class","errorsRow" );
+                $elements[0]->appendChild( $elements[1] );
+                
+                $elements[2] = $this->bibleQuote->createElement( "td", "errNum" );
+                $elements[2]->setAttribute( "class", "errNum" );
+                $elements[1]->appendChild( $elements[2] );
+
+                $elements[3] = $this->bibleQuote->createElement( "td", $num );
+                $elements[3]->setAttribute( "class", "errNumVal" );
+                $elements[1]->appendChild( $elements[3] );
             
-            $elements[2] = $this->bibleQuote->createElement( "td", "errNum" );
-            $elements[2]->setAttribute( "class", "errNum" );
-            $elements[1]->appendChild( $elements[2] );
+                $elements[4] = $this->bibleQuote->createElement( "td", "errMessage" );
+                $elements[4]->setAttribute( "class", "errMessage" );
+                $elements[1]->appendChild( $elements[4] );
 
-            $elements[3] = $this->bibleQuote->createElement( "td", $num );
-            $elements[3]->setAttribute( "class", "errNumVal" );
-            $elements[1]->appendChild( $elements[3] );
-        
-            $elements[4] = $this->bibleQuote->createElement( "td", "errMessage" );
-            $elements[4]->setAttribute( "class", "errMessage" );
-            $elements[1]->appendChild( $elements[4] );
-
-            $elements[5] = $this->bibleQuote->createElement( "td", self::$errorMessages[$num] );
-            $elements[5]->setAttribute( "class", "errMessageVal" );
-            $elements[1]->appendChild( $elements[5] );
-
+                $elements[5] = $this->bibleQuote->createElement( "td", self::$errorMessages[$num] );
+                $elements[5]->setAttribute( "class", "errMessageVal" );
+                $elements[1]->appendChild( $elements[5] );
+            break;
         }
     }
 
