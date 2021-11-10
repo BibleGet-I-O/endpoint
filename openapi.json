@@ -833,7 +833,7 @@
           },
           "errors" : {
             "type" : "array",
-            "description" : "An array of any error messages that may have been generated indicating a badly formed `query` parameter, a bad value for the `version` parameter, or an API server error",
+            "description" : "An array of any error messages that may have been generated indicating a badly formed `query` parameter, an unsupported value for the `version` parameter, or an API server error",
             "items" : {
               "type" : "string"
             }
@@ -843,7 +843,28 @@
             "description" : "An object containing metadata about the API endpoint",
             "properties" : {
               "ENDPOINT_VERSION" : {
-                "type" : "string"
+                "type" : "string",
+                "description" : "Version of the endpoint being interrogated",
+                "xml" : {
+                  "attribute" : true
+                },
+                "example" : "3.0"
+              },
+              "detectedNotation" : {
+                "type" : "string",
+                "enum" : [ "ENGLISH", "EUROPEAN", "MIXED" ],
+                "description" : "Feedback on the type of Bible quotation notation that the endpoint engine detected in the request. `ENGLISH` and `EUROPEAN` are valid values. `MIXED` means that the engine cannot detect a definite notation, and will most probably be accompanied by an error message.",
+                "xml" : {
+                  "attribute" : true
+                }
+              },
+              "bibleVersionsInfo" : {
+                "type" : "string",
+                "description" : "JSON encoded string, representing key - value pairs in which the keys are the abbreviated names of the Bible versions that were requested, and the values are pipe separated lists of information about the Bible version requested. Splitting this list will give these values: <ol><li>Bible version fullname</li><li>Year in which the edition was pusblished</li><li>Language</li><li>Whether the Bible version has an imprimatur</li><li>Canon of the Scriptures for this Bible version (can have a value of `CATHOLIC` or `PROTESTANT`)</li><li>Copyright holder for this edition</li><li>Notes about this Bible edition</li>",
+                "xml" : {
+                  "attribute" : true
+                },
+                "example" : "{\"NABRE\":\"New American Bible - Revised Edition|2011|en|1|CATHOLIC|United States Conference of Catholic Bishops|\"}"
               }
             }
           }
@@ -861,7 +882,8 @@
             "description" : "`1` = *Old Testament*, `2` = *New Testament*",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : 2
           },
           "section" : {
             "type" : "integer",
@@ -869,28 +891,32 @@
             "description" : "`1` = *Pentateuch*, `2` = *Historical Books*, `3` = *Wisdom Books*, `4` = *Prophets*, `5` = *Gospels*, `6` = *Acts of the Apostles*, `7` = *Letters of Saint Paul*, `8` = *Catholic Letters*, `9` = *Apocalypse*",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : 8
           },
           "book" : {
             "type" : "string",
             "description" : "Name of the book of the Bible in the language of the Bible version being quoted from",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : "1John"
           },
           "bookabbrev" : {
             "type" : "string",
             "description" : "Abbreviated form of the book of the Bible in the language of the Bible version being quoted from",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : "1Jn"
           },
           "booknum" : {
             "type" : "integer",
             "description" : "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `metadata.php` API endpoint, as can index information about the number of chapters in the book and the number of verses in each chapter.",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : 68
           },
           "univbooknum" : {
             "type" : "string",
@@ -898,14 +924,16 @@
             "enum" : [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73" ],
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : "69"
           },
           "chapter" : {
             "type" : "integer",
             "description" : "Chapter of the book of the Bible in the Bible version that the verse is being quoted from",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : 4
           },
           "versedescr" : {
             "type" : "string",
@@ -920,7 +948,8 @@
             "description" : "Verse Number of the verse being quoted. *N.B. this is returned as a string because it will not always necessarily be a number value, there are verses that have letters in them. The value must be treated as a string and not as a number.*",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : "7"
           },
           "verseequiv" : {
             "type" : "integer",
@@ -928,49 +957,56 @@
             "nullable" : true,
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : ""
           },
           "text" : {
             "type" : "string",
             "description" : "Contains the actual text of the verse being quoted. May contain `newline` characters that may need to be dealt with. The **NABRE** version will contain ***it's own formatting tags that need to be dealt with***, whether that means producing the proper formatting associated with these tags, or removing them to have a basic formatting. The legal requirements for usage of the NABRE version require the proper formatting to be used where possible. Please [contact the project author](mailto:admin@bibleget.io) for information on how to deal with these tags and their formatting.",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : " Beloved, let us love one another, because love is of God; everyone who loves is begotten by God and knows God. "
           },
           "version" : {
             "type" : "string",
             "description" : "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `metadata.php` API endpoint can be used",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : "NABRE"
           },
           "title1" : {
             "type" : "string",
             "description" : "not currently used. The original idea (which may yet be implemented) was for this to contain any first-level title text preceding the given verse in the version of the Bible being quoted from.",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : ""
           },
           "title2" : {
             "type" : "string",
             "description" : "not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : ""
           },
           "title3" : {
             "type" : "string",
             "description" : "not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : ""
           },
           "originalquery" : {
             "type" : "string",
-            "description" : "The original query (Bible reference indicated in the `query` parameter of the sent request) that the endpoint received, which produced this result.",
+            "description" : "The original query (Bible reference indicated in the `query` parameter of the sent request) that the endpoint received, which produced this result. Will always be in EUROPEAN notation, even if the actual original query was in ENGLISH notation.",
             "xml" : {
               "attribute" : true
-            }
+            },
+            "example" : "1John4,7-8"
           }
         },
         "xml" : {
