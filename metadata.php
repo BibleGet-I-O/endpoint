@@ -88,7 +88,7 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
  
 class BIBLEGET_METADATA {
 
-    static public array $returntypes = [ "json", "xml", "html" ]; // only json and xml will be actually supported, html makes no sense for metadata
+    static public array $returntypes = [ "json", "xml", "html" ];
     static public array $allowed_accept_headers = [ "application/json", "application/xml", "text/html" ];
     static public array $allowed_content_types = [ "application/json" , "application/x-www-form-urlencoded" ];
     static public array $allowed_request_methods = [ "GET", "POST" ];
@@ -100,7 +100,7 @@ class BIBLEGET_METADATA {
     private mysqli $mysqli;
     private array $validversions;
     //private bool $is_ajax;
-    private stdClass|simpleXMLElement|DOMDocument $metadata;         //object with json, xml or html data to return
+    private stdClass|simpleXMLElement|DOMDocument $metadata;
     private DOMElement $div;
     private DOMElement $err;
     private DOMElement $inf;
@@ -128,10 +128,10 @@ class BIBLEGET_METADATA {
           default:
             header('Content-Type: application/json; charset=utf-8');
         }
-        
+
         $this->MetaDataInit();
 
-        $this->mysqli   = $this->dbConnect();
+        $this->dbConnect();
 
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
           switch($this->DATA["query"]){
@@ -183,11 +183,11 @@ class BIBLEGET_METADATA {
           //printf("Current character set: %s\n", $mysqli->character_set_name());
         }
         */
-        return $mysqli;
+        $this->mysqli =  $mysqli;
     }
 
     
-    static private function toProperCase($txt){
+    static private function toProperCase($txt) : string {
         preg_match( "/\p{L}\p{M}*/u", $txt, $mList, PREG_OFFSET_CAPTURE );
         if( array_key_exists( 0, $mList ) ){
             $idx = $mList[0][1];
@@ -240,7 +240,7 @@ class BIBLEGET_METADATA {
       $this->metadata = $metadata;
 
     }
-    
+
 
     private function addErrorMessage($str){
 
@@ -344,9 +344,11 @@ class BIBLEGET_METADATA {
         break;
         case "xml":
           foreach($biblebooks as $key => $value){
-              $this->metadata->{"Book".$key} = new stdClass();
+              $book = $this->metadata->addChild("Book");
+              $book->addAttribute( "key", $key );
               foreach($value as $langKey => $langValue){
-                  $this->metadata->{"Book".$key}->{$names[$langKey+1]} = json_encode($langValue, JSON_UNESCAPED_UNICODE);
+                  $bookname = json_encode($langValue, JSON_UNESCAPED_UNICODE);
+                  $book->addChild( $names[$langKey+1], $bookname );
               }
           }
         break;
@@ -403,7 +405,7 @@ class BIBLEGET_METADATA {
 
 
     private function getBibleVersions($type=""){
-      
+
       // PREPARE VALIDVERSIONS ARRAY
       switch( $this->returntype ) {
         case "json":
@@ -412,15 +414,15 @@ class BIBLEGET_METADATA {
           $this->metadata->copyrightversions = array();
         break;
         case "xml":
-          $this->metadata->validversions = new stdClass();
-          $this->metadata->validversions_fullname = new stdClass();
-          $this->metadata->copyrightversions = new stdClass();
+          $this->metadata->addChild( "ValidVersions" );
+          $this->metadata->addChild( "ValidVersionsFullname" );
+          $this->metadata->addChild( "CopyrightVersions" );
         break;
         case "html":
           $TABLE = $this->metadata->createElement("table");
           $TABLE->setAttribute("id","BibleVersionsTbl");
           $TABLE->setAttribute("class","BibleVersionsTbl");
-          $this->div->appendChild($TABLE);        
+          $this->div->appendChild($TABLE);
 
           $THEAD = $this->metadata->createElement("thead");
           $TABLE->appendChild($THEAD);
@@ -459,25 +461,32 @@ class BIBLEGET_METADATA {
       if($result){
         $n=0;
         while($row = mysqli_fetch_assoc($result)){
-          $output_info_array = [
-            $row["fullname"],
-            $row["year"],
-            $row["language"],
-            $row["imprimatur"],
-            $row["canon"],
-            $row["copyright_holder"],
-            $row["notes"]
-          ];
           switch( $this->returntype ) {
             case "json":
+              $output_info_array = [
+                $row["fullname"],
+                $row["year"],
+                $row["language"],
+                $row["imprimatur"],
+                $row["canon"],
+                $row["copyright_holder"],
+                $row["notes"]
+              ];
               $this->metadata->validversions_fullname[$row["sigla"]] = implode("|",$output_info_array);
               $this->metadata->validversions[] = $row["sigla"];
               if($row["copyright"]==1){ $this->metadata->copyrightversions[] = $row["sigla"]; }
             break;
             case "xml":
-              $this->metadata->validversions_fullname->{$row["sigla"]} = implode("|",$output_info_array);
-              $this->metadata->validversions->{$row["sigla"]} = $row["sigla"];
-              if($row["copyright"]==1){ $this->metadata->copyrightversions->{$row["sigla"]} = $row["sigla"]; }
+              $this->metadata->ValidVersions->addChild( $row["sigla"] );
+              $versionFullName = $this->metadata->ValidVersionsFullname->addChild( $row["sigla"] );
+              $versionFullName->addChild( "Fullname",         $row["fullname"] );
+              $versionFullName->addChild( "Year",             $row["year"] );
+              $versionFullName->addChild( "Language",         $row["language"] );
+              $versionFullName->addChild( "Imprimatur",       $row["imprimatur"] );
+              $versionFullName->addChild( "Canon",            $row["canon"] );
+              $versionFullName->addChild( "CopyrightHolder",  $row["copyright_holder"] );
+              $versionFullName->addChild( "Notes",            htmlspecialchars($row["notes"], ENT_XML1, 'UTF-8') );
+              if( $row["copyright"] == 1 ) { $this->metadata->CopyrightVersions->addChild( $row["sigla"] ); }
             break;
             case "html":
               $n++;
@@ -519,12 +528,12 @@ class BIBLEGET_METADATA {
         $this->addErrorMessage("<p>MySQL ERROR ".$this->mysqli->errno . ": " . $this->mysqli->error."</p>");
       }
 
-      $this->outputResult(); 
-       
+      $this->outputResult();
+
     }
 
     private function getValidVersions(){
-      
+
       $validversions = array();
       $result = $this->mysqli->query("SELECT * FROM versions_available");
       if($result){
@@ -586,12 +595,50 @@ class BIBLEGET_METADATA {
               $this->metadata->indexes = $indexes;
             break;
             case "xml":
-              foreach($indexes as $idxvariant => $idxvalue){
-                  $this->metadata->indexes->{$idxvariant}->Abbreviations = json_encode($idxvalue["abbreviations"]);
-                  $this->metadata->indexes->{$idxvariant}->BibleBooks = json_encode($idxvalue["biblebooks"]);
-                  $this->metadata->indexes->{$idxvariant}->ChapterLimit = json_encode($idxvalue["chapter_limit"]);
-                  $this->metadata->indexes->{$idxvariant}->VerseLimit = json_encode($idxvalue["verse_limit"]);
-                  $this->metadata->indexes->{$idxvariant}->BookNum = json_encode($idxvalue["book_num"]);
+              $this->metadata->addChild("Indexes");
+              foreach( $indexes as $idxvariant => $idxvalue ) {
+                  $xmlIndexEl = $this->metadata->Indexes->addChild( $idxvariant );
+
+                  $abbrsEl = $xmlIndexEl->addChild( "Abbreviations" );
+                  $c = 0;
+                  foreach( $idxvalue["abbreviations"] as $abbr ) {
+                    $abbrEl = $abbrsEl->addChild( "Abbreviation", $abbr );
+                    $abbrEl["idx"] = $c++;
+                  }
+
+                  $bibleBooksEl = $xmlIndexEl->addChild( "BibleBooks" );
+                  $c = 0;
+                  foreach( $idxvalue["biblebooks"] as $bookName ) {
+                    $bibleBookEl = $bibleBooksEl->addChild( "BibleBook", $bookName );
+                    $bibleBookEl["idx"] = $c++;
+                  }
+
+                  $chapterLimsEl = $xmlIndexEl->addChild( "ChapterLimits" );
+                  $c = 0;
+                  foreach( $idxvalue["chapter_limit"] as $chapterLimit ) {
+                    $chapterLimEl = $chapterLimsEl->addChild( "ChapterLimit", $chapterLimit );
+                    $chapterLimEl["book"] = $idxvalue["biblebooks"][$c];
+                    $chapterLimEl["idx"] = $c++;
+                  }
+
+                  $verseLimitsEl = $xmlIndexEl->addChild( "VerseLimits" );
+                  $c = 0;
+                  foreach( $idxvalue["verse_limit"] as $verseLimit ) {
+                    $verseLimEl = $verseLimitsEl->addChild( "VerseLimit" );
+                    $verseLimEl["book"] = $idxvalue["biblebooks"][$c];
+                    $verseLimEl["idx"] = $c++;
+                    $x = 0;
+                    foreach( $verseLimit as $perChapterVerseLimit ) {
+                      $chapterEl = $verseLimEl->addChild( "VerseLimitForChapter", $perChapterVerseLimit );
+                      $chapterEl["chapter"] = ++$x;
+                    }
+                  }
+                  $c = 0;
+                  $bookNumsEl = $xmlIndexEl->addChild( "BookNums" );
+                  foreach( $idxvalue["book_num"] as $bookNum ) {
+                    $bookNumEl = $bookNumsEl->addChild( "BookNum", $bookNum );
+                    $bookNumEl["book"] = $idxvalue["biblebooks"][$c++];
+                  }
               }
             break;
             case "html":
