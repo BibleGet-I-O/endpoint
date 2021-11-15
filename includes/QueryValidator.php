@@ -1,12 +1,13 @@
 <?php
 /**
- * BibleGet I/O Project Service Endpoint
- * listens on both GET requests and POST requests
- * whether ajax or not
- * accepts all cross-domain requests
- * is CORS enabled ( as far as I understand it )
+ * QUERY_VALIDATOR class
  * 
- * ENDPOINT URL:    https://query.bibleget.io/
+ * Performs a series of validation checks to make sure the query in the request is a valid Bible quote
+ * Will set the BIBLEGET_QUOTE instance's public variables $validatedQueries and $validatedVariants
+ * 
+ * Blessed Carlo Acutis, pray for us
+ * 
+ * MINIMUM PHP REQUIREMENT: PHP 8.1 (allow for type declarations and mixed function return types)
  * 
  * AUTHOR:          John Romano D'Orazio
  * AUTHOR EMAIL:    priest@johnromanodorazio.com
@@ -16,57 +17,9 @@
  * 
  * Copyright John Romano D'Orazio 2014-2021
  * Licensed under Apache License 2.0
- * 
- * This project is meant to contribute to the human community,
- * the community of mankind itself. 
- * Considering the Bible is among the oldest writings in the world,
- * and is the most read book of all human history
- * containing the wisdom of humanity from the most ancient times
- * and, for those who have faith, is the inspired Word of God himself
- * I deemed it necessary and useful to create a project
- * that would facilitate the usage of the Biblical texts
- * in the modern digital era.
- * 
- * My hope and desire is to be able to add 
- * as many different versions of the Bible in different languages
- * as possible, so that all men may have facilitated access to these texts
- * This project will always only utilize original source texts,
- * untouched by any third parties, so as to guarantee the authenticity of said texts.
- *    Deuteronomy 4:2
- *    "You shall not add to the word which I am commanding you, 
- *    nor take away from it, that you may keep the commandments 
- *    of the Lord your God which I command you."
- * 
- * I have no desire for any kind of economical advantage
- * over this project, nobody should speculate eonomically
- * over the wisdom of humanity or over the Word of God.
- * May it be of service to mankind. 
- * While I wish this endpoint engine to be open source,
- * available to men of good will who might desire to continue this project,
- * especially Biblical societies around the world,
- * and I hope the Pontifical Biblical Commission,
- * I cannot however offer the source texts and the databases they are held in
- * for public access, they are not all open source, 
- * they are often covered by copyright by Episcopal Conferences or by Biblical societies.
- * 
- * I wish for the code of this engine to be open source,
- * so that men of good will might contribute to making it better,
- * more secure, more reliable, to be of better service to mankind.
- * 
- * Blessed Carlo Acutis, pray for us
- * 
- * MINIMUM PHP REQUIREMENT: PHP 8.1 (allow for type declarations and mixed function return types)
  */
 
 class QUERY_VALIDATOR {
-
-    private BIBLEGET_QUOTE $BBQUOTE;
-    private string $currentVariant      = "";
-    private string $currentBook         = "";
-    private int $bookIdxBase            = -1;
-    private int $nonZeroBookIdx         = -1;
-    private string $currentQuery        = "";
-    private string $currentFullQuery    = "";
 
     const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                            = 0;
     const VALID_CHAPTER_MUST_FOLLOW_BOOK                                        = 1;
@@ -77,6 +30,14 @@ class QUERY_VALIDATOR {
     const VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS                          = 6;
     const CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS   = 7;
     const CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES              = 8;
+
+    private BIBLEGET_QUOTE $BBQUOTE;
+    private int $bookIdxBase            = -1;
+    private int $nonZeroBookIdx         = -1;
+    private string $currentVariant      = "";
+    private string $currentBook         = "";
+    private string $currentQuery        = "";
+    private string $currentFullQuery    = "";
 
     function __construct( BIBLEGET_QUOTE $BBQUOTE ) {
         $this->BBQUOTE = $BBQUOTE;

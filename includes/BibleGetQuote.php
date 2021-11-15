@@ -1,12 +1,25 @@
 <?php
 /**
- * BibleGet I/O Project Service Endpoint
- * listens on both GET requests and POST requests
- * whether ajax or not
- * accepts all cross-domain requests
- * is CORS enabled ( as far as I understand it )
+ * BIBLEGET_QUOTE class
  * 
- * ENDPOINT URL:    https://query.bibleget.io/
+ * Orchestrates the whole request and response scenario for the Main BibleGet endpoint.
+ * 
+ * 1) It defines the default parameters, 
+ *    and is instantiated with the parameters contained in the REQUEST.
+ * 2) It enforces validation of the Content Type and the Method of the REQUEST
+ * 3) It defines the main error messages that can be returned
+ * 4) It instantiates the connection to the database
+ * 5) It prepares any metadata from the database that will be useful for validations of the query
+ * 6) It instantiates the object which will collect the data to be returned in the response
+ * 7) It defines some base methods which will be used by any or all of the helper classes
+ * 8) It performs an initial normalization of the query
+ * 
+ * All of the properties of this class are public,
+ * because all of the helper classes need to read and / or write to them.
+ * 
+ * Blessed Carlo Acutis, pray for us
+ * 
+ * MINIMUM PHP REQUIREMENT: PHP 8.1 (allow for type declarations and mixed function return types)
  * 
  * AUTHOR:          John Romano D'Orazio
  * AUTHOR EMAIL:    priest@johnromanodorazio.com
@@ -16,56 +29,17 @@
  * 
  * Copyright John Romano D'Orazio 2014-2021
  * Licensed under Apache License 2.0
- * 
- * This project is meant to contribute to the human community,
- * the community of mankind itself. 
- * Considering the Bible is among the oldest writings in the world,
- * and is the most read book of all human history
- * containing the wisdom of humanity from the most ancient times
- * and, for those who have faith, is the inspired Word of God himself
- * I deemed it necessary and useful to create a project
- * that would facilitate the usage of the Biblical texts
- * in the modern digital era.
- * 
- * My hope and desire is to be able to add 
- * as many different versions of the Bible in different languages
- * as possible, so that all men may have facilitated access to these texts
- * This project will always only utilize original source texts,
- * untouched by any third parties, so as to guarantee the authenticity of said texts.
- *    Deuteronomy 4:2
- *    "You shall not add to the word which I am commanding you, 
- *    nor take away from it, that you may keep the commandments 
- *    of the Lord your God which I command you."
- * 
- * I have no desire for any kind of economical advantage
- * over this project, nobody should speculate eonomically
- * over the wisdom of humanity or over the Word of God.
- * May it be of service to mankind. 
- * While I wish this endpoint engine to be open source,
- * available to men of good will who might desire to continue this project,
- * especially Biblical societies around the world,
- * and I hope the Pontifical Biblical Commission,
- * I cannot however offer the source texts and the databases they are held in
- * for public access, they are not all open source, 
- * they are often covered by copyright by Episcopal Conferences or by Biblical societies.
- * 
- * I wish for the code of this engine to be open source,
- * so that men of good will might contribute to making it better,
- * more secure, more reliable, to be of better service to mankind.
- * 
- * Blessed Carlo Acutis, pray for us
- * 
- * MINIMUM PHP REQUIREMENT: PHP 8.1 (allow for type declarations and mixed function return types)
  */
 
 class BIBLEGET_QUOTE {
 
-    static public array $returnTypes                = [ "json", "xml", "html" ];
-    static public array $allowedAcceptHeaders       = [ "application/json", "application/xml", "text/html" ];
-    static public array $allowedContentTypes        = [ "application/json", "application/x-www-form-urlencoded" ];
-    static public array $allowedRequestMethods      = [ "GET", "POST" ];
-    static public array $allowedPreferredOrigins    = [ "GREEK", "HEBREW" ];
-    static public array $requestParameters          = [
+    const ALLOWED_RETURN_TYPES               = [ "json", "xml", "html" ];
+    const ALLOWED_ACCEPT_HEADERS             = [ "application/json", "application/xml", "text/html" ];
+    const ALLOWED_CONTENT_TYPES              = [ "application/json", "application/x-www-form-urlencoded" ];
+    const ALLOWED_REQUEST_METHODS            = [ "GET", "POST" ];
+    const ALLOWED_PREFER_ORIGINS             = [ "GREEK", "HEBREW" ];
+
+    static public array $defaultParameters   = [
       "query"         => "",
       "return"        => "",
       "version"       => "",
@@ -93,17 +67,16 @@ class BIBLEGET_QUOTE {
         12 => "You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management."
     ];
 
-
     public string $jsonEncodedRequestHeaders   = "";
     public string $originHeader                = "";
     public string $requestMethod               = "";
     public string $responseContentType         = "json";     //response Content-type ( json, xml or html )
-    public array $WhitelistedDomainsIPs        = [];
-    public array $requestHeaders               = [];
     public string $acceptHeader                = "";
     public string $requestContentType          = "";
     //public bool $isAjax                        = false;
     public string $detectedNotation            = "ENGLISH"; //can be "ENGLISH" or "EUROPEAN" or "MIXED" (first two are valid, last value is invalid)
+    public array $WhitelistedDomainsIPs        = [];
+    public array $requestHeaders               = [];
 
     public mysqli $mysqli;                     //instance of database
     public stdClass|SimpleXMLElement|DOMDocument $bibleQuote; //object with json, xml or html data to return
@@ -136,14 +109,14 @@ class BIBLEGET_QUOTE {
         $this->requestHeaders = getallheaders();
         $this->jsonEncodedRequestHeaders = json_encode( $this->requestHeaders );
         $this->originHeader = key_exists( "ORIGIN", $this->requestHeaders ) ? $this->requestHeaders["ORIGIN"] : "";
-        $this->requestContentType = isset( $_SERVER['CONTENT_TYPE'] ) && in_array( $_SERVER['CONTENT_TYPE'], self::$allowedContentTypes ) ? $_SERVER['CONTENT_TYPE'] : "";
-        $this->acceptHeader = isset( $this->requestHeaders["Accept"] ) && in_array( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders ) ? ( string ) $this->requestHeaders["Accept"] : "";
+        $this->requestContentType = isset( $_SERVER['CONTENT_TYPE'] ) && in_array( $_SERVER['CONTENT_TYPE'], self::ALLOWED_CONTENT_TYPES ) ? $_SERVER['CONTENT_TYPE'] : "";
+        $this->acceptHeader = isset( $this->requestHeaders["Accept"] ) && in_array( $this->requestHeaders["Accept"], self::ALLOWED_ACCEPT_HEADERS ) ? ( string ) $this->requestHeaders["Accept"] : "";
         $this->requestMethod = isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : $_SERVER["REQUEST_METHOD"];
-        $this->responseContentType = ( isset( $DATA["return"] ) && in_array( strtolower( $DATA["return"] ),self::$returnTypes ) ) ? strtolower( $DATA["return"] ) : ( $this->acceptHeader !== "" ? ( string ) self::$returnTypes[array_search( $this->requestHeaders["Accept"], self::$allowedAcceptHeaders )] : ( string ) self::$returnTypes[0] );
+        $this->responseContentType = ( isset( $DATA["return"] ) && in_array( strtolower( $DATA["return"] ),self::ALLOWED_RETURN_TYPES ) ) ? strtolower( $DATA["return"] ) : ( $this->acceptHeader !== "" ? ( string ) self::ALLOWED_RETURN_TYPES[array_search( $this->requestHeaders["Accept"], self::ALLOWED_ACCEPT_HEADERS )] : ( string ) self::ALLOWED_RETURN_TYPES[0] );
         //$this->isAjax = ( isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest' );
         //let's ensure that we have at least default values for parameters
-        $this->DATA = array_merge( self::$requestParameters, $DATA );
-        $this->DATA["preferorigin"] = in_array( $this->DATA["preferorigin"], self::$allowedPreferredOrigins ) ? $this->DATA["preferorigin"] : "";
+        $this->DATA = array_merge( self::$defaultParameters, $DATA );
+        $this->DATA["preferorigin"] = in_array( $this->DATA["preferorigin"], self::ALLOWED_PREFER_ORIGINS ) ? $this->DATA["preferorigin"] : "";
     }
 
 
@@ -313,7 +286,7 @@ class BIBLEGET_QUOTE {
         }
     }
 
-    private function outputResult() {
+    public function outputResult() {
 
         switch( $this->responseContentType ) {
             case "json":

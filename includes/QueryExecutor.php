@@ -1,12 +1,11 @@
 <?php
 /**
- * BibleGet I/O Project Service Endpoint
- * listens on both GET requests and POST requests
- * whether ajax or not
- * accepts all cross-domain requests
- * is CORS enabled ( as far as I understand it )
+ * QUERY_EXECUTOR class
  * 
- * ENDPOINT URL:    https://query.bibleget.io/
+ * Performs the SQL queries against the database,
+ *   and stores the results in the $bibleQuote object instantiated in the BIBLEGET_QUOTE instance
+ * 
+ * MINIMUM PHP REQUIREMENT: PHP 8.1 (allow for type declarations and mixed function return types)
  * 
  * AUTHOR:          John Romano D'Orazio
  * AUTHOR EMAIL:    priest@johnromanodorazio.com
@@ -16,55 +15,12 @@
  * 
  * Copyright John Romano D'Orazio 2014-2021
  * Licensed under Apache License 2.0
- * 
- * This project is meant to contribute to the human community,
- * the community of mankind itself. 
- * Considering the Bible is among the oldest writings in the world,
- * and is the most read book of all human history
- * containing the wisdom of humanity from the most ancient times
- * and, for those who have faith, is the inspired Word of God himself
- * I deemed it necessary and useful to create a project
- * that would facilitate the usage of the Biblical texts
- * in the modern digital era.
- * 
- * My hope and desire is to be able to add 
- * as many different versions of the Bible in different languages
- * as possible, so that all men may have facilitated access to these texts
- * This project will always only utilize original source texts,
- * untouched by any third parties, so as to guarantee the authenticity of said texts.
- *    Deuteronomy 4:2
- *    "You shall not add to the word which I am commanding you, 
- *    nor take away from it, that you may keep the commandments 
- *    of the Lord your God which I command you."
- * 
- * I have no desire for any kind of economical advantage
- * over this project, nobody should speculate eonomically
- * over the wisdom of humanity or over the Word of God.
- * May it be of service to mankind. 
- * While I wish this endpoint engine to be open source,
- * available to men of good will who might desire to continue this project,
- * especially Biblical societies around the world,
- * and I hope the Pontifical Biblical Commission,
- * I cannot however offer the source texts and the databases they are held in
- * for public access, they are not all open source, 
- * they are often covered by copyright by Episcopal Conferences or by Biblical societies.
- * 
- * I wish for the code of this engine to be open source,
- * so that men of good will might contribute to making it better,
- * more secure, more reliable, to be of better service to mankind.
- * 
- * Blessed Carlo Acutis, pray for us
- * 
- * MINIMUM PHP REQUIREMENT: PHP 8.1 (allow for type declarations and mixed function return types)
  */
 
 class QUERY_EXECUTOR {
 
     private BIBLEGET_QUOTE $BBQUOTE;
-    private array $sqlqueries       = [];
-    private array $queriesversions  = [];
-    private array $currentRow       = [];
-    private array $currentResponse  = [];
+    private int $i                  = 0;
     private string $appid           = "";
     private string $domain          = "";
     private string $pluginversion   = "";
@@ -76,20 +32,23 @@ class QUERY_EXECUTOR {
     private string $xquery          = "";
     private string $curYEAR         = "";
     private string $geoip_json      = "";
-    private int $i                  = 0;
     private bool $haveIPAddressOnRecord = false;
+    private array $sqlqueries       = [];
+    private array $queriesversions  = [];
+    private array $currentRow       = [];
+    private array $currentResponse  = [];
     private mysqli_result $currentExecutionResult;
     private DOMElement $versesParagraph;
 
     // First we initialize some variables and flags with default values
-    private string $version         = "";
-    private string $book            = "";
     private int $chapter            = 0;
+    private string $book            = "";
     private string $verse           = "";
-    private bool $newversion        = false;
-    private bool $newbook           = false;
+    private string $version         = "";
     private bool $newchapter        = false;
+    private bool $newbook           = false;
     private bool $newverse          = false;
+    private bool $newversion        = false;
 
     function __construct( BIBLEGET_QUOTE $BBQUOTE ) {
         $this->BBQUOTE              = $BBQUOTE;
