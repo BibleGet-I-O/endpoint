@@ -96,9 +96,9 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) ) {
         header( "Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}" );
 }
 
-if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BIBLEGET_QUOTE::$allowedContentTypes ) ){
+if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BIBLEGET_QUOTE::ALLOWED_CONTENT_TYPES ) ){
     header( $_SERVER["SERVER_PROTOCOL"]." 415 Unsupported Media Type", true, 415 );
-    die( '{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode( ' and ',BIBLEGET_QUOTE::$allowedContentTypes ).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}' );
+    die( '{"error":"You seem to be forming a strange kind of request? Allowed Content Types are '.implode( ' and ',BIBLEGET_QUOTE::ALLOWED_CONTENT_TYPES ).', but your Content Type was '.$_SERVER['CONTENT_TYPE'].'"}' );
 } else if ( isset( $_SERVER['CONTENT_TYPE'] ) && $_SERVER['CONTENT_TYPE'] === 'application/json' ) {
     $json = file_get_contents( 'php://input' );
     $data = json_decode( $json,true );
@@ -127,6 +127,6 @@ if( isset( $_SERVER['CONTENT_TYPE'] ) && !in_array( $_SERVER['CONTENT_TYPE'], BI
           break;
       default:
           header( $_SERVER["SERVER_PROTOCOL"]." 405 Method Not Allowed", true, 405 );
-          die( '{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode( ' and ',BIBLEGET_QUOTE::$allowedRequestMethods ).', but your Request Method was '.strtoupper( $_SERVER['REQUEST_METHOD'] ).'"}' );
+          die( '{"error":"You seem to be forming a strange kind of request? Allowed Request Methods are '.implode( ' and ',BIBLEGET_QUOTE::ALLOWED_REQUEST_METHODS ).', but your Request Method was '.strtoupper( $_SERVER['REQUEST_METHOD'] ).'"}' );
   }
 }

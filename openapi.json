@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-      "version": '3.0',
+      "version": "3.0",
       "title": "BibleGet",
       "description": "Get Bible quotes from different Bible versions either requesting by reference (book - chapter - verse) or searching by keyword",
       "license": {
