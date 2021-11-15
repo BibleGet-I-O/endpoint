@@ -6,7 +6,7 @@
  * accepts all cross-domain requests
  * is CORS enabled (as far as I understand it)
  * 
- * ENDPOINT URL:    https://query.bibleget.io/search.php
+ * ENDPOINT URL:    https://query.bibleget.io/v3/search.php
  * 
  * AUTHOR:          John Romano D'Orazio
  * AUTHOR EMAIL:    priest@johnromanodorazio.com
@@ -98,13 +98,16 @@ class BIBLEGET_SEARCH {
     private $returntype;     //which type of data to return (json, xml or html)
     private $requestHeaders;
     private $acceptHeader;
-    private $search;         //object with json, xml or html data to return
-    private $mysqli;         //instance of database
+    private mysqli $mysqli;         //instance of database
     private $validversions;  //array of Bible versions supported by the BibleGet project, to check against
     private $indexes;
     private $dontSearch;
     private $is_ajax;
-    
+    private stdClass|simpleXMLElement|DOMDocument $search;         //object with json, xml or html data to return
+    private DOMElement $div;
+    private DOMElement $err;
+    private DOMElement $inf;
+
     function __construct($DATA){
         $this->DATA = $DATA;
         $this->requestHeaders = getallheaders();
@@ -180,10 +183,7 @@ class BIBLEGET_SEARCH {
             header('Content-Type: application/json; charset=utf-8');
         }
         
-        $temp = $this->SearchInit();
-        $this->search   = $temp[0];
-        $this->div      = $temp[1];
-        $this->err      = $temp[2];
+        $this->SearchInit();
         
         $this->mysqli        = $this->dbConnect();
         $this->validversions = $this->getValidVersions();
@@ -194,12 +194,12 @@ class BIBLEGET_SEARCH {
           }
           else{
             $this->addErrorMessage("The Bible version requested is not a valid Bible version");
-            $this->outputResult();          
-          }      
+            $this->outputResult();
+          }
         }
         else{
           $this->addErrorMessage("No Bible version to search from has been requested");
-          $this->outputResult();          
+          $this->outputResult();
         }
 
         if(isset($this->DATA["query"]) && $this->DATA["query"] != ""){
@@ -210,7 +210,7 @@ class BIBLEGET_SEARCH {
               }
               else{
                 $this->addErrorMessage("No keyword to search for has been requested. Please indicate a keyword using the 'keyword' parameter.");
-                $this->outputResult();          
+                $this->outputResult();
               }
               break;
             default:
@@ -219,7 +219,7 @@ class BIBLEGET_SEARCH {
         }
         else{
           $this->addErrorMessage("No action has been requested. Please indicate an action using the 'query' parameter.");
-          $this->outputResult();          
+          $this->outputResult();
         }
         
     }
@@ -258,38 +258,37 @@ class BIBLEGET_SEARCH {
 
     private function SearchInit(){
 
-      $err = NULL;
-      $div = NULL;
-
       switch($this->returntype){
         case "json":
           $search = new stdClass();
           $search->results = array();
           $search->errors = array();
-          $search->info = array("ENDPOINT_VERSION" => ENDPOINT_VERSION);
+          $search->info = array();
         break;
         case "xml":
           $root = "<?xml version=\"1.0\" encoding=\"UTF-8\"?"."><BibleQuote/>";
           $search = new simpleXMLElement($root);
-          $errors = $search->addChild("errors");
-          $info = $search->addChild("info");
-          $results = $search->addChild("results");
-          $info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
+          $search->addChild("errors");
+          $search->addChild("info");
+          $search->addChild("results");
         break;
         case "html":
           $search = new DOMDocument();
           $html = "<!DOCTYPE HTML><head><title>BibleGet Query Result</title></head><body></body>"; //we won't actually output this, but it is needed to create our DomDocument object
           $search->loadHTML($html);
           $div = $search->createElement("div");
-          $div->setAttribute("class","results");
-          $div->setAttribute("id","results");
+          $div->setAttribute("class","results bibleSearch");
           $err = $search->createElement("div");
-          $err->setAttribute("class","errors");
-          $err->setAttribute("id","errors");
+          $err->setAttribute("class","errors bibleSearch");
+          $inf = $search->createElement("div");
+          $inf->setAttribute("class","info bibleSearch");
+          $this->div        = $div;
+          $this->err        = $err;
+          $this->inf        = $inf;
         break;
       }
       
-      return array($search,$div,$err);
+      $this->search = $search;
 
     }
     
@@ -299,16 +298,15 @@ class BIBLEGET_SEARCH {
       switch($this->returntype){
         case "json":
           $error = array();
-          $error["errMessage"] = $str;    
+          $error["errMessage"] = $str;
           $this->search->errors[] = $error;
         break;
         case "xml":
-          $err_row = $this->search->Errors->addChild("error",$str);
+          $err_row = $this->search->errors->addChild( "error", $str );
         break;
-        case "html":    
+        case "html":
           $elements = array();
-          $attributes = array();
-      
+
           $elements[0] = $this->search->createElement("table");
           $elements[0]->setAttribute("id","errorsTbl");
           $elements[0]->setAttribute("class","errorsTbl");
@@ -328,16 +326,17 @@ class BIBLEGET_SEARCH {
           $elements[3]->setAttribute("class","errMessageVal");
           $elements[3]->setAttribute("id","errMessageVal");
           $elements[1]->appendChild($elements[3]);
+        break;
       }
     }
-    
-    
+
+
     private function searchByKeyword($keyword,$version){
-      
+
       //we have already ensured that $version is a valid version, so let's get right to business
       // PREPARE ARRAY OF SEARCH RESULTS
-      
-      //TODO: we should be able to gather the list of latin versions available automatically+
+
+      //TODO: we should be able to gather the list of latin versions available automatically
       // however is it worth the trouble of doing a query against the metadata endpoint?
       // how many latin versions are we going to be adding? perhaps just easier to leave it hardcoded here...
       if(($version == 'NVBSE' || $version == 'VGCL') && (strpos($keyword,'ae') || strpos($keyword,'oe')) ){
@@ -475,24 +474,40 @@ class BIBLEGET_SEARCH {
         switch($this->returntype){
             case "json":
               //print_r($metadata->results[52]);
+              $this->search->info["ENDPOINT_VERSION"] = ENDPOINT_VERSION;
               $this->search->info["keyword"] = $this->DATA["keyword"];
               $this->search->info["version"] = $this->DATA["version"];
               echo json_encode($this->search, JSON_UNESCAPED_UNICODE);
               break;
             case "xml":
+              $this->search->info->addAttribute("ENDPOINT_VERSION", ENDPOINT_VERSION);
+              $this->search->info->addAttribute("keyword", $this->DATA["keyword"]);
+              $this->search->info->addAttribute("version", $this->DATA["version"]);
               echo $this->search->asXML();
               break;
             case "html":
-              $this->search->appendChild($this->err); 
-              $this->search->appendChild($this->div);
+              $this->search->appendChild( $this->err );
+              $this->search->appendChild( $this->div );
               $info = $this->search->createElement("input");
               $info->setAttribute("type", "hidden");
               $info->setAttribute("name", "ENDPOINT_VERSION");
               $info->setAttribute("value", ENDPOINT_VERSION);
-              $this->search->appendChild($info);
-              echo $this->search->saveHTML($this->div); 
-              echo $this->search->saveHTML($this->err);   
-              echo $this->search->saveHTML($info);   
+              $this->inf->appendChild($info);
+              $info1 = $this->search->createElement("input");
+              $info1->setAttribute("type", "hidden");
+              $info1->setAttribute("name", "keyword");
+              $info1->setAttribute("value", $this->DATA["keyword"]);
+              $this->inf->appendChild($info1);
+              $info2 = $this->search->createElement("input");
+              $info2->setAttribute("type", "hidden");
+              $info2->setAttribute("name", "version");
+              $info2->setAttribute("value", $this->DATA["version"]);
+              $this->inf->appendChild($info2);
+              $this->search->appendChild( $this->inf );
+              echo $this->search->saveHTML($this->div);
+              echo $this->search->saveHTML($this->err);
+              echo $this->search->saveHTML($this->inf);
+              break;
         }
 
         $this->mysqli->close();
