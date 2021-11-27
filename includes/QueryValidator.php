@@ -149,6 +149,7 @@ class QUERY_VALIDATOR {
                 return true;
             }
         } else {
+            $this->validateBibleBook();
             return true;
         }
     }
