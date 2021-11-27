@@ -19,6 +19,7 @@
  * Licensed under Apache License 2.0
  */
 
+
 class QUERY_VALIDATOR {
 
     const QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR                            = 0;
@@ -34,10 +35,10 @@ class QUERY_VALIDATOR {
     private BIBLEGET_QUOTE $BBQUOTE;
     private int $bookIdxBase            = -1;
     private int $nonZeroBookIdx         = -1;
-    private string $currentVariant      = "";
     private string $currentBook         = "";
     private string $currentQuery        = "";
     private string $currentFullQuery    = "";
+    private array $validatedVariants    = [];
 
     function __construct( BIBLEGET_QUOTE $BBQUOTE ) {
         $this->BBQUOTE = $BBQUOTE;
@@ -189,30 +190,23 @@ class QUERY_VALIDATOR {
     }
 
     private function isValidBookForVariant( string $variant ) : bool {
-        return ( in_array( $this->currentBook, $this->BBQUOTE->INDEXES[$variant]["biblebooks"] ) || in_array( $this->currentBook, $this->BBQUOTE->INDEXES[$variant]["abbreviations"] ) );
+        return in_array( $this->nonZeroBookIdx, $this->BBQUOTE->INDEXES[$variant]["book_num"] );
     }
 
     private function validateBibleBook() : bool {
-        $bookIsValid = false;
-        foreach ( $this->BBQUOTE->REQUESTED_VERSIONS as $variant ) {
-            if ( $this->isValidBookForVariant( $variant ) ) {
-                $bookIsValid = true;
-                $this->currentVariant = $variant;
-                $this->bookIdxBase = $this->BBQUOTE::idxOf( $this->currentBook, $this->BBQUOTE->BIBLEBOOKS );
-                break;
+        $this->bookIdxBase = $this->BBQUOTE::idxOf( $this->currentBook, $this->BBQUOTE->BIBLEBOOKS );
+        if( $this->bookIdxBase === false ){
+            $this->BBQUOTE->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $this->currentBook ) );
+            $this->BBQUOTE->incrementBadQueryCount();
+        } else {
+            $this->nonZeroBookIdx = $this->bookIdxBase + 1;
+            foreach ( $this->BBQUOTE->REQUESTED_VERSIONS as $variant ) {
+                if ( $this->isValidBookForVariant( $variant ) ) {
+                    $this->validatedVariants[] = $variant;
+                }
             }
         }
-        if( !$bookIsValid ) {
-            $this->bookIdxBase = $this->BBQUOTE::idxOf( $this->currentBook, $this->BBQUOTE->BIBLEBOOKS );
-            if( $this->bookIdxBase !== false){
-                $bookIsValid = true;
-            } else {
-                $this->BBQUOTE->addErrorMessage( sprintf( 'The book %s is not a valid Bible book. Please check the documentation for a list of correct Bible book names, whether full or abbreviated.', $this->currentBook ) );
-                $this->BBQUOTE->incrementBadQueryCount();
-            }
-        }
-        $this->nonZeroBookIdx = $this->bookIdxBase + 1;
-        return $bookIsValid;
+        return $this->bookIdxBase !== false;
     }
 
     private function validateChapterIndicators( array $chapterIndicators ) : bool {
@@ -349,6 +343,7 @@ class QUERY_VALIDATOR {
         foreach ( $this->BBQUOTE->queries as $query ) {
             $this->currentFullQuery = $query;
             $this->currentQuery = $query;
+            $this->validatedVariants = [];
 
             if( $this->queryViolatesAnyRuleOf( $this->currentQuery, [ self::VALID_CHAPTER_MUST_FOLLOW_BOOK ] ) ){
                 return false;
@@ -400,8 +395,9 @@ class QUERY_VALIDATOR {
                     continue;
                 }
             }
-            $this->BBQUOTE->validatedVariants[] = $this->currentVariant;
+
             $this->BBQUOTE->validatedQueries[]  = $this->currentFullQuery;
+            $this->BBQUOTE->validatedVariants[] = $this->validatedVariants;
 
         } //END FOREACH
         return true;
