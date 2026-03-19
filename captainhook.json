@@ -1,0 +1,53 @@
+{
+    "commit-msg": {
+        "enabled": false,
+        "actions": []
+    },
+    "pre-push": {
+        "enabled": true,
+        "actions": [
+            {
+                "action": "composer analyse",
+                "conditions": [
+                    {
+                        "exec": "\\CaptainHook\\App\\Hook\\Condition\\FileStaged\\OfType",
+                        "args": [
+                            "php"
+                        ]
+                    }
+                ],
+                "config": {
+                    "allow-failure": false
+                }
+            }
+        ]
+    },
+    "pre-commit": {
+        "enabled": false,
+        "actions": []
+    },
+    "prepare-commit-msg": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-commit": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-merge": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-checkout": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-rewrite": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-change": {
+        "enabled": false,
+        "actions": []
+    }
+}
