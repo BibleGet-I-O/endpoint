@@ -1,0 +1,332 @@
+<?php
+
+namespace BibleGet\Api\Handlers;
+
+use BibleGet\Api\Http\Enum\AcceptHeader;
+use BibleGet\Api\Http\Enum\RequestMethod;
+use BibleGet\Api\Http\Enum\RequestContentType;
+use BibleGet\Api\Http\Enum\StatusCode;
+use BibleGet\Api\Http\Exception\MethodNotAllowedException;
+use BibleGet\Api\Http\Exception\NotAcceptableException;
+use BibleGet\Api\Http\Exception\UnsupportedMediaTypeException;
+use BibleGet\Api\Http\Exception\BadRequestException;
+use BibleGet\Api\Http\Exception\ValidationException;
+use Nyholm\Psr7\Response;
+use Nyholm\Psr7\Stream;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+
+abstract class AbstractHandler implements RequestHandlerInterface
+{
+    /** @var RequestMethod[] */
+    protected array $allowedRequestMethods;
+
+    /** @var AcceptHeader[] */
+    protected array $allowedAcceptHeaders;
+
+    /** @var RequestContentType[] */
+    protected array $allowedRequestContentTypes;
+
+    /** @var string[] */
+    protected array $requestPathParams;
+
+    abstract public function handle(ServerRequestInterface $request): ResponseInterface;
+
+    /**
+     * @param string[] $requestPathParams
+     */
+    public function __construct(array $requestPathParams = [])
+    {
+        $this->requestPathParams          = $requestPathParams;
+        $this->allowedAcceptHeaders       = AcceptHeader::cases();
+        $this->allowedRequestMethods      = [RequestMethod::GET, RequestMethod::POST, RequestMethod::OPTIONS];
+        $this->allowedRequestContentTypes = RequestContentType::cases();
+    }
+
+    /**
+     * @param RequestMethod[] $requestMethods
+     */
+    public function setAllowedRequestMethods(array $requestMethods): static
+    {
+        $this->allowedRequestMethods = $requestMethods;
+        return $this;
+    }
+
+    /**
+     * @param AcceptHeader[] $acceptHeaders
+     */
+    public function setAllowedAcceptHeaders(array $acceptHeaders): static
+    {
+        $this->allowedAcceptHeaders = $acceptHeaders;
+        return $this;
+    }
+
+    /**
+     * @param RequestContentType[] $requestContentTypes
+     */
+    public function setAllowedRequestContentTypes(array $requestContentTypes): static
+    {
+        $this->allowedRequestContentTypes = $requestContentTypes;
+        return $this;
+    }
+
+    /**
+     * Set CORS Access-Control-Allow-Origin header on the response.
+     */
+    protected function setAccessControlAllowOriginHeader(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $origin = $request->getHeaderLine('Origin');
+
+        if ($origin !== '') {
+            return $response
+                ->withHeader('Access-Control-Allow-Origin', $origin)
+                ->withHeader('Access-Control-Allow-Credentials', 'true');
+        }
+
+        return $response->withHeader('Access-Control-Allow-Origin', '*');
+    }
+
+    /**
+     * Handle CORS preflight OPTIONS requests.
+     */
+    protected function handlePreflightRequest(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $isCorsRequest = (
+            $request->getMethod() === 'OPTIONS'
+            && $request->getHeaderLine('Origin') !== ''
+            && $request->getHeaderLine('Access-Control-Request-Method') !== ''
+        );
+
+        $response = $response->withStatus(StatusCode::OK->value, StatusCode::OK->reason());
+
+        if ($isCorsRequest) {
+            $response = $response->withStatus(StatusCode::NO_CONTENT->value, StatusCode::NO_CONTENT->reason());
+            $response = $this->setAccessControlAllowOriginHeader($request, $response);
+
+            if ($response->getHeaderLine('Access-Control-Allow-Origin') !== '*') {
+                $response = $response->withAddedHeader('Vary', 'Origin');
+            }
+
+            $response = $response
+                ->withAddedHeader('Vary', 'Access-Control-Request-Method')
+                ->withAddedHeader('Vary', 'Access-Control-Request-Headers');
+
+            $methodHeader = $request->getHeaderLine('Access-Control-Request-Method');
+            if ($methodHeader !== '') {
+                $response = $response->withHeader(
+                    'Access-Control-Allow-Methods',
+                    implode(',', array_column($this->allowedRequestMethods, 'value'))
+                );
+            }
+
+            $headersHeader = $request->getHeaderLine('Access-Control-Request-Headers');
+            if ($headersHeader !== '') {
+                $allowed   = ['Accept', 'Accept-Language', 'Content-Type'];
+                $requested = array_values(array_filter(array_map('trim', explode(',', $headersHeader))));
+                $canonicalByLc = array_combine(array_map('strtolower', $allowed), $allowed);
+                $approved = [];
+                foreach ($requested as $header) {
+                    $lc = strtolower($header);
+                    if (isset($canonicalByLc[$lc])) {
+                        $approved[$canonicalByLc[$lc]] = true;
+                    }
+                }
+                if ($approved !== []) {
+                    $response = $response->withHeader('Access-Control-Allow-Headers', implode(',', array_keys($approved)));
+                }
+            }
+
+            $response = $response->withHeader('Access-Control-Max-Age', '86400');
+        } else {
+            $response = $response->withHeader(
+                'Allow',
+                implode(',', array_column($this->allowedRequestMethods, 'value'))
+            );
+        }
+
+        return $response;
+    }
+
+    /**
+     * @throws MethodNotAllowedException
+     */
+    protected function validateRequestMethod(ServerRequestInterface $request): void
+    {
+        if (!in_array($request->getMethod(), array_column($this->allowedRequestMethods, 'value'))) {
+            throw new MethodNotAllowedException();
+        }
+    }
+
+    /**
+     * Validates the Accept header. Returns the best matching MIME type.
+     *
+     * @throws NotAcceptableException
+     */
+    protected function validateAcceptHeader(ServerRequestInterface $request): string
+    {
+        $acceptHeader = $request->getHeaderLine('Accept');
+        if ($acceptHeader === '' || $acceptHeader === '*/*') {
+            return $this->allowedAcceptHeaders[0]->value;
+        }
+
+        // Parse Accept header and find first match
+        $acceptValues = array_map('trim', explode(',', $acceptHeader));
+        foreach ($acceptValues as $value) {
+            // Strip quality parameters
+            $mime = trim(explode(';', $value)[0]);
+
+            if ($mime === '*/*') {
+                return $this->allowedAcceptHeaders[0]->value;
+            }
+
+            foreach ($this->allowedAcceptHeaders as $allowed) {
+                if ($mime === $allowed->value) {
+                    return $allowed->value;
+                }
+            }
+
+            // Treat text/html as acceptable when JSON is default (browser requests)
+            if ($mime === 'text/html') {
+                foreach ($this->allowedAcceptHeaders as $allowed) {
+                    if ($allowed === AcceptHeader::HTML) {
+                        return AcceptHeader::HTML->value;
+                    }
+                }
+                // If HTML not explicitly allowed, fall through to JSON for browser friendliness
+                return $this->allowedAcceptHeaders[0]->value;
+            }
+        }
+
+        throw new NotAcceptableException();
+    }
+
+    /**
+     * @throws UnsupportedMediaTypeException
+     */
+    protected function validateRequestContentType(ServerRequestInterface $request): void
+    {
+        $contentType = $request->getHeaderLine('Content-Type');
+        if ($contentType === '') {
+            return; // No content type is fine for GET requests
+        }
+
+        // Strip charset and other parameters
+        $mime = trim(explode(';', $contentType)[0]);
+
+        if (!in_array($mime, array_column($this->allowedRequestContentTypes, 'value'))) {
+            throw new UnsupportedMediaTypeException(
+                'Allowed Content Types are ' . implode(' and ', array_column($this->allowedRequestContentTypes, 'value'))
+                . ', but your Content Type was ' . $contentType
+            );
+        }
+    }
+
+    /**
+     * Parse request parameters from query string and/or body (JSON or form data).
+     * Merges body params over query params, matching current behavior.
+     *
+     * @return array<string, mixed>
+     * @throws BadRequestException
+     */
+    protected function getRequestParams(ServerRequestInterface $request): array
+    {
+        /** @var array<string, mixed> $params */
+        $params = $request->getQueryParams();
+
+        $contentType = $request->getHeaderLine('Content-Type');
+        $mime = trim(explode(';', $contentType)[0]);
+
+        if ($mime === 'application/json') {
+            $body = (string) $request->getBody();
+            if ($body !== '') {
+                $decoded = json_decode($body, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new BadRequestException(
+                        'Malformed JSON data received in the request: ' . json_last_error_msg()
+                    );
+                }
+                if (is_array($decoded)) {
+                    /** @var array<string, mixed> $params */
+                    $params = array_merge($params, $decoded);
+                }
+            }
+        } elseif ($mime === 'application/x-www-form-urlencoded') {
+            $parsedBody = $request->getParsedBody();
+            if (is_array($parsedBody)) {
+                /** @var array<string, mixed> $params */
+                $params = array_merge($params, $parsedBody);
+            }
+        }
+
+        return $params;
+    }
+
+    /**
+     * Determine the response content type from the `return` param or Accept header.
+     *
+     * @param array<string, mixed> $params
+     */
+    protected function resolveResponseContentType(ServerRequestInterface $request, array $params): string
+    {
+        // Check explicit `return` param first
+        $returnParamRaw = $params['return'] ?? '';
+        $returnParam = is_string($returnParamRaw) ? $returnParamRaw : '';
+        if ($returnParam !== '') {
+            $map = [
+                'json' => 'application/json',
+                'xml'  => 'application/xml',
+                'html' => 'text/html',
+            ];
+            if (isset($map[$returnParam])) {
+                return $map[$returnParam];
+            }
+        }
+
+        // Fall back to Accept header negotiation
+        return $this->validateAcceptHeader($request);
+    }
+
+    /**
+     * Create an initial Response with the correct Content-Type and CORS headers.
+     */
+    protected function initResponse(ServerRequestInterface $request, string $contentType): ResponseInterface
+    {
+        $response = new Response(
+            StatusCode::OK->value,
+            ['Content-Type' => $contentType . '; charset=utf-8'],
+            null,
+            $request->getProtocolVersion(),
+            StatusCode::OK->reason()
+        );
+
+        return $this->setAccessControlAllowOriginHeader($request, $response);
+    }
+
+    /**
+     * Write a JSON-encoded body to the response.
+     *
+     * @param mixed $data
+     */
+    protected function jsonResponse(ResponseInterface $response, mixed $data): ResponseInterface
+    {
+        $encoded = json_encode($data, JSON_UNESCAPED_UNICODE);
+        return $response->withBody(Stream::create($encoded !== false ? $encoded : '{}'));
+    }
+
+    /**
+     * Write an XML string body to the response.
+     */
+    protected function xmlResponse(ResponseInterface $response, string $xml): ResponseInterface
+    {
+        return $response->withBody(Stream::create($xml));
+    }
+
+    /**
+     * Write an HTML string body to the response.
+     */
+    protected function htmlResponse(ResponseInterface $response, string $html): ResponseInterface
+    {
+        return $response->withBody(Stream::create($html));
+    }
+}
