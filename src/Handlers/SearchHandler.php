@@ -123,7 +123,7 @@ class SearchHandler extends AbstractHandler
             $regexKeyword = preg_quote($keyword, '/');
             $escapedRegexKeyword = $mysqli->real_escape_string($regexKeyword);
             $searchResult = $mysqli->query(
-                "SELECT * FROM {$version} WHERE text RLIKE '[[:<:]]{$escapedRegexKeyword}[[:>:]]' ORDER BY book, chapter, verse"
+                "SELECT * FROM {$version} WHERE text RLIKE '\\\\b{$escapedRegexKeyword}\\\\b' ORDER BY book, chapter, verse"
             );
         } else {
             $sanitizedKeyword = preg_replace('/[+\-><~*"()]+/', '', $keyword) ?? $keyword;
