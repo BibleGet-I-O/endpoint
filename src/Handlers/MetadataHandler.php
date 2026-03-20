@@ -8,7 +8,7 @@ use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
-use BibleGet\Api\Pipeline\QuoteContext;
+use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -105,9 +105,9 @@ class MetadataHandler extends AbstractHandler
                 $val2 = (string) ($row2[$names[$x + 1]] ?? '');
                 $temparray = [$val1, $val2];
                 $arr1 = explode(' | ', $val1);
-                $booknames = array_map(fn($s) => QuoteContext::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr1);
+                $booknames = array_map(fn($s) => StringUtils::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr1);
                 $arr2 = explode(' | ', $val2);
-                $abbrevs = count($arr2) > 1 ? array_map(fn($s) => QuoteContext::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr2) : [];
+                $abbrevs = count($arr2) > 1 ? array_map(fn($s) => StringUtils::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr2) : [];
                 $biblebooks[$n][$x] = array_merge($temparray, $booknames, $abbrevs);
             }
             $n++;

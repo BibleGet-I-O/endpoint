@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Util\StringUtils;
 
 /**
  * Shared data context for the quote pipeline (Validator → Formulator → Executor).
@@ -147,23 +148,12 @@ class QuoteContext
 
     public static function stringWithUpperAndLowerCaseVariants(string $str): bool
     {
-        return (bool) preg_match('/\p{L&}/u', $str);
+        return StringUtils::stringWithUpperAndLowerCaseVariants($str);
     }
 
     public static function toProperCase(string $txt): string
     {
-        if (self::stringWithUpperAndLowerCaseVariants($txt) === false) {
-            return $txt;
-        }
-        preg_match('/\p{L&}/u', $txt, $mList, PREG_OFFSET_CAPTURE);
-        if ($mList) {
-            $byteOffset = $mList[0][1];
-            $charOffset = mb_strlen(substr($txt, 0, $byteOffset), 'UTF-8');
-            $chr = mb_substr($txt, $charOffset, 1, 'UTF-8');
-            $post = mb_substr($txt, $charOffset + 1, null, 'UTF-8');
-            return mb_substr($txt, 0, $charOffset, 'UTF-8') . mb_strtoupper($chr, 'UTF-8') . mb_strtolower($post, 'UTF-8');
-        }
-        return $txt;
+        return StringUtils::toProperCase($txt);
     }
 
     /**
@@ -200,7 +190,7 @@ class QuoteContext
 
     private static function normalizeBibleBook(string $str): string
     {
-        return self::toProperCase(preg_replace('/\s+/', '', trim($str)) ?? trim($str));
+        return StringUtils::normalizeBibleBook($str);
     }
 
     private static function detectAndNormalizeNotation(string &$querystr): string
