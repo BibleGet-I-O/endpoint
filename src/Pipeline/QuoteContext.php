@@ -262,7 +262,8 @@ class QuoteContext
     {
         $result = $this->mysqli->query("SELECT * FROM versions_available WHERE type = 'BIBLE'");
         if (!$result instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         while ($row = mysqli_fetch_assoc($result)) {
             $output_info_array = [
@@ -293,7 +294,8 @@ class QuoteContext
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
             $result = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
             if ($result === false) {
-                throw new InternalServerErrorException('Failed to load index for version ' . $variant . ': ' . $this->mysqli->error);
+                error_log('Failed to load index for version ' . $variant . ': ' . $this->mysqli->error);
+                throw new InternalServerErrorException('An internal database error occurred.');
             }
             if ($result instanceof \mysqli_result) {
                 while ($row = $result->fetch_assoc()) {
@@ -317,7 +319,8 @@ class QuoteContext
     {
         $result1 = $this->mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY id');
         if (!$result1 instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
 
         $cols = mysqli_num_fields($result1);
@@ -329,7 +332,8 @@ class QuoteContext
 
         $result2 = $this->mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY id');
         if (!$result2 instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
 
         $n = 0;
