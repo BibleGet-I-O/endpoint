@@ -64,11 +64,12 @@ class QuoteContextIntegrationTest extends DatabaseTestCase
         $ctx->initialize();
     }
 
-    public function testInitializeDefaultsToCEI2008WhenEmpty(): void
+    public function testInitializeThrowsWhenDefaultVersionNotInFixture(): void
     {
         $ctx = new QuoteContext(['query' => 'Genesis1,1', 'version' => '']);
 
-        // CEI2008 is not in test DB, so it throws after failing to find a valid version
+        // Default version (CEI2008) is not in test fixture, so initialize()
+        // throws after failing to find a valid version
         $this->expectException(\BibleGet\Api\Http\Exception\ValidationException::class);
         $ctx->initialize();
     }
