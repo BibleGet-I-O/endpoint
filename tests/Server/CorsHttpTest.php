@@ -91,4 +91,14 @@ class CorsHttpTest extends ServerTestCase
         $r = self::httpGet('/v3/metadata/bibleversions');
         self::assertSame('*', $r['headers']['access-control-allow-origin']);
     }
+
+    public function testCorsReflectsAnyOrigin(): void
+    {
+        // The API reflects any Origin (open CORS), so even unfamiliar origins get reflected
+        $r = self::httpGet('/v3/metadata/bibleversions', [
+            'Origin' => 'https://unknown-domain.example',
+        ]);
+        self::assertSame('https://unknown-domain.example', $r['headers']['access-control-allow-origin']);
+        self::assertSame('true', $r['headers']['access-control-allow-credentials']);
+    }
 }
