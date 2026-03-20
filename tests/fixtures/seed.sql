@@ -1,17 +1,17 @@
 -- Seed data for integration tests
 
 -- Two test Bible versions: TEST1 (Catholic, not copyrighted), TEST2 (Protestant, copyrighted)
-INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type) VALUES
+INSERT IGNORE INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type) VALUES
 ('TEST1', 'Test Bible Version 1', '2020', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Test notes', 0, 'BIBLE'),
 ('TEST2', 'Test Bible Version 2', '2021', 'English', 'No', 'PROTESTANT', 'Other Publisher', '', 1, 'BIBLE');
 
 -- Bible book names: just populate first 3 books (Genesis, Exodus, Leviticus) for testing
-INSERT INTO biblebooks_fullname (ENGLISH, ITALIAN) VALUES
+INSERT IGNORE INTO biblebooks_fullname (ENGLISH, ITALIAN) VALUES
 ('Genesis', 'Genesi'),
 ('Exodus', 'Esodo'),
 ('Leviticus', 'Levitico');
 
-INSERT INTO biblebooks_abbr (ENGLISH, ITALIAN) VALUES
+INSERT IGNORE INTO biblebooks_abbr (ENGLISH, ITALIAN) VALUES
 ('Gen | Gn', 'Gen | Gn'),
 ('Exod | Ex', 'Es | Esod'),
 ('Lev | Lv', 'Lv | Lev');
@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS TEST1_idx (
     verses_last VARCHAR(500) NOT NULL DEFAULT '',
     book       INT NOT NULL DEFAULT 0,
     PRIMARY KEY (book)
-);
+) DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO TEST1_idx (abbrev, fullname, chapters, verses_last, book) VALUES
+INSERT IGNORE INTO TEST1_idx (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Gen', 'Genesis', 3, '10,8,5', 1),
 ('Exod', 'Exodus', 2, '7,5', 2),
 ('Lev', 'Leviticus', 2, '6,4', 3);
@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS TEST2_idx (
     verses_last VARCHAR(500) NOT NULL DEFAULT '',
     book       INT NOT NULL DEFAULT 0,
     PRIMARY KEY (book)
-);
+) DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO TEST2_idx (abbrev, fullname, chapters, verses_last, book) VALUES
+INSERT IGNORE INTO TEST2_idx (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Gen', 'Genesis', 3, '10,8,5', 1),
 ('Exod', 'Exodus', 2, '7,5', 2),
 ('Lev', 'Leviticus', 2, '6,4', 3);
@@ -57,9 +57,9 @@ CREATE TABLE IF NOT EXISTS TEST1 (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
     FULLTEXT(text)
-);
+) DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO TEST1 (book, chapter, verse, text, testament, section) VALUES
+INSERT IGNORE INTO TEST1 (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heavens and the earth.', 1, 1),
 (1, 1, 2, 'The earth was formless and void, and darkness was over the surface of the deep.', 1, 1),
 (1, 1, 3, 'Then God said, Let there be light; and there was light.', 1, 1),
@@ -93,9 +93,9 @@ CREATE TABLE IF NOT EXISTS TEST2 (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
     FULLTEXT(text)
-);
+) DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO TEST2 (book, chapter, verse, text, testament, section) VALUES
+INSERT IGNORE INTO TEST2 (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heaven and the earth.', 1, 1),
 (1, 1, 2, 'And the earth was without form, and void.', 1, 1),
 (1, 1, 3, 'And God said, Let there be light: and there was light.', 1, 1),
