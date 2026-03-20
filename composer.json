@@ -26,15 +26,23 @@
     "require-dev": {
         "phpstan/phpstan": "^2.0@stable",
         "captainhook/captainhook-phar": "^5.25",
-        "captainhook/hook-installer": "^1.0"
+        "captainhook/hook-installer": "^1.0",
+        "phpunit/phpunit": "^11.0"
     },
     "autoload": {
         "psr-4": {
             "BibleGet\\Api\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "BibleGet\\Tests\\": "tests/"
+        }
+    },
     "scripts": {
-        "analyse": "phpstan analyse"
+        "analyse": "phpstan analyse",
+        "test": "phpunit --testdox --display-warnings",
+        "test:coverage": "phpunit --testdox --display-warnings --coverage-text --coverage-html=coverage"
     },
     "config": {
         "allow-plugins": {
