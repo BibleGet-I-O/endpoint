@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BibleGet\Api;
 
 use BibleGet\Api\Handlers\QuoteHandler;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BibleGet\Api\Http\Logs;
 
 use Monolog\Level;

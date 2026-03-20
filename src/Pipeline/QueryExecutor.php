@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BibleGet\Api\Pipeline;
 
 use BibleGet\Api\Http\Exception\TooManyRequestsException;

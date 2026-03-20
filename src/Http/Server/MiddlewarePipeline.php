@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BibleGet\Api\Http\Server;
 
 use Psr\Http\Message\ServerRequestInterface;
