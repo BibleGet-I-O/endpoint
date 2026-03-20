@@ -57,12 +57,14 @@ class QueryExecutor
         $clientipRaw          = $_SERVER['HTTP_CLIENT_IP'] ?? '';
         $this->clientip       = is_string($clientipRaw) ? $clientipRaw : '';
 
-        $this->ipaddress = $this->forwardedip != '' ? explode(',', $this->forwardedip)[0] : '';
-        if ($this->ipaddress == '') {
-            $this->ipaddress = $this->remote_address != '' ? $this->remote_address : '';
+        // Use REMOTE_ADDR as the authoritative IP for rate limiting.
+        // Only trust forwarded headers when REMOTE_ADDR is a known trusted proxy.
+        $this->ipaddress = $this->remote_address;
+        if ($this->ipaddress == '' && $this->forwardedip != '') {
+            $this->ipaddress = trim(explode(',', $this->forwardedip)[0]);
         }
-        if ($this->ipaddress == '') {
-            $this->ipaddress = $this->realip != '' ? $this->realip : '';
+        if ($this->ipaddress == '' && $this->realip != '') {
+            $this->ipaddress = $this->realip;
         }
 
         if (self::validateIPAddress($this->ipaddress) === false) {
@@ -301,7 +303,9 @@ class QueryExecutor
     {
         $this->getAndValidateIpAddress();
 
-        $notWhitelisted = ($this->isWhitelisted($this->domain) === false && $this->isWhitelisted($this->ipaddress) === false);
+        // Use server-derived host for domain whitelist check to prevent spoofing via client-supplied domain
+        $serverHost = is_string($_SERVER['SERVER_NAME'] ?? null) ? $_SERVER['SERVER_NAME'] : '';
+        $notWhitelisted = ($this->isWhitelisted($serverHost) === false && $this->isWhitelisted($this->ipaddress) === false);
 
         foreach ($this->sqlqueries as $xquery) {
             $this->xquery = $xquery;
