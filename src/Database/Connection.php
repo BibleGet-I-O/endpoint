@@ -65,8 +65,25 @@ class Connection
     /**
      * Search for dbcredentials.php up to three directory levels from the public/ entry point.
      */
+    /**
+     * Reset the singleton (for testing only).
+     */
+    public static function reset(): void
+    {
+        if (self::$instance !== null && self::$instance->thread_id) {
+            self::$instance->close();
+        }
+        self::$instance = null;
+        self::$whitelistedDomainsIPs = [];
+    }
+
     private static function loadCredentials(): void
     {
+        // If credentials are already defined (e.g. by test fixtures), skip file search
+        if (defined('SERVER') && defined('DBUSER') && defined('DBPASS') && defined('DATABASE')) {
+            return;
+        }
+
         $dbCredentials = 'dbcredentials.php';
 
         // Search from the project root (one level up from public/)

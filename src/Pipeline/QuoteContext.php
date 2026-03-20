@@ -271,7 +271,7 @@ class QuoteContext
             ];
             $this->VALID_VERSIONS[] = (string) $row['sigla'];
             $this->VALID_VERSIONS_FULLNAME[(string) $row['sigla']] = implode('|', $output_info_array);
-            if ($row['copyright'] === 1) {
+            if ((int) $row['copyright'] === 1) {
                 $this->COPYRIGHT_VERSIONS[] = (string) $row['sigla'];
             }
             if ($row['canon'] === 'CATHOLIC') {
