@@ -42,6 +42,7 @@
     "scripts": {
         "analyse": "phpstan analyse",
         "test": "phpunit --testdox --display-warnings",
+        "test:quick": "phpunit --testdox --display-warnings --exclude-group slow",
         "test:coverage": "phpunit --testdox --display-warnings --coverage-text --coverage-html=coverage",
         "start": "./start-server.sh",
         "stop": "./stop-server.sh",
