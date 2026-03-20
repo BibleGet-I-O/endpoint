@@ -23,9 +23,14 @@ class LoggingMiddleware implements MiddlewareInterface
     {
         $requestId      = $request->getAttribute('request_id');
         $reqContentType = $request->getHeaderLine('Content-Type');
-        $safeReqBody    = str_starts_with($reqContentType, 'application/json') || str_starts_with($reqContentType, 'text/')
-            ? self::readBody($request->getBody())
-            : '[body omitted]';
+        $reqBody = $request->getBody();
+        if (!$reqBody->isSeekable()) {
+            $safeReqBody = '[non-seekable body omitted]';
+        } elseif (str_starts_with($reqContentType, 'application/json') || str_starts_with($reqContentType, 'text/')) {
+            $safeReqBody = self::readBody($reqBody);
+        } else {
+            $safeReqBody = '[body omitted]';
+        }
 
         $this->logger->debug('Incoming request', [
             'request_id'   => $requestId,
