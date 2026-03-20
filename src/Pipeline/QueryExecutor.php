@@ -147,13 +147,13 @@ class QueryExecutor
 
         if ($ipresult instanceof \mysqli_result) {
             if ($ipresult->num_rows > 10 && $ipresult->num_rows < 30) {
-                $this->ctx->addErrorMessage(10, $this->xquery);
+                $this->ctx->addErrorMessage(10, $this->currentOriginalQuery());
                 $iprow                       = $ipresult->fetch_assoc();
                 $this->geoip_json            = (string) ( $iprow['WHO_WHERE_JSON'] ?? '' );
                 $this->haveIPAddressOnRecord = true;
             } elseif ($ipresult->num_rows > 29) {
                 throw new TooManyRequestsException(
-                    QuoteContext::$errorMessages[11] . ' > ' . $this->xquery,
+                    QuoteContext::$errorMessages[11] . ' > ' . $this->currentOriginalQuery(),
                     172800 // 2 days in seconds
                 );
             }
@@ -176,7 +176,7 @@ class QueryExecutor
 
         if ($ipresult instanceof \mysqli_result && $ipresult->num_rows > 100) {
             throw new TooManyRequestsException(
-                QuoteContext::$errorMessages[12] . ' > ' . $this->xquery,
+                QuoteContext::$errorMessages[12] . ' > ' . $this->currentOriginalQuery(),
                 172800
             );
         }
@@ -200,10 +200,10 @@ class QueryExecutor
             $originRow = $originres->fetch_assoc();
             if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow)) {
                 if ($originRow['ORIGIN_CNT'] > 10 && $originRow['ORIGIN_CNT'] < 30) {
-                    $this->ctx->addErrorMessage(10, $this->xquery);
+                    $this->ctx->addErrorMessage(10, $this->currentOriginalQuery());
                 } elseif ($originRow['ORIGIN_CNT'] > 29) {
                     throw new TooManyRequestsException(
-                        QuoteContext::$errorMessages[11] . ' > ' . $this->xquery,
+                        QuoteContext::$errorMessages[11] . ' > ' . $this->currentOriginalQuery(),
                         172800
                     );
                 }
@@ -229,7 +229,7 @@ class QueryExecutor
             $originRow = $originres->fetch_assoc();
             if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow) && $originRow['ORIGIN_CNT'] > 100) {
                 throw new TooManyRequestsException(
-                    QuoteContext::$errorMessages[12] . ' > ' . $this->xquery,
+                    QuoteContext::$errorMessages[12] . ' > ' . $this->currentOriginalQuery(),
                     172800
                 );
             }
@@ -322,6 +322,11 @@ class QueryExecutor
         return $row;
     }
 
+    private function currentOriginalQuery(): string
+    {
+        return $this->ctx->originalQueries[$this->i] ?? '';
+    }
+
     public function executeSQLQueries(): void
     {
         $this->getAndValidateIpAddress();
@@ -361,7 +366,7 @@ class QueryExecutor
                     }
                 }
             } else {
-                $this->ctx->addErrorMessage(9, $this->xquery);
+                $this->ctx->addErrorMessage(9, $this->currentOriginalQuery());
             }
 
             $this->i++;
