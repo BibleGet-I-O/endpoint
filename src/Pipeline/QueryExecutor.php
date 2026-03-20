@@ -25,6 +25,7 @@ class QueryExecutor
     private string $clientip           = '';
     private string $xquery             = '';
     private string $curYEAR            = '';
+    private string $prevYEAR           = '';
     private string $geoip_json         = '';
     private bool $haveIPAddressOnRecord = false;
     /** @var array<int, string> */
@@ -41,6 +42,28 @@ class QueryExecutor
         $this->domain           = $ctx->DATA['domain'] != '' ? $ctx->DATA['domain'] : 'unknown';
         $this->pluginversion    = $ctx->DATA['pluginversion'] != '' ? $ctx->DATA['pluginversion'] : 'unknown';
         $this->curYEAR          = date('Y');
+        $this->prevYEAR         = (string) ((int) $this->curYEAR - 1);
+    }
+
+    /**
+     * Get the request log table names to query for the 48-hour window.
+     * Near the year boundary (Jan 1-2), includes the previous year's table.
+     *
+     * @return list<string>
+     */
+    private function getLogTables(): array
+    {
+        $tables = ['requests_log__' . $this->curYEAR];
+        // Within the first 2 days of the year, also check previous year's table
+        if ((int) date('z') < 2) {
+            $prevTable = 'requests_log__' . $this->prevYEAR;
+            // Verify the table exists before including it
+            $check = $this->ctx->mysqli->query("SHOW TABLES LIKE '" . $this->ctx->mysqli->real_escape_string($prevTable) . "'");
+            if ($check instanceof \mysqli_result && $check->num_rows > 0) {
+                $tables[] = $prevTable;
+            }
+        }
+        return $tables;
     }
 
     private static function validateIPAddress(string $ipaddress): string|false
@@ -81,12 +104,40 @@ class QueryExecutor
         return array_search($domainOrIP, $this->ctx->WhitelistedDomainsIPs);
     }
 
+    /**
+     * Build a UNION ALL subquery across all relevant log tables for the 48-hour window.
+     * Near the year boundary (Jan 1-2), includes the previous year's table.
+     */
+    private function buildLogUnion(string $whereClause): string
+    {
+        $tables = $this->getLogTables();
+        $parts = [];
+        foreach ($tables as $table) {
+            $parts[] = "SELECT * FROM " . $table . " WHERE " . $whereClause;
+        }
+        return "SELECT * FROM (" . implode(" UNION ALL ", $parts) . ") AS combined_log";
+    }
+
+    /**
+     * Build a UNION ALL subquery with aggregation across log tables.
+     */
+    private function buildLogUnionAggregated(string $selectExpr, string $whereClause, string $groupBy): string
+    {
+        $tables = $this->getLogTables();
+        $parts = [];
+        foreach ($tables as $table) {
+            $parts[] = "SELECT * FROM " . $table . " WHERE " . $whereClause;
+        }
+        return "SELECT " . $selectExpr . " FROM (" . implode(" UNION ALL ", $parts) . ") AS combined_log " . $groupBy;
+    }
+
     private function checkIPAddressPastTwoDaysWithSameRequest(): void
     {
         if ($this->ipaddress === '') {
             return;
         }
-        $stmt = $this->ctx->mysqli->prepare("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        $sql = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
             return;
         }
@@ -114,7 +165,8 @@ class QueryExecutor
         if ($this->ipaddress === '') {
             return;
         }
-        $stmt = $this->ctx->mysqli->prepare("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        $sql = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
             return;
         }
@@ -132,7 +184,12 @@ class QueryExecutor
 
     private function checkRequestsFromSameOrigin(): void
     {
-        $stmt = $this->ctx->mysqli->prepare("SELECT ORIGIN, COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = ? AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN");
+        $sql = $this->buildLogUnionAggregated(
+            "ORIGIN, COUNT(*) AS ORIGIN_CNT",
+            "ORIGIN != '' AND ORIGIN = ? AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)",
+            "GROUP BY ORIGIN"
+        );
+        $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
             return;
         }
@@ -156,7 +213,12 @@ class QueryExecutor
 
     private function checkDiverseRequestsFromSameOrigin(): void
     {
-        $stmt = $this->ctx->mysqli->prepare("SELECT ORIGIN, COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN");
+        $sql = $this->buildLogUnionAggregated(
+            "ORIGIN, COUNT(*) AS ORIGIN_CNT",
+            "ORIGIN != '' AND ORIGIN = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)",
+            "GROUP BY ORIGIN"
+        );
+        $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
             return;
         }
@@ -200,7 +262,8 @@ class QueryExecutor
     private function getGeoIPFromLogs(): \mysqli_result|bool
     {
         if ($this->ipaddress != '') {
-            $stmt = $this->ctx->mysqli->prepare("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
+            $sql = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
+            $stmt = $this->ctx->mysqli->prepare($sql);
             if ($stmt === false) {
                 return false;
             }
