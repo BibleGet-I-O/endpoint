@@ -1,0 +1,19 @@
+apis:
+  main:
+    root: openapi.json
+
+extends:
+  - recommended
+
+rules:
+  # This is a public API with no authentication
+  security-defined: off
+
+  # Enforce consistent spec quality
+  no-invalid-schema-examples: warn
+  no-invalid-media-type-examples: warn
+  no-ambiguous-paths: error
+  no-path-trailing-slash: error
+  operation-operationId: warn
+  operation-summary: error
+  path-not-include-query: error

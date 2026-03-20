@@ -19,6 +19,20 @@
                 "config": {
                     "allow-failure": false
                 }
+            },
+            {
+                "action": "composer lint:openapi",
+                "conditions": [
+                    {
+                        "exec": "\\CaptainHook\\App\\Hook\\Condition\\FileStaged\\OfType",
+                        "args": [
+                            "json"
+                        ]
+                    }
+                ],
+                "config": {
+                    "allow-failure": false
+                }
             }
         ]
     },

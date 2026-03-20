@@ -10,7 +10,7 @@
         }
     ],
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.2",
         "ext-mysqli": "*",
         "ext-json": "*",
         "ext-simplexml": "*",
@@ -46,7 +46,8 @@
         "test:coverage": "phpunit --testdox --display-warnings --coverage-text --coverage-html=coverage",
         "start": "./start-server.sh",
         "stop": "./stop-server.sh",
-        "restart": "./restart-server.sh"
+        "restart": "./restart-server.sh",
+        "lint:openapi": "npx @redocly/cli lint openapi.json"
     },
     "config": {
         "allow-plugins": {
