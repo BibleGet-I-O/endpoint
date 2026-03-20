@@ -44,7 +44,11 @@ class Connection
             );
         }
 
-        $mysqli->set_charset('utf8');
+        if (!$mysqli->set_charset('utf8mb4')) {
+            throw new InternalServerErrorException(
+                'Failed to set database charset: ' . $mysqli->error
+            );
+        }
         self::$instance = $mysqli;
 
         if (defined('WHITELISTED_DOMAINS_IPS') && is_array(WHITELISTED_DOMAINS_IPS)) {
