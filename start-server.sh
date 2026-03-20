@@ -49,6 +49,12 @@ else
   # Run in background with multiple workers
   PHP_CLI_SERVER_WORKERS=4 php -S "${API_HOST}:${API_PORT}" -t public public/router.php > /dev/null 2>&1 &
   pid=$!
-  echo "$pid" > server.pid
+  sleep 0.2
+  if ! kill -0 "$pid" 2>/dev/null; then
+    echo -e "${RED}Failed to start server at http://${API_HOST}:${API_PORT}/.${NC}"
+    rm -f "server.pid"
+    exit 1
+  fi
+  echo "$pid" > "server.pid"
   echo -e "${GREEN}Server started at http://${API_HOST}:${API_PORT}/ (PID: $pid)${NC}"
 fi
