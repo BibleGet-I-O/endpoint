@@ -113,9 +113,9 @@ class QueryExecutor
         $tables = $this->getLogTables();
         $parts  = [];
         foreach ($tables as $table) {
-            $parts[] = 'SELECT * FROM ' . $table . ' WHERE ' . $whereClause;
+            $parts[] = 'SELECT * FROM ' . $table;
         }
-        return 'SELECT * FROM (' . implode(' UNION ALL ', $parts) . ') AS combined_log';
+        return 'SELECT * FROM (' . implode(' UNION ALL ', $parts) . ') AS combined_log WHERE ' . $whereClause;
     }
 
     /**
@@ -126,9 +126,9 @@ class QueryExecutor
         $tables = $this->getLogTables();
         $parts  = [];
         foreach ($tables as $table) {
-            $parts[] = 'SELECT * FROM ' . $table . ' WHERE ' . $whereClause;
+            $parts[] = 'SELECT * FROM ' . $table;
         }
-        return 'SELECT ' . $selectExpr . ' FROM (' . implode(' UNION ALL ', $parts) . ') AS combined_log ' . $groupBy;
+        return 'SELECT ' . $selectExpr . ' FROM (' . implode(' UNION ALL ', $parts) . ') AS combined_log WHERE ' . $whereClause . ' ' . $groupBy;
     }
 
     private function checkIPAddressPastTwoDaysWithSameRequest(): void
