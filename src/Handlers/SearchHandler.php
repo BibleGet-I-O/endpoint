@@ -77,7 +77,7 @@ class SearchHandler extends AbstractHandler
         if (self::$cachedValidVersions === null) {
             self::$cachedValidVersions = [];
             $result = $mysqli->query("SELECT sigla FROM versions_available");
-            if ($result === false) {
+            if (!$result instanceof \mysqli_result) {
                 error_log('Failed to query versions_available: ' . $mysqli->error);
                 throw new InternalServerErrorException('An internal database error occurred.');
             }
@@ -102,7 +102,7 @@ class SearchHandler extends AbstractHandler
         }
         $abbreviations = $books = $book_num = [];
         $idxResult = $mysqli->query('SELECT * FROM ' . $version . '_idx');
-        if ($idxResult === false) {
+        if (!$idxResult instanceof \mysqli_result) {
             error_log('Failed to load index for version ' . $version . ': ' . $mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }

@@ -205,8 +205,8 @@ class QueryFormulator
                     continue;
                 }
                 $verseInRange = $rngMin === null
-                    || $verse === null
-                    || ($verse >= $rngMin && $verse <= ($rngMax ?? $rngMin));
+                    ? $verse === null
+                    : $verse !== null && $verse >= $rngMin && $verse <= ($rngMax ?? $rngMin);
                 if ($verseInRange) {
                     return [$mapping['map'][0], $mapping['map'][1], " AND verseorigin = 'GREEK'"];
                 }
