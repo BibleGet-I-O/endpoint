@@ -312,8 +312,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
     {
         $encoded = json_encode($data, JSON_UNESCAPED_UNICODE);
         if ($encoded === false) {
-            error_log('JSON encoding failed: ' . json_last_error_msg());
-            $encoded = '{}';
+            throw new \RuntimeException('JSON encoding failed: ' . json_last_error_msg());
         }
         return $response->withBody(Stream::create($encoded));
     }
