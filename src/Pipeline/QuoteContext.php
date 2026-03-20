@@ -46,7 +46,7 @@ class QuoteContext
         'preferorigin'  => '',
     ];
 
-    public ?\mysqli $mysqli = null;
+    public \mysqli $mysqli;
     public string $detectedNotation             = 'ENGLISH';
     /** @var array<string> */
     public array $WhitelistedDomainsIPs         = [];
