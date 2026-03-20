@@ -63,9 +63,6 @@ class Connection
     }
 
     /**
-     * Search for dbcredentials.php up to three directory levels from the public/ entry point.
-     */
-    /**
      * Reset the singleton (for testing only).
      */
     public static function reset(): void
@@ -77,6 +74,9 @@ class Connection
         self::$whitelistedDomainsIPs = [];
     }
 
+    /**
+     * Search for dbcredentials.php up to three directory levels from the public/ entry point.
+     */
     private static function loadCredentials(): void
     {
         // If credentials are already defined (e.g. by test fixtures), skip file search

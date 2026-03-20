@@ -38,6 +38,8 @@ class SearchHandlerHttpTest extends ServerTestCase
     {
         $r = self::httpGet('/v3/search?keyword=light&version=TEST1');
         $body = self::jsonBody($r['body']);
+        self::assertArrayHasKey('results', $body);
+        self::assertNotEmpty($body['results'], 'Expected at least one search result');
         $verse = $body['results'][0];
 
         self::assertArrayHasKey('book', $verse);

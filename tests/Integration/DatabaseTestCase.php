@@ -42,7 +42,7 @@ abstract class DatabaseTestCase extends TestCase
         // Clean transient tables
         $mysqli = Connection::getConnection();
         $mysqli->query('UPDATE counter SET good = 0, bad = 0');
-        $mysqli->query('DELETE FROM requests_log__2026');
+        $mysqli->query('DELETE FROM requests_log__' . date('Y'));
         $mysqli->query('DELETE FROM curl_error');
 
         Connection::reset();

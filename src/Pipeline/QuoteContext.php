@@ -46,7 +46,7 @@ class QuoteContext
         'preferorigin'  => '',
     ];
 
-    public \mysqli $mysqli;
+    public ?\mysqli $mysqli = null;
     public string $detectedNotation             = 'ENGLISH';
     /** @var array<string> */
     public array $WhitelistedDomainsIPs         = [];
@@ -119,14 +119,17 @@ class QuoteContext
 
     public function addErrorMessage(int|string $num, string $str = ''): void
     {
+        $errMessage = '';
         if (gettype($num) === 'string') {
-            self::$errorMessages[13] = $num;
+            $errMessage = $num;
             $num = 13;
+        } else {
+            $errMessage = self::$errorMessages[$num] ?? '';
         }
 
         $this->errors[] = [
             'errNum'     => $num,
-            'errMessage' => self::$errorMessages[$num] . ($str !== '' ? ' > ' . $str : ''),
+            'errMessage' => $errMessage . ($str !== '' ? ' > ' . $str : ''),
         ];
     }
 
@@ -152,10 +155,11 @@ class QuoteContext
         }
         preg_match('/\p{L&}/u', $txt, $mList, PREG_OFFSET_CAPTURE);
         if ($mList) {
-            $offset = $mList[0][1];
-            $chr = mb_substr($txt, $offset, 1, 'UTF-8');
-            $post = mb_substr($txt, $offset + 1, null, 'UTF-8');
-            return mb_substr($txt, 0, $offset, 'UTF-8') . mb_strtoupper($chr, 'UTF-8') . mb_strtolower($post, 'UTF-8');
+            $byteOffset = $mList[0][1];
+            $charOffset = mb_strlen(substr($txt, 0, $byteOffset), 'UTF-8');
+            $chr = mb_substr($txt, $charOffset, 1, 'UTF-8');
+            $post = mb_substr($txt, $charOffset + 1, null, 'UTF-8');
+            return mb_substr($txt, 0, $charOffset, 'UTF-8') . mb_strtoupper($chr, 'UTF-8') . mb_strtolower($post, 'UTF-8');
         }
         return $txt;
     }
@@ -203,9 +207,9 @@ class QuoteContext
         $find    = ['.', ',', ':'];
         $replace = ['', '.', ','];
 
-        if (strpos($querystr, ':') && strpos($querystr, '.')) {
+        if (strpos($querystr, ':') !== false && strpos($querystr, '.') !== false) {
             $detectedNotation = 'MIXED';
-        } elseif (strpos($querystr, ':') && strpos($querystr, ',') && strpos($querystr, ';')) {
+        } elseif (strpos($querystr, ':') !== false && strpos($querystr, ',') !== false && strpos($querystr, ';') !== false) {
             $queries = explode(';', $querystr);
             $queries = preg_replace('/^([1-3]{0,1}((\p{Lu}\p{Ll}*)*))([1-9][0-9]{0,2})/u', '', $queries) ?? $queries;
             /** @var array<int, string> $queries */
@@ -218,7 +222,7 @@ class QuoteContext
             } else {
                 $detectedNotation = 'EUROPEAN';
             }
-        } elseif (strpos($querystr, ':')) {
+        } elseif (strpos($querystr, ':') !== false) {
             $detectedNotation = 'ENGLISH';
             $querystr = str_replace($find, $replace, $querystr);
         } else {
@@ -286,6 +290,9 @@ class QuoteContext
     {
         $indexes = [];
         foreach ($this->REQUESTED_VERSIONS as $variant) {
+            if (!preg_match('/^[A-Za-z0-9_]+$/', $variant)) {
+                throw new ValidationException('Invalid version identifier format: ' . $variant);
+            }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
             $result = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx');
             if ($result instanceof \mysqli_result) {
@@ -351,6 +358,10 @@ class QuoteContext
 
         foreach ($temp as $version) {
             if (isset($this->DATA['forceversion']) && $this->DATA['forceversion'] === 'true') {
+                if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
+                    $this->addErrorMessage('Invalid version identifier format: <' . $version . '>');
+                    continue;
+                }
                 $this->REQUESTED_VERSIONS[] = $version;
             } else {
                 if ($this->isValidVersion($version)) {

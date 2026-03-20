@@ -1,6 +1,6 @@
 -- Seed data for integration tests
 
--- Two test Bible versions: one Catholic, one Protestant, one copyrighted
+-- Two test Bible versions: TEST1 (Catholic, not copyrighted), TEST2 (Protestant, copyrighted)
 INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type) VALUES
 ('TEST1', 'Test Bible Version 1', '2020', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Test notes', 0, 'BIBLE'),
 ('TEST2', 'Test Bible Version 2', '2021', 'English', 'No', 'PROTESTANT', 'Other Publisher', '', 1, 'BIBLE');
@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS TEST1_idx (
     fullname   VARCHAR(100) NOT NULL DEFAULT '',
     chapters   INT NOT NULL DEFAULT 0,
     verses_last VARCHAR(500) NOT NULL DEFAULT '',
-    book       INT NOT NULL DEFAULT 0
+    book       INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (book)
 );
 
 INSERT INTO TEST1_idx (abbrev, fullname, chapters, verses_last, book) VALUES
@@ -36,7 +37,8 @@ CREATE TABLE IF NOT EXISTS TEST2_idx (
     fullname   VARCHAR(100) NOT NULL DEFAULT '',
     chapters   INT NOT NULL DEFAULT 0,
     verses_last VARCHAR(500) NOT NULL DEFAULT '',
-    book       INT NOT NULL DEFAULT 0
+    book       INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (book)
 );
 
 INSERT INTO TEST2_idx (abbrev, fullname, chapters, verses_last, book) VALUES

@@ -27,7 +27,7 @@ composer dump-autoload    # Regenerate autoloader
 
 For local development with PHP's built-in server:
 ```bash
-php -S localhost:8000 -t public
+php -S localhost:8000 -t public public/router.php
 ```
 
 ### Front Controller & Routing

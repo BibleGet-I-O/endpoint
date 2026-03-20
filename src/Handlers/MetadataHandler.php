@@ -94,6 +94,9 @@ class MetadataHandler extends AbstractHandler
         $n = 0;
         while ($row1 = mysqli_fetch_assoc($result1)) {
             $row2 = mysqli_fetch_assoc($result2);
+            if ($row2 === null || $row2 === false) {
+                break;
+            }
             $biblebooks[$n] = [];
             for ($x = 0; $x < $cols - 1; $x++) {
                 $val1 = (string) ($row1[$names[$x + 1]] ?? '');
@@ -170,10 +173,11 @@ class MetadataHandler extends AbstractHandler
         // Get valid versions
         $allValid = [];
         $result = $mysqli->query('SELECT sigla FROM versions_available');
-        if ($result instanceof \mysqli_result) {
-            while ($row = $result->fetch_assoc()) {
-                $allValid[] = $row['sigla'];
-            }
+        if (!$result instanceof \mysqli_result) {
+            throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+        }
+        while ($row = $result->fetch_assoc()) {
+            $allValid[] = $row['sigla'];
         }
 
         $versions = array_filter(explode(',', $versionsStr), fn($v) => in_array($v, $allValid));

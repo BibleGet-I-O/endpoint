@@ -58,7 +58,7 @@ class QueryValidator
                     ? (preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*/u', $query) == preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u', $query))
                     : (preg_match('/^[1-3]{0,1}( \p{L}\p{M}* )+/u', $query) == preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u', $query)),
             self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR =>
-                !(!strpos($query, ',') || strpos($query, ',') > strpos($query, '.')),
+                !(strpos($query, ',') === false || strpos($query, ',') > strpos($query, '.')),
             self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS =>
                 (preg_match_all('/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/', $query) === substr_count($query, '.')),
             self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS =>
@@ -68,7 +68,7 @@ class QueryValidator
             self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS =>
                 !(preg_match('/\-[1-9][0-9]{0,2}\,/', $query) && (!preg_match('/\,[1-9][0-9]{0,2}\-/', $query) || preg_match_all('/(?=\,[1-9][0-9]{0,2}\-)/', $query) > preg_match_all('/(?=\-[1-9][0-9]{0,2}\,)/', $query))),
             self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES =>
-                !(substr_count($query, '-') > 1 && (!strpos($query, '.') || (substr_count($query, '-') - 1 > substr_count($query, '.')))),
+                !(substr_count($query, '-') > 1 && (strpos($query, '.') === false || (substr_count($query, '-') - 1 > substr_count($query, '.')))),
             default => false,
         };
     }
@@ -104,12 +104,12 @@ class QueryValidator
     /**
      * @return array<int, string|array<never, never>>
      */
-    private static function getVerseAfterChapterVerseSeparator(string $query): array
+    private static function getVerseAfterChapterVerseSeparator(string $query): ?array
     {
         if (preg_match('/,([1-9][0-9]{0,2})/', $query, $verse)) {
             return $verse;
         }
-        return [[], []];
+        return null;
     }
 
     private static function chunkContainsChapterVerseConstruct(string $chunk): bool
@@ -144,8 +144,7 @@ class QueryValidator
             $this->currentQuery = str_replace($this->currentBook, '', $this->currentQuery);
             return true;
         }
-        $this->validateBibleBook();
-        return true;
+        return $this->validateBibleBook();
     }
 
     private function validateChapterVerseConstructs(): bool
@@ -155,7 +154,7 @@ class QueryValidator
             return $this->validateMultipleVerseSeparators();
         } elseif ($chapterVerseConstructCount == 1) {
             $parts = explode(',', $this->currentQuery);
-            if (strpos($parts[1], '-')) {
+            if (strpos($parts[1], '-') !== false) {
                 if ($this->validateRightHandSideOfVerseSeparator($parts) === false) {
                     return false;
                 }
@@ -166,6 +165,9 @@ class QueryValidator
             }
             $discontinuousVerses = self::getAllVersesAfterDiscontinuousVerseIndicator($this->currentQuery);
             $highverse = array_pop($discontinuousVerses[1]);
+            if ($highverse === null) {
+                return true;
+            }
             if ($this->highVerseOutOfBounds($highverse, $parts)) {
                 return false;
             }
@@ -218,6 +220,9 @@ class QueryValidator
         foreach ($chapterIndicators[1] as $chapterIndicator) {
             foreach ($this->ctx->INDEXES as $jkey => $jindex) {
                 $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
+                if ($bookidx === false) {
+                    continue;
+                }
                 $chapter_limit = $jindex['chapter_limit'][$bookidx];
                 if ($chapterIndicator > $chapter_limit) {
                     $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
@@ -232,7 +237,7 @@ class QueryValidator
 
     private function validateMultipleVerseSeparators(): bool
     {
-        if (!strpos($this->currentQuery, '-')) {
+        if (strpos($this->currentQuery, '-') === false) {
             $this->ctx->addErrorMessage('You cannot have more than one comma and not have a dash!');
             $this->ctx->incrementBadQueryCount();
             return false;
@@ -247,6 +252,9 @@ class QueryValidator
             $pp = array_map('intval', explode(',', $part));
             foreach ($this->ctx->INDEXES as $jkey => $jindex) {
                 $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
+                if ($bookidx === false) {
+                    continue;
+                }
                 $chapters_verselimit = $jindex['verse_limit'][$bookidx];
                 $verselimit = intval($chapters_verselimit[$pp[0] - 1]);
                 if ($pp[1] > $verselimit) {
@@ -270,6 +278,9 @@ class QueryValidator
             $highverse = intval(array_pop($matches[1]));
             foreach ($this->ctx->INDEXES as $jkey => $jindex) {
                 $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
+                if ($bookidx === false) {
+                    continue;
+                }
                 $chapters_verselimit = $jindex['verse_limit'][$bookidx];
                 $verselimit = intval($chapters_verselimit[intval($parts[0]) - 1]);
                 if ($highverse > $verselimit) {
@@ -289,6 +300,9 @@ class QueryValidator
     private function validateVersesAfterChapterVerseSeparators(array $parts): bool
     {
         $versesAfterChapterVerseSeparators = self::getVerseAfterChapterVerseSeparator($this->currentQuery);
+        if ($versesAfterChapterVerseSeparators === null) {
+            return true;
+        }
         $highverse = intval($versesAfterChapterVerseSeparators[1]);
         foreach ($this->ctx->INDEXES as $jkey => $jindex) {
             $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
@@ -331,6 +345,9 @@ class QueryValidator
         foreach ($chapters as $zchapter) {
             foreach ($this->ctx->INDEXES as $jkey => $jindex) {
                 $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
+                if ($bookidx === false) {
+                    continue;
+                }
                 $chapter_limit = $jindex['chapter_limit'][$bookidx];
                 if (intval($zchapter) > $chapter_limit) {
                     $msg = 'A chapter in the query is out of bounds: there is no chapter <%1$d> in the book %2$s in the requested version %3$s, the last possible chapter is <%4$d>';
@@ -345,6 +362,10 @@ class QueryValidator
 
     public function validateQueries(): bool
     {
+        if (empty($this->ctx->queries)) {
+            return false;
+        }
+
         if ($this->queryViolatesAnyRuleOf($this->ctx->queries[0], [self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR])) {
             return false;
         }
@@ -391,7 +412,7 @@ class QueryValidator
                 }
             }
 
-            if (strpos($this->currentQuery, '-')) {
+            if (strpos($this->currentQuery, '-') !== false) {
                 $rules = [
                     self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS,
                     self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS,

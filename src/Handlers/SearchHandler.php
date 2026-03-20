@@ -74,16 +74,21 @@ class SearchHandler extends AbstractHandler
 
         if ($exactmatch === 'true') {
             // Exact match: RLIKE word boundary match, allows 3-letter words
+            $regexKeyword = preg_quote($keyword, '/');
+            $escapedRegexKeyword = $mysqli->real_escape_string($regexKeyword);
             $searchResult = $mysqli->query(
-                "SELECT * FROM {$version} WHERE text RLIKE '[[:<:]]{$escapedKeyword}[[:>:]]' ORDER BY book, chapter, verse"
+                "SELECT * FROM {$version} WHERE text RLIKE '[[:<:]]{$escapedRegexKeyword}[[:>:]]' ORDER BY book, chapter, verse"
             );
         } else {
             // Default: boolean fulltext search with wildcard
-            if (mb_strlen($keyword) < 4) {
+            // Strip MySQL boolean mode operators from user input
+            $sanitizedKeyword = preg_replace('/[+\-><~*"()]+/', '', $keyword) ?? $keyword;
+            if (mb_strlen($sanitizedKeyword) < 4) {
                 throw new ValidationException('Search keyword must be at least 4 characters long (use exactmatch=true for shorter keywords).');
             }
+            $escapedSanitized = $mysqli->real_escape_string($sanitizedKeyword);
             $searchResult = $mysqli->query(
-                "SELECT * FROM {$version} WHERE MATCH(text) AGAINST ('{$escapedKeyword}*' IN BOOLEAN MODE) ORDER BY book, chapter, verse"
+                "SELECT * FROM {$version} WHERE MATCH(text) AGAINST ('{$escapedSanitized}*' IN BOOLEAN MODE) ORDER BY book, chapter, verse"
             );
         }
 
@@ -96,12 +101,16 @@ class SearchHandler extends AbstractHandler
             $row['testament']  = (int) $row['testament'];
             $universal_booknum = $row['book'];
             $bookidx           = array_search($row['book'], $book_num);
+            if ($bookidx === false) {
+                $bookidx = 0;
+            }
             $row['bookabbrev'] = $abbreviations[$bookidx] ?? '';
-            $row['booknum']    = $bookidx;
+            $row['booknum']    = (int) $bookidx;
             $row['univbooknum'] = $universal_booknum;
             $row['book']       = $bbbooks[$bookidx] ?? '';
             $row['section']    = (int) $row['section'];
             $row['chapter']    = (int) $row['chapter'];
+            $row['verse']      = (int) $row['verse'];
             unset($row['verseID']);
             $results[] = $row;
         }

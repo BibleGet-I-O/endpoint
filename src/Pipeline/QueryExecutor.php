@@ -79,9 +79,16 @@ class QueryExecutor
 
     private function checkIPAddressPastTwoDaysWithSameRequest(): void
     {
-        $ipresult = $this->ipaddress != ''
-            ? $this->ctx->mysqli->query("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $this->ipaddress . "' ) AND QUERY = '" . $this->xquery . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )")
-            : false;
+        if ($this->ipaddress === '') {
+            return;
+        }
+        $stmt = $this->ctx->mysqli->prepare("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->bind_param('ss', $this->ipaddress, $this->xquery);
+        $stmt->execute();
+        $ipresult = $stmt->get_result();
 
         if ($ipresult instanceof \mysqli_result) {
             if ($ipresult->num_rows > 10 && $ipresult->num_rows < 30) {
@@ -100,9 +107,16 @@ class QueryExecutor
 
     private function checkQueriesFromSameIPAddress(): void
     {
-        $ipresult = $this->ipaddress != ''
-            ? $this->ctx->mysqli->query("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $this->ipaddress . "' ) AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )")
-            : false;
+        if ($this->ipaddress === '') {
+            return;
+        }
+        $stmt = $this->ctx->mysqli->prepare("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->bind_param('s', $this->ipaddress);
+        $stmt->execute();
+        $ipresult = $stmt->get_result();
 
         if ($ipresult instanceof \mysqli_result && $ipresult->num_rows > 100) {
             throw new TooManyRequestsException(
@@ -114,7 +128,13 @@ class QueryExecutor
 
     private function checkRequestsFromSameOrigin(): void
     {
-        $originres = $this->ctx->mysqli->query("SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->ctx->originHeader . "' AND QUERY = '" . $this->xquery . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN");
+        $stmt = $this->ctx->mysqli->prepare("SELECT ORIGIN, COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = ? AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN");
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->bind_param('ss', $this->ctx->originHeader, $this->xquery);
+        $stmt->execute();
+        $originres = $stmt->get_result();
         if ($originres instanceof \mysqli_result && $originres->num_rows > 0) {
             $originRow = $originres->fetch_assoc();
             if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow)) {
@@ -132,7 +152,13 @@ class QueryExecutor
 
     private function checkDiverseRequestsFromSameOrigin(): void
     {
-        $originres = $this->ctx->mysqli->query("SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->ctx->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN");
+        $stmt = $this->ctx->mysqli->prepare("SELECT ORIGIN, COUNT(*) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY) GROUP BY ORIGIN");
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->bind_param('s', $this->ctx->originHeader);
+        $stmt->execute();
+        $originres = $stmt->get_result();
         if ($originres instanceof \mysqli_result && $originres->num_rows > 0) {
             $originRow = $originres->fetch_assoc();
             if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow) && $originRow['ORIGIN_CNT'] > 100) {
@@ -163,10 +189,19 @@ class QueryExecutor
         $ipinfoToken = IPINFO_ACCESS_TOKEN;
         $ch = curl_init('https://ipinfo.io/' . $this->ipaddress . '?token=' . $ipinfoToken);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
         $curlResult = curl_exec($ch);
         if ($curlResult === false) {
             $this->geoip_json = '';
-            $this->ctx->mysqli->query("INSERT INTO curl_error ( ERRNO,ERROR ) VALUES( " . curl_errno($ch) . ",'" . curl_error($ch) . "' )");
+            $errStmt = $this->ctx->mysqli->prepare("INSERT INTO curl_error (ERRNO, ERROR) VALUES (?, ?)");
+            if ($errStmt !== false) {
+                $errno = curl_errno($ch);
+                $error = curl_error($ch);
+                $errStmt->bind_param('is', $errno, $error);
+                $errStmt->execute();
+                $errStmt->close();
+            }
             curl_close($ch);
             return;
         }
@@ -204,7 +239,13 @@ class QueryExecutor
     private function getGeoIPFromLogs(): \mysqli_result|bool
     {
         if ($this->ipaddress != '') {
-            return $this->ctx->mysqli->query("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $this->ipaddress . "' ) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
+            $stmt = $this->ctx->mysqli->prepare("SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
+            if ($stmt === false) {
+                return false;
+            }
+            $stmt->bind_param('s', $this->ipaddress);
+            $stmt->execute();
+            return $stmt->get_result();
         }
         return false;
     }
@@ -240,7 +281,10 @@ class QueryExecutor
 
         $universal_booknum  = $row['book'];
         $booknum            = array_search($row['book'], $this->ctx->INDEXES[$currentVariant]['book_num']);
-        $row['bookabbrev']  = $this->ctx->INDEXES[$currentVariant]['abbreviations'][$booknum];
+        if ($booknum === false) {
+            $booknum = 0;
+        }
+        $row['bookabbrev']  = $this->ctx->INDEXES[$currentVariant]['abbreviations'][$booknum] ?? '';
         $row['booknum']     = $booknum;
         $row['univbooknum'] = $universal_booknum;
         $row['book']        = $this->ctx->INDEXES[$currentVariant]['biblebooks'][$booknum];

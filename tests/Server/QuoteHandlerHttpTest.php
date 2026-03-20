@@ -144,8 +144,7 @@ class QuoteHandlerHttpTest extends ServerTestCase
     public function testMissingQueryParamReturnsError(): void
     {
         $r = self::httpGet('/v3/quote?version=TEST1');
-        $body = self::jsonBody($r['body']);
-        // Should be a validation error (422) or caught as problem+json
+        self::assertSame(422, $r['status']);
         self::assertStringContainsString('application/problem+json', $r['headers']['content-type']);
     }
 

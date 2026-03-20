@@ -133,6 +133,7 @@ class QuoteHandler extends AbstractHandler
     {
         $resultsHtml = '<div class="results bibleQuote">';
         $version = $book = $chapter = '';
+        $paragraphOpen = false;
 
         foreach ($ctx->results as $row) {
             $rowVersion = isset($row['version']) && is_scalar($row['version']) ? (string) $row['version'] : '';
@@ -142,20 +143,31 @@ class QuoteHandler extends AbstractHandler
             $rowText    = isset($row['text']) && is_scalar($row['text']) ? (string) $row['text'] : '';
 
             if ($rowVersion !== $version) {
+                if ($paragraphOpen) {
+                    $resultsHtml .= '</p>';
+                    $paragraphOpen = false;
+                }
                 $version = $rowVersion;
                 $resultsHtml .= '<p class="version bibleVersion">' . htmlspecialchars($version) . '</p>';
                 $book = ''; $chapter = '';
             }
             if ($rowBook !== $book || $rowChapter !== $chapter) {
+                if ($paragraphOpen) {
+                    $resultsHtml .= '</p>';
+                }
                 $book    = $rowBook;
                 $chapter = $rowChapter;
-                $resultsHtml .= '<p class="book bookChapter">' . htmlspecialchars($book) . '&nbsp;' . $chapter . '</p>';
+                $resultsHtml .= '<p class="book bookChapter">' . htmlspecialchars($book) . '&nbsp;' . htmlspecialchars($chapter) . '</p>';
                 $resultsHtml .= '<p class="verses versesParagraph">';
+                $paragraphOpen = true;
             }
             $resultsHtml .= '<span class="sup verseNum">' . htmlspecialchars($rowVerse) . '</span>';
             $resultsHtml .= '<span class="text verseText">' . htmlspecialchars($rowText) . '</span>';
         }
-        $resultsHtml .= '</p></div>';
+        if ($paragraphOpen) {
+            $resultsHtml .= '</p>';
+        }
+        $resultsHtml .= '</div>';
 
         $errorsHtml = '<div class="errors bibleQuote">';
         if (!empty($ctx->errors)) {

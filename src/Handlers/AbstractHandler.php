@@ -311,7 +311,11 @@ abstract class AbstractHandler implements RequestHandlerInterface
     protected function jsonResponse(ResponseInterface $response, mixed $data): ResponseInterface
     {
         $encoded = json_encode($data, JSON_UNESCAPED_UNICODE);
-        return $response->withBody(Stream::create($encoded !== false ? $encoded : '{}'));
+        if ($encoded === false) {
+            error_log('JSON encoding failed: ' . json_last_error_msg());
+            $encoded = '{}';
+        }
+        return $response->withBody(Stream::create($encoded));
     }
 
     /**

@@ -100,7 +100,9 @@ class QueryFormulator
         $this->currentPreferOrigin = '';
         if ($this->currentBook == 19 || $this->currentBook === '19') {
             if (in_array($this->currentRequestedVariant, $this->ctx->CATHOLIC_VERSIONS)) {
-                $this->currentPreferOrigin = " AND verseorigin = '" . ($this->ctx->DATA['preferorigin'] != '' ? $this->ctx->DATA['preferorigin'] : 'GREEK') . "'";
+                $preferOrigin = $this->ctx->DATA['preferorigin'] ?? '';
+                $origin = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true) ? $preferOrigin : 'GREEK';
+                $this->currentPreferOrigin = " AND verseorigin = '" . $origin . "'";
             }
         }
     }
@@ -191,7 +193,7 @@ class QueryFormulator
                         $chapter = 1; $verse = 1; $preferorigin = " AND verseorigin = 'GREEK'";
                     } elseif ($chapter == 13 && (($verse >= 1 && $verse <= 7) || $verse == null)) {
                         $chapter = 3; $verse = 13; $preferorigin = " AND verseorigin = 'GREEK'";
-                    } elseif (($chapter == 13 && (($verse >= 8 && $verse <= 18) || $verse == null)) || ($chapter == 14 && (($verse <= 1 && $verse >= 19) || $verse == null))) {
+                    } elseif (($chapter == 13 && (($verse >= 8 && $verse <= 18) || $verse == null)) || ($chapter == 14 && (($verse >= 1 && $verse <= 19) || $verse == null))) {
                         $chapter = 4; $verse = 17; $preferorigin = " AND verseorigin = 'GREEK'";
                     } elseif ($chapter == 15 && (($verse >= 1 && $verse <= 3) || $verse == null)) {
                         $chapter = 4; $verse = 8; $preferorigin = " AND verseorigin = 'GREEK'";

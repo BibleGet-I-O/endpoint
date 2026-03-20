@@ -26,12 +26,42 @@ class MiddlewarePipeline implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        if (empty($this->middlewareQueue)) {
-            return $this->defaultHandler->handle($request);
+        $queue = $this->middlewareQueue;
+        return self::dispatch($request, $queue, $this->defaultHandler);
+    }
+
+    /**
+     * @param MiddlewareInterface[] $queue
+     */
+    private static function dispatch(ServerRequestInterface $request, array $queue, RequestHandlerInterface $fallback): ResponseInterface
+    {
+        if (empty($queue)) {
+            return $fallback->handle($request);
         }
 
-        $middleware = array_shift($this->middlewareQueue);
+        $middleware = array_shift($queue);
+        $next = new class($queue, $fallback) implements RequestHandlerInterface {
+            /** @param MiddlewareInterface[] $queue */
+            public function __construct(
+                private array $queue,
+                private RequestHandlerInterface $fallback
+            ) {}
 
-        return $middleware->process($request, $this);
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return MiddlewarePipeline::dispatchStatic($request, $this->queue, $this->fallback);
+            }
+        };
+
+        return $middleware->process($request, $next);
+    }
+
+    /**
+     * @param MiddlewareInterface[] $queue
+     * @internal Used by the anonymous handler class
+     */
+    public static function dispatchStatic(ServerRequestInterface $request, array $queue, RequestHandlerInterface $fallback): ResponseInterface
+    {
+        return self::dispatch($request, $queue, $fallback);
     }
 }

@@ -43,12 +43,12 @@ if [ "$RUN_MODE" = "vscode" ]; then
   # Run in foreground (for VSCode tasks)
   pid=$$
   echo "$pid" > server.vscode.pid
+  echo -e "${GREEN}Server starting at http://${API_HOST}:${API_PORT}/ (PID: $pid)${NC}"
   exec php -S "${API_HOST}:${API_PORT}" -t public public/router.php
 else
   # Run in background with multiple workers
   PHP_CLI_SERVER_WORKERS=4 php -S "${API_HOST}:${API_PORT}" -t public public/router.php > /dev/null 2>&1 &
   pid=$!
   echo "$pid" > server.pid
+  echo -e "${GREEN}Server started at http://${API_HOST}:${API_PORT}/ (PID: $pid)${NC}"
 fi
-
-echo -e "${GREEN}Server started at http://${API_HOST}:${API_PORT}/ (PID: $pid)${NC}"

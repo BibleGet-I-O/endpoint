@@ -73,7 +73,16 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
 
             if (false === $responseBody) {
                 $response->getBody()->write('{"type":"about:blank","title":"Internal Server Error","status":500}');
-                return $response->withHeader('Content-Type', 'application/problem+json');
+                $response = $response->withHeader('Content-Type', 'application/problem+json');
+                $origin = $request->getHeaderLine('Origin');
+                if ($origin !== '') {
+                    $response = $response
+                        ->withHeader('Access-Control-Allow-Origin', $origin)
+                        ->withHeader('Access-Control-Allow-Credentials', 'true');
+                } else {
+                    $response = $response->withHeader('Access-Control-Allow-Origin', '*');
+                }
+                return $response;
             }
 
             $response->getBody()->write($responseBody);

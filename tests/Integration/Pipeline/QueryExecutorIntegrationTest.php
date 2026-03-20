@@ -179,7 +179,7 @@ class QueryExecutorIntegrationTest extends DatabaseTestCase
         $this->executePipeline('Genesis1,1');
 
         $mysqli = $this->getConnection();
-        $result = $mysqli->query('SELECT COUNT(*) AS cnt FROM requests_log__2026');
+        $result = $mysqli->query('SELECT COUNT(*) AS cnt FROM requests_log__' . date('Y'));
         self::assertInstanceOf(\mysqli_result::class, $result);
         $row = $result->fetch_assoc();
         self::assertNotNull($row);

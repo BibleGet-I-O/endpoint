@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Restart the PHP built-in development server
 ./stop-server.sh

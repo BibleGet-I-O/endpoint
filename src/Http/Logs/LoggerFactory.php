@@ -16,20 +16,22 @@ class LoggerFactory
 
     private static function resolveLogsFolder(?string $logsFolder): string
     {
-        if (is_string($logsFolder)) {
+        if ($logsFolder !== null) {
             self::$logsFolder = $logsFolder;
         } elseif (isset(self::$logsFolder)) {
             $logsFolder = self::$logsFolder;
         } else {
-            // Default to logs/ in the project root (two levels up from this file: src/Http/Logs/)
+            // Default to logs/ in the project root (three levels up from this file: src/Http/Logs/)
             self::$logsFolder = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'logs';
-            if (!is_dir(self::$logsFolder)) {
-                if (!@mkdir(self::$logsFolder, 0755, true) && !is_dir(self::$logsFolder)) {
-                    throw new \RuntimeException('Failed to create logs directory: ' . self::$logsFolder);
-                }
-            }
             $logsFolder = self::$logsFolder;
         }
+
+        if (!is_dir($logsFolder)) {
+            if (!@mkdir($logsFolder, 0755, true) && !is_dir($logsFolder)) {
+                throw new \RuntimeException('Failed to create logs directory: ' . $logsFolder);
+            }
+        }
+
         return $logsFolder;
     }
 
