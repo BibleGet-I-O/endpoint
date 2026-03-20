@@ -38,9 +38,9 @@ class ConnectionTest extends DatabaseTestCase
         self::assertIsArray($result);
     }
 
-    public function testCharsetIsUtf8(): void
+    public function testCharsetIsUtf8mb4(): void
     {
         $mysqli = Connection::getConnection();
-        self::assertSame('utf8', $mysqli->character_set_name());
+        self::assertSame('utf8mb4', $mysqli->character_set_name());
     }
 }
