@@ -47,6 +47,8 @@ class MetadataHandlerTest extends DatabaseTestCase
 
         $body = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
+        self::assertNotEmpty($body['results'], 'results should not be empty');
+        self::assertArrayHasKey(0, $body['results'], 'results[0] should exist');
         // First book should contain "Genesis"
         $found = false;
         foreach ($body['results'][0] as $langData) {
