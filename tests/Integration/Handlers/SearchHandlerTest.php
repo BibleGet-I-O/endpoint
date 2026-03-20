@@ -28,7 +28,9 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testKeywordSearchJson(): void
     {
         $handler  = $this->createHandler();
-        $response = $handler->handle(new ServerRequest('GET', '/v3/search?keyword=light&version=TEST1'));
+        $request  = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
+        $response = $handler->handle($request);
 
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
@@ -46,7 +48,9 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testSearchResultStructure(): void
     {
         $handler  = $this->createHandler();
-        $response = $handler->handle(new ServerRequest('GET', '/v3/search?keyword=light&version=TEST1'));
+        $request  = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
+        $response = $handler->handle($request);
 
         $body = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
@@ -67,7 +71,9 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testExactMatchSearch(): void
     {
         $handler  = $this->createHandler();
-        $response = $handler->handle(new ServerRequest('GET', '/v3/search?keyword=God&version=TEST1&exactmatch=true'));
+        $request  = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'God', 'version' => 'TEST1', 'exactmatch' => 'true']);
+        $response = $handler->handle($request);
 
         self::assertSame(200, $response->getStatusCode());
         $body = json_decode((string) $response->getBody(), true);
@@ -82,7 +88,9 @@ class SearchHandlerTest extends DatabaseTestCase
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('keyword');
-        $handler->handle(new ServerRequest('GET', '/v3/search?version=TEST1'));
+        $request = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['version' => 'TEST1']);
+        $handler->handle($request);
     }
 
     public function testMissingVersionThrows(): void
@@ -90,14 +98,18 @@ class SearchHandlerTest extends DatabaseTestCase
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('version');
-        $handler->handle(new ServerRequest('GET', '/v3/search?keyword=light'));
+        $request = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'light']);
+        $handler->handle($request);
     }
 
     public function testInvalidVersionThrows(): void
     {
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
-        $handler->handle(new ServerRequest('GET', '/v3/search?keyword=light&version=FAKE'));
+        $request = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'light', 'version' => 'FAKE']);
+        $handler->handle($request);
     }
 
     public function testShortKeywordWithoutExactMatchThrows(): void
@@ -105,7 +117,9 @@ class SearchHandlerTest extends DatabaseTestCase
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('4 characters');
-        $handler->handle(new ServerRequest('GET', '/v3/search?keyword=God&version=TEST1'));
+        $request = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'God', 'version' => 'TEST1']);
+        $handler->handle($request);
     }
 
     // ── XML response ───────────────────────────────────────
@@ -113,7 +127,9 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testXmlResponse(): void
     {
         $handler  = $this->createHandler();
-        $response = $handler->handle(new ServerRequest('GET', '/v3/search?keyword=light&version=TEST1&return=xml'));
+        $request  = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'return' => 'xml']);
+        $response = $handler->handle($request);
 
         self::assertStringContainsString('application/xml', $response->getHeaderLine('Content-Type'));
         $xml = (string) $response->getBody();
@@ -126,7 +142,9 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testHtmlResponse(): void
     {
         $handler  = $this->createHandler();
-        $response = $handler->handle(new ServerRequest('GET', '/v3/search?keyword=light&version=TEST1&return=html'));
+        $request  = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'return' => 'html']);
+        $response = $handler->handle($request);
 
         self::assertStringContainsString('text/html', $response->getHeaderLine('Content-Type'));
     }
@@ -136,7 +154,9 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testInfoContainsEndpointVersion(): void
     {
         $handler  = $this->createHandler();
-        $response = $handler->handle(new ServerRequest('GET', '/v3/search?keyword=light&version=TEST1'));
+        $request  = (new ServerRequest('GET', '/v3/search'))
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
+        $response = $handler->handle($request);
 
         $body = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
