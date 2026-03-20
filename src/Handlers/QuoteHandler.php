@@ -219,7 +219,7 @@ class QuoteHandler extends AbstractHandler
     /**
      * Encode request headers as JSON, redacting sensitive values.
      *
-     * @param array<string, string[]> $headers
+     * @param array<array<string>> $headers
      */
     private static function safeEncodeHeaders(array $headers): string
     {

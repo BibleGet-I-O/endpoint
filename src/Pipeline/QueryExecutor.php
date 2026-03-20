@@ -180,52 +180,6 @@ class QueryExecutor
         $this->checkDiverseRequestsFromSameOrigin();
     }
 
-    private function getGeoIpInfo(): void
-    {
-        if (!defined('IPINFO_ACCESS_TOKEN')) {
-            $this->geoip_json = '{"ERROR":"IPINFO_ACCESS_TOKEN not defined"}';
-            return;
-        }
-
-        /** @var string $ipinfoToken */
-        $ipinfoToken = IPINFO_ACCESS_TOKEN;
-        $ch = curl_init('https://ipinfo.io/' . $this->ipaddress . '?token=' . $ipinfoToken);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-        $curlResult = curl_exec($ch);
-        if ($curlResult === false) {
-            $this->geoip_json = '';
-            $errStmt = $this->ctx->mysqli->prepare("INSERT INTO curl_error (ERRNO, ERROR) VALUES (?, ?)");
-            if ($errStmt !== false) {
-                $errno = curl_errno($ch);
-                $error = curl_error($ch);
-                $errStmt->bind_param('is', $errno, $error);
-                $errStmt->execute();
-                $errStmt->close();
-            }
-            curl_close($ch);
-            return;
-        }
-        $this->geoip_json = (string) $curlResult;
-        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($http_status == 429) {
-            $this->geoip_json = '{"ERROR":"api limit exceeded"}';
-        } elseif ($http_status == 200) {
-            $geoip_JSON_obj = json_decode($this->geoip_json);
-            if ($geoip_JSON_obj === null || json_last_error() !== JSON_ERROR_NONE) {
-                $this->geoip_json = '{"ERROR":"' . json_last_error() . ' <' . $this->geoip_json . '>"}';
-            } else {
-                $encoded = json_encode($geoip_JSON_obj);
-                $this->geoip_json = $encoded !== false ? $encoded : '{}';
-            }
-        } else {
-            $this->geoip_json = '{"ERROR":"wrong http status > ' . $http_status . '"}';
-        }
-    }
-
     private function getGeoIPInfoFromLogsElseOnline(): void
     {
         $geoIPFromLogs = $this->getGeoIPFromLogs();
