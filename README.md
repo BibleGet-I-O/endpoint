@@ -1,5 +1,5 @@
 # BibleGet I/O service endpoints
-There are 3 API endpoints for the BibleGet I/O project, reachable at the URL https://query.bibleget.io. The first official release on Github was v2.4. Since then, the v2 endpoints (currently at v2.9) have also become reachable at the URL https://query.bibleget.io/v2/. 
+There are 3 API endpoints for the BibleGet I/O project, reachable at the URL https://query.bibleget.io. The first official release on GitHub was v2.4. Since then, the v2 endpoints (currently at v2.9) have also become reachable at the URL https://query.bibleget.io/v2/.
 
 Starting with the v3 release, the v2 endpoints will ONLY be available at https://query.bibleget.io/v2/, the v3 endpoints will ONLY be available at https://query.bibleget.io/v3/, and NO endpoints will be available at https://query.bibleget.io . This way it will be become clear which version of the endpoint is being used. Any significant changes that would break functionality in a plugin or application will only be applied between major versions, in order to allow plugins or applications to handle the versioning and avoid breaking functionality.
 
@@ -10,8 +10,45 @@ Along with the information provided below, Swaggerhub documentation [can be foun
 | :---------: | :----------------: | :----------------: |
 | [![CodeFactor](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/badge/master)](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/overview/master) | [![CodeFactor](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/badge/development)](https://www.codefactor.io/repository/github/bibleget-i-o/endpoint/overview/development) | [![OpenAPI](https://validator.swagger.io/validator?url=https://raw.githubusercontent.com/BibleGet-I-O/endpoint/master/openapi.json)](https://validator.swagger.io/validator?url=https://raw.githubusercontent.com/BibleGet-I-O/endpoint/master/openapi.json) |
 
-## [index.php](https://github.com/BibleGet-I-O/endpoint/blob/master/index.php)
-This is the main API endpoint for all queries for biblical texts and quotes, reachable at the URL https://query.bibleget.io/.
+## Architecture (v3)
+
+The v3 codebase is built on PHP-FIG PSR standards and follows a modern, standards-compliant architecture:
+
+| Standard | Implementation | Purpose |
+|----------|---------------|---------|
+| [PSR-4](https://www.php-fig.org/psr/psr-4/) | Composer autoloading (`BibleGet\Api\` &rarr; `src/`) | Class autoloading |
+| [PSR-7](https://www.php-fig.org/psr/psr-7/) | [nyholm/psr7](https://github.com/Nyholm/psr7) | HTTP message interfaces |
+| [PSR-15](https://www.php-fig.org/psr/psr-15/) | Custom handlers and middleware | Request handlers and middleware |
+| [PSR-17](https://www.php-fig.org/psr/psr-17/) | [nyholm/psr7](https://github.com/Nyholm/psr7) (`Psr17Factory`) | HTTP factory interfaces |
+| [PSR-3](https://www.php-fig.org/psr/psr-3/) | [monolog/monolog](https://github.com/Seldaek/monolog) | Logging |
+| [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) | Custom exception hierarchy | `application/problem+json` error responses |
+
+All requests are routed through a single front controller (`public/index.php`) via a PSR-15 middleware pipeline:
+
+1. **ErrorHandlingMiddleware** &mdash; catches all exceptions and returns RFC 9457 `application/problem+json` responses
+2. **LoggingMiddleware** &mdash; logs request/response details via Monolog
+3. **Handler** &mdash; the endpoint-specific PSR-15 request handler
+
+Response emission is handled by [laminas/laminas-httphandlerrunner](https://github.com/laminas/laminas-httphandlerrunner) (`SapiEmitter`).
+
+### v3 Routes
+
+| Route | Handler | Description |
+|-------|---------|-------------|
+| `/v3/quote` | `QuoteHandler` | Bible quote retrieval |
+| `/v3/metadata/biblebooks` | `MetadataHandler` | Book names in 25+ languages |
+| `/v3/metadata/bibleversions` | `MetadataHandler` | Available Bible versions |
+| `/v3/metadata/versionindex` | `MetadataHandler` | Chapter/verse indexes |
+| `/v3/search` | `SearchHandler` | Keyword search |
+
+### Testing & CI
+
+- **PHPUnit 11** with Unit, Integration (MySQL), and Server (HTTP) test suites
+- **PHPStan** level 10 static analysis
+- **GitHub Actions** CI runs all test suites and static analysis on pull requests
+
+## /v3/quote
+This is the main API endpoint for all queries for biblical texts and quotes, reachable at the URL https://query.bibleget.io/v3/quote.
 
 Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](https://www.w3.org/wiki/CORS_Enabled), which means that ajax requests can be made directly against the endpoint without getting cross-domain restriction errors. [HSTS](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) is enforced on the whole BibleGet server, both for the website and the API endpoints, so only the `https` protocol can be used for requests. Since the certificate used on the server is a **Let's Encrypt issued certificate**, it should be recognized by most platforms, this is not however the case for many **Java runtimes** in which the `keystore` often does **not** have a copy of the **Let's Encrypt CA or Intermediate certificate** ([see here](https://stackoverflow.com/a/34111150/394921)). In these cases, it may be necessary for the application to ensure that a copy of the Let's Encrypt CA or Intermediate certificate is installed to the keystore in order for valid requests to be made to the BibleGet API endpoint.
 
@@ -23,7 +60,7 @@ Types of data that can be returned from the API endpoint are `JSON`, `XML`, and 
 
 ### PARAMETERS
 * **`query`**: *(required)* should contain the reference for the Bible quote. There is no default value, this parameter must be provided. The reference must use standard notation, whether English notation or International notation (e.g. `John3:16` or `Giovanni3,16`), see the page [Standard notation for biblical quotations](https://www.bibleget.io/how-it-works/standard-notation-for-biblical-quotations/) for more information. The endpoint does check for the validity and correctness of the Bible reference, and will return error messages for badly formed references, however the application forming the request should also do validity checking in order to prevent bad requests from even reaching the server. This will help keep unnecessary load off of the server. The source code of the endpoint can be inspected for the REGEX checks that are used to check the validity of the Bible references, as can the source code of the official apps for **WordPress**, for **Google Docs**, for **Microsoft Word**, for **Open Office** and for **LibreOffice**.
-* **`version`**: *(optional)* the version of the Bible to retrieve the quote from, default value `CEI2008` (the Italian version of the Catholic Episcopal Conference).  With this parameter you can specify the biblical version you want to retrieve the quote from. You can also specify several versions as a comma separated list, for example to compare multiple versions of the biblical texts. The possible values should be retrieved via the `metadata.php` API endpoint.
+* **`version`**: *(optional)* the version of the Bible to retrieve the quote from, default value `CEI2008` (the Italian version of the Catholic Episcopal Conference).  With this parameter you can specify the biblical version you want to retrieve the quote from. You can also specify several versions as a comma separated list, for example to compare multiple versions of the biblical texts. The possible values should be retrieved via the `/v3/metadata` API endpoint.
 * **`return`**: *(optional)* the format in which the structured data should be returned, default value `json`. This parameter takes one of three values: `json`, `xml`, or `html`. Rather than using this parameter, it is recommended to set the **`Accept`** header to the desired type for the response data. The **Accept** header can be set to **`application/json`**, **`application/xml`**, or **`text/html`**.
 * **`appid`**: *(required)* identifies the application generating the request. For the time being, there is no kind of registration required for authorization with api keys and secrets. Requests can be made freely to the endpoint, which for now is completely open. However responsible usage of the endpoint is required, such as filtering for valid Bible references and using cache to avoid multiple requests for the same Bible reference. In order to help understand and monitor the usage of the endpoint by various applications, the `appid` parameter is required to know where the request is coming from. This will also be useful for the statistics of the requests made to the service endpoint. Using this parameter can be considered the basic registering mechanism for applications that make use of the service endpoint.
 * **`pluginversion`**: *(optional)* lets the engine know which version of a plugin is being used to generate the request (the plugin being indicated in the `appid` parameter). Seeing that this is a project in development, and the plugins are developing together with it, in order to maintain the highest compatibility and quality assurance it is useful to know which “version” of a plugin is being used to generate the request. If for example a plugin version becomes incompatible, the engine will better determine how to handle a request coming from an outdated plugin.
@@ -33,7 +70,7 @@ Types of data that can be returned from the API endpoint are `JSON`, `XML`, and 
 ### STRUCTURE OF THE RETURNED DATA
 I will only take into consideration, for sake of simplicity, the structure of JSON data.
 
-An example of data returned from the query `https://query.bibleget.io/v3/?query=Mt1,1-5&version=NABRE`:
+An example of data returned from the query `https://query.bibleget.io/v3/quote?query=Mt1,1-5&version=NABRE`:
 
 ```javascript
 {"results":[{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"1","verseequiv":null,"verseorigin":null,"text":" The book of the genealogy of Jesus Christ, the son of David, the son of Abraham.","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"2","verseequiv":null,"verseorigin":null,"text":" Abraham became the father of Isaac, Isaac the father of Jacob, Jacob the father of Judah and his brothers. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"3","verseequiv":null,"verseorigin":null,"text":"Judah became the father of Perez and Zerah, whose mother was Tamar. Perez became the father of Hezron, Hezron the father of Ram, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"4","verseequiv":null,"verseorigin":null,"text":" Ram the father of Amminadab. Amminadab became the father of Nahshon, Nahshon the father of Salmon, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"},{"testament":2,"section":5,"book":"Matthew","chapter":1,"versedescr":null,"verse":"5","verseequiv":null,"verseorigin":null,"text":" Salmon the father of Boaz, whose mother was Rahab. Boaz became the father of Obed, whose mother was Ruth. Obed became the father of Jesse, ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Mt","booknum":46,"univbooknum":"47","originalquery":"Mt1,1-5"}],"errors":[],"info":{"ENDPOINT_VERSION":"3.0","detectedNotation":"EUROPEAN","bibleVersionsInfo":{"NABRE":"New American Bible - Revised Edition|2011|en|1|CATHOLIC|United States Conference of Catholic Bishops|"}}}
@@ -55,14 +92,14 @@ An example of data returned from the query `https://query.bibleget.io/v3/?query=
     For now, applications that want to use this data will take care of localization and display, no text values are returned by the API.
   * **`book`**: display ready name of the Book of the Bible in the language of the Bible version being quoted from
   * **`bookabbrev`**: display ready abbreviated form of the Book of the Bible in the language of the Bible version being quoted from
-  * **`booknum`**: the number of the Book of the Bible according to the **0 based index** of the Bible version being quoted from (not all versions have the same books in the same order).The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of this Bible version can be retrieved using the `metadata.php` API endpoint.
+  * **`booknum`**: the number of the Book of the Bible according to the **0 based index** of the Bible version being quoted from (not all versions have the same books in the same order).The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of this Bible version can be retrieved using the `/v3/metadata` API endpoint.
   * **`univbooknum`**: the number of the Book of the Bible according to the universally recognized Catholic version of the Canon of the Sacred Scriptures (*i.e. universally recognized by the Roman Catholic Church*). This is **not a 0 based index**, `1` = `Genesis`, therefore it is returned as a string rather than a number value, though it can be treated as a number.
   * **`chapter`**: display ready number of the chapter in the Book of the Bible in the Bible version that the verse is being quoted from
   * **`versedescr`**: not currently used, comes back as `null`. Could possible be used for scholarly notes associated with a Bible verse
   * **`verse`**: display ready number of the verse being quoted. *N.B. this is returned as a string because it will not always necessarily be a number value, there are verses that have letters in them. The value must be treated as a string and not as a number.* 
   * **`verseequiv`**: I'm not actually sure if this is currently being used or not, I believe the idea was to have a number value for those verses that have a letter in the verse number... Will mostly return a `null` value.
   * **`text`**: contains the actual text of the verse being quoted. May contain newline characters that may need to be dealt with. The `NABRE` version will contain it's own formatting tags that need to be dealt with, whether that means producing the proper formatting associated with these tags, or removing them to have a basic formatting. The legal requirements for usage of the `NABRE` version require the proper formatting to be used where possible. Please contact [the project author](mailto:admin@bibleget.io) for information on how to deal with these tags and their formatting.
-  * **`version`**: the acronym of the Bible version being quoted from. To have information about the Bible version, the `metadata.php` API endpoint can be used.
+  * **`version`**: the acronym of the Bible version being quoted from. To have information about the Bible version, the `/v3/metadata` API endpoint can be used.
   * **`title1`**: not currently used. The original idea (which may yet be implemented) was for this to contain any first-level title text preceding the given verse in the version of the Bible being quoted from.
   * **`title2`**: not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.
   * **`title3`**: not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.
@@ -82,17 +119,19 @@ An example of data returned from the query `https://query.bibleget.io/v3/?query=
 
 
 
-## [metadata.php](https://github.com/BibleGet-I-O/endpoint/blob/master/metadata.php) 
-An API endpoint for querying metadata such as Bible versions that are available and their book/chapter/verse indexes, reachable at https://query.bibleget.io/metadata.php.
+## /v3/metadata
+An API endpoint for querying metadata such as Bible versions that are available and their book/chapter/verse indexes. In v3, metadata is accessed via sub-routes rather than query parameters:
 
-Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](https://www.w3.org/wiki/CORS_Enabled), which means that ajax requests can be made directly against the endpoint without getting cross-domain restriction errors. [HSTS](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) is enforced on the whole BibleGet server, both for the website and the API endpoints, so only the `https` protocol can be used for requests. Since the certificate used on the server is a **Let's Encrypt issued certificate**, it should be recognized by most platforms, this is not however the case for many **Java runtimes** in which the `keystore` often does **not** have a copy of the **Let's Encrypt CA or Intermediate certificate** ([see here](https://stackoverflow.com/a/34111150/394921)). In these cases, it may be necessary for the application to ensure that a copy of the Let's Encrypt CA or Intermediate certificate is installed to the keystore in order for valid requests to be made to the BibleGet API endpoint.
+| Route | Description |
+|-------|-------------|
+| `/v3/metadata/biblebooks` | Book names and abbreviations in 25+ languages |
+| `/v3/metadata/bibleversions` | Available Bible versions |
+| `/v3/metadata/versionindex?versions=NABRE` | Chapter/verse indexes for specified versions |
+
+Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](https://www.w3.org/wiki/CORS_Enabled), which means that ajax requests can be made directly against the endpoint without getting cross-domain restriction errors. [HSTS](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) is enforced on the whole BibleGet server, both for the website and the API endpoints, so only the `https` protocol can be used for requests. Since the certificate used on the server is a **Let’s Encrypt issued certificate**, it should be recognized by most platforms, this is not however the case for many **Java runtimes** in which the `keystore` often does **not** have a copy of the **Let’s Encrypt CA or Intermediate certificate** ([see here](https://stackoverflow.com/a/34111150/394921)). In these cases, it may be necessary for the application to ensure that a copy of the Let’s Encrypt CA or Intermediate certificate is installed to the keystore in order for valid requests to be made to the BibleGet API endpoint.
 
 ### PARAMETERS
-* **`query`**: *(required)* can take one of three values:
-  * **`biblebooks`**: when used as the value of the `query` parameter, the endpoint will return data about the list of valid **book names** and **abbreviations** in various languages that are currently supported / recognized by the BibleGet main endpoint
-  * **`bibleversions`**: when used as the value of the `query` parameter, the metadata endpoint will return data about the **Bible versions** that are currently supported by the BibleGet main endpoint
-  * **`versionindex`**: when used as the value of the `query` parameter, the metadata endpoint will return data about the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine. This value requires the usage of a **second parameter** `versions` other than the `query` parameter
-* **`versions`**: *(required in case of a `query=versionindex` request)* indicates for which Bible versions indices data should be returned. This parameter’s value can be either a single version or a comma separated list of versions. The possible values can be retrieved making a `query=bibleversions` request against the metadata endpoint.
+* **`versions`**: *(required for `/v3/metadata/versionindex`)* indicates for which Bible versions indices data should be returned. This parameter’s value can be either a single version or a comma separated list of versions. The possible values can be retrieved from the `/v3/metadata/bibleversions` endpoint.
 * **`return`**: *(optional)* indicates the format in which the structured data should be returned. This parameter takes one of three values: `json`, `xml`, or `html`. If left out, this parameter will default to `json`.  Rather than using this parameter, it is recommended to set the **`Accept`** header to the desired type for the response data. The **Accept** header can be set to **`application/json`**, **`application/xml`**, or **`text/html`**.
 
 ### STRUCTURE OF THE RETURNED DATA
@@ -102,7 +141,7 @@ I will only take into consideration, for sake of simplicity, the structure of JS
 
 * **`languages`**: an array containing the languages supported by the main BibleGet endpoint, for the names of the Books of the Bible. The single languages are returned in the English form, all caps. The **implict numbered index** of this array will be useful for the data associated with the `results` key. 
 
-    Example of data returned from the query **https://query.bibleget.io/v3/metadata.php?query=biblebooks** relative to the `languages` key:
+    Example of data returned from the query **https://query.bibleget.io/v3/metadata/biblebooks** relative to the `languages` key:
 
     ```javascript
     {"languages":["ENGLISH","AFRIKAANS","ALBANIAN","AMHARIC","ARABIC","CHINESE","CROATIAN","CZECH","FILIPINO","FRENCH","GERMAN","GREEK","HUNGARIAN","ITALIAN","JAPANESE","KOREAN","LATIN","POLISH","PORTUGUESE","ROMANIAN","RUSSIAN","SPANISH","TAMIL","THAI","VIETNAMESE"]}
@@ -115,7 +154,7 @@ I will only take into consideration, for sake of simplicity, the structure of JS
       2. The second element will be a pipe separated list of the possible abbreviated forms of the book in the given language (if there are multiple possible forms that is; the pipe will be not be present if there is not a list of values)
       3. Any other elements will not be pipe separated lists but single strings of the possible alternate forms whether full or abbreviated ??? [note to myself: double check this, what was the reasoning behind this kind of structuring of the data?]
 
-    Example of data returned from the query **https://query.bibleget.io/v3/metadata.php?query=biblebooks** relative to the `results` key:
+    Example of data returned from the query **https://query.bibleget.io/v3/metadata/biblebooks** relative to the `results` key:
 
     ```javascript
     { // the main object returned by the endpoint
@@ -181,23 +220,22 @@ I will only take into consideration, for sake of simplicity, the structure of JS
 
 >N.B. Applications or plugins that wish to use the main API endpoint should CACHE the information returned by the METADATA endpoint. This data does not change often, there is no need to request it for every Bible quote. It can be a good idea to refresh this information about, let's say once a month, or create a user interface with a button that will allow the end user to refresh the information from the server if they think the cached information might be old.
 
-## [search.php](https://github.com/BibleGet-I-O/endpoint/blob/master/search.php) 
-An API endpoint for issuing search requests using keywords or search by topic, reachable at https://query.bibleget.io/search.php.
+## /v3/search
+An API endpoint for issuing search requests using keywords, reachable at https://query.bibleget.io/v3/search.
 
 Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](https://www.w3.org/wiki/CORS_Enabled), which means that ajax requests can be made directly against the endpoint without getting cross-domain restriction errors. [HSTS](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) is enforced on the whole BibleGet server, both for the website and the API endpoints, so only the `https` protocol can be used for requests. Since the certificate used on the server is a **Let's Encrypt issued certificate**, it should be recognized by most platforms, this is not however the case for many **Java runtimes** in which the `keystore` often does **not** have a copy of the **Let's Encrypt CA or Intermediate certificate** ([see here](https://stackoverflow.com/a/34111150/394921)). In these cases, it may be necessary for the application to ensure that a copy of the Let's Encrypt CA or Intermediate certificate is installed to the keystore in order for valid requests to be made to the BibleGet API endpoint.
 
 ### PARAMETERS
-* **`query`**: *(required)* as of version 2.8 of the endpoint it can take only one value: `keywordsearch`, which requires the usage of a second parameter: `keyword`. Search by topic is not yet available.
-* **`keyword`**: *(required when making a request where `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses
-* **`exactmatch`**: *(optional)* since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded) 
-* **`version`**: *(required)* indicates the Bible version to search in. Cannot be a comma separated list, can only be one version, indicated using the acronym for the Bible version among the versions available on the BibleGet server (which are discoverable from the `metadata.php` API endpoint)
-* **`return`**: *(optional)* indicates the format in which the structured data should be returned. This parameter takes one of three values: `json`, `xml`, or `html`. If left out, this parameter will default to `json`. Rather than using this parameter, it is recommended to set the **`Accept`** header to the desired type for the response data. The **Accept** header can be set to **`application/json`**, **`application/xml`**, or **`text/html`**. To be honest, only `json` is currently fully supported, `html` and `xml` have not had much attention and currently (as of API endpoint version 2.7) do not return coherent results.
+* **`keyword`**: *(required)* indicates the keyword that will be searched in the text of the Bible verses
+* **`exactmatch`**: *(optional)* since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded). Accepts both string values (`"true"`, `"false"`) and native booleans in JSON request bodies.
+* **`version`**: *(required)* indicates the Bible version to search in. Cannot be a comma separated list, can only be one version, indicated using the acronym for the Bible version among the versions available on the BibleGet server (which are discoverable from the `/v3/metadata/bibleversions` endpoint)
+* **`return`**: *(optional)* indicates the format in which the structured data should be returned. This parameter takes one of three values: `json`, `xml`, or `html`. If left out, this parameter will default to `json`. Rather than using this parameter, it is recommended to set the **`Accept`** header to the desired type for the response data. The **Accept** header can be set to **`application/json`**, **`application/xml`**, or **`text/html`**.
 
 
 ### STRUCTURE OF THE RETURNED DATA
-The data is structured in a similar manner to the main API endpoint (index.php).
+The data is structured in a similar manner to the main API endpoint (`/v3/quote`).
 
-* **`results`**: an array containing the data associated with the single verses that contain the keyword that was searched for within the requested Bible version, whether as a full match or as a match within a word (e.g. a search for the keyword `light` will first return Bible verses that contain exactly the word `light`, then verses that contain the word `lights` seeing that *light* can be found in *lights*). The objects contained in this array are exactly the same as those returned by the main API endpoint, for example a request to https://query.bibleget.io/v3/search.php?query=keywordsearch&keyword=light&version=NABRE will give as first result in the `results` array:
+* **`results`**: an array containing the data associated with the single verses that contain the keyword that was searched for within the requested Bible version, whether as a full match or as a match within a word (e.g. a search for the keyword `light` will first return Bible verses that contain exactly the word `light`, then verses that contain the word `lights` seeing that *light* can be found in *lights*). The objects contained in this array are exactly the same as those returned by the main API endpoint, for example a request to https://query.bibleget.io/v3/search?keyword=light&version=NABRE will give as first result in the `results` array:
 
     ```javascript
     {"testament":"1","section":"1","book":"Genesis","chapter":"1","versedescr":null,"verse":"3","verseequiv":null,"verseorigin":null,"text":"Then God said: Let there be light, and there was light. ","title1":"","title2":"","title3":"","version":"NABRE","bookabbrev":"Gn","booknum":0,"univbooknum":"1","originalquery":"Gn1:3"}
