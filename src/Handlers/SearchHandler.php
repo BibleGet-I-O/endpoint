@@ -120,7 +120,8 @@ class SearchHandler extends AbstractHandler
         }
 
         if (!$searchResult instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+            error_log('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         return $searchResult;
     }
