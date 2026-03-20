@@ -18,6 +18,7 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
     private bool $debug;
     private Logger $errorLogger;
     private ?ServerRequestInterface $currentRequest = null;
+    private static bool $handlersRegistered = false;
 
     public function __construct(
         ResponseFactoryInterface $responseFactory,
@@ -27,9 +28,12 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
         $this->debug           = $debug;
         $this->errorLogger     = LoggerFactory::create('api-error', null, 30, $debug);
 
-        register_shutdown_function([$this, 'handleShutdown']);
-        set_exception_handler([$this, 'handleUncaughtException']);
-        set_error_handler([$this, 'handlePhpWarning']);
+        if (!self::$handlersRegistered) {
+            register_shutdown_function([$this, 'handleShutdown']);
+            set_exception_handler([$this, 'handleUncaughtException']);
+            set_error_handler([$this, 'handlePhpWarning']);
+            self::$handlersRegistered = true;
+        }
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
