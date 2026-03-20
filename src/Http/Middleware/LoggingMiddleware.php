@@ -64,16 +64,16 @@ class LoggingMiddleware implements MiddlewareInterface
         return $response;
     }
 
+    /**
+     * Read a seekable stream body without consuming it.
+     * Callers must check isSeekable() before calling this method.
+     */
     private static function readBody(StreamInterface $body): string
     {
-        if ($body->isSeekable()) {
-            $position = $body->tell();
-            $body->rewind();
-            $contents = (string) $body;
-            $body->seek($position);
-        } else {
-            $contents = $body->getContents();
-        }
+        $position = $body->tell();
+        $body->rewind();
+        $contents = (string) $body;
+        $body->seek($position);
 
         return $contents;
     }
