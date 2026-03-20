@@ -50,6 +50,7 @@ class SearchHandlerTest extends DatabaseTestCase
 
         $body = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
+        self::assertNotEmpty($body['results'], 'Expected results for keyword "light"');
         $verse = $body['results'][0];
 
         self::assertArrayHasKey('book', $verse);
