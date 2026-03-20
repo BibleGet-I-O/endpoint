@@ -51,7 +51,7 @@ class SearchHandler extends AbstractHandler
 
     /**
      * @param array<string, mixed> $params
-     * @return array{string, string, string}
+     * @return array{string, string, bool}
      */
     private function extractSearchParams(array $params): array
     {
@@ -59,8 +59,12 @@ class SearchHandler extends AbstractHandler
         $keyword       = is_string($keywordRaw) ? $keywordRaw : '';
         $versionRaw    = $params['version'] ?? '';
         $version       = is_string($versionRaw) ? $versionRaw : '';
-        $exactmatchRaw = $params['exactmatch'] ?? '';
-        $exactmatch    = is_string($exactmatchRaw) ? $exactmatchRaw : '';
+        $exactmatchRaw = $params['exactmatch'] ?? false;
+        $exactmatch    = match (true) {
+            is_bool($exactmatchRaw)   => $exactmatchRaw,
+            is_string($exactmatchRaw) => filter_var($exactmatchRaw, FILTER_VALIDATE_BOOLEAN),
+            default                   => false,
+        };
 
         if ($keyword === '') {
             throw new ValidationException('The keyword parameter is required.');
@@ -117,9 +121,9 @@ class SearchHandler extends AbstractHandler
         return ['abbreviations' => $abbreviations, 'books' => $books, 'book_num' => $book_num];
     }
 
-    private function executeSearch(\mysqli $mysqli, string $version, string $keyword, string $exactmatch): \mysqli_result
+    private function executeSearch(\mysqli $mysqli, string $version, string $keyword, bool $exactmatch): \mysqli_result
     {
-        if ($exactmatch === 'true') {
+        if ($exactmatch) {
             $regexKeyword = preg_quote($keyword, '/');
             $escapedRegexKeyword = $mysqli->real_escape_string($regexKeyword);
             $searchResult = $mysqli->query(
