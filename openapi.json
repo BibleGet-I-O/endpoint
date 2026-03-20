@@ -21,7 +21,7 @@
         }
     ],
     "paths": {
-        "/index.php": {
+        "/quote": {
             "get": {
                 "summary": "Retrieve Bible quotes by reference (book - chapter - verse)",
                 "description": "The API endpoint from which one can retrieve Bible quotes by reference (book - chapter - verse)",
@@ -248,48 +248,106 @@
                 }
             }
         },
-        "/metadata.php": {
+        "/metadata/biblebooks": {
             "get": {
-                "summary": "Retrieve metadata about Bible versions that are available and their relative book/chapter/verse indexes",
-                "description": "The API endpoint for querying metadata such as Bible versions that are available and their relative book/chapter/verse indexes. **N.B. Applications or plugins should CACHE the information returned by the METADATA endpoint. This data does not change often, there is no need to request it for every Bible quote requested from the main API endpoint. It can be a good idea to refresh this information about, let's say once a month, or create a user interface with a button that will allow the end user to refresh the information from the server if they think the cached information might be old.**",
-                "operationId": "getMetadataByGET",
+                "summary": "Retrieve the list of valid book names and abbreviations in various languages",
+                "description": "Retrieve the list of valid **book names** and **abbreviations** in various languages that are currently supported / recognized by the main BibleGet API endpoint. **N.B. Applications or plugins should CACHE the information returned by the METADATA endpoints. This data does not change often, there is no need to request it for every Bible quote.**",
+                "operationId": "getBibleBooks",
                 "tags": [
                     "MetadataAPI"
                 ],
                 "parameters": [
                     {
-                        "name": "query",
-                        "in": "query",
-                        "description": "Specifies the subset of metadata to retrieve. **`biblebooks`**: retrieve the list of valid **book names** and **abbreviations** in various languages that are currently supported / recognized by the main BibleGet API endpoint. **`bibleversions`**: retrieve the list of **Bible versions** that are currently supported by the main BibleGet API endpoint. **`versionindex`**: retrieve the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine (this value requires the usage of a second parameter `versions`).",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "biblebooks",
-                                "bibleversions",
-                                "versionindex"
-                            ]
-                        },
-                        "examples": {
-                            "biblebooks": {
-                                "summary": "Retrieve the list of valid book names and abbreviations in various languages that are currently supported / recognized by the main BibleGet API endpoint",
-                                "value": "biblebooks"
+                        "$ref": "#/components/parameters/return"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Structured data containing the names and abbreviations of Bible books for supported languages",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataBibleBooks"
+                                }
                             },
-                            "bibleversions": {
-                                "summary": "Retrieve the list of Bible versions that are currently supported by the main BibleGet API endpoint.",
-                                "value": "bibleversions"
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataBibleBooks"
+                                }
                             },
-                            "versionindex": {
-                                "summary": "Retrieve the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine. Requires the usage of a second parameter `versions`.",
-                                "value": "versionindex"
+                            "text/html": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataBibleBooksHTML"
+                                }
                             }
                         }
                     },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
+                    },
+                    "405": {
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    }
+                }
+            }
+        },
+        "/metadata/bibleversions": {
+            "get": {
+                "summary": "Retrieve the list of Bible versions currently supported",
+                "description": "Retrieve the list of **Bible versions** that are currently supported by the main BibleGet API endpoint.",
+                "operationId": "getBibleVersions",
+                "tags": [
+                    "MetadataAPI"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/return"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Structured data containing information about available Bible versions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataBibleVersions"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataBibleVersionsXML"
+                                }
+                            },
+                            "text/html": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataBibleVersionsHTML"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
+                    },
+                    "405": {
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    }
+                }
+            }
+        },
+        "/metadata/versionindex": {
+            "get": {
+                "summary": "Retrieve chapter/verse indexes for specified Bible versions",
+                "description": "Retrieve the **indices of chapters and verses** for any of the Bible versions currently supported by the BibleGet engine. Requires the `versions` parameter.",
+                "operationId": "getVersionIndex",
+                "tags": [
+                    "MetadataAPI"
+                ],
+                "parameters": [
                     {
                         "name": "versions",
                         "in": "query",
-                        "description": "*(required in the case of a `query=versionindex` request)* Indicates for which Bible versions the indices data should be returned. The acronyms for valid Bible versions as returned by `query=bibleversions` should be used, either as a single string value or as a comma separated list of values.",
-                        "required": false,
+                        "description": "Indicates for which Bible versions the indices data should be returned. The acronyms for valid Bible versions as returned by `/metadata/bibleversions` should be used, either as a single string value or as a comma separated list of values.",
+                        "required": true,
                         "schema": {
                             "type": "array",
                             "items": {
@@ -318,218 +376,56 @@
                         }
                     },
                     {
-                        "name": "return",
-                        "in": "query",
-                        "description": "Type of data that should be returned in the response",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "json",
-                                "xml",
-                                "html"
-                            ],
-                            "default": "json"
-                        },
-                        "examples": {
-                            "json": {
-                                "summary": "Request that the data be returned in JSON format",
-                                "value": "json"
-                            },
-                            "xml": {
-                                "summary": "Request that the data be returned in XML format",
-                                "value": "xml"
-                            },
-                            "html": {
-                                "summary": "Request that the data be returned in HTML format",
-                                "value": "html"
-                            }
-                        }
+                        "$ref": "#/components/parameters/return"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Structured data containing the required metadata about either Bible versions available, Bible version indexes, or the names and abbreviations of Bible books for any given Bible version",
+                        "description": "Structured data containing chapter/verse index information for the requested Bible versions",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleVersions"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleBooks"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataVersionIndex"
-                                        }
-                                    ]
+                                    "$ref": "#/components/schemas/MetadataVersionIndex"
                                 }
                             },
                             "application/xml": {
                                 "schema": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleVersionsXML"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleBooks"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataVersionIndex"
-                                        }
-                                    ]
+                                    "$ref": "#/components/schemas/MetadataVersionIndex"
                                 }
                             },
                             "text/html": {
                                 "schema": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleVersionsHTML"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleBooksHTML"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataVersionIndexHTML"
-                                        }
-                                    ]
+                                    "$ref": "#/components/schemas/MetadataVersionIndexHTML"
                                 }
                             }
                         }
                     },
                     "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
                     },
                     "400": {
-                        "description": "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
+                        "description": "Bad request. Will be returned if the `versions` parameter is missing or invalid."
                     },
                     "405": {
-                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
-                    }
-                }
-            },
-            "post": {
-                "summary": "Retrieve metadata about Bible versions that are available and their relative book/chapter/verse indexes",
-                "description": "The API endpoint for querying metadata such as Bible versions that are available and their relative book/chapter/verse indexes",
-                "operationId": "getMetadataByPOST",
-                "tags": [
-                    "MetadataAPI"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MetadataPOST"
-                            },
-                            "encoding": {
-                                "versions": {
-                                    "style": "form",
-                                    "explode": false
-                                }
-                            }
-                        },
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MetadataPOST"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Structured data containing the required metadata about either Bible versions available, Bible version indexes, or the names and abbreviations of Bible books for any given Bible version",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleVersions"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleBooks"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataVersionIndex"
-                                        }
-                                    ]
-                                }
-                            },
-                            "application/xml": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleVersionsXML"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleBooks"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataVersionIndex"
-                                        }
-                                    ]
-                                }
-                            },
-                            "text/html": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleVersionsHTML"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataBibleBooksHTML"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/MetadataVersionIndexHTML"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
-                    },
-                    "400": {
-                        "description": "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
-                    },
-                    "405": {
-                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
                     }
                 }
             }
         },
-        "/search.php": {
+        "/search": {
             "get": {
-                "summary": "Search for Bible verses that contain a given keyword. In the future, search by topic may also be implemented.",
-                "description": "The API endpoint for performing search queries for Bible verses by keyword (or topic).",
+                "summary": "Search for Bible verses that contain a given keyword",
+                "description": "The API endpoint for performing keyword search queries for Bible verses.",
                 "operationId": "searchVersesByGET",
                 "tags": [
                     "SearchAPI"
                 ],
                 "parameters": [
                     {
-                        "name": "query",
-                        "in": "query",
-                        "description": "Specifies the kind of search to perform. As of v3.0 of the search API only a value of `keywordsearch` is available.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "keywordsearch"
-                            ]
-                        },
-                        "examples": {
-                            "keywordsearch": {
-                                "summary": "Perfom a search for Bible verses that contain the indicated keyword. Requires the usage of a second parameter: keyword. As of v2.8 of the search API endpoint, Search by topic is not yet available.",
-                                "value": "keywordsearch"
-                            }
-                        }
-                    },
-                    {
                         "name": "keyword",
                         "in": "query",
-                        "description": "*(required when making a request where `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses",
+                        "description": "The keyword that will be searched in the text of the Bible verses",
+                        "required": true,
                         "schema": {
                             "type": "string"
                         },
@@ -653,8 +549,8 @@
                 }
             },
             "post": {
-                "summary": "Search for Bible verses that contain a given keyword. In the future, search by topic may also be implemented.",
-                "description": "The API endpoint for performing search queries for Bible verses by keyword (or topic).",
+                "summary": "Search for Bible verses that contain a given keyword",
+                "description": "The API endpoint for performing keyword search queries for Bible verses.",
                 "operationId": "searchVersesByPOST",
                 "tags": [
                     "SearchAPI"
@@ -731,7 +627,7 @@
                     },
                     "version": {
                         "type": "array",
-                        "description": "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `metadata.php` API using `query=bibleversions`",
+                        "description": "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `/metadata/bibleversions` endpoint",
                         "items": {
                             "type": "string"
                         },
@@ -840,7 +736,7 @@
                                 },
                                 "booknum": {
                                     "type": "integer",
-                                    "description": "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `metadata.php` API endpoint, as can index information about the number of chapters in the book and the number of verses in each chapter.",
+                                    "description": "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `/metadata` endpoints, as can index information about the number of chapters in the book and the number of verses in each chapter.",
                                     "xml": {
                                         "attribute": true
                                     },
@@ -982,7 +878,7 @@
                                 },
                                 "version": {
                                     "type": "string",
-                                    "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `metadata.php` API endpoint can be used",
+                                    "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `/metadata` endpoints can be used",
                                     "xml": {
                                         "attribute": true
                                     },
@@ -1178,7 +1074,7 @@
                     },
                     "booknum": {
                         "type": "integer",
-                        "description": "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `metadata.php` API endpoint, as can index information about the number of chapters in the book and the number of verses in each chapter.",
+                        "description": "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `/metadata` endpoints, as can index information about the number of chapters in the book and the number of verses in each chapter.",
                         "xml": {
                             "attribute": true
                         },
@@ -1319,7 +1215,7 @@
                     },
                     "version": {
                         "type": "string",
-                        "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `metadata.php` API endpoint can be used",
+                        "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `/metadata` endpoints can be used",
                         "xml": {
                             "attribute": true
                         },
@@ -13947,14 +13843,14 @@
                 "properties": {
                     "abbreviations": {
                         "type": "array",
-                        "description": "An array containing the abbreviations of the books of the Bible as found in the published edition of this version of the Bible. These may not necessarily always be used as is for making requests to the main API endpoint because there is some possibility that they may conflict with other abbreviations used by other versions of the Bible in other languages for a different book of the Bible. These are only useful for displaying the exact abbreviations for that version of the Bible. For verification of the validity of a request made to the main API endpoint, the abbreviations produced from the request `query=biblebooks` should be used.",
+                        "description": "An array containing the abbreviations of the books of the Bible as found in the published edition of this version of the Bible. These may not necessarily always be used as is for making requests to the main API endpoint because there is some possibility that they may conflict with other abbreviations used by other versions of the Bible in other languages for a different book of the Bible. These are only useful for displaying the exact abbreviations for that version of the Bible. For verification of the validity of a request made to the main API endpoint, the abbreviations produced from the `/metadata/biblebooks` endpoint should be used.",
                         "items": {
                             "type": "string"
                         }
                     },
                     "biblebooks": {
                         "type": "array",
-                        "description": "An array containing the full names of the books of the Bible as found in the published edition of this version of the Bible. The implicit numbered index of this array will not necessarily correspond with that of the Canon of the Scriptures as recognized by the Roman Catholic Church and as produced from the request `query=biblebooks`, because some evangelical versions for example may not have all of the books of the Bible as per the Canon recognized by the Roman Catholic Church.",
+                        "description": "An array containing the full names of the books of the Bible as found in the published edition of this version of the Bible. The implicit numbered index of this array will not necessarily correspond with that of the Canon of the Scriptures as recognized by the Roman Catholic Church and as produced from the `/metadata/biblebooks` endpoint, because some evangelical versions for example may not have all of the books of the Bible as per the Canon recognized by the Roman Catholic Church.",
                         "items": {
                             "type": "string"
                         }
@@ -14040,7 +13936,7 @@
                                 },
                                 "booknum": {
                                     "type": "integer",
-                                    "description": "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `metadata.php` API endpoint, as can index information about the number of chapters in the book and the number of verses in each chapter.",
+                                    "description": "0 based index of the Book of the Bible in the Bible version being quoted from (not all versions have the same books in the same order, especially when considering differences between Catholic and evangelical versions). The value is returned as a number value ready to be used against index information for the Bible version being quoted from. The corresponding name of the Book of the Bible as used in the printed edition of the current Bible version can be retrieved using the `/metadata` endpoints, as can index information about the number of chapters in the book and the number of verses in each chapter.",
                                     "xml": {
                                         "attribute": true
                                     }
@@ -14174,7 +14070,7 @@
                                 },
                                 "version": {
                                     "type": "string",
-                                    "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `metadata.php` API endpoint can be used",
+                                    "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `/metadata` endpoints can be used",
                                     "xml": {
                                         "attribute": true
                                     }
@@ -14411,7 +14307,7 @@
                     },
                     "versions": {
                         "type": "array",
-                        "description": "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `metadata.php` API using `query=bibleversions`",
+                        "description": "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `/metadata/bibleversions` endpoint",
                         "items": {
                             "type": "string"
                         },
@@ -14442,17 +14338,9 @@
             "KeywordSearchPOST": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Specifies the kind of search to perform. As of v2.8 of the search API only a value of `keywordsearch` is available.",
-                        "enum": [
-                            "keywordsearch"
-                        ],
-                        "example": "keywordsearch"
-                    },
                     "keyword": {
                         "type": "string",
-                        "description": "*(required when `query=keywordsearch`)* indicates the keyword that will be searched in the text of the Bible verses",
+                        "description": "The keyword that will be searched in the text of the Bible verses",
                         "example": "creation"
                     },
                     "version": {
@@ -14478,7 +14366,7 @@
                     }
                 },
                 "required": [
-                    "query",
+                    "keyword",
                     "version"
                 ]
             },
@@ -14534,7 +14422,7 @@
             "version": {
                 "name": "version",
                 "in": "query",
-                "description": "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `metadata.php` API using `query=bibleversions`",
+                "description": "Bible version or versions from which to retrieve the Bible quote. A list of valid versions can be retrieved from the `/metadata/bibleversions` endpoint",
                 "required": true,
                 "schema": {
                     "type": "array",
