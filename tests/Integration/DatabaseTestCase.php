@@ -34,9 +34,10 @@ abstract class DatabaseTestCase extends TestCase
         Connection::reset();
 
         // Verify DB is reachable
-        $mysqli = Connection::getConnection();
-        if ($mysqli->connect_errno) {
-            self::markTestSkipped('Test database not available: ' . $mysqli->connect_error);
+        try {
+            Connection::getConnection();
+        } catch (\Throwable $e) {
+            self::markTestSkipped('Test database not available: ' . $e->getMessage());
         }
     }
 
