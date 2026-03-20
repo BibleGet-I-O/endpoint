@@ -42,7 +42,10 @@
     "scripts": {
         "analyse": "phpstan analyse",
         "test": "phpunit --testdox --display-warnings",
-        "test:coverage": "phpunit --testdox --display-warnings --coverage-text --coverage-html=coverage"
+        "test:coverage": "phpunit --testdox --display-warnings --coverage-text --coverage-html=coverage",
+        "start": "./start-server.sh",
+        "stop": "./stop-server.sh",
+        "restart": "./restart-server.sh"
     },
     "config": {
         "allow-plugins": {
