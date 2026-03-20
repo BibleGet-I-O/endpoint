@@ -138,7 +138,8 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
         if ($origin !== '') {
             return $response
                 ->withHeader('Access-Control-Allow-Origin', $origin)
-                ->withHeader('Access-Control-Allow-Credentials', 'true');
+                ->withHeader('Access-Control-Allow-Credentials', 'true')
+                ->withAddedHeader('Vary', 'Origin');
         }
         return $response->withHeader('Access-Control-Allow-Origin', '*');
     }
