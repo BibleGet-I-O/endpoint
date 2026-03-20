@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Http\Exception\ForbiddenException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\QueryValidator;
@@ -31,7 +32,7 @@ class QuoteHandler extends AbstractHandler
         // Block bots
         $userAgent = $request->getHeaderLine('User-Agent');
         if ($userAgent !== '' && preg_match('/bot|crawl|slurp|spider/i', $userAgent)) {
-            return $response->withStatus(403);
+            throw new ForbiddenException('Automated bot access is not permitted.');
         }
 
         // Build context and run pipeline
