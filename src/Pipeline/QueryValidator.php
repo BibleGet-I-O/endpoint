@@ -94,7 +94,7 @@ class QueryValidator
      */
     private static function getAllVersesAfterDiscontinuousVerseIndicator(string $query): array
     {
-        if (preg_match_all('/\.([1-9][0-9]{0,2})$/', $query, $discontinuousVerses)) {
+        if (preg_match_all('/\.([1-9][0-9]{0,2})/', $query, $discontinuousVerses)) {
             return [
                 array_map('strval', $discontinuousVerses[0]),
                 array_map('strval', $discontinuousVerses[1]),
@@ -166,12 +166,10 @@ class QueryValidator
                 }
             }
             $discontinuousVerses = self::getAllVersesAfterDiscontinuousVerseIndicator($this->currentQuery);
-            $highverse = array_pop($discontinuousVerses[1]);
-            if ($highverse === null) {
-                return true;
-            }
-            if ($this->highVerseOutOfBounds($highverse, $parts)) {
-                return false;
+            foreach ($discontinuousVerses[1] as $dVerse) {
+                if ($this->highVerseOutOfBounds($dVerse, $parts)) {
+                    return false;
+                }
             }
         }
         return true;
