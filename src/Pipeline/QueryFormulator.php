@@ -274,7 +274,7 @@ class QueryFormulator
             $this->formulateRangeWithChapterVerse($range);
         } else {
             $this->mapReference($this->currentChapter, $range['from'], $this->currentChapter, $range['from'], true);
-            $this->mapReference($this->currentChapter, $range['to'], $nullChapter, $range['to'], false);
+            $this->mapReference($this->currentChapter, $range['to'], $_, $range['to'], false);
             $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . $this->currentChapter . ' AND verse >= ' . $range['from'] . ' AND verse <= ' . $range['to'] . ' )';
         }
     }
