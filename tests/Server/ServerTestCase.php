@@ -23,6 +23,10 @@ abstract class ServerTestCase extends TestCase
 
     public static function setUpBeforeClass(): void
     {
+        $envPort = getenv('TEST_SERVER_PORT');
+        if ($envPort !== false && $envPort !== '') {
+            self::$port = (int) $envPort;
+        }
         self::$baseUrl = 'http://' . self::$host . ':' . self::$port;
 
         // Don't start a second server if one is already running (e.g. shared across test classes)
