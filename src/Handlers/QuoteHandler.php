@@ -41,7 +41,7 @@ class QuoteHandler extends AbstractHandler
             $stringParams,
             $request->getHeaderLine('Origin'),
             $request->getMethod(),
-            json_encode($request->getHeaders()) ?: '{}'
+            self::safeEncodeHeaders($request->getHeaders())
         );
         $ctx->initialize();
 
@@ -214,6 +214,25 @@ class QuoteHandler extends AbstractHandler
         return $this->buildHtmlResults($ctx->results)
             . $this->buildHtmlErrors($ctx->errors)
             . $this->buildHtmlInfo($ctx->detectedNotation, $bibleVersionsInfo);
+    }
+
+    /**
+     * Encode request headers as JSON, redacting sensitive values.
+     *
+     * @param array<string, string[]> $headers
+     */
+    private static function safeEncodeHeaders(array $headers): string
+    {
+        $sensitiveHeaders = ['authorization', 'cookie', 'set-cookie', 'x-api-key', 'proxy-authorization'];
+        $safe = [];
+        foreach ($headers as $name => $values) {
+            if (in_array(strtolower($name), $sensitiveHeaders, true)) {
+                $safe[$name] = ['[REDACTED]'];
+            } else {
+                $safe[$name] = $values;
+            }
+        }
+        return json_encode($safe) ?: '{}';
     }
 
     private static function createEmptyResponse(ServerRequestInterface $request): ResponseInterface
