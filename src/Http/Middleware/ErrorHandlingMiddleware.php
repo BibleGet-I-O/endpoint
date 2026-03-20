@@ -79,33 +79,13 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
 
             if (false === $responseBody) {
                 $response->getBody()->write('{"type":"about:blank","title":"Internal Server Error","status":500}');
-                $response = $response->withHeader('Content-Type', 'application/problem+json');
-                $origin = $request->getHeaderLine('Origin');
-                if ($origin !== '') {
-                    $response = $response
-                        ->withHeader('Access-Control-Allow-Origin', $origin)
-                        ->withHeader('Access-Control-Allow-Credentials', 'true');
-                } else {
-                    $response = $response->withHeader('Access-Control-Allow-Origin', '*');
-                }
-                return $response;
+            } else {
+                $response->getBody()->write($responseBody);
             }
-
-            $response->getBody()->write($responseBody);
 
             $response = $response->withHeader('Content-Type', 'application/problem+json');
 
-            // CORS: reflect Origin if present, otherwise wildcard
-            $origin = $request->getHeaderLine('Origin');
-            if ($origin !== '') {
-                $response = $response
-                    ->withHeader('Access-Control-Allow-Origin', $origin)
-                    ->withHeader('Access-Control-Allow-Credentials', 'true');
-            } else {
-                $response = $response->withHeader('Access-Control-Allow-Origin', '*');
-            }
-
-            return $response;
+            return $this->applyCorsHeaders($response, $request);
         }
     }
 
@@ -133,6 +113,10 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
         }
     }
 
+    /**
+     * Note: This handler can only log fatal errors — it cannot emit an HTTP
+     * response since output may have already started during shutdown.
+     */
     public function handleShutdown(): void
     {
         $error = error_get_last();
@@ -146,6 +130,17 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
     {
         $this->logException($e, 'critical');
         exit(1);
+    }
+
+    private function applyCorsHeaders(ResponseInterface $response, ServerRequestInterface $request): ResponseInterface
+    {
+        $origin = $request->getHeaderLine('Origin');
+        if ($origin !== '') {
+            return $response
+                ->withHeader('Access-Control-Allow-Origin', $origin)
+                ->withHeader('Access-Control-Allow-Credentials', 'true');
+        }
+        return $response->withHeader('Access-Control-Allow-Origin', '*');
     }
 
     private function logException(\Throwable $e, string $severity = 'error'): void
