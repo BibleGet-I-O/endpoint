@@ -30,7 +30,7 @@
         "enabled": true,
         "actions": [
             {
-                "action": "git diff --cached --name-only --diff-filter=ACM -- '*.php' | xargs -r -n1 php -l",
+                "action": "files=$(git diff --cached --name-only --diff-filter=ACM -- '*.php'); [ -z \"$files\" ] || echo \"$files\" | xargs -n1 php -l",
                 "conditions": [
                     {
                         "exec": "\\CaptainHook\\App\\Hook\\Condition\\FileStaged\\OfType",
