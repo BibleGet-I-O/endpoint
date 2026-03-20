@@ -35,7 +35,7 @@ abstract class ServerTestCase extends TestCase
         $router      = $docRoot . '/router.php';
 
         $command = sprintf(
-            'PHP_CLI_SERVER_WORKERS=2 php -S %s:%d -t %s %s',
+            'exec env PHP_CLI_SERVER_WORKERS=2 php -S %s:%d -t %s %s',
             self::$host,
             self::$port,
             escapeshellarg($docRoot),
