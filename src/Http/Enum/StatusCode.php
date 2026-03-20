@@ -17,6 +17,7 @@ enum StatusCode: int
     case UNPROCESSABLE_CONTENT  = 422;
     case TOO_MANY_REQUESTS      = 429;
     case INTERNAL_SERVER_ERROR  = 500;
+    case SERVICE_UNAVAILABLE    = 503;
 
     public function reason(): string
     {
@@ -32,6 +33,7 @@ enum StatusCode: int
             self::UNPROCESSABLE_CONTENT  => 'Unprocessable Content',
             self::TOO_MANY_REQUESTS      => 'Too Many Requests',
             self::INTERNAL_SERVER_ERROR  => 'Internal Server Error',
+            self::SERVICE_UNAVAILABLE    => 'Service Unavailable',
         };
     }
 }

@@ -11,6 +11,7 @@ use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Enum\StatusCode;
+use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
 use BibleGet\Api\Http\Middleware\LoggingMiddleware;
 use BibleGet\Api\Http\Server\MiddlewarePipeline;
@@ -24,6 +25,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class Router
 {
+    public static string $apiBase;
     private RequestHandlerInterface $handler;
     private Psr17Factory $psr17Factory;
     private ServerRequestInterface $request;
@@ -36,6 +38,8 @@ class Router
         if (!isset(self::$debug)) {
             self::$debug = self::isLocalhost();
         }
+
+        self::resolveBasePath();
 
         $this->psr17Factory = new Psr17Factory();
         $this->request      = $this->retrieveRequest();
@@ -56,16 +60,13 @@ class Router
      */
     public function route(): never
     {
-        $path      = $this->request->getUri()->getPath();
-        $pathParts = array_values(array_filter(explode('/', $path)));
-
-        // Strip known base path prefix (e.g. "v3") if present
-        if (!empty($pathParts) && $pathParts[0] === 'v3') {
-            array_shift($pathParts);
-        }
-
-        $route            = array_shift($pathParts) ?? '';
-        $requestPathParts = $pathParts;
+        $path             = $this->request->getUri()->getPath();
+        $pathParams       = str_starts_with($path, self::$apiBase)
+            ? substr($path, strlen(self::$apiBase))
+            : $path;
+        $pathParams       = rtrim($pathParams, '/');
+        $requestPathParts = array_values(array_filter(explode('/', $pathParams)));
+        $route            = array_shift($requestPathParts) ?? '';
 
         switch ($route) {
             case '':
@@ -138,6 +139,40 @@ class Router
         $this->response = $pipeline->handle($this->request)
             ->withHeader('X-Request-Id', $this->requestId);
         $this->emitResponse();
+    }
+
+    /**
+     * Resolve the API base path from the environment.
+     *
+     * In production, API_BASE_PATH must be set in the environment.
+     * In localhost/development, it defaults to '/'.
+     */
+    private static function resolveBasePath(): void
+    {
+        if (
+            false === self::isLocalhost()
+            && (
+                false === isset($_ENV['API_BASE_PATH'])
+                || false === is_string($_ENV['API_BASE_PATH'])
+                || empty($_ENV['API_BASE_PATH'])
+            )
+        ) {
+            throw new ServiceUnavailableException('The API_BASE_PATH environment variable must be set in production environments.');
+        }
+
+        if (self::isLocalhost()) {
+            $apiBasePath = '/';
+        } else {
+            /** @var string $apiBasePath */
+            $apiBasePath = $_ENV['API_BASE_PATH'];
+        }
+
+        // Ensure trailing slash
+        if (substr($apiBasePath, -1) !== '/') {
+            $apiBasePath .= '/';
+        }
+
+        self::$apiBase = $apiBasePath;
     }
 
     /**

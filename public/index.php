@@ -46,6 +46,21 @@ if (null === $autoloaderPath) {
 require_once $autoloaderPath;
 
 use BibleGet\Api\Router;
+use Dotenv\Dotenv;
+
+$dotenv = Dotenv::createImmutable($projectFolder, ['.env', '.env.local', '.env.development', '.env.test', '.env.staging', '.env.production'], false);
+
+if (Router::isLocalhost()) {
+    // In development environment if no .env file is present we don't want to throw an error
+    $dotenv->safeLoad();
+} else {
+    // In production environment we want to throw an error if no .env file is present
+    $dotenv->load();
+    // In production environment these variables are required, in development they will be inferred if not set
+    $dotenv->required(['API_BASE_PATH', 'APP_ENV']);
+}
+
+$dotenv->ifPresent(['APP_ENV'])->notEmpty()->allowedValues(['development', 'test', 'staging', 'production']);
 
 $router = new Router();
 $router->route();
