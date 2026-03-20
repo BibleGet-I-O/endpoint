@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 abstract class DatabaseTestCase extends TestCase
 {
     protected static bool $credentialsLoaded = false;
+    private string $testYear;
 
     public static function setUpBeforeClass(): void
     {
@@ -27,6 +28,8 @@ abstract class DatabaseTestCase extends TestCase
 
     protected function setUp(): void
     {
+        $this->testYear = date('Y');
+
         // Reset singleton so each test starts fresh
         Connection::reset();
 
@@ -39,10 +42,10 @@ abstract class DatabaseTestCase extends TestCase
 
     protected function tearDown(): void
     {
-        // Clean transient tables
+        // Clean transient tables using the year captured at setUp
         $mysqli = Connection::getConnection();
         $mysqli->query('UPDATE counter SET good = 0, bad = 0');
-        $mysqli->query('DELETE FROM requests_log__' . date('Y'));
+        $mysqli->query('DELETE FROM requests_log__' . $this->testYear);
         $mysqli->query('DELETE FROM curl_error');
 
         Connection::reset();
