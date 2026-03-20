@@ -15,6 +15,9 @@ class SearchHandler extends AbstractHandler
 {
     private const ENDPOINT_VERSION = '3.0';
 
+    /** @var list<string>|null */
+    private static ?array $cachedValidVersions = null;
+
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if ($request->getMethod() === 'OPTIONS') {
@@ -71,15 +74,17 @@ class SearchHandler extends AbstractHandler
 
     private function validateVersion(\mysqli $mysqli, string $version): string
     {
-        $validVersions = [];
-        $result = $mysqli->query("SELECT sigla FROM versions_available");
-        if ($result instanceof \mysqli_result) {
-            while ($row = $result->fetch_assoc()) {
-                $validVersions[] = $row['sigla'];
+        if (self::$cachedValidVersions === null) {
+            self::$cachedValidVersions = [];
+            $result = $mysqli->query("SELECT sigla FROM versions_available");
+            if ($result instanceof \mysqli_result) {
+                while ($row = $result->fetch_assoc()) {
+                    self::$cachedValidVersions[] = (string) $row['sigla'];
+                }
             }
         }
         $version = strtoupper($version);
-        if (!in_array($version, $validVersions)) {
+        if (!in_array($version, self::$cachedValidVersions)) {
             throw new ValidationException('Not a valid version: ' . $version);
         }
         return $version;
