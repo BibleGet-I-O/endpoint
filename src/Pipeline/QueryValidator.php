@@ -306,6 +306,9 @@ class QueryValidator
         $highverse = intval($versesAfterChapterVerseSeparators[1]);
         foreach ($this->ctx->INDEXES as $jkey => $jindex) {
             $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
+            if ($bookidx === false) {
+                continue;
+            }
             $chapters_verselimit = $jindex['verse_limit'][$bookidx];
             $verselimit = intval($chapters_verselimit[intval($parts[0]) - 1]);
             if ($highverse > $verselimit) {
@@ -325,6 +328,9 @@ class QueryValidator
     {
         foreach ($this->ctx->INDEXES as $jkey => $jindex) {
             $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
+            if ($bookidx === false) {
+                continue;
+            }
             $chapters_verselimit = $jindex['verse_limit'][$bookidx];
             $verselimit = intval($chapters_verselimit[intval($parts[0]) - 1]);
             if ($highverse > $verselimit) {
