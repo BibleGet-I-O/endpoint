@@ -77,10 +77,12 @@ class SearchHandler extends AbstractHandler
         if (self::$cachedValidVersions === null) {
             self::$cachedValidVersions = [];
             $result = $mysqli->query("SELECT sigla FROM versions_available");
-            if ($result instanceof \mysqli_result) {
-                while ($row = $result->fetch_assoc()) {
-                    self::$cachedValidVersions[] = (string) $row['sigla'];
-                }
+            if ($result === false) {
+                error_log('Failed to query versions_available: ' . $mysqli->error);
+                throw new InternalServerErrorException('An internal database error occurred.');
+            }
+            while ($row = $result->fetch_assoc()) {
+                self::$cachedValidVersions[] = (string) $row['sigla'];
             }
         }
         $version = strtoupper($version);
@@ -95,14 +97,22 @@ class SearchHandler extends AbstractHandler
      */
     private function loadVersionIndex(\mysqli $mysqli, string $version): array
     {
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
+            throw new ValidationException('Invalid version identifier format: ' . $version);
+        }
         $abbreviations = $books = $book_num = [];
         $idxResult = $mysqli->query('SELECT * FROM ' . $version . '_idx');
-        if ($idxResult instanceof \mysqli_result) {
-            while ($row = $idxResult->fetch_assoc()) {
-                $abbreviations[] = (string) ($row['abbrev'] ?? '');
-                $books[]         = (string) ($row['fullname'] ?? '');
-                $book_num[]      = (string) ($row['book'] ?? '');
-            }
+        if ($idxResult === false) {
+            error_log('Failed to load index for version ' . $version . ': ' . $mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        while ($row = $idxResult->fetch_assoc()) {
+            $abbreviations[] = (string) ($row['abbrev'] ?? '');
+            $books[]         = (string) ($row['fullname'] ?? '');
+            $book_num[]      = (string) ($row['book'] ?? '');
+        }
+        if (empty($abbreviations)) {
+            throw new InternalServerErrorException('No index data found for version: ' . $version);
         }
         return ['abbreviations' => $abbreviations, 'books' => $books, 'book_num' => $book_num];
     }
