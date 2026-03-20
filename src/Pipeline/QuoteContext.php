@@ -210,13 +210,18 @@ class QuoteContext
         if (strpos($querystr, ':') !== false && strpos($querystr, '.') !== false) {
             $detectedNotation = 'MIXED';
         } elseif (strpos($querystr, ':') !== false && strpos($querystr, ',') !== false && strpos($querystr, ';') !== false) {
+            // Detect per-query separator by finding the first ':' or ',' after the chapter number
             $queries = explode(';', $querystr);
-            $queries = preg_replace('/^([1-3]{0,1}((\p{Lu}\p{Ll}*)*))([1-9][0-9]{0,2})/u', '', $queries) ?? $queries;
-            /** @var array<int, string> $queries */
-            $queries = array_map(function ($v) { return substr((string) $v, 0, 1); }, $queries);
-            if (in_array(':', $queries) && in_array(',', $queries)) {
+            $separators = [];
+            foreach ($queries as $q) {
+                // Find the first separator character (: or ,) after stripping book indicator
+                if (preg_match('/[:;,]/', $q, $sepMatch)) {
+                    $separators[] = $sepMatch[0];
+                }
+            }
+            if (in_array(':', $separators) && in_array(',', $separators)) {
                 $detectedNotation = 'MIXED';
-            } elseif (in_array(':', $queries)) {
+            } elseif (in_array(':', $separators)) {
                 $detectedNotation = 'ENGLISH';
                 $querystr = str_replace($find, $replace, $querystr);
             } else {
