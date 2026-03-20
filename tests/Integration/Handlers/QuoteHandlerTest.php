@@ -250,8 +250,9 @@ class QuoteHandlerTest extends DatabaseTestCase
         $handler = $this->createHandler();
         $request = (new ServerRequest('GET', '/v3/quote?query=Genesis1,1&version=TEST1'))
             ->withHeader('User-Agent', 'Googlebot/2.1');
-        $response = $handler->handle($request);
 
-        self::assertSame(403, $response->getStatusCode());
+        $this->expectException(\BibleGet\Api\Http\Exception\ForbiddenException::class);
+        $this->expectExceptionMessage('bot access');
+        $handler->handle($request);
     }
 }
