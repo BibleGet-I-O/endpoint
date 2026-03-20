@@ -160,7 +160,8 @@ class SearchHandler extends AbstractHandler
             $universal_booknum = $row['book'];
             $bookidx           = array_search($row['book'], $versionIndex['book_num']);
             if ($bookidx === false) {
-                $bookidx = 0;
+                error_log('Unmapped book number ' . $row['book'] . ' in version index for search result');
+                continue;
             }
             $row['bookabbrev']  = $versionIndex['abbreviations'][$bookidx] ?? '';
             $row['booknum']     = (int) $bookidx;
