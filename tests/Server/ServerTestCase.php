@@ -61,9 +61,12 @@ abstract class ServerTestCase extends TestCase
         $status = proc_get_status($process);
         self::$serverPid = $status['pid'];
 
-        // Wait for server to be ready (up to 3 seconds)
+        // Wait for server to be ready (up to 3 seconds), verifying the process is still alive
         $ready = false;
         for ($i = 0; $i < 30; $i++) {
+            if (!self::isProcessRunning(self::$serverPid)) {
+                break;
+            }
             $sock = @fsockopen(self::$host, self::$port, $errno, $errstr, 0.1);
             if ($sock) {
                 fclose($sock);
