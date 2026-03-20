@@ -20,16 +20,22 @@ class LoggerFactoryTest extends TestCase
 
     protected function tearDown(): void
     {
-        // Clean up temp log files
-        $files = glob($this->tempDir . '/*');
-        if ($files !== false) {
-            foreach ($files as $file) {
-                unlink($file);
+        // Clean up temp log files recursively
+        if (!is_dir($this->tempDir)) {
+            return;
+        }
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($this->tempDir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($iterator as $file) {
+            if ($file->isDir()) {
+                rmdir($file->getPathname());
+            } else {
+                unlink($file->getPathname());
             }
         }
-        if (is_dir($this->tempDir)) {
-            rmdir($this->tempDir);
-        }
+        rmdir($this->tempDir);
     }
 
     public function testCreateReturnsLogger(): void
