@@ -12,21 +12,15 @@ use Monolog\Formatter\LineFormatter;
 
 class LoggerFactory
 {
-    /** @var Logger[] */
-    private static array $loggers = [];
-    private static string $logsFolder;
+    /** @var array<string, Logger> */
+    private static array $loggers             = [];
+    private static ?string $defaultLogsFolder = null;
 
     private static function resolveLogsFolder(?string $logsFolder): string
     {
-        if ($logsFolder !== null) {
-            self::$logsFolder = $logsFolder;
-        } elseif (isset(self::$logsFolder)) {
-            $logsFolder = self::$logsFolder;
-        } else {
-            // Default to logs/ in the project root (three levels up from this file: src/Http/Logs/)
-            self::$logsFolder = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'logs';
-            $logsFolder       = self::$logsFolder;
-        }
+        $logsFolder              ??= self::$defaultLogsFolder
+            ?? dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'logs';
+        self::$defaultLogsFolder ??= $logsFolder;
 
         if (!is_dir($logsFolder)) {
             if (!@mkdir($logsFolder, 0755, true) && !is_dir($logsFolder)) {
@@ -48,12 +42,19 @@ class LoggerFactory
             throw new \InvalidArgumentException('Invalid log name: must contain only alphanumeric characters, underscores, dots, and hyphens.');
         }
 
-        if (isset(self::$loggers[$logName])) {
-            return self::$loggers[$logName];
+        $logsFolder = self::resolveLogsFolder($logsFolder);
+        $cacheKey   = implode('|', [
+            $logName,
+            $logsFolder,
+            (string) $maxFiles,
+            $debug ? '1' : '0',
+            $includeJsonHandler ? '1' : '0',
+        ]);
+        if (isset(self::$loggers[$cacheKey])) {
+            return self::$loggers[$cacheKey];
         }
 
-        $logsFolder = self::resolveLogsFolder($logsFolder);
-        $logger     = new Logger('bibleget-api');
+        $logger = new Logger('bibleget-api');
 
         // Plain text rotating file handler
         $plainHandler   = new RotatingFileHandler("{$logsFolder}/{$logName}.log", $maxFiles, $debug ? Level::Debug : Level::Info);
@@ -73,7 +74,7 @@ class LoggerFactory
             $logger->pushHandler($jsonHandler);
         }
 
-        self::$loggers[$logName] = $logger;
+        self::$loggers[$cacheKey] = $logger;
         return $logger;
     }
 }
