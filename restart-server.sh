@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Restart the PHP built-in development server
 ./stop-server.sh
