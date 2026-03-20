@@ -140,11 +140,15 @@ class Router
         $this->emitResponse();
     }
 
-    public static function isLocalhost(): bool
+    /**
+     * @param array<string, mixed>|null $serverParams  Override for testing; defaults to $_SERVER.
+     */
+    public static function isLocalhost(?array $serverParams = null): bool
     {
-        $serverAddress      = $_SERVER['SERVER_ADDR'] ?? '';
-        $remoteAddress      = $_SERVER['REMOTE_ADDR'] ?? '';
-        $serverName         = $_SERVER['SERVER_NAME'] ?? '';
+        $server = $serverParams ?? $_SERVER;
+        $serverAddress      = (string) ($server['SERVER_ADDR'] ?? '');
+        $remoteAddress      = (string) ($server['REMOTE_ADDR'] ?? '');
+        $serverName         = (string) ($server['SERVER_NAME'] ?? '');
         $localhostAddresses = ['127.0.0.1', '::1', '0.0.0.0'];
         $localhostNames     = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
         return in_array($serverAddress, $localhostAddresses)
@@ -167,6 +171,6 @@ class Router
     {
         $sapiEmitter = new SapiEmitter();
         $sapiEmitter->emit($this->response);
-        die();
+        exit;
     }
 }
