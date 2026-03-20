@@ -170,32 +170,70 @@ abstract class AbstractHandler implements RequestHandlerInterface
             return $this->allowedAcceptHeaders[0]->value;
         }
 
-        // Parse Accept header and find first match
+        // Parse Accept header into (mediaRange, quality) pairs
         $acceptValues = array_map('trim', explode(',', $acceptHeader));
-        foreach ($acceptValues as $value) {
-            // Strip quality parameters
-            $mime = trim(explode(';', $value)[0]);
-
-            if ($mime === '*/*') {
-                return $this->allowedAcceptHeaders[0]->value;
-            }
-
-            foreach ($this->allowedAcceptHeaders as $allowed) {
-                if ($mime === $allowed->value) {
-                    return $allowed->value;
+        /** @var array<int, array{mime: string, q: float, order: int}> $parsed */
+        $parsed = [];
+        foreach ($acceptValues as $order => $value) {
+            $parts = array_map('trim', explode(';', $value));
+            $mime = $parts[0];
+            $q = 1.0;
+            for ($i = 1; $i < count($parts); $i++) {
+                if (str_starts_with($parts[$i], 'q=')) {
+                    $q = (float) substr($parts[$i], 2);
                 }
             }
+            $parsed[] = ['mime' => $mime, 'q' => $q, 'order' => $order];
+        }
 
-            // Treat text/html as acceptable when JSON is default (browser requests)
-            if ($mime === 'text/html') {
-                foreach ($this->allowedAcceptHeaders as $allowed) {
-                    if ($allowed === AcceptHeader::HTML) {
-                        return AcceptHeader::HTML->value;
+        // For each allowed type, find the best matching quality score
+        $bestMatch = null;
+        $bestQ = -1.0;
+        $bestOrder = PHP_INT_MAX;
+
+        foreach ($this->allowedAcceptHeaders as $allowed) {
+            foreach ($parsed as $p) {
+                $matches = false;
+                if ($p['mime'] === $allowed->value) {
+                    $matches = true;
+                } elseif ($p['mime'] === '*/*') {
+                    $matches = true;
+                } else {
+                    // Check type/* wildcard (e.g. application/*)
+                    $slashPos = strpos($p['mime'], '/');
+                    if ($slashPos !== false && substr($p['mime'], $slashPos + 1) === '*') {
+                        $requestedType = substr($p['mime'], 0, $slashPos);
+                        $allowedSlashPos = strpos($allowed->value, '/');
+                        $allowedType = $allowedSlashPos !== false ? substr($allowed->value, 0, $allowedSlashPos) : '';
+                        if ($requestedType === $allowedType) {
+                            $matches = true;
+                        }
                     }
                 }
-                // If HTML not explicitly allowed, fall through to JSON for browser friendliness
-                return $this->allowedAcceptHeaders[0]->value;
+                // Treat text/html as matching AcceptHeader::HTML for browser friendliness
+                if (!$matches && $p['mime'] === 'text/html' && $allowed === AcceptHeader::HTML) {
+                    $matches = true;
+                }
+
+                if ($matches && $p['q'] > 0 && ($p['q'] > $bestQ || ($p['q'] === $bestQ && $p['order'] < $bestOrder))) {
+                    $bestQ = $p['q'];
+                    $bestOrder = $p['order'];
+                    $bestMatch = $allowed->value;
+                }
             }
+        }
+
+        // Browser friendliness: if text/html was requested but HTML is not in allowed list, use default
+        if ($bestMatch === null) {
+            foreach ($parsed as $p) {
+                if ($p['mime'] === 'text/html' && $p['q'] > 0) {
+                    return $this->allowedAcceptHeaders[0]->value;
+                }
+            }
+        }
+
+        if ($bestMatch !== null) {
+            return $bestMatch;
         }
 
         throw new NotAcceptableException();
