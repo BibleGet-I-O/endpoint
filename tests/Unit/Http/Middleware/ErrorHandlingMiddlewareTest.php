@@ -33,6 +33,11 @@ class ErrorHandlingMiddlewareTest extends TestCase
         // PHPUnit detects leftover handlers as risky. Restore them.
         restore_error_handler();
         restore_exception_handler();
+
+        // Reset the static guard so the next test's constructor re-registers
+        // handlers (otherwise tearDown would pop PHPUnit's own handlers).
+        $ref = new \ReflectionProperty(ErrorHandlingMiddleware::class, 'handlersRegistered');
+        $ref->setValue(null, false);
     }
 
     public function testPassesThroughOnSuccess(): void
@@ -92,10 +97,13 @@ class ErrorHandlingMiddlewareTest extends TestCase
 
     public function testGenericExceptionHidesDetailInProduction(): void
     {
-        $middleware = new ErrorHandlingMiddleware($this->factory, false);
-        // Extra instance registers extra handlers — clean up after test
+        // Reset static guard so this non-debug instance registers its own handlers
+        $ref = new \ReflectionProperty(ErrorHandlingMiddleware::class, 'handlersRegistered');
+        $ref->setValue(null, false);
         restore_error_handler();
         restore_exception_handler();
+
+        $middleware = new ErrorHandlingMiddleware($this->factory, false);
 
         $handler = new class implements RequestHandlerInterface {
             public function handle(ServerRequestInterface $request): ResponseInterface
