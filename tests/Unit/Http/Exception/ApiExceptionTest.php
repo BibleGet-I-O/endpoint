@@ -24,13 +24,13 @@ class ApiExceptionTest extends TestCase
     public static function exceptionProvider(): array
     {
         return [
-            'BadRequest'            => [BadRequestException::class, 400, 'Bad Request'],
-            'NotFound'              => [NotFoundException::class, 404, 'Not Found'],
-            'MethodNotAllowed'      => [MethodNotAllowedException::class, 405, 'Method Not Allowed'],
-            'NotAcceptable'         => [NotAcceptableException::class, 406, 'Not Acceptable'],
-            'UnsupportedMediaType'  => [UnsupportedMediaTypeException::class, 415, 'Unsupported Media Type'],
-            'Validation'            => [ValidationException::class, 422, 'Unprocessable Content'],
-            'InternalServerError'   => [InternalServerErrorException::class, 500, 'Internal Server Error'],
+            'BadRequest'           => [BadRequestException::class, 400, 'Bad Request'],
+            'NotFound'             => [NotFoundException::class, 404, 'Not Found'],
+            'MethodNotAllowed'     => [MethodNotAllowedException::class, 405, 'Method Not Allowed'],
+            'NotAcceptable'        => [NotAcceptableException::class, 406, 'Not Acceptable'],
+            'UnsupportedMediaType' => [UnsupportedMediaTypeException::class, 415, 'Unsupported Media Type'],
+            'Validation'           => [ValidationException::class, 422, 'Unprocessable Content'],
+            'InternalServerError'  => [InternalServerErrorException::class, 500, 'Internal Server Error'],
         ];
     }
 
@@ -51,7 +51,7 @@ class ApiExceptionTest extends TestCase
     public function testToArrayWithoutDebug(string $class, int $expectedStatus, string $expectedTitle): void
     {
         $exception = new $class('Test message');
-        $array = $exception->toArray(false);
+        $array     = $exception->toArray(false);
 
         self::assertArrayHasKey('type', $array);
         self::assertArrayHasKey('title', $array);
@@ -68,7 +68,7 @@ class ApiExceptionTest extends TestCase
     public function testToArrayWithDebug(): void
     {
         $exception = new BadRequestException('Debug test');
-        $array = $exception->toArray(true);
+        $array     = $exception->toArray(true);
 
         self::assertArrayHasKey('file', $array);
         self::assertArrayHasKey('line', $array);
@@ -104,7 +104,7 @@ class ApiExceptionTest extends TestCase
 
     public function testPreviousException(): void
     {
-        $previous = new \RuntimeException('Original');
+        $previous  = new \RuntimeException('Original');
         $exception = new InternalServerErrorException('Wrapped', $previous);
         self::assertSame($previous, $exception->getPrevious());
     }

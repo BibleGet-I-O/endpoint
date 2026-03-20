@@ -58,7 +58,7 @@ abstract class ServerTestCase extends TestCase
             self::fail('Failed to start PHP built-in server');
         }
 
-        $status = proc_get_status($process);
+        $status          = proc_get_status($process);
         self::$serverPid = $status['pid'];
 
         // Wait for server to be ready (up to 3 seconds), verifying the process is still alive
@@ -186,14 +186,14 @@ abstract class ServerTestCase extends TestCase
         $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
-        $rawHeaders  = substr((string) $raw, 0, $headerSize);
+        $rawHeaders   = substr((string) $raw, 0, $headerSize);
         $responseBody = substr((string) $raw, $headerSize);
 
         $parsedHeaders = [];
         foreach (explode("\r\n", $rawHeaders) as $line) {
             if (str_contains($line, ':')) {
                 [$name, $value] = explode(':', $line, 2);
-                $key = strtolower(trim($name));
+                $key            = strtolower(trim($name));
                 // Append multiple values for the same header (e.g. Vary)
                 if (isset($parsedHeaders[$key])) {
                     $parsedHeaders[$key] .= ', ' . trim($value);

@@ -7,6 +7,24 @@ on:
     branches: [master, development]
 
 jobs:
+  codesniffer:
+    name: PHPCS (PSR-12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, json, simplexml, dom
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHPCS
+        run: composer lint
+
   lint:
     name: PHPStan (Level 10)
     runs-on: ubuntu-latest

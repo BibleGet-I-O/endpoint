@@ -19,7 +19,7 @@ class LoggingMiddleware implements MiddlewareInterface
 
     public function __construct(bool $debug = false)
     {
-        $this->debug = $debug;
+        $this->debug  = $debug;
         $this->logger = LoggerFactory::create('api', null, 30, $debug);
     }
 
@@ -28,7 +28,7 @@ class LoggingMiddleware implements MiddlewareInterface
         if ($this->debug) {
             $requestId      = $request->getAttribute('request_id');
             $reqContentType = $request->getHeaderLine('Content-Type');
-            $reqBody = $request->getBody();
+            $reqBody        = $request->getBody();
             if (!$reqBody->isSeekable()) {
                 $safeReqBody = '[non-seekable body omitted]';
             } elseif (str_starts_with($reqContentType, 'application/json') || str_starts_with($reqContentType, 'text/')) {

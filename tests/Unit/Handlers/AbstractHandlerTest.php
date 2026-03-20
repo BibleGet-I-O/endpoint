@@ -25,9 +25,9 @@ class AbstractHandlerTest extends TestCase
         return new class extends AbstractHandler {
             public function handle(ServerRequestInterface $request): ResponseInterface
             {
-                $params = $this->getRequestParams($request);
+                $params      = $this->getRequestParams($request);
                 $contentType = $this->resolveResponseContentType($request, $params);
-                $response = $this->initResponse($request, $contentType);
+                $response    = $this->initResponse($request, $contentType);
                 return $this->jsonResponse($response, ['params' => $params]);
             }
 
@@ -92,7 +92,7 @@ class AbstractHandlerTest extends TestCase
         $handler = $this->createHandler();
         $handler->setAllowedAcceptHeaders([AcceptHeader::XML, AcceptHeader::JSON]);
         $request = new ServerRequest('GET', '/', ['Accept' => '*/*']);
-        $result = $handler->testValidateAcceptHeader($request);
+        $result  = $handler->testValidateAcceptHeader($request);
         self::assertSame('application/xml', $result); // first allowed
     }
 
@@ -101,7 +101,7 @@ class AbstractHandlerTest extends TestCase
         $handler = $this->createHandler();
         $handler->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML]);
         $request = new ServerRequest('GET', '/', ['Accept' => 'application/xml']);
-        $result = $handler->testValidateAcceptHeader($request);
+        $result  = $handler->testValidateAcceptHeader($request);
         self::assertSame('application/xml', $result);
     }
 
@@ -147,7 +147,7 @@ class AbstractHandlerTest extends TestCase
     {
         $handler = $this->createHandler();
         $request = new ServerRequest('GET', '/?query=John3,16&version=NABRE');
-        $params = $handler->testGetRequestParams($request);
+        $params  = $handler->testGetRequestParams($request);
         self::assertSame('John3,16', $params['query']);
         self::assertSame('NABRE', $params['version']);
     }
@@ -155,11 +155,11 @@ class AbstractHandlerTest extends TestCase
     public function testGetRequestParamsFromJsonBody(): void
     {
         $handler = $this->createHandler();
-        $body = Stream::create('{"query":"John3,16","version":"CEI2008"}');
-        $request = (new ServerRequest('POST', '/'))
+        $body    = Stream::create('{"query":"John3,16","version":"CEI2008"}');
+        $request = ( new ServerRequest('POST', '/') )
             ->withHeader('Content-Type', 'application/json')
             ->withBody($body);
-        $params = $handler->testGetRequestParams($request);
+        $params  = $handler->testGetRequestParams($request);
         self::assertSame('John3,16', $params['query']);
         self::assertSame('CEI2008', $params['version']);
     }
@@ -167,11 +167,11 @@ class AbstractHandlerTest extends TestCase
     public function testGetRequestParamsMergesQueryAndBody(): void
     {
         $handler = $this->createHandler();
-        $body = Stream::create('{"version":"NABRE"}');
-        $request = (new ServerRequest('POST', '/?query=John3,16'))
+        $body    = Stream::create('{"version":"NABRE"}');
+        $request = ( new ServerRequest('POST', '/?query=John3,16') )
             ->withHeader('Content-Type', 'application/json')
             ->withBody($body);
-        $params = $handler->testGetRequestParams($request);
+        $params  = $handler->testGetRequestParams($request);
         self::assertSame('John3,16', $params['query']);
         self::assertSame('NABRE', $params['version']);
     }
@@ -179,8 +179,8 @@ class AbstractHandlerTest extends TestCase
     public function testGetRequestParamsMalformedJson(): void
     {
         $handler = $this->createHandler();
-        $body = Stream::create('{bad json');
-        $request = (new ServerRequest('POST', '/'))
+        $body    = Stream::create('{bad json');
+        $request = ( new ServerRequest('POST', '/') )
             ->withHeader('Content-Type', 'application/json')
             ->withBody($body);
         $this->expectException(BadRequestException::class);
@@ -191,22 +191,22 @@ class AbstractHandlerTest extends TestCase
 
     public function testResolveContentTypeFromReturnParam(): void
     {
-        $handler = $this->createHandler();
+        $handler  = $this->createHandler();
         $response = $handler->handle(new ServerRequest('GET', '/?return=xml'));
         self::assertStringContainsString('application/xml', $response->getHeaderLine('Content-Type'));
     }
 
     public function testResolveContentTypeFromAcceptHeader(): void
     {
-        $handler = $this->createHandler();
-        $request = new ServerRequest('GET', '/', ['Accept' => 'application/xml']);
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/', ['Accept' => 'application/xml']);
         $response = $handler->handle($request);
         self::assertStringContainsString('application/xml', $response->getHeaderLine('Content-Type'));
     }
 
     public function testResolveContentTypeDefaultsToJson(): void
     {
-        $handler = $this->createHandler();
+        $handler  = $this->createHandler();
         $response = $handler->handle(new ServerRequest('GET', '/'));
         self::assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
     }
@@ -219,7 +219,7 @@ class AbstractHandlerTest extends TestCase
         $handler->setAllowedRequestMethods([RequestMethod::GET, RequestMethod::POST]);
 
         $request = new ServerRequest('OPTIONS', '/', [
-            'Origin' => 'https://example.com',
+            'Origin'                        => 'https://example.com',
             'Access-Control-Request-Method' => 'POST',
         ]);
 
@@ -238,7 +238,7 @@ class AbstractHandlerTest extends TestCase
         $handler = $this->createHandler();
         $handler->setAllowedRequestMethods([RequestMethod::GET, RequestMethod::POST]);
 
-        $request = new ServerRequest('OPTIONS', '/');
+        $request  = new ServerRequest('OPTIONS', '/');
         $response = new \Nyholm\Psr7\Response(200);
         $response = $handler->testHandlePreflightRequest($request, $response);
 
@@ -251,7 +251,7 @@ class AbstractHandlerTest extends TestCase
     public function testFluentSetters(): void
     {
         $handler = $this->createHandler();
-        $result = $handler
+        $result  = $handler
             ->setAllowedRequestMethods([RequestMethod::GET])
             ->setAllowedAcceptHeaders([AcceptHeader::JSON])
             ->setAllowedRequestContentTypes([RequestContentType::JSON]);

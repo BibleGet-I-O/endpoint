@@ -42,7 +42,7 @@ class MetadataHandlerHttpTest extends ServerTestCase
 
     public function testCopyrightVersionsFlagged(): void
     {
-        $r = self::httpGet('/v3/metadata/bibleversions');
+        $r    = self::httpGet('/v3/metadata/bibleversions');
         $body = self::jsonBody($r['body']);
         self::assertContains('TEST2', $body['copyrightversions']);
         self::assertNotContains('TEST1', $body['copyrightversions']);
@@ -69,7 +69,7 @@ class MetadataHandlerHttpTest extends ServerTestCase
 
     public function testVersionIndexMultipleVersions(): void
     {
-        $r = self::httpGet('/v3/metadata/versionindex?versions=TEST1,TEST2');
+        $r    = self::httpGet('/v3/metadata/versionindex?versions=TEST1,TEST2');
         $body = self::jsonBody($r['body']);
         self::assertArrayHasKey('TEST1', $body['indexes']);
         self::assertArrayHasKey('TEST2', $body['indexes']);
@@ -115,7 +115,7 @@ class MetadataHandlerHttpTest extends ServerTestCase
 
     public function testInfoContainsEndpointVersion(): void
     {
-        $r = self::httpGet('/v3/metadata/bibleversions');
+        $r    = self::httpGet('/v3/metadata/bibleversions');
         $body = self::jsonBody($r['body']);
         self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
     }

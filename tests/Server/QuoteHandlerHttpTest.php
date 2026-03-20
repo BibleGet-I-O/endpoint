@@ -27,21 +27,21 @@ class QuoteHandlerHttpTest extends ServerTestCase
 
     public function testVerseRangeJson(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1,1-3&version=TEST1');
+        $r    = self::httpGet('/v3/quote?query=Genesis1,1-3&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertCount(3, $body['results']);
     }
 
     public function testWholeChapterJson(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1&version=TEST1');
+        $r    = self::httpGet('/v3/quote?query=Genesis1&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertCount(10, $body['results']);
     }
 
     public function testMultipleVersionsJson(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1,TEST2');
+        $r    = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1,TEST2');
         $body = self::jsonBody($r['body']);
         self::assertCount(2, $body['results']);
         $versions = array_column($body['results'], 'version');
@@ -51,7 +51,7 @@ class QuoteHandlerHttpTest extends ServerTestCase
 
     public function testEnglishNotationJson(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1:1-3&version=TEST1');
+        $r    = self::httpGet('/v3/quote?query=Genesis1:1-3&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertCount(3, $body['results']);
         self::assertSame('ENGLISH', $body['info']['detectedNotation']);
@@ -59,21 +59,21 @@ class QuoteHandlerHttpTest extends ServerTestCase
 
     public function testDiscontinuousVersesJson(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1,1.3.5&version=TEST1');
+        $r    = self::httpGet('/v3/quote?query=Genesis1,1.3.5&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertCount(3, $body['results']);
     }
 
     public function testInfoContainsEndpointVersion(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1');
+        $r    = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
     }
 
     public function testInfoContainsBibleVersionsInfo(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1');
+        $r    = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertArrayHasKey('bibleVersionsInfo', $body['info']);
         self::assertArrayHasKey('TEST1', $body['info']['bibleVersionsInfo']);
@@ -81,8 +81,8 @@ class QuoteHandlerHttpTest extends ServerTestCase
 
     public function testResultStructure(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1');
-        $body = self::jsonBody($r['body']);
+        $r     = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1');
+        $body  = self::jsonBody($r['body']);
         $verse = $body['results'][0];
 
         self::assertArrayHasKey('book', $verse);
@@ -160,9 +160,7 @@ class QuoteHandlerHttpTest extends ServerTestCase
 
     public function testBotUserAgentBlocked(): void
     {
-        $r = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1', [
-            'User-Agent' => 'Googlebot/2.1',
-        ]);
+        $r = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1', ['User-Agent' => 'Googlebot/2.1']);
         self::assertSame(403, $r['status']);
     }
 }

@@ -14,35 +14,35 @@ use BibleGet\Api\Http\Exception\ValidationException;
 class QueryExecutor
 {
     private QuoteContext $ctx;
-    private int $i                     = 0;
-    private string $appid              = '';
-    private string $domain             = '';
-    private string $pluginversion      = '';
-    private string $ipaddress          = '';
-    private string $forwardedip        = '';
-    private string $remote_address     = '';
-    private string $realip             = '';
-    private string $clientip           = '';
-    private string $xquery             = '';
-    private string $curYEAR            = '';
-    private string $prevYEAR           = '';
-    private string $geoip_json         = '';
+    private int $i                      = 0;
+    private string $appid               = '';
+    private string $domain              = '';
+    private string $pluginversion       = '';
+    private string $ipaddress           = '';
+    private string $forwardedip         = '';
+    private string $remote_address      = '';
+    private string $realip              = '';
+    private string $clientip            = '';
+    private string $xquery              = '';
+    private string $curYEAR             = '';
+    private string $prevYEAR            = '';
+    private string $geoip_json          = '';
     private bool $haveIPAddressOnRecord = false;
     /** @var array<int, string> */
-    private array $sqlqueries          = [];
+    private array $sqlqueries = [];
     /** @var array<int, string> */
-    private array $queriesversions     = [];
+    private array $queriesversions = [];
 
     public function __construct(QuoteContext $ctx)
     {
-        $this->ctx              = $ctx;
-        $this->sqlqueries       = $ctx->formulatedQueries;
-        $this->queriesversions  = $ctx->formulatedVariants;
-        $this->appid            = $ctx->DATA['appid'] != '' ? $ctx->DATA['appid'] : 'unknown';
-        $this->domain           = $ctx->DATA['domain'] != '' ? $ctx->DATA['domain'] : 'unknown';
-        $this->pluginversion    = $ctx->DATA['pluginversion'] != '' ? $ctx->DATA['pluginversion'] : 'unknown';
-        $this->curYEAR          = date('Y');
-        $this->prevYEAR         = (string) ((int) $this->curYEAR - 1);
+        $this->ctx             = $ctx;
+        $this->sqlqueries      = $ctx->formulatedQueries;
+        $this->queriesversions = $ctx->formulatedVariants;
+        $this->appid           = $ctx->DATA['appid'] != '' ? $ctx->DATA['appid'] : 'unknown';
+        $this->domain          = $ctx->DATA['domain'] != '' ? $ctx->DATA['domain'] : 'unknown';
+        $this->pluginversion   = $ctx->DATA['pluginversion'] != '' ? $ctx->DATA['pluginversion'] : 'unknown';
+        $this->curYEAR         = date('Y');
+        $this->prevYEAR        = (string) ( (int) $this->curYEAR - 1 );
     }
 
     /**
@@ -111,11 +111,11 @@ class QueryExecutor
     private function buildLogUnion(string $whereClause): string
     {
         $tables = $this->getLogTables();
-        $parts = [];
+        $parts  = [];
         foreach ($tables as $table) {
-            $parts[] = "SELECT * FROM " . $table . " WHERE " . $whereClause;
+            $parts[] = 'SELECT * FROM ' . $table . ' WHERE ' . $whereClause;
         }
-        return "SELECT * FROM (" . implode(" UNION ALL ", $parts) . ") AS combined_log";
+        return 'SELECT * FROM (' . implode(' UNION ALL ', $parts) . ') AS combined_log';
     }
 
     /**
@@ -124,11 +124,11 @@ class QueryExecutor
     private function buildLogUnionAggregated(string $selectExpr, string $whereClause, string $groupBy): string
     {
         $tables = $this->getLogTables();
-        $parts = [];
+        $parts  = [];
         foreach ($tables as $table) {
-            $parts[] = "SELECT * FROM " . $table . " WHERE " . $whereClause;
+            $parts[] = 'SELECT * FROM ' . $table . ' WHERE ' . $whereClause;
         }
-        return "SELECT " . $selectExpr . " FROM (" . implode(" UNION ALL ", $parts) . ") AS combined_log " . $groupBy;
+        return 'SELECT ' . $selectExpr . ' FROM (' . implode(' UNION ALL ', $parts) . ') AS combined_log ' . $groupBy;
     }
 
     private function checkIPAddressPastTwoDaysWithSameRequest(): void
@@ -136,7 +136,7 @@ class QueryExecutor
         if ($this->ipaddress === '') {
             return;
         }
-        $sql = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
             return;
@@ -148,8 +148,8 @@ class QueryExecutor
         if ($ipresult instanceof \mysqli_result) {
             if ($ipresult->num_rows > 10 && $ipresult->num_rows < 30) {
                 $this->ctx->addErrorMessage(10, $this->xquery);
-                $iprow = $ipresult->fetch_assoc();
-                $this->geoip_json = (string) ($iprow['WHO_WHERE_JSON'] ?? '');
+                $iprow                       = $ipresult->fetch_assoc();
+                $this->geoip_json            = (string) ( $iprow['WHO_WHERE_JSON'] ?? '' );
                 $this->haveIPAddressOnRecord = true;
             } elseif ($ipresult->num_rows > 29) {
                 throw new TooManyRequestsException(
@@ -165,7 +165,7 @@ class QueryExecutor
         if ($this->ipaddress === '') {
             return;
         }
-        $sql = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)");
+        $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
             return;
@@ -184,10 +184,10 @@ class QueryExecutor
 
     private function checkRequestsFromSameOrigin(): void
     {
-        $sql = $this->buildLogUnionAggregated(
-            "ORIGIN, COUNT(*) AS ORIGIN_CNT",
+        $sql  = $this->buildLogUnionAggregated(
+            'ORIGIN, COUNT(*) AS ORIGIN_CNT',
             "ORIGIN != '' AND ORIGIN = ? AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)",
-            "GROUP BY ORIGIN"
+            'GROUP BY ORIGIN'
         );
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
@@ -213,10 +213,10 @@ class QueryExecutor
 
     private function checkDiverseRequestsFromSameOrigin(): void
     {
-        $sql = $this->buildLogUnionAggregated(
-            "ORIGIN, COUNT(*) AS ORIGIN_CNT",
+        $sql  = $this->buildLogUnionAggregated(
+            'ORIGIN, COUNT(*) AS ORIGIN_CNT',
             "ORIGIN != '' AND ORIGIN = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)",
-            "GROUP BY ORIGIN"
+            'GROUP BY ORIGIN'
         );
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
@@ -248,8 +248,8 @@ class QueryExecutor
     {
         $geoIPFromLogs = $this->getGeoIPFromLogs();
         if ($geoIPFromLogs instanceof \mysqli_result && $geoIPFromLogs->num_rows > 0) {
-            $iprow = $geoIPFromLogs->fetch_assoc();
-            $this->geoip_json = (string) ($iprow['WHO_WHERE_JSON'] ?? '');
+            $iprow                       = $geoIPFromLogs->fetch_assoc();
+            $this->geoip_json            = (string) ( $iprow['WHO_WHERE_JSON'] ?? '' );
             $this->haveIPAddressOnRecord = true;
         } elseif ($this->ipaddress != '') {
             // Geo-IP lookup is best-effort and only used for logging.
@@ -262,7 +262,7 @@ class QueryExecutor
     private function getGeoIPFromLogs(): \mysqli_result|bool
     {
         if ($this->ipaddress != '') {
-            $sql = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
+            $sql  = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
             $stmt = $this->ctx->mysqli->prepare($sql);
             if ($stmt === false) {
                 return false;
@@ -282,7 +282,7 @@ class QueryExecutor
 
     private function logQuery(): void
     {
-        $stmt = $this->ctx->mysqli->prepare("INSERT INTO requests_log__" . $this->curYEAR . " ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )");
+        $stmt = $this->ctx->mysqli->prepare('INSERT INTO requests_log__' . $this->curYEAR . ' ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )');
         if ($stmt === false) {
             return;
         }
@@ -300,11 +300,11 @@ class QueryExecutor
     {
         $currentVariant = $this->queriesversions[$this->i];
 
-        $row['version']     = strtoupper($currentVariant);
-        $row['testament']   = is_numeric($row['testament']) ? (int) $row['testament'] : 0;
+        $row['version']   = strtoupper($currentVariant);
+        $row['testament'] = is_numeric($row['testament']) ? (int) $row['testament'] : 0;
 
-        $universal_booknum  = $row['book'];
-        $booknum            = array_search($row['book'], $this->ctx->INDEXES[$currentVariant]['book_num']);
+        $universal_booknum = $row['book'];
+        $booknum           = array_search($row['book'], $this->ctx->INDEXES[$currentVariant]['book_num']);
         if ($booknum === false) {
             $booknum = 0;
         }
@@ -313,9 +313,9 @@ class QueryExecutor
         $row['univbooknum'] = $universal_booknum;
         $row['book']        = $this->ctx->INDEXES[$currentVariant]['biblebooks'][$booknum];
 
-        $row['section']     = is_numeric($row['section']) ? (int) $row['section'] : 0;
+        $row['section'] = is_numeric($row['section']) ? (int) $row['section'] : 0;
         unset($row['verseID']);
-        $row['chapter']     = is_numeric($row['chapter']) ? (int) $row['chapter'] : 0;
+        $row['chapter']       = is_numeric($row['chapter']) ? (int) $row['chapter'] : 0;
         $row['originalquery'] = $this->ctx->originalQueries[$this->i] ?? '';
 
         return $row;
@@ -326,8 +326,8 @@ class QueryExecutor
         $this->getAndValidateIpAddress();
 
         // Use server-derived host for domain whitelist check to prevent spoofing via client-supplied domain
-        $serverHost = is_string($_SERVER['SERVER_NAME'] ?? null) ? $_SERVER['SERVER_NAME'] : '';
-        $notWhitelisted = ($this->isWhitelisted($serverHost) === false && $this->isWhitelisted($this->ipaddress) === false);
+        $serverHost     = is_string($_SERVER['SERVER_NAME'] ?? null) ? $_SERVER['SERVER_NAME'] : '';
+        $notWhitelisted = ( $this->isWhitelisted($serverHost) === false && $this->isWhitelisted($this->ipaddress) === false );
 
         foreach ($this->sqlqueries as $xquery) {
             $this->xquery = $xquery;

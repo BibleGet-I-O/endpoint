@@ -25,7 +25,7 @@ class LoggerFactory
         } else {
             // Default to logs/ in the project root (three levels up from this file: src/Http/Logs/)
             self::$logsFolder = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'logs';
-            $logsFolder = self::$logsFolder;
+            $logsFolder       = self::$logsFolder;
         }
 
         if (!is_dir($logsFolder)) {

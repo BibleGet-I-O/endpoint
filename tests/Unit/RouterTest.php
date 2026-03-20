@@ -24,16 +24,16 @@ class RouterTest extends TestCase
     public static function localhostProvider(): array
     {
         return [
-            'SERVER_ADDR 127.0.0.1'  => [['SERVER_ADDR' => '127.0.0.1'], true],
-            'SERVER_ADDR ::1'        => [['SERVER_ADDR' => '::1'], true],
-            'SERVER_ADDR 0.0.0.0'    => [['SERVER_ADDR' => '0.0.0.0'], true],
-            'REMOTE_ADDR 127.0.0.1'  => [['REMOTE_ADDR' => '127.0.0.1'], true],
-            'REMOTE_ADDR ::1'        => [['REMOTE_ADDR' => '::1'], true],
-            'SERVER_NAME localhost'   => [['SERVER_NAME' => 'localhost'], true],
-            'external SERVER_ADDR'   => [['SERVER_ADDR' => '192.168.1.1'], false],
-            'external REMOTE_ADDR'   => [['REMOTE_ADDR' => '10.0.0.5'], false],
-            'external SERVER_NAME'   => [['SERVER_NAME' => 'example.com'], false],
-            'empty params'           => [[], false],
+            'SERVER_ADDR 127.0.0.1' => [['SERVER_ADDR' => '127.0.0.1'], true],
+            'SERVER_ADDR ::1'       => [['SERVER_ADDR' => '::1'], true],
+            'SERVER_ADDR 0.0.0.0'   => [['SERVER_ADDR' => '0.0.0.0'], true],
+            'REMOTE_ADDR 127.0.0.1' => [['REMOTE_ADDR' => '127.0.0.1'], true],
+            'REMOTE_ADDR ::1'       => [['REMOTE_ADDR' => '::1'], true],
+            'SERVER_NAME localhost' => [['SERVER_NAME' => 'localhost'], true],
+            'external SERVER_ADDR'  => [['SERVER_ADDR' => '192.168.1.1'], false],
+            'external REMOTE_ADDR'  => [['REMOTE_ADDR' => '10.0.0.5'], false],
+            'external SERVER_NAME'  => [['SERVER_NAME' => 'example.com'], false],
+            'empty params'          => [[], false],
         ];
     }
 

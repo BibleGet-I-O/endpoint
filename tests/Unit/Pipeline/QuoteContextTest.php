@@ -66,10 +66,10 @@ class QuoteContextTest extends TestCase
     public static function upperLowerVariantProvider(): array
     {
         return [
-            'Latin letters'   => ['John', true],
-            'CJK characters'  => ['創世記', false],
-            'Arabic'          => ['يوحنا', false],
-            'empty string'    => ['', false],
+            'Latin letters'  => ['John', true],
+            'CJK characters' => ['創世記', false],
+            'Arabic'         => ['يوحنا', false],
+            'empty string'   => ['', false],
         ];
     }
 
@@ -85,12 +85,12 @@ class QuoteContextTest extends TestCase
     public static function properCaseProvider(): array
     {
         return [
-            'lowercase'  => ['john', 'John'],
-            'uppercase'  => ['JOHN', 'John'],
-            'mixed'      => ['jOHN', 'John'],
-            'already ok' => ['John', 'John'],
+            'lowercase'   => ['john', 'John'],
+            'uppercase'   => ['JOHN', 'John'],
+            'mixed'       => ['jOHN', 'John'],
+            'already ok'  => ['John', 'John'],
             'with number' => ['1john', '1John'],
-            'CJK'        => ['創世記', '創世記'],
+            'CJK'         => ['創世記', '創世記'],
         ];
     }
 

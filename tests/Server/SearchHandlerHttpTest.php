@@ -36,7 +36,7 @@ class SearchHandlerHttpTest extends ServerTestCase
 
     public function testSearchResultStructure(): void
     {
-        $r = self::httpGet('/v3/search?keyword=light&version=TEST1');
+        $r    = self::httpGet('/v3/search?keyword=light&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertArrayHasKey('results', $body);
         self::assertNotEmpty($body['results'], 'Expected at least one search result');
@@ -95,7 +95,7 @@ class SearchHandlerHttpTest extends ServerTestCase
 
     public function testSearchInfoContainsEndpointVersion(): void
     {
-        $r = self::httpGet('/v3/search?keyword=light&version=TEST1');
+        $r    = self::httpGet('/v3/search?keyword=light&version=TEST1');
         $body = self::jsonBody($r['body']);
         self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
     }

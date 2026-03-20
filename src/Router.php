@@ -145,13 +145,13 @@ class Router
      */
     public static function isLocalhost(?array $serverParams = null): bool
     {
-        $server = $serverParams ?? $_SERVER;
-        $rawAddr   = $server['SERVER_ADDR'] ?? '';
-        $rawRemote = $server['REMOTE_ADDR'] ?? '';
-        $rawName   = $server['SERVER_NAME'] ?? '';
-        $serverAddress = is_string($rawAddr) ? $rawAddr : '';
-        $remoteAddress = is_string($rawRemote) ? $rawRemote : '';
-        $serverName    = is_string($rawName) ? $rawName : '';
+        $server             = $serverParams ?? $_SERVER;
+        $rawAddr            = $server['SERVER_ADDR'] ?? '';
+        $rawRemote          = $server['REMOTE_ADDR'] ?? '';
+        $rawName            = $server['SERVER_NAME'] ?? '';
+        $serverAddress      = is_string($rawAddr) ? $rawAddr : '';
+        $remoteAddress      = is_string($rawRemote) ? $rawRemote : '';
+        $serverName         = is_string($rawName) ? $rawName : '';
         $localhostAddresses = ['127.0.0.1', '::1', '0.0.0.0'];
         $localhostNames     = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
         return in_array($serverAddress, $localhostAddresses)

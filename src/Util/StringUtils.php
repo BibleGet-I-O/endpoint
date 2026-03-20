@@ -30,8 +30,8 @@ class StringUtils
         if ($mList) {
             $byteOffset = $mList[0][1];
             $charOffset = mb_strlen(substr($txt, 0, $byteOffset), 'UTF-8');
-            $chr = mb_substr($txt, $charOffset, 1, 'UTF-8');
-            $post = mb_substr($txt, $charOffset + 1, null, 'UTF-8');
+            $chr        = mb_substr($txt, $charOffset, 1, 'UTF-8');
+            $post       = mb_substr($txt, $charOffset + 1, null, 'UTF-8');
             return mb_substr($txt, 0, $charOffset, 'UTF-8') . mb_strtoupper($chr, 'UTF-8') . mb_strtolower($post, 'UTF-8');
         }
         return $txt;

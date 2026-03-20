@@ -34,7 +34,7 @@ class MetadataHandler extends AbstractHandler
 
         // Determine metadata sub-resource from path or legacy `query` param
         $subResourceRaw = $this->requestPathParams[0] ?? $params['query'] ?? '';
-        $subResource = is_string($subResourceRaw) ? $subResourceRaw : '';
+        $subResource    = is_string($subResourceRaw) ? $subResourceRaw : '';
 
         switch ($subResource) {
             case 'biblebooks':
@@ -49,7 +49,7 @@ class MetadataHandler extends AbstractHandler
             case 'versionindex':
                 $versionsRaw = $params['versions'] ?? '';
                 $versionsStr = is_string($versionsRaw) ? $versionsRaw : '';
-                $data = $this->getVersionIndex($mysqli, $versionsStr);
+                $data        = $this->getVersionIndex($mysqli, $versionsStr);
                 break;
             default:
                 throw new NotFoundException('Unknown metadata query: ' . $subResource);
@@ -76,7 +76,7 @@ class MetadataHandler extends AbstractHandler
     private function getBibleBooks(\mysqli $mysqli): array
     {
         $biblebooks = [];
-        $result1 = $mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY id');
+        $result1    = $mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY id');
         if (!$result1 instanceof \mysqli_result) {
             throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
         }
@@ -101,13 +101,13 @@ class MetadataHandler extends AbstractHandler
             }
             $biblebooks[$n] = [];
             for ($x = 0; $x < $cols - 1; $x++) {
-                $val1 = (string) ($row1[$names[$x + 1]] ?? '');
-                $val2 = (string) ($row2[$names[$x + 1]] ?? '');
-                $temparray = [$val1, $val2];
-                $arr1 = explode(' | ', $val1);
-                $booknames = array_map(fn($s) => StringUtils::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr1);
-                $arr2 = explode(' | ', $val2);
-                $abbrevs = count($arr2) > 1 ? array_map(fn($s) => StringUtils::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr2) : [];
+                $val1               = (string) ( $row1[$names[$x + 1]] ?? '' );
+                $val2               = (string) ( $row2[$names[$x + 1]] ?? '' );
+                $temparray          = [$val1, $val2];
+                $arr1               = explode(' | ', $val1);
+                $booknames          = array_map(fn($s) => StringUtils::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr1);
+                $arr2               = explode(' | ', $val2);
+                $abbrevs            = count($arr2) > 1 ? array_map(fn($s) => StringUtils::toProperCase(preg_replace('/\s+/', '', trim($s)) ?? trim($s)), $arr2) : [];
                 $biblebooks[$n][$x] = array_merge($temparray, $booknames, $abbrevs);
             }
             $n++;
@@ -143,13 +143,17 @@ class MetadataHandler extends AbstractHandler
         }
 
         while ($row = $result->fetch_assoc()) {
-            $info = [
-                $row['fullname'], $row['year'], $row['language'],
-                $row['imprimatur'], $row['canon'],
-                $row['copyright_holder'], $row['notes'],
+            $info                                           = [
+                $row['fullname'],
+                $row['year'],
+                $row['language'],
+                $row['imprimatur'],
+                $row['canon'],
+                $row['copyright_holder'],
+                $row['notes'],
             ];
             $validversions_fullname[(string) $row['sigla']] = implode('|', $info);
-            $validversions[] = $row['sigla'];
+            $validversions[]                                = $row['sigla'];
             if ($row['copyright'] == 1) {
                 $copyrightversions[] = $row['sigla'];
             }
@@ -174,7 +178,7 @@ class MetadataHandler extends AbstractHandler
 
         // Get valid versions
         $allValid = [];
-        $result = $mysqli->query('SELECT sigla FROM versions_available');
+        $result   = $mysqli->query('SELECT sigla FROM versions_available');
         if (!$result instanceof \mysqli_result) {
             throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
         }
@@ -193,14 +197,14 @@ class MetadataHandler extends AbstractHandler
                 continue;
             }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
-            $result = $mysqli->query('SELECT * FROM ' . $variant . '_idx');
+            $result        = $mysqli->query('SELECT * FROM ' . $variant . '_idx');
             if ($result instanceof \mysqli_result) {
                 while ($row = $result->fetch_assoc()) {
-                    $abbreviations[]  = $row['abbrev'];
-                    $bbbooks[]        = $row['fullname'];
-                    $chapter_limit[]  = (int) $row['chapters'];
-                    $verse_limit[]    = array_map('intval', explode(',', (string) $row['verses_last']));
-                    $book_num[]       = (int) $row['book'];
+                    $abbreviations[] = $row['abbrev'];
+                    $bbbooks[]       = $row['fullname'];
+                    $chapter_limit[] = (int) $row['chapters'];
+                    $verse_limit[]   = array_map('intval', explode(',', (string) $row['verses_last']));
+                    $book_num[]      = (int) $row['book'];
                 }
             }
             $indexes[$variant] = [

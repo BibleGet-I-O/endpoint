@@ -38,7 +38,7 @@ class QuoteHandler extends AbstractHandler
         // Build context and run pipeline
         $stringParams = [];
         foreach ($params as $key => $value) {
-            $stringParams[$key] = is_string($value) ? $value : (is_scalar($value) ? (string) $value : '');
+            $stringParams[$key] = is_string($value) ? $value : ( is_scalar($value) ? (string) $value : '' );
         }
         $ctx = new QuoteContext(
             $stringParams,
@@ -49,7 +49,7 @@ class QuoteHandler extends AbstractHandler
         $ctx->initialize();
 
         $queryRaw = $params['query'] ?? '';
-        $query = is_string($queryRaw) ? $queryRaw : '';
+        $query    = is_string($queryRaw) ? $queryRaw : '';
         if ($query === '') {
             throw new ValidationException('The query parameter is required.');
         }
@@ -85,7 +85,7 @@ class QuoteHandler extends AbstractHandler
         }
 
         if ($contentType === 'application/json') {
-            $body = new \stdClass();
+            $body          = new \stdClass();
             $body->results = $ctx->results;
             $body->errors  = $ctx->errors;
             $body->info    = [
@@ -97,15 +97,15 @@ class QuoteHandler extends AbstractHandler
         }
 
         if ($contentType === 'application/xml') {
-            $root = '<?xml version="1.0" encoding="UTF-8"?><BibleQuote/>';
-            $xml  = new \SimpleXMLElement($root);
+            $root    = '<?xml version="1.0" encoding="UTF-8"?><BibleQuote/>';
+            $xml     = new \SimpleXMLElement($root);
             $errors  = $xml->addChild('errors');
             $info    = $xml->addChild('info');
             $results = $xml->addChild('results');
 
             $info->addAttribute('ENDPOINT_VERSION', QuoteContext::ENDPOINT_VERSION);
             $info['detectedNotation']  = $ctx->detectedNotation;
-            $encoded = json_encode($bibleVersionsInfo);
+            $encoded                   = json_encode($bibleVersionsInfo);
             $info['bibleVersionsInfo'] = $encoded !== false ? $encoded : '{}';
 
             foreach ($ctx->errors as $err) {
@@ -134,8 +134,8 @@ class QuoteHandler extends AbstractHandler
      */
     private function buildHtmlResults(array $results): string
     {
-        $html = '<div class="results bibleQuote">';
-        $version = $book = $chapter = '';
+        $html          = '<div class="results bibleQuote">';
+        $version       = $book = $chapter = '';
         $paragraphOpen = false;
 
         foreach ($results as $row) {
@@ -147,22 +147,22 @@ class QuoteHandler extends AbstractHandler
 
             if ($rowVersion !== $version) {
                 if ($paragraphOpen) {
-                    $html .= '</p>';
+                    $html         .= '</p>';
                     $paragraphOpen = false;
                 }
                 $version = $rowVersion;
-                $html .= '<p class="version bibleVersion">' . htmlspecialchars($version) . '</p>';
-                $book = '';
+                $html   .= '<p class="version bibleVersion">' . htmlspecialchars($version) . '</p>';
+                $book    = '';
                 $chapter = '';
             }
             if ($rowBook !== $book || $rowChapter !== $chapter) {
                 if ($paragraphOpen) {
                     $html .= '</p>';
                 }
-                $book    = $rowBook;
-                $chapter = $rowChapter;
-                $html .= '<p class="book bookChapter">' . htmlspecialchars($book) . '&nbsp;' . htmlspecialchars($chapter) . '</p>';
-                $html .= '<p class="verses versesParagraph">';
+                $book          = $rowBook;
+                $chapter       = $rowChapter;
+                $html         .= '<p class="book bookChapter">' . htmlspecialchars($book) . '&nbsp;' . htmlspecialchars($chapter) . '</p>';
+                $html         .= '<p class="verses versesParagraph">';
                 $paragraphOpen = true;
             }
             $html .= '<span class="sup verseNum">' . htmlspecialchars($rowVerse) . '</span>';
@@ -200,12 +200,12 @@ class QuoteHandler extends AbstractHandler
      */
     private function buildHtmlInfo(string $detectedNotation, array $bibleVersionsInfo): string
     {
-        $html = '<div class="info bibleQuote">';
-        $html .= '<input type="hidden" name="ENDPOINT_VERSION" value="' . QuoteContext::ENDPOINT_VERSION . '" class="BibleGetInfo">';
-        $html .= '<input type="hidden" name="detectedNotation" value="' . htmlspecialchars($detectedNotation) . '" class="BibleGetInfo">';
+        $html         = '<div class="info bibleQuote">';
+        $html        .= '<input type="hidden" name="ENDPOINT_VERSION" value="' . QuoteContext::ENDPOINT_VERSION . '" class="BibleGetInfo">';
+        $html        .= '<input type="hidden" name="detectedNotation" value="' . htmlspecialchars($detectedNotation) . '" class="BibleGetInfo">';
         $versionsJson = json_encode($bibleVersionsInfo);
-        $html .= '<input type="hidden" name="bibleVersionsInfo" value="' . htmlspecialchars($versionsJson !== false ? $versionsJson : '{}') . '" class="BibleGetInfo">';
-        $html .= '</div>';
+        $html        .= '<input type="hidden" name="bibleVersionsInfo" value="' . htmlspecialchars($versionsJson !== false ? $versionsJson : '{}') . '" class="BibleGetInfo">';
+        $html        .= '</div>';
         return $html;
     }
 
@@ -227,7 +227,7 @@ class QuoteHandler extends AbstractHandler
     private static function safeEncodeHeaders(array $headers): string
     {
         $sensitiveHeaders = ['authorization', 'cookie', 'set-cookie', 'x-api-key', 'proxy-authorization'];
-        $safe = [];
+        $safe             = [];
         foreach ($headers as $name => $values) {
             if (in_array(strtolower($name), $sensitiveHeaders, true)) {
                 $safe[$name] = ['[REDACTED]'];

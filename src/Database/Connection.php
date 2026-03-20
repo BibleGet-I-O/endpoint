@@ -36,7 +36,7 @@ class Connection
         $dbpass = DBPASS;
         /** @var string $database */
         $database = DATABASE;
-        $mysqli = new \mysqli($server, $dbuser, $dbpass, $database);
+        $mysqli   = new \mysqli($server, $dbuser, $dbpass, $database);
 
         if ($mysqli->connect_errno) {
             throw new InternalServerErrorException(
@@ -53,7 +53,7 @@ class Connection
 
         if (defined('WHITELISTED_DOMAINS_IPS') && is_array(WHITELISTED_DOMAINS_IPS)) {
             /** @var array<string> $wl */
-            $wl = WHITELISTED_DOMAINS_IPS;
+            $wl                          = WHITELISTED_DOMAINS_IPS;
             self::$whitelistedDomainsIPs = $wl;
         }
 
@@ -76,7 +76,7 @@ class Connection
         if (self::$instance !== null && self::$instance->thread_id) {
             self::$instance->close();
         }
-        self::$instance = null;
+        self::$instance              = null;
         self::$whitelistedDomainsIPs = [];
     }
 

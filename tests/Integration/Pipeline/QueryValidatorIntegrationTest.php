@@ -22,9 +22,9 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testValidateSingleChapterVerse(): void
     {
-        $ctx = $this->makeContext('Genesis1,1');
+        $ctx       = $this->makeContext('Genesis1,1');
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertTrue($result);
         self::assertNotEmpty($ctx->validatedQueries);
@@ -33,9 +33,9 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testValidateVerseRange(): void
     {
-        $ctx = $this->makeContext('Genesis1,1-3');
+        $ctx       = $this->makeContext('Genesis1,1-3');
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertTrue($result);
         self::assertNotEmpty($ctx->validatedQueries);
@@ -43,9 +43,9 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testValidateWholeChapter(): void
     {
-        $ctx = $this->makeContext('Genesis1');
+        $ctx       = $this->makeContext('Genesis1');
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertTrue($result);
         self::assertNotEmpty($ctx->validatedQueries);
@@ -53,9 +53,9 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testValidateChapterRange(): void
     {
-        $ctx = $this->makeContext('Genesis1-2');
+        $ctx       = $this->makeContext('Genesis1-2');
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertTrue($result);
         self::assertNotEmpty($ctx->validatedQueries);
@@ -63,9 +63,9 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testValidateDiscontinuousVerses(): void
     {
-        $ctx = $this->makeContext('Genesis1,1.3.5');
+        $ctx       = $this->makeContext('Genesis1,1.3.5');
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertTrue($result);
         self::assertNotEmpty($ctx->validatedQueries);
@@ -73,9 +73,9 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testValidateMultipleQueries(): void
     {
-        $ctx = $this->makeContext('Genesis1,1;Exodus1,1');
+        $ctx       = $this->makeContext('Genesis1,1;Exodus1,1');
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertTrue($result);
         self::assertCount(2, $ctx->validatedQueries);
@@ -88,7 +88,7 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
         self::assertSame('ENGLISH', $ctx->detectedNotation);
 
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertTrue($result);
         self::assertNotEmpty($ctx->validatedQueries);
@@ -98,7 +98,7 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testInvalidBookName(): void
     {
-        $ctx = $this->makeContext('Fakebook1,1');
+        $ctx       = $this->makeContext('Fakebook1,1');
         $validator = new QueryValidator($ctx);
         $validator->validateQueries();
 
@@ -109,7 +109,7 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testChapterOutOfBounds(): void
     {
-        $ctx = $this->makeContext('Genesis99,1');
+        $ctx       = $this->makeContext('Genesis99,1');
         $validator = new QueryValidator($ctx);
         $validator->validateQueries();
 
@@ -119,7 +119,7 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testVerseOutOfBounds(): void
     {
-        $ctx = $this->makeContext('Genesis1,99');
+        $ctx       = $this->makeContext('Genesis1,99');
         $validator = new QueryValidator($ctx);
         $validator->validateQueries();
 
@@ -129,16 +129,16 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testQueryMustStartWithBook(): void
     {
-        $ctx = $this->makeContext('1,1');
+        $ctx       = $this->makeContext('1,1');
         $validator = new QueryValidator($ctx);
-        $result = $validator->validateQueries();
+        $result    = $validator->validateQueries();
 
         self::assertFalse($result);
     }
 
     public function testValidatedVariantsPopulated(): void
     {
-        $ctx = $this->makeContext('Genesis1,1');
+        $ctx       = $this->makeContext('Genesis1,1');
         $validator = new QueryValidator($ctx);
         $validator->validateQueries();
 
@@ -148,7 +148,7 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
 
     public function testMultipleVersionsValidatedVariants(): void
     {
-        $ctx = $this->makeContext('Genesis1,1', 'TEST1,TEST2');
+        $ctx       = $this->makeContext('Genesis1,1', 'TEST1,TEST2');
         $validator = new QueryValidator($ctx);
         $validator->validateQueries();
 

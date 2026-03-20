@@ -91,13 +91,13 @@ class MiddlewarePipelineTest extends TestCase
                 public function __construct(string $name, array &$log)
                 {
                     $this->name = $name;
-                    $this->log = &$log;
+                    $this->log  = &$log;
                 }
 
                 public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
                 {
                     $this->log[] = $this->name . ':before';
-                    $response = $handler->handle($request);
+                    $response    = $handler->handle($request);
                     $this->log[] = $this->name . ':after';
                     return $response;
                 }

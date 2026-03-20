@@ -12,7 +12,7 @@ class CorsHttpTest extends ServerTestCase
     public function testPreflightReturns204(): void
     {
         $r = self::httpOptions('/v3/quote', [
-            'Origin' => 'https://example.com',
+            'Origin'                        => 'https://example.com',
             'Access-Control-Request-Method' => 'POST',
         ]);
         self::assertSame(204, $r['status']);
@@ -21,7 +21,7 @@ class CorsHttpTest extends ServerTestCase
     public function testPreflightSetsAllowOrigin(): void
     {
         $r = self::httpOptions('/v3/quote', [
-            'Origin' => 'https://example.com',
+            'Origin'                        => 'https://example.com',
             'Access-Control-Request-Method' => 'GET',
         ]);
         self::assertSame('https://example.com', $r['headers']['access-control-allow-origin']);
@@ -29,8 +29,8 @@ class CorsHttpTest extends ServerTestCase
 
     public function testPreflightSetsAllowMethods(): void
     {
-        $r = self::httpOptions('/v3/quote', [
-            'Origin' => 'https://example.com',
+        $r       = self::httpOptions('/v3/quote', [
+            'Origin'                        => 'https://example.com',
             'Access-Control-Request-Method' => 'POST',
         ]);
         $methods = $r['headers']['access-control-allow-methods'];
@@ -41,7 +41,7 @@ class CorsHttpTest extends ServerTestCase
     public function testPreflightSetsMaxAge(): void
     {
         $r = self::httpOptions('/v3/quote', [
-            'Origin' => 'https://example.com',
+            'Origin'                        => 'https://example.com',
             'Access-Control-Request-Method' => 'GET',
         ]);
         self::assertSame('86400', $r['headers']['access-control-max-age']);
@@ -49,9 +49,9 @@ class CorsHttpTest extends ServerTestCase
 
     public function testPreflightSetsAllowHeaders(): void
     {
-        $r = self::httpOptions('/v3/quote', [
-            'Origin' => 'https://example.com',
-            'Access-Control-Request-Method' => 'POST',
+        $r              = self::httpOptions('/v3/quote', [
+            'Origin'                         => 'https://example.com',
+            'Access-Control-Request-Method'  => 'POST',
             'Access-Control-Request-Headers' => 'Content-Type, Accept',
         ]);
         $allowedHeaders = strtolower($r['headers']['access-control-allow-headers'] ?? '');
@@ -61,8 +61,8 @@ class CorsHttpTest extends ServerTestCase
 
     public function testPreflightSetsVaryHeaders(): void
     {
-        $r = self::httpOptions('/v3/quote', [
-            'Origin' => 'https://example.com',
+        $r    = self::httpOptions('/v3/quote', [
+            'Origin'                        => 'https://example.com',
             'Access-Control-Request-Method' => 'GET',
         ]);
         $vary = strtolower($r['headers']['vary'] ?? '');
@@ -79,9 +79,7 @@ class CorsHttpTest extends ServerTestCase
 
     public function testSuccessResponseIncludesCorsOrigin(): void
     {
-        $r = self::httpGet('/v3/metadata/bibleversions', [
-            'Origin' => 'https://myapp.com',
-        ]);
+        $r = self::httpGet('/v3/metadata/bibleversions', ['Origin' => 'https://myapp.com']);
         self::assertSame('https://myapp.com', $r['headers']['access-control-allow-origin']);
         self::assertSame('true', $r['headers']['access-control-allow-credentials']);
     }
@@ -95,9 +93,7 @@ class CorsHttpTest extends ServerTestCase
     public function testCorsReflectsAnyOrigin(): void
     {
         // The API reflects any Origin (open CORS), so even unfamiliar origins get reflected
-        $r = self::httpGet('/v3/metadata/bibleversions', [
-            'Origin' => 'https://unknown-domain.example',
-        ]);
+        $r = self::httpGet('/v3/metadata/bibleversions', ['Origin' => 'https://unknown-domain.example']);
         self::assertSame('https://unknown-domain.example', $r['headers']['access-control-allow-origin']);
         self::assertSame('true', $r['headers']['access-control-allow-credentials']);
     }

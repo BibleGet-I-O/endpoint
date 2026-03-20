@@ -111,8 +111,9 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 ## Development Notes
 
 - **Testing** — PHPUnit 11 with unit, integration (MySQL), and HTTP server test suites; run via `composer test` or `composer test:quick`
+- **Code style** — PHPCS (PSR-12 base with custom rules) via `composer lint`; auto-fix with `composer lint:fix`
 - **Static analysis** — PHPStan level 10 via `composer analyse`
-- **CI/CD** — GitHub Actions (`.github/workflows/ci.yaml`) runs PHPStan + tests on PRs; `readme.yaml` syncs `openapi.json` to ReadMe.io on push to `master`
+- **CI/CD** — GitHub Actions (`.github/workflows/ci.yaml`) runs PHPCS + PHPStan + tests on PRs; `readme.yaml` syncs `openapi.json` to ReadMe.io on push to `master`
 - **Branches** — `master` is stable/production, `development` is active dev
 - **API spec** — `openapi.json` (OpenAPI 3.0.3) documents all endpoints
 - **Logs** — written to `logs/` directory by Monolog (rotating file handler)

@@ -125,10 +125,10 @@ abstract class AbstractHandler implements RequestHandlerInterface
 
             $headersHeader = $request->getHeaderLine('Access-Control-Request-Headers');
             if ($headersHeader !== '') {
-                $allowed   = ['Accept', 'Accept-Language', 'Content-Type'];
-                $requested = array_values(array_filter(array_map('trim', explode(',', $headersHeader))));
+                $allowed       = ['Accept', 'Accept-Language', 'Content-Type'];
+                $requested     = array_values(array_filter(array_map('trim', explode(',', $headersHeader))));
                 $canonicalByLc = array_combine(array_map('strtolower', $allowed), $allowed);
-                $approved = [];
+                $approved      = [];
                 foreach ($requested as $header) {
                     $lc = strtolower($header);
                     if (isset($canonicalByLc[$lc])) {
@@ -179,8 +179,8 @@ abstract class AbstractHandler implements RequestHandlerInterface
         $parsed = [];
         foreach ($acceptValues as $order => $value) {
             $parts = array_map('trim', explode(';', $value));
-            $mime = $parts[0];
-            $q = 1.0;
+            $mime  = $parts[0];
+            $q     = 1.0;
             for ($i = 1; $i < count($parts); $i++) {
                 if (str_starts_with($parts[$i], 'q=')) {
                     $q = (float) substr($parts[$i], 2);
@@ -191,7 +191,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
 
         // For each allowed type, find the best matching quality score
         $bestMatch = null;
-        $bestQ = -1.0;
+        $bestQ     = -1.0;
         $bestOrder = PHP_INT_MAX;
 
         foreach ($this->allowedAcceptHeaders as $allowed) {
@@ -205,9 +205,9 @@ abstract class AbstractHandler implements RequestHandlerInterface
                     // Check type/* wildcard (e.g. application/*)
                     $slashPos = strpos($p['mime'], '/');
                     if ($slashPos !== false && substr($p['mime'], $slashPos + 1) === '*') {
-                        $requestedType = substr($p['mime'], 0, $slashPos);
+                        $requestedType   = substr($p['mime'], 0, $slashPos);
                         $allowedSlashPos = strpos($allowed->value, '/');
-                        $allowedType = $allowedSlashPos !== false ? substr($allowed->value, 0, $allowedSlashPos) : '';
+                        $allowedType     = $allowedSlashPos !== false ? substr($allowed->value, 0, $allowedSlashPos) : '';
                         if ($requestedType === $allowedType) {
                             $matches = true;
                         }
@@ -218,8 +218,8 @@ abstract class AbstractHandler implements RequestHandlerInterface
                     $matches = true;
                 }
 
-                if ($matches && $p['q'] > 0 && ($p['q'] > $bestQ || ($p['q'] === $bestQ && $p['order'] < $bestOrder))) {
-                    $bestQ = $p['q'];
+                if ($matches && $p['q'] > 0 && ( $p['q'] > $bestQ || ( $p['q'] === $bestQ && $p['order'] < $bestOrder ) )) {
+                    $bestQ     = $p['q'];
                     $bestOrder = $p['order'];
                     $bestMatch = $allowed->value;
                 }
@@ -276,7 +276,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
         $params = $request->getQueryParams();
 
         $contentType = $request->getHeaderLine('Content-Type');
-        $mime = trim(explode(';', $contentType)[0]);
+        $mime        = trim(explode(';', $contentType)[0]);
 
         if ($mime === 'application/json') {
             $body = (string) $request->getBody();
@@ -312,7 +312,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
     {
         // Check explicit `return` param first
         $returnParamRaw = $params['return'] ?? '';
-        $returnParam = is_string($returnParamRaw) ? $returnParamRaw : '';
+        $returnParam    = is_string($returnParamRaw) ? $returnParamRaw : '';
         if ($returnParam !== '') {
             $map = [
                 'json' => 'application/json',

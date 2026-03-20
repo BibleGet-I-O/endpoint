@@ -54,23 +54,23 @@ class QueryValidator
     {
         return match ($rule) {
             self::QUERY_MUST_START_WITH_VALID_BOOK_INDICATOR =>
-                (bool) (preg_match('/^[1-4]{0,1}\p{Lu}\p{Ll}*/u', $query) || preg_match('/^[1-4]{0,1}(\p{L}\p{M}*)+/u', $query)),
+                (bool) ( preg_match('/^[1-4]{0,1}\p{Lu}\p{Ll}*/u', $query) || preg_match('/^[1-4]{0,1}(\p{L}\p{M}*)+/u', $query) ),
             self::VALID_CHAPTER_MUST_FOLLOW_BOOK =>
                 QuoteContext::stringWithUpperAndLowerCaseVariants($query)
-                    ? (preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*/u', $query) == preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u', $query))
-                    : (preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+/u', $query) == preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u', $query)),
+                    ? ( preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*/u', $query) == preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u', $query) )
+                    : ( preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+/u', $query) == preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u', $query) ),
             self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR =>
-                !(strpos($query, ',') === false || strpos($query, ',') > strpos($query, '.')),
+                !( strpos($query, ',') === false || strpos($query, ',') > strpos($query, '.') ),
             self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS =>
-                (preg_match_all('/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/', $query) === substr_count($query, '.')),
+                ( preg_match_all('/(?<![0-9])(?=([1-9][0-9]{0,2}\.[1-9][0-9]{0,2}))/', $query) === substr_count($query, '.') ),
             self::CHAPTER_VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS =>
-                (preg_match_all('/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/', $query) === substr_count($query, ',')),
+                ( preg_match_all('/[1-9][0-9]{0,2}\,[1-9][0-9]{0,2}/', $query) === substr_count($query, ',') ),
             self::VERSE_RANGE_MUST_CONTAIN_VALID_VERSE_NUMBERS =>
-                (preg_match_all('/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/', $query) === substr_count($query, '-')),
+                ( preg_match_all('/[1-9][0-9]{0,2}\-[1-9][0-9]{0,2}/', $query) === substr_count($query, '-') ),
             self::CORRESPONDING_CHAPTER_VERSE_CONSTRUCTS_IN_VERSE_RANGE_OVER_CHAPTERS =>
-                !(preg_match('/\-[1-9][0-9]{0,2}\,/', $query) && (!preg_match('/\,[1-9][0-9]{0,2}\-/', $query) || preg_match_all('/(?=\,[1-9][0-9]{0,2}\-)/', $query) > preg_match_all('/(?=\-[1-9][0-9]{0,2}\,)/', $query))),
+                !( preg_match('/\-[1-9][0-9]{0,2}\,/', $query) && ( !preg_match('/\,[1-9][0-9]{0,2}\-/', $query) || preg_match_all('/(?=\,[1-9][0-9]{0,2}\-)/', $query) > preg_match_all('/(?=\-[1-9][0-9]{0,2}\,)/', $query) ) ),
             self::CORRESPONDING_VERSE_SEPARATORS_FOR_MULTIPLE_VERSE_RANGES =>
-                !(substr_count($query, '-') > 1 && (strpos($query, '.') === false || (substr_count($query, '-') - 1 > substr_count($query, '.')))),
+                !( substr_count($query, '-') > 1 && ( strpos($query, '.') === false || ( substr_count($query, '-') - 1 > substr_count($query, '.') ) ) ),
             default => false,
         };
     }
@@ -256,7 +256,7 @@ class QueryValidator
                     continue;
                 }
                 $chapters_verselimit = $jindex['verse_limit'][$bookidx];
-                $verselimit = intval($chapters_verselimit[$pp[0] - 1]);
+                $verselimit          = intval($chapters_verselimit[$pp[0] - 1]);
                 if ($pp[1] > $verselimit) {
                     $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
                     $this->ctx->addErrorMessage(sprintf($msg, $pp[1], $this->currentBook, $pp[0], $jkey, $verselimit));
@@ -275,14 +275,14 @@ class QueryValidator
     {
         if (preg_match_all('/[,\.][1-9][0-9]{0,2}\-([1-9][0-9]{0,2})/', $this->currentQuery, $matches)) {
             $matches[1] = self::forceArray($matches[1]);
-            $highverse = intval(array_pop($matches[1]));
+            $highverse  = intval(array_pop($matches[1]));
             foreach ($this->ctx->INDEXES as $jkey => $jindex) {
                 $bookidx = array_search($this->nonZeroBookIdx, $jindex['book_num']);
                 if ($bookidx === false) {
                     continue;
                 }
                 $chapters_verselimit = $jindex['verse_limit'][$bookidx];
-                $verselimit = intval($chapters_verselimit[intval($parts[0]) - 1]);
+                $verselimit          = intval($chapters_verselimit[intval($parts[0]) - 1]);
                 if ($highverse > $verselimit) {
                     $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
                     $this->ctx->addErrorMessage(sprintf($msg, $highverse, $this->currentBook, $parts[0], $jkey, $verselimit));
@@ -310,7 +310,7 @@ class QueryValidator
                 continue;
             }
             $chapters_verselimit = $jindex['verse_limit'][$bookidx];
-            $verselimit = intval($chapters_verselimit[intval($parts[0]) - 1]);
+            $verselimit          = intval($chapters_verselimit[intval($parts[0]) - 1]);
             if ($highverse > $verselimit) {
                 $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
                 $this->ctx->addErrorMessage(sprintf($msg, $highverse, $this->currentBook, $parts[0], $jkey, $verselimit));
@@ -332,7 +332,7 @@ class QueryValidator
                 continue;
             }
             $chapters_verselimit = $jindex['verse_limit'][$bookidx];
-            $verselimit = intval($chapters_verselimit[intval($parts[0]) - 1]);
+            $verselimit          = intval($chapters_verselimit[intval($parts[0]) - 1]);
             if ($highverse > $verselimit) {
                 $msg = 'A verse in the query is out of bounds: there is no verse <%1$d> in the book %2$s at chapter <%3$d> in the requested version %4$s, the last possible verse is <%5$d>';
                 $this->ctx->addErrorMessage(sprintf($msg, $highverse, $this->currentBook, $parts[0], $jkey, $verselimit));
@@ -377,8 +377,8 @@ class QueryValidator
         }
 
         foreach ($this->ctx->queries as $query) {
-            $this->currentFullQuery = $query;
-            $this->currentQuery = $query;
+            $this->currentFullQuery  = $query;
+            $this->currentQuery      = $query;
             $this->validatedVariants = [];
 
             if ($this->queryViolatesAnyRuleOf($this->currentQuery, [self::VALID_CHAPTER_MUST_FOLLOW_BOOK])) {
@@ -429,7 +429,7 @@ class QueryValidator
                 }
             }
 
-            $this->ctx->validatedQueries[] = $this->currentFullQuery;
+            $this->ctx->validatedQueries[]  = $this->currentFullQuery;
             $this->ctx->validatedVariants[] = $this->validatedVariants;
         }
 

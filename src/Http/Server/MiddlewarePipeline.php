@@ -42,12 +42,13 @@ class MiddlewarePipeline implements RequestHandlerInterface
         }
 
         $middleware = array_shift($queue);
-        $next = new class($queue, $fallback) implements RequestHandlerInterface {
+        $next       = new class ($queue, $fallback) implements RequestHandlerInterface {
             /** @param MiddlewareInterface[] $queue */
             public function __construct(
                 private array $queue,
                 private RequestHandlerInterface $fallback
-            ) {}
+            ) {
+            }
 
             public function handle(ServerRequestInterface $request): ResponseInterface
             {

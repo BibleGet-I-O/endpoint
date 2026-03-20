@@ -34,14 +34,14 @@ class SearchHandler extends AbstractHandler
 
         [$keyword, $version, $exactmatch] = $this->extractSearchParams($params);
 
-        $mysqli = Connection::getConnection();
-        $version = $this->validateVersion($mysqli, $version);
+        $mysqli       = Connection::getConnection();
+        $version      = $this->validateVersion($mysqli, $version);
         $versionIndex = $this->loadVersionIndex($mysqli, $version);
 
         $searchResult = $this->executeSearch($mysqli, $version, $keyword, $exactmatch);
-        $results = $this->mapSearchResults($searchResult, $version, $versionIndex);
+        $results      = $this->mapSearchResults($searchResult, $version, $versionIndex);
 
-        $body = new \stdClass();
+        $body          = new \stdClass();
         $body->results = $results;
         $body->errors  = [];
         $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
@@ -80,7 +80,7 @@ class SearchHandler extends AbstractHandler
     {
         if (self::$cachedValidVersions === null) {
             self::$cachedValidVersions = [];
-            $result = $mysqli->query("SELECT sigla FROM versions_available");
+            $result                    = $mysqli->query('SELECT sigla FROM versions_available');
             if (!$result instanceof \mysqli_result) {
                 error_log('Failed to query versions_available: ' . $mysqli->error);
                 throw new InternalServerErrorException('An internal database error occurred.');
@@ -105,15 +105,15 @@ class SearchHandler extends AbstractHandler
             throw new ValidationException('Invalid version identifier format: ' . $version);
         }
         $abbreviations = $books = $book_num = [];
-        $idxResult = $mysqli->query('SELECT * FROM ' . $version . '_idx');
+        $idxResult     = $mysqli->query('SELECT * FROM ' . $version . '_idx');
         if (!$idxResult instanceof \mysqli_result) {
             error_log('Failed to load index for version ' . $version . ': ' . $mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         while ($row = $idxResult->fetch_assoc()) {
-            $abbreviations[] = (string) ($row['abbrev'] ?? '');
-            $books[]         = (string) ($row['fullname'] ?? '');
-            $book_num[]      = (string) ($row['book'] ?? '');
+            $abbreviations[] = (string) ( $row['abbrev'] ?? '' );
+            $books[]         = (string) ( $row['fullname'] ?? '' );
+            $book_num[]      = (string) ( $row['book'] ?? '' );
         }
         if (empty($abbreviations)) {
             throw new InternalServerErrorException('No index data found for version: ' . $version);
@@ -124,9 +124,9 @@ class SearchHandler extends AbstractHandler
     private function executeSearch(\mysqli $mysqli, string $version, string $keyword, bool $exactmatch): \mysqli_result
     {
         if ($exactmatch) {
-            $regexKeyword = preg_quote($keyword, '/');
+            $regexKeyword        = preg_quote($keyword, '/');
             $escapedRegexKeyword = $mysqli->real_escape_string($regexKeyword);
-            $searchResult = $mysqli->query(
+            $searchResult        = $mysqli->query(
                 "SELECT * FROM {$version} WHERE text RLIKE '\\\\b{$escapedRegexKeyword}\\\\b' ORDER BY book, chapter, verse"
             );
         } else {
@@ -135,7 +135,7 @@ class SearchHandler extends AbstractHandler
                 throw new ValidationException('Search keyword must be at least 4 characters long (use exactmatch=true for shorter keywords).');
             }
             $escapedSanitized = $mysqli->real_escape_string($sanitizedKeyword);
-            $searchResult = $mysqli->query(
+            $searchResult     = $mysqli->query(
                 "SELECT * FROM {$version} WHERE MATCH(text) AGAINST ('{$escapedSanitized}*' IN BOOLEAN MODE) ORDER BY book, chapter, verse"
             );
         }

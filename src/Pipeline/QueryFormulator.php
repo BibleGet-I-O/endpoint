@@ -11,29 +11,29 @@ namespace BibleGet\Api\Pipeline;
 class QueryFormulator
 {
     private QuoteContext $ctx;
-    private int $nn                      = 0;
-    private int $i                       = -1;
-    private string $currentQuery         = '';
-    private string $currentFullQuery     = '';
-    private string $currentChapter       = '';
-    private string $sqlQuery             = '';
-    private string|int $previousBook     = '';
-    private string|int $currentBook      = '';
-    private string $currentVariant       = '';
+    private int $nn                         = 0;
+    private int $i                          = -1;
+    private string $currentQuery            = '';
+    private string $currentFullQuery        = '';
+    private string $currentChapter          = '';
+    private string $sqlQuery                = '';
+    private string|int $previousBook        = '';
+    private string|int $currentBook         = '';
+    private string $currentVariant          = '';
     private string $currentRequestedVariant = '';
-    private string $currentPreferOrigin  = '';
+    private string $currentPreferOrigin     = '';
     /** @var array<int, string> */
-    public array $sqlQueries             = [];
+    public array $sqlQueries = [];
     /** @var array<int, string> */
-    public array $queriesVersions        = [];
+    public array $queriesVersions = [];
     /** @var array<int, string> */
-    public array $originalQueries        = [];
+    public array $originalQueries = [];
     /** @var array<int, string> */
-    public array $queries                = [];
+    public array $queries = [];
 
     public function __construct(QuoteContext $ctx)
     {
-        $this->ctx = $ctx;
+        $this->ctx     = $ctx;
         $this->queries = $ctx->validatedQueries;
     }
 
@@ -102,8 +102,8 @@ class QueryFormulator
         $this->currentPreferOrigin = '';
         if ($this->currentBook == 19 || $this->currentBook === '19') {
             if (in_array($this->currentRequestedVariant, $this->ctx->CATHOLIC_VERSIONS)) {
-                $preferOrigin = $this->ctx->DATA['preferorigin'] ?? '';
-                $origin = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true) ? $preferOrigin : 'GREEK';
+                $preferOrigin              = $this->ctx->DATA['preferorigin'] ?? '';
+                $origin                    = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true) ? $preferOrigin : 'GREEK';
                 $this->currentPreferOrigin = " AND verseorigin = '" . $origin . "'";
             }
         }
@@ -123,9 +123,9 @@ class QueryFormulator
 
     private function finalizeQuery(): void
     {
-        $this->sqlQueries[$this->nn] .= $this->currentPreferOrigin;
+        $this->sqlQueries[$this->nn]     .= $this->currentPreferOrigin;
         $this->queriesVersions[$this->nn] = $this->currentRequestedVariant;
-        $this->sqlQueries[$this->nn] .= ' ORDER BY verseID';
+        $this->sqlQueries[$this->nn]     .= ' ORDER BY verseID';
         $this->setSQLLimit();
     }
 
@@ -154,7 +154,7 @@ class QueryFormulator
     private function setBook(array|false $matchedBook): void
     {
         if ($matchedBook) {
-            $this->currentBook = $this->bestGuessBookIdx($matchedBook);
+            $this->currentBook  = $this->bestGuessBookIdx($matchedBook);
             $this->previousBook = $this->currentBook;
         } else {
             $this->currentBook = $this->previousBook;
@@ -168,10 +168,10 @@ class QueryFormulator
     private function accountForMultipleChapterDifference(array $cvConstructLeft, array $cvConstructRight): void
     {
         $rightChapter = (int) $cvConstructRight['chapter'];
-        $leftChapter = (int) $cvConstructLeft['chapter'];
+        $leftChapter  = (int) $cvConstructLeft['chapter'];
         if ($rightChapter - $leftChapter > 1) {
-            for ($d = 1; $d < ($rightChapter - $leftChapter); $d++) {
-                $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . ($leftChapter + $d) . ' )';
+            for ($d = 1; $d < ( $rightChapter - $leftChapter ); $d++) {
+                $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . ( $leftChapter + $d ) . ' )';
             }
         }
     }
@@ -206,7 +206,7 @@ class QueryFormulator
                 }
                 $verseInRange = $rngMin === null
                     ? $verse === null
-                    : $verse !== null && $verse >= $rngMin && $verse <= ($rngMax ?? $rngMin);
+                    : $verse !== null && $verse >= $rngMin && $verse <= ( $rngMax ?? $rngMin );
                 if ($verseInRange) {
                     return [$mapping['map'][0], $mapping['map'][1], " AND verseorigin = 'GREEK'"];
                 }
@@ -234,16 +234,16 @@ class QueryFormulator
             $this->currentPreferOrigin = $preferorigin;
         }
         $toChapter = (string) $chapter;
-        $toVerse = $verse !== null ? (string) $verse : null;
+        $toVerse   = $verse !== null ? (string) $verse : null;
     }
 
     private function isPsalmInVgclDrb(): bool
     {
         $version = $this->currentRequestedVariant;
-        $book = $this->currentBook;
+        $book    = $this->currentBook;
         return in_array($version, $this->ctx->CATHOLIC_VERSIONS)
-            && ($book == 19 || $book === '19')
-            && ($version === 'VGCL' || $version === 'DRB');
+            && ( $book == 19 || $book === '19' )
+            && ( $version === 'VGCL' || $version === 'DRB' );
     }
 
     /**
@@ -251,12 +251,12 @@ class QueryFormulator
      */
     private function formulateRangeWithChapterVerse(array $range): void
     {
-        $cvConstructLeft = self::getChapterVerseFromConstruct($range['from']);
+        $cvConstructLeft      = self::getChapterVerseFromConstruct($range['from']);
         $this->currentChapter = $cvConstructLeft['chapter'];
         $this->mapReference($cvConstructLeft['chapter'], $cvConstructLeft['verse'], $cvConstructLeft['chapter'], $cvConstructLeft['verse'], true);
 
         if (self::chunkContainsChapterVerseConstruct($range['to'])) {
-            $cvConstructRight = self::getChapterVerseFromConstruct($range['to']);
+            $cvConstructRight     = self::getChapterVerseFromConstruct($range['to']);
             $this->currentChapter = $cvConstructRight['chapter'];
             $this->mapReference($cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true);
             $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . $cvConstructLeft['chapter'] . ' AND verse >= ' . $cvConstructLeft['verse'] . ' )';
@@ -264,7 +264,7 @@ class QueryFormulator
             $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . $cvConstructRight['chapter'] . ' AND verse <= ' . $cvConstructRight['verse'] . ' ) )';
         } else {
             $this->mapReference($this->currentChapter, $range['to'], $this->currentChapter, $range['to'], true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter >= ' . $cvConstructLeft['chapter'] . ' AND verse >= ' . $cvConstructLeft['verse'] . ' )';
+            $this->sqlQueries[$this->nn]  = $this->sqlQuery . ' AND ( chapter >= ' . $cvConstructLeft['chapter'] . ' AND verse >= ' . $cvConstructLeft['verse'] . ' )';
             $this->sqlQueries[$this->nn] .= ' AND ( chapter <= ' . $this->currentChapter . ' AND verse <= ' . $range['to'] . ' )';
         }
     }
@@ -284,7 +284,7 @@ class QueryFormulator
     private function formulateSingleChunk(string $chunk): void
     {
         if (self::chunkContainsChapterVerseConstruct($chunk)) {
-            $cvConstruct = self::getChapterVerseFromConstruct($chunk);
+            $cvConstruct          = self::getChapterVerseFromConstruct($chunk);
             $this->currentChapter = $cvConstruct['chapter'];
             $this->mapReference($cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true);
             $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . $cvConstruct['chapter'] . ' AND verse = ' . $cvConstruct['verse'] . ' )';
@@ -316,7 +316,7 @@ class QueryFormulator
         if (self::chunkContainsRange($this->currentQuery)) {
             $range = self::getRange($this->currentQuery);
             if (self::chunkContainsChapterVerseConstruct($range['from'])) {
-                $cvConstructLeft = self::getChapterVerseFromConstruct($range['from']);
+                $cvConstructLeft      = self::getChapterVerseFromConstruct($range['from']);
                 $this->currentChapter = $cvConstructLeft['chapter'];
                 $this->mapReference($cvConstructLeft['chapter'], $cvConstructLeft['verse'], $cvConstructLeft['chapter'], $cvConstructLeft['verse'], true);
                 if (self::chunkContainsChapterVerseConstruct($range['to'])) {
@@ -336,7 +336,7 @@ class QueryFormulator
                 $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter >= ' . $range['from'] . ' AND chapter <= ' . $range['to'];
             }
         } elseif (self::chunkContainsChapterVerseConstruct($this->currentQuery)) {
-            $cvConstruct = self::getChapterVerseFromConstruct($this->currentQuery);
+            $cvConstruct          = self::getChapterVerseFromConstruct($this->currentQuery);
             $this->currentChapter = $cvConstruct['chapter'];
             $this->mapReference($cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true);
             $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . $cvConstruct['chapter'] . ' AND verse = ' . $cvConstruct['verse'];
@@ -353,12 +353,12 @@ class QueryFormulator
     public function formulateSQLQueries(): void
     {
         foreach ($this->ctx->REQUESTED_VERSIONS as $version) {
-            $this->i = 0;
+            $this->i                       = 0;
             $this->currentRequestedVariant = $version;
             foreach ($this->queries as $query) {
-                $this->currentQuery = $query;
+                $this->currentQuery     = $query;
                 $this->currentFullQuery = $query;
-                $this->currentChapter = '';
+                $this->currentChapter   = '';
                 if (!in_array($version, $this->ctx->validatedVariants[$this->i])) {
                     $this->i++;
                     continue;
@@ -379,8 +379,8 @@ class QueryFormulator
             }
         }
 
-        $this->ctx->formulatedQueries = $this->sqlQueries;
-        $this->ctx->originalQueries = $this->originalQueries;
+        $this->ctx->formulatedQueries  = $this->sqlQueries;
+        $this->ctx->originalQueries    = $this->originalQueries;
         $this->ctx->formulatedVariants = $this->queriesVersions;
     }
 }

@@ -130,8 +130,8 @@ class QuoteHandlerTest extends DatabaseTestCase
 
     public function testPostWithJsonBody(): void
     {
-        $handler = $this->createHandler();
-        $request = (new ServerRequest('POST', '/v3/quote'))
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('POST', '/v3/quote') )
             ->withHeader('Content-Type', 'application/json')
             ->withBody(Stream::create(json_encode(['query' => 'Genesis1,1', 'version' => 'TEST1']) ?: '{}'));
         $response = $handler->handle($request);
@@ -180,7 +180,7 @@ class QuoteHandlerTest extends DatabaseTestCase
     public function testAcceptHeaderXml(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/quote?query=Genesis1,1&version=TEST1'))
+        $request  = ( new ServerRequest('GET', '/v3/quote?query=Genesis1,1&version=TEST1') )
             ->withHeader('Accept', 'application/xml');
         $response = $handler->handle($request);
 
@@ -192,7 +192,7 @@ class QuoteHandlerTest extends DatabaseTestCase
     public function testCorsHeadersWithOrigin(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/quote?query=Genesis1,1&version=TEST1'))
+        $request  = ( new ServerRequest('GET', '/v3/quote?query=Genesis1,1&version=TEST1') )
             ->withHeader('Origin', 'https://example.com');
         $response = $handler->handle($request);
 
@@ -212,8 +212,8 @@ class QuoteHandlerTest extends DatabaseTestCase
 
     public function testOptionsPreflightResponse(): void
     {
-        $handler = $this->createHandler();
-        $request = (new ServerRequest('OPTIONS', '/v3/quote'))
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('OPTIONS', '/v3/quote') )
             ->withHeader('Origin', 'https://example.com')
             ->withHeader('Access-Control-Request-Method', 'POST');
         $response = $handler->handle($request);
@@ -248,7 +248,7 @@ class QuoteHandlerTest extends DatabaseTestCase
     public function testBotUserAgentBlocked(): void
     {
         $handler = $this->createHandler();
-        $request = (new ServerRequest('GET', '/v3/quote?query=Genesis1,1&version=TEST1'))
+        $request = ( new ServerRequest('GET', '/v3/quote?query=Genesis1,1&version=TEST1') )
             ->withHeader('User-Agent', 'Googlebot/2.1');
 
         $this->expectException(\BibleGet\Api\Http\Exception\ForbiddenException::class);

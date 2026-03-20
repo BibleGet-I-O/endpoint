@@ -23,7 +23,7 @@ class ErrorHandlingMiddlewareTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->factory = new Psr17Factory();
+        $this->factory    = new Psr17Factory();
         $this->middleware = new ErrorHandlingMiddleware($this->factory, true);
     }
 
@@ -105,7 +105,7 @@ class ErrorHandlingMiddlewareTest extends TestCase
         };
 
         $response = $middleware->process(new ServerRequest('GET', '/'), $handler);
-        $body = json_decode((string) $response->getBody(), true);
+        $body     = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
         self::assertSame('An unexpected error occurred.', $body['detail']);
     }
@@ -120,7 +120,7 @@ class ErrorHandlingMiddlewareTest extends TestCase
         };
 
         $response = $this->middleware->process(new ServerRequest('GET', '/'), $handler);
-        $body = json_decode((string) $response->getBody(), true);
+        $body     = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
         self::assertArrayHasKey('file', $body);
         self::assertArrayHasKey('line', $body);
@@ -136,7 +136,7 @@ class ErrorHandlingMiddlewareTest extends TestCase
             }
         };
 
-        $request = new ServerRequest('GET', '/', ['Origin' => 'https://example.com']);
+        $request  = new ServerRequest('GET', '/', ['Origin' => 'https://example.com']);
         $response = $this->middleware->process($request, $handler);
 
         self::assertSame('https://example.com', $response->getHeaderLine('Access-Control-Allow-Origin'));

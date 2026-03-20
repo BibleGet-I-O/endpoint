@@ -27,7 +27,8 @@
         "phpstan/phpstan": "^2.0@stable",
         "captainhook/captainhook-phar": "^5.25",
         "captainhook/hook-installer": "^1.0",
-        "phpunit/phpunit": "^11.0"
+        "phpunit/phpunit": "^11.0",
+        "squizlabs/php_codesniffer": "^4.0"
     },
     "autoload": {
         "psr-4": {
@@ -47,6 +48,8 @@
         "start": "./start-server.sh",
         "stop": "./stop-server.sh",
         "restart": "./restart-server.sh",
+        "lint": "phpcs",
+        "lint:fix": "phpcbf",
         "lint:openapi": "npx @redocly/cli lint openapi.json"
     },
     "config": {

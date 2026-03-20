@@ -28,7 +28,7 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testKeywordSearchJson(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/search'))
+        $request  = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
         $response = $handler->handle($request);
 
@@ -48,7 +48,7 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testSearchResultStructure(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/search'))
+        $request  = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
         $response = $handler->handle($request);
 
@@ -71,7 +71,7 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testExactMatchSearch(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/search'))
+        $request  = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'God', 'version' => 'TEST1', 'exactmatch' => 'true']);
         $response = $handler->handle($request);
 
@@ -88,7 +88,7 @@ class SearchHandlerTest extends DatabaseTestCase
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('keyword');
-        $request = (new ServerRequest('GET', '/v3/search'))
+        $request = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['version' => 'TEST1']);
         $handler->handle($request);
     }
@@ -98,7 +98,7 @@ class SearchHandlerTest extends DatabaseTestCase
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('version');
-        $request = (new ServerRequest('GET', '/v3/search'))
+        $request = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'light']);
         $handler->handle($request);
     }
@@ -107,7 +107,7 @@ class SearchHandlerTest extends DatabaseTestCase
     {
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
-        $request = (new ServerRequest('GET', '/v3/search'))
+        $request = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'FAKE']);
         $handler->handle($request);
     }
@@ -117,7 +117,7 @@ class SearchHandlerTest extends DatabaseTestCase
         $handler = $this->createHandler();
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('4 characters');
-        $request = (new ServerRequest('GET', '/v3/search'))
+        $request = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'God', 'version' => 'TEST1']);
         $handler->handle($request);
     }
@@ -127,7 +127,7 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testXmlResponse(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/search'))
+        $request  = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'return' => 'xml']);
         $response = $handler->handle($request);
 
@@ -142,7 +142,7 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testHtmlResponse(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/search'))
+        $request  = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'return' => 'html']);
         $response = $handler->handle($request);
 
@@ -154,7 +154,7 @@ class SearchHandlerTest extends DatabaseTestCase
     public function testInfoContainsEndpointVersion(): void
     {
         $handler  = $this->createHandler();
-        $request  = (new ServerRequest('GET', '/v3/search'))
+        $request  = ( new ServerRequest('GET', '/v3/search') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
         $response = $handler->handle($request);
 

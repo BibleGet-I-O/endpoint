@@ -25,7 +25,7 @@ class LoggingMiddlewareTest extends TestCase
             }
         };
 
-        $request = (new ServerRequest('GET', '/test'))
+        $request = ( new ServerRequest('GET', '/test') )
             ->withAttribute('request_id', 'test-123');
 
         $response = $middleware->process($request, $handler);
@@ -44,7 +44,7 @@ class LoggingMiddlewareTest extends TestCase
             }
         };
 
-        $request = (new ServerRequest('POST', '/create'))
+        $request = ( new ServerRequest('POST', '/create') )
             ->withAttribute('request_id', 'abc');
 
         $response = $middleware->process($request, $handler);

@@ -38,72 +38,72 @@ class QuoteContext
 
     /** @var array<string, string> */
     public static array $defaultParameters = [
-        'query'         => '',
-        'return'        => '',
-        'version'       => '',
-        'domain'        => '',
-        'appid'         => '',
-        'pluginversion' => '',
-        'forceversion'  => '',
+        'query'          => '',
+        'return'         => '',
+        'version'        => '',
+        'domain'         => '',
+        'appid'          => '',
+        'pluginversion'  => '',
+        'forceversion'   => '',
         'forcecopyright' => '',
-        'preferorigin'  => '',
+        'preferorigin'   => '',
     ];
 
     public \mysqli $mysqli;
-    public string $detectedNotation             = 'ENGLISH';
+    public string $detectedNotation = 'ENGLISH';
     /** @var array<string> */
-    public array $WhitelistedDomainsIPs         = [];
-    public string $jsonEncodedRequestHeaders    = '';
-    public string $originHeader                 = '';
-    public string $requestMethod                = '';
+    public array $WhitelistedDomainsIPs      = [];
+    public string $jsonEncodedRequestHeaders = '';
+    public string $originHeader              = '';
+    public string $requestMethod             = '';
 
     /** @var array<int, string> */
-    public array $queries                       = [];
+    public array $queries = [];
     /** @var array<int, string> */
-    public array $validatedQueries              = [];
+    public array $validatedQueries = [];
     /** @var array<int, array<int, string>> */
-    public array $validatedVariants             = [];
+    public array $validatedVariants = [];
     /** @var array<int, string> */
-    public array $formulatedQueries             = [];
+    public array $formulatedQueries = [];
     /** @var array<int, string> */
-    public array $formulatedVariants            = [];
+    public array $formulatedVariants = [];
     /** @var array<int, string> */
-    public array $originalQueries               = [];
+    public array $originalQueries = [];
     /** @var array<int, string> */
-    public array $VALID_VERSIONS                = [];
+    public array $VALID_VERSIONS = [];
     /** @var array<string, string> */
-    public array $VALID_VERSIONS_FULLNAME       = [];
+    public array $VALID_VERSIONS_FULLNAME = [];
     /** @var array<int, string> */
-    public array $COPYRIGHT_VERSIONS            = [];
+    public array $COPYRIGHT_VERSIONS = [];
     /** @var array<int, string> */
-    public array $PROTESTANT_VERSIONS           = [];
+    public array $PROTESTANT_VERSIONS = [];
     /** @var array<int, string> */
-    public array $CATHOLIC_VERSIONS             = [];
+    public array $CATHOLIC_VERSIONS = [];
     /** @var array<int, string> */
-    public array $REQUESTED_VERSIONS            = [];
+    public array $REQUESTED_VERSIONS = [];
     /** @var array<int, string> */
     public array $REQUESTED_COPYRIGHTED_VERSIONS = [];
     /** @var array<int, array<int, array<int, string>>> */
-    public array $BIBLEBOOKS                    = [];
+    public array $BIBLEBOOKS = [];
     /** @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> */
-    public array $INDEXES                       = [];
+    public array $INDEXES = [];
     /** @var array<string, string> */
-    public array $DATA                          = [];
+    public array $DATA = [];
 
     /** @var array<array{errNum: int, errMessage: string}> */
-    public array $errors                        = [];
+    public array $errors = [];
     /** @var array<int, array<string, mixed>> */
-    public array $results                       = [];
+    public array $results = [];
 
     /**
      * @param array<string, string> $params
      */
     public function __construct(array $params, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')
     {
-        $this->DATA = array_merge(self::$defaultParameters, $params);
-        $this->DATA['preferorigin'] = in_array($this->DATA['preferorigin'], self::ALLOWED_PREFER_ORIGINS) ? $this->DATA['preferorigin'] : '';
-        $this->originHeader = $originHeader;
-        $this->requestMethod = $requestMethod;
+        $this->DATA                      = array_merge(self::$defaultParameters, $params);
+        $this->DATA['preferorigin']      = in_array($this->DATA['preferorigin'], self::ALLOWED_PREFER_ORIGINS) ? $this->DATA['preferorigin'] : '';
+        $this->originHeader              = $originHeader;
+        $this->requestMethod             = $requestMethod;
         $this->jsonEncodedRequestHeaders = $requestHeadersJson;
     }
 
@@ -112,7 +112,7 @@ class QuoteContext
      */
     public function initialize(): void
     {
-        $this->mysqli = Connection::getConnection();
+        $this->mysqli                = Connection::getConnection();
         $this->WhitelistedDomainsIPs = Connection::getWhitelistedDomainsIPs();
         $this->populateVersionsInfo();
         $this->prepareBibleBooks();
@@ -125,14 +125,14 @@ class QuoteContext
         $errMessage = '';
         if (gettype($num) === 'string') {
             $errMessage = $num;
-            $num = 13;
+            $num        = 13;
         } else {
             $errMessage = self::$errorMessages[$num] ?? '';
         }
 
         $this->errors[] = [
             'errNum'     => $num,
-            'errMessage' => $errMessage . ($str !== '' ? ' > ' . $str : ''),
+            'errMessage' => $errMessage . ( $str !== '' ? ' > ' . $str : '' ),
         ];
     }
 
@@ -177,14 +177,14 @@ class QuoteContext
 
     public function queryStrClean(): void
     {
-        $querystr = self::removeWhitespace($this->DATA['query']);
-        $querystr = trim($querystr);
-        $querystr = self::convertAllDashesToHyphens($querystr);
+        $querystr               = self::removeWhitespace($this->DATA['query']);
+        $querystr               = trim($querystr);
+        $querystr               = self::convertAllDashesToHyphens($querystr);
         $this->detectedNotation = self::detectAndNormalizeNotation($querystr);
 
-        $queries = explode(';', $querystr);
-        $queries = self::removeEmptyItems($queries);
-        $queries = array_map([self::class, 'toProperCase'], $queries);
+        $queries       = explode(';', $querystr);
+        $queries       = self::removeEmptyItems($queries);
+        $queries       = array_map([self::class, 'toProperCase'], $queries);
         $this->queries = $queries;
     }
 
@@ -196,8 +196,8 @@ class QuoteContext
     private static function detectAndNormalizeNotation(string &$querystr): string
     {
         $detectedNotation = '';
-        $find    = ['.', ',', ':'];
-        $replace = ['', '.', ','];
+        $find             = ['.', ',', ':'];
+        $replace          = ['', '.', ','];
 
         // Check if '.' appears after the first chapter/verse separator (: or ,),
         // not before it (where it would be an abbreviation dot like "Jn.3:16")
@@ -206,7 +206,7 @@ class QuoteContext
             $queries = explode(';', $querystr);
             foreach ($queries as $q) {
                 if (preg_match('/[,:]/', $q, $m, PREG_OFFSET_CAPTURE)) {
-                    $separatorPos = $m[0][1];
+                    $separatorPos   = $m[0][1];
                     $afterSeparator = substr($q, $separatorPos + 1);
                     if (strpos($afterSeparator, '.') !== false) {
                         $hasDotAfterSeparator = true;
@@ -220,7 +220,7 @@ class QuoteContext
             $detectedNotation = 'MIXED';
         } elseif (strpos($querystr, ':') !== false && strpos($querystr, ',') !== false && strpos($querystr, ';') !== false) {
             // Detect per-query separator by finding the first ':' or ',' after the chapter number
-            $queries = explode(';', $querystr);
+            $queries    = explode(';', $querystr);
             $separators = [];
             foreach ($queries as $q) {
                 // Find the first separator character (: or ,) after stripping book indicator
@@ -232,13 +232,13 @@ class QuoteContext
                 $detectedNotation = 'MIXED';
             } elseif (in_array(':', $separators)) {
                 $detectedNotation = 'ENGLISH';
-                $querystr = str_replace($find, $replace, $querystr);
+                $querystr         = str_replace($find, $replace, $querystr);
             } else {
                 $detectedNotation = 'EUROPEAN';
             }
         } elseif (strpos($querystr, ':') !== false) {
             $detectedNotation = 'ENGLISH';
-            $querystr = str_replace($find, $replace, $querystr);
+            $querystr         = str_replace($find, $replace, $querystr);
         } else {
             $detectedNotation = 'EUROPEAN';
         }
@@ -283,12 +283,16 @@ class QuoteContext
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         while ($row = mysqli_fetch_assoc($result)) {
-            $output_info_array = [
-                $row['fullname'], $row['year'], $row['language'],
-                $row['imprimatur'], $row['canon'],
-                $row['copyright_holder'], $row['notes'],
+            $output_info_array                                     = [
+                $row['fullname'],
+                $row['year'],
+                $row['language'],
+                $row['imprimatur'],
+                $row['canon'],
+                $row['copyright_holder'],
+                $row['notes'],
             ];
-            $this->VALID_VERSIONS[] = (string) $row['sigla'];
+            $this->VALID_VERSIONS[]                                = (string) $row['sigla'];
             $this->VALID_VERSIONS_FULLNAME[(string) $row['sigla']] = implode('|', $output_info_array);
             if ((int) $row['copyright'] === 1) {
                 $this->COPYRIGHT_VERSIONS[] = (string) $row['sigla'];
@@ -309,25 +313,25 @@ class QuoteContext
                 throw new ValidationException('Invalid version identifier format: ' . $variant);
             }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
-            $result = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
+            $result        = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
             if ($result === false) {
                 error_log('Failed to load index for version ' . $variant . ': ' . $this->mysqli->error);
                 throw new InternalServerErrorException('An internal database error occurred.');
             }
             if ($result instanceof \mysqli_result) {
                 while ($row = $result->fetch_assoc()) {
-                    $abbreviations[]  = (string) $row['abbrev'];
-                    $bbbooks[]        = (string) $row['fullname'];
-                    $chapter_limit[]  = (int) $row['chapters'];
-                    $verse_limit[]    = array_map('intval', explode(',', (string) $row['verses_last']));
-                    $book_num[]       = (int) $row['book'];
+                    $abbreviations[] = (string) $row['abbrev'];
+                    $bbbooks[]       = (string) $row['fullname'];
+                    $chapter_limit[] = (int) $row['chapters'];
+                    $verse_limit[]   = array_map('intval', explode(',', (string) $row['verses_last']));
+                    $book_num[]      = (int) $row['book'];
                 }
             }
-            $indexes[$variant]['abbreviations']  = $abbreviations;
-            $indexes[$variant]['biblebooks']     = $bbbooks;
-            $indexes[$variant]['chapter_limit']  = $chapter_limit;
-            $indexes[$variant]['verse_limit']    = $verse_limit;
-            $indexes[$variant]['book_num']       = $book_num;
+            $indexes[$variant]['abbreviations'] = $abbreviations;
+            $indexes[$variant]['biblebooks']    = $bbbooks;
+            $indexes[$variant]['chapter_limit'] = $chapter_limit;
+            $indexes[$variant]['verse_limit']   = $verse_limit;
+            $indexes[$variant]['book_num']      = $book_num;
         }
         $this->INDEXES = $indexes;
     }
@@ -340,7 +344,7 @@ class QuoteContext
             throw new InternalServerErrorException('An internal database error occurred.');
         }
 
-        $cols = mysqli_num_fields($result1);
+        $cols  = mysqli_num_fields($result1);
         $names = [];
         $finfo = mysqli_fetch_fields($result1);
         foreach ($finfo as $val) {
@@ -355,16 +359,16 @@ class QuoteContext
 
         $n = 0;
         while ($row1 = mysqli_fetch_assoc($result1)) {
-            $row2 = mysqli_fetch_assoc($result2);
+            $row2                 = mysqli_fetch_assoc($result2);
             $this->BIBLEBOOKS[$n] = [];
             for ($x = 1; $x < $cols; $x++) {
-                $val1 = (string) ($row1[$names[$x]] ?? '');
-                $val2 = (string) ($row2[$names[$x]] ?? '');
-                $temparray = [$val1, $val2];
-                $arr1 = explode(' | ', $val1);
-                $booknames = array_map([self::class, 'normalizeBibleBook'], $arr1);
-                $arr2 = explode(' | ', $val2);
-                $abbrevs = (count($arr2) > 1) ? array_map([self::class, 'normalizeBibleBook'], $arr2) : [];
+                $val1                     = (string) ( $row1[$names[$x]] ?? '' );
+                $val2                     = (string) ( $row2[$names[$x]] ?? '' );
+                $temparray                = [$val1, $val2];
+                $arr1                     = explode(' | ', $val1);
+                $booknames                = array_map([self::class, 'normalizeBibleBook'], $arr1);
+                $arr2                     = explode(' | ', $val2);
+                $abbrevs                  = ( count($arr2) > 1 ) ? array_map([self::class, 'normalizeBibleBook'], $arr2) : [];
                 $this->BIBLEBOOKS[$n][$x] = array_merge($temparray, $booknames, $abbrevs);
             }
             $n++;

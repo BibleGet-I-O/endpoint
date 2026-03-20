@@ -20,7 +20,7 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
     private bool $debug;
     private Logger $errorLogger;
     private ?ServerRequestInterface $currentRequest = null;
-    private static bool $handlersRegistered = false;
+    private static bool $handlersRegistered         = false;
 
     public function __construct(
         ResponseFactoryInterface $responseFactory,
@@ -94,7 +94,7 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
      */
     public function handlePhpWarning(int $errno, string $errstr, string $errfile, int $errline): bool
     {
-        if (!(error_reporting() & $errno)) {
+        if (!( error_reporting() & $errno )) {
             return false;
         }
 
