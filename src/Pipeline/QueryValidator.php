@@ -58,7 +58,7 @@ class QueryValidator
             self::VALID_CHAPTER_MUST_FOLLOW_BOOK =>
                 QuoteContext::stringWithUpperAndLowerCaseVariants($query)
                     ? (preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*/u', $query) == preg_match('/^[1-3]{0,1}\p{Lu}\p{Ll}*[1-9][0-9]{0,2}/u', $query))
-                    : (preg_match('/^[1-3]{0,1}( \p{L}\p{M}* )+/u', $query) == preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u', $query)),
+                    : (preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+/u', $query) == preg_match('/^[1-3]{0,1}(\p{L}\p{M}*)+[1-9][0-9]{0,2}/u', $query)),
             self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_CHAPTER_VERSE_SEPARATOR =>
                 !(strpos($query, ',') === false || strpos($query, ',') > strpos($query, '.')),
             self::VERSE_SEPARATOR_MUST_BE_PRECEDED_BY_1_TO_3_DIGITS =>
