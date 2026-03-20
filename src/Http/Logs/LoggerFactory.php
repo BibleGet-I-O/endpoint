@@ -44,6 +44,10 @@ class LoggerFactory
         bool $debug = false,
         bool $includeJsonHandler = true
     ): Logger {
+        if (!preg_match('/^[A-Za-z0-9_.-]+$/', $logName)) {
+            throw new \InvalidArgumentException('Invalid log name: must contain only alphanumeric characters, underscores, dots, and hyphens.');
+        }
+
         if (isset(self::$loggers[$logName])) {
             return self::$loggers[$logName];
         }
