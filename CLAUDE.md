@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BibleGet I/O Endpoint (v3.0) — a REST API service for retrieving Bible quotations across multiple versions and languages. Production URL: `https://query.bibleget.io/v3/`. Written in PHP 8.1+ with a MySQL/MariaDB backend.
+BibleGet I/O Endpoint (v3.0) — a REST API service for retrieving Bible quotations across multiple versions and languages. Production URL: `https://query.bibleget.io/v3/`. Written in PHP 8.2+ with a MySQL/MariaDB backend.
 
 ## Architecture
 
@@ -54,7 +54,7 @@ For each request, the Router builds a `MiddlewarePipeline` (PSR-15):
 
 ### Directory Structure
 
-```
+```text
 public/index.php                     # Front controller
 src/
 ├── Router.php                       # URL dispatch
