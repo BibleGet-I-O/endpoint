@@ -127,15 +127,15 @@ class QuoteHandler extends AbstractHandler
     }
 
     /**
-     * @param array<string, string> $bibleVersionsInfo
+     * @param array<int, array<string, mixed>> $results
      */
-    private function buildHtmlResponse(QuoteContext $ctx, array $bibleVersionsInfo): string
+    private function buildHtmlResults(array $results): string
     {
-        $resultsHtml = '<div class="results bibleQuote">';
+        $html = '<div class="results bibleQuote">';
         $version = $book = $chapter = '';
         $paragraphOpen = false;
 
-        foreach ($ctx->results as $row) {
+        foreach ($results as $row) {
             $rowVersion = isset($row['version']) && is_scalar($row['version']) ? (string) $row['version'] : '';
             $rowBook    = isset($row['book']) && is_scalar($row['book']) ? (string) $row['book'] : '';
             $rowChapter = isset($row['chapter']) && is_scalar($row['chapter']) ? (string) $row['chapter'] : '';
@@ -144,52 +144,76 @@ class QuoteHandler extends AbstractHandler
 
             if ($rowVersion !== $version) {
                 if ($paragraphOpen) {
-                    $resultsHtml .= '</p>';
+                    $html .= '</p>';
                     $paragraphOpen = false;
                 }
                 $version = $rowVersion;
-                $resultsHtml .= '<p class="version bibleVersion">' . htmlspecialchars($version) . '</p>';
-                $book = ''; $chapter = '';
+                $html .= '<p class="version bibleVersion">' . htmlspecialchars($version) . '</p>';
+                $book = '';
+                $chapter = '';
             }
             if ($rowBook !== $book || $rowChapter !== $chapter) {
                 if ($paragraphOpen) {
-                    $resultsHtml .= '</p>';
+                    $html .= '</p>';
                 }
                 $book    = $rowBook;
                 $chapter = $rowChapter;
-                $resultsHtml .= '<p class="book bookChapter">' . htmlspecialchars($book) . '&nbsp;' . htmlspecialchars($chapter) . '</p>';
-                $resultsHtml .= '<p class="verses versesParagraph">';
+                $html .= '<p class="book bookChapter">' . htmlspecialchars($book) . '&nbsp;' . htmlspecialchars($chapter) . '</p>';
+                $html .= '<p class="verses versesParagraph">';
                 $paragraphOpen = true;
             }
-            $resultsHtml .= '<span class="sup verseNum">' . htmlspecialchars($rowVerse) . '</span>';
-            $resultsHtml .= '<span class="text verseText">' . htmlspecialchars($rowText) . '</span>';
+            $html .= '<span class="sup verseNum">' . htmlspecialchars($rowVerse) . '</span>';
+            $html .= '<span class="text verseText">' . htmlspecialchars($rowText) . '</span>';
         }
         if ($paragraphOpen) {
-            $resultsHtml .= '</p>';
+            $html .= '</p>';
         }
-        $resultsHtml .= '</div>';
+        $html .= '</div>';
+        return $html;
+    }
 
-        $errorsHtml = '<div class="errors bibleQuote">';
-        if (!empty($ctx->errors)) {
-            $errorsHtml .= '<table id="errorsTbl" class="errorsTbl">';
-            foreach ($ctx->errors as $err) {
-                $errorsHtml .= '<tr class="errorsRow">';
-                $errorsHtml .= '<td class="errNum">errNum</td><td class="errNumVal">' . $err['errNum'] . '</td>';
-                $errorsHtml .= '<td class="errMessage">errMessage</td><td class="errMessageVal">' . htmlspecialchars($err['errMessage']) . '</td>';
-                $errorsHtml .= '</tr>';
+    /**
+     * @param array<array{errNum: int, errMessage: string}> $errors
+     */
+    private function buildHtmlErrors(array $errors): string
+    {
+        $html = '<div class="errors bibleQuote">';
+        if (!empty($errors)) {
+            $html .= '<table id="errorsTbl" class="errorsTbl">';
+            foreach ($errors as $err) {
+                $html .= '<tr class="errorsRow">';
+                $html .= '<td class="errNum">errNum</td><td class="errNumVal">' . $err['errNum'] . '</td>';
+                $html .= '<td class="errMessage">errMessage</td><td class="errMessageVal">' . htmlspecialchars($err['errMessage']) . '</td>';
+                $html .= '</tr>';
             }
-            $errorsHtml .= '</table>';
+            $html .= '</table>';
         }
-        $errorsHtml .= '</div>';
+        $html .= '</div>';
+        return $html;
+    }
 
-        $infoHtml = '<div class="info bibleQuote">';
-        $infoHtml .= '<input type="hidden" name="ENDPOINT_VERSION" value="' . QuoteContext::ENDPOINT_VERSION . '" class="BibleGetInfo">';
-        $infoHtml .= '<input type="hidden" name="detectedNotation" value="' . htmlspecialchars($ctx->detectedNotation) . '" class="BibleGetInfo">';
+    /**
+     * @param array<string, string> $bibleVersionsInfo
+     */
+    private function buildHtmlInfo(string $detectedNotation, array $bibleVersionsInfo): string
+    {
+        $html = '<div class="info bibleQuote">';
+        $html .= '<input type="hidden" name="ENDPOINT_VERSION" value="' . QuoteContext::ENDPOINT_VERSION . '" class="BibleGetInfo">';
+        $html .= '<input type="hidden" name="detectedNotation" value="' . htmlspecialchars($detectedNotation) . '" class="BibleGetInfo">';
         $versionsJson = json_encode($bibleVersionsInfo);
-        $infoHtml .= '<input type="hidden" name="bibleVersionsInfo" value="' . htmlspecialchars($versionsJson !== false ? $versionsJson : '{}') . '" class="BibleGetInfo">';
-        $infoHtml .= '</div>';
+        $html .= '<input type="hidden" name="bibleVersionsInfo" value="' . htmlspecialchars($versionsJson !== false ? $versionsJson : '{}') . '" class="BibleGetInfo">';
+        $html .= '</div>';
+        return $html;
+    }
 
-        return $resultsHtml . $errorsHtml . $infoHtml;
+    /**
+     * @param array<string, string> $bibleVersionsInfo
+     */
+    private function buildHtmlResponse(QuoteContext $ctx, array $bibleVersionsInfo): string
+    {
+        return $this->buildHtmlResults($ctx->results)
+            . $this->buildHtmlErrors($ctx->errors)
+            . $this->buildHtmlInfo($ctx->detectedNotation, $bibleVersionsInfo);
     }
 
     private static function createEmptyResponse(ServerRequestInterface $request): ResponseInterface

@@ -27,6 +27,29 @@ class SearchHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
+        [$keyword, $version, $exactmatch] = $this->extractSearchParams($params);
+
+        $mysqli = Connection::getConnection();
+        $version = $this->validateVersion($mysqli, $version);
+        $versionIndex = $this->loadVersionIndex($mysqli, $version);
+
+        $searchResult = $this->executeSearch($mysqli, $version, $keyword, $exactmatch);
+        $results = $this->mapSearchResults($searchResult, $version, $versionIndex);
+
+        $body = new \stdClass();
+        $body->results = $results;
+        $body->errors  = [];
+        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
+
+        return $this->buildSearchResponse($response, $contentType, $body, $results);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array{string, string, string}
+     */
+    private function extractSearchParams(array $params): array
+    {
         $keywordRaw    = $params['keyword'] ?? '';
         $keyword       = is_string($keywordRaw) ? $keywordRaw : '';
         $versionRaw    = $params['version'] ?? '';
@@ -41,9 +64,11 @@ class SearchHandler extends AbstractHandler
             throw new ValidationException('The version parameter is required.');
         }
 
-        $mysqli = Connection::getConnection();
+        return [$keyword, $version, $exactmatch];
+    }
 
-        // Validate version
+    private function validateVersion(\mysqli $mysqli, string $version): string
+    {
         $validVersions = [];
         $result = $mysqli->query("SELECT sigla FROM versions_available");
         if ($result instanceof \mysqli_result) {
@@ -55,33 +80,35 @@ class SearchHandler extends AbstractHandler
         if (!in_array($version, $validVersions)) {
             throw new ValidationException('Not a valid version: ' . $version);
         }
+        return $version;
+    }
 
-        // Load indexes for this version
-        $abbreviations = $bbbooks = $book_num = [];
+    /**
+     * @return array{abbreviations: list<string>, books: list<string>, book_num: list<string>}
+     */
+    private function loadVersionIndex(\mysqli $mysqli, string $version): array
+    {
+        $abbreviations = $books = $book_num = [];
         $idxResult = $mysqli->query('SELECT * FROM ' . $version . '_idx');
         if ($idxResult instanceof \mysqli_result) {
             while ($row = $idxResult->fetch_assoc()) {
-                $abbreviations[] = $row['abbrev'];
-                $bbbooks[]       = $row['fullname'];
-                $book_num[]      = $row['book'];
+                $abbreviations[] = (string) ($row['abbrev'] ?? '');
+                $books[]         = (string) ($row['fullname'] ?? '');
+                $book_num[]      = (string) ($row['book'] ?? '');
             }
         }
+        return ['abbreviations' => $abbreviations, 'books' => $books, 'book_num' => $book_num];
+    }
 
-        // Build search query
-        $escapedKeyword = $mysqli->real_escape_string($keyword);
-        $results = [];
-        $errors  = [];
-
+    private function executeSearch(\mysqli $mysqli, string $version, string $keyword, string $exactmatch): \mysqli_result
+    {
         if ($exactmatch === 'true') {
-            // Exact match: RLIKE word boundary match, allows 3-letter words
             $regexKeyword = preg_quote($keyword, '/');
             $escapedRegexKeyword = $mysqli->real_escape_string($regexKeyword);
             $searchResult = $mysqli->query(
                 "SELECT * FROM {$version} WHERE text RLIKE '[[:<:]]{$escapedRegexKeyword}[[:>:]]' ORDER BY book, chapter, verse"
             );
         } else {
-            // Default: boolean fulltext search with wildcard
-            // Strip MySQL boolean mode operators from user input
             $sanitizedKeyword = preg_replace('/[+\-><~*"()]+/', '', $keyword) ?? $keyword;
             if (mb_strlen($sanitizedKeyword) < 4) {
                 throw new ValidationException('Search keyword must be at least 4 characters long (use exactmatch=true for shorter keywords).');
@@ -95,31 +122,42 @@ class SearchHandler extends AbstractHandler
         if (!$searchResult instanceof \mysqli_result) {
             throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
         }
+        return $searchResult;
+    }
 
+    /**
+     * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapSearchResults(\mysqli_result $searchResult, string $version, array $versionIndex): array
+    {
+        $results = [];
         while ($row = $searchResult->fetch_assoc()) {
             $row['version']    = $version;
             $row['testament']  = (int) $row['testament'];
             $universal_booknum = $row['book'];
-            $bookidx           = array_search($row['book'], $book_num);
+            $bookidx           = array_search($row['book'], $versionIndex['book_num']);
             if ($bookidx === false) {
                 $bookidx = 0;
             }
-            $row['bookabbrev'] = $abbreviations[$bookidx] ?? '';
-            $row['booknum']    = (int) $bookidx;
+            $row['bookabbrev']  = $versionIndex['abbreviations'][$bookidx] ?? '';
+            $row['booknum']     = (int) $bookidx;
             $row['univbooknum'] = $universal_booknum;
-            $row['book']       = $bbbooks[$bookidx] ?? '';
-            $row['section']    = (int) $row['section'];
-            $row['chapter']    = (int) $row['chapter'];
-            $row['verse']      = (int) $row['verse'];
+            $row['book']        = $versionIndex['books'][$bookidx] ?? '';
+            $row['section']     = (int) $row['section'];
+            $row['chapter']     = (int) $row['chapter'];
+            $row['verse']       = (int) $row['verse'];
             unset($row['verseID']);
             $results[] = $row;
         }
+        return $results;
+    }
 
-        $body = new \stdClass();
-        $body->results = $results;
-        $body->errors  = $errors;
-        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
-
+    /**
+     * @param array<int, array<string, mixed>> $results
+     */
+    private function buildSearchResponse(ResponseInterface $response, string $contentType, \stdClass $body, array $results): ResponseInterface
+    {
         if ($contentType === 'application/json') {
             return $this->jsonResponse($response, $body);
         }
@@ -127,7 +165,7 @@ class SearchHandler extends AbstractHandler
         if ($contentType === 'application/xml') {
             $root = '<?xml version="1.0" encoding="UTF-8"?><BibleGetSearch/>';
             $xml  = new \SimpleXMLElement($root);
-            $xmlErrors  = $xml->addChild('errors');
+            $xml->addChild('errors');
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
             $xmlInfo->addAttribute('ENDPOINT_VERSION', self::ENDPOINT_VERSION);
@@ -135,7 +173,7 @@ class SearchHandler extends AbstractHandler
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');
                 foreach ($row as $key => $value) {
-                    $resultNode[$key] = (string) $value;
+                    $resultNode[$key] = is_scalar($value) ? (string) $value : '';
                 }
             }
 
