@@ -294,9 +294,9 @@ class QueryExecutor
 
     /**
      * @param array<string, mixed> $row
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    private function prepareResponse(array $row): array
+    private function prepareResponse(array $row): ?array
     {
         $currentVariant = $this->queriesversions[$this->i];
 
@@ -306,7 +306,8 @@ class QueryExecutor
         $universal_booknum = $row['book'];
         $booknum           = array_search($row['book'], $this->ctx->INDEXES[$currentVariant]['book_num']);
         if ($booknum === false) {
-            $booknum = 0;
+            error_log('Unmapped book number ' . ( is_scalar($row['book']) ? (string) $row['book'] : 'unknown' ) . ' in version index for quote result');
+            return null;
         }
         $row['bookabbrev']  = $this->ctx->INDEXES[$currentVariant]['abbreviations'][$booknum] ?? '';
         $row['booknum']     = $booknum;
@@ -354,7 +355,10 @@ class QueryExecutor
                 $this->logQuery();
 
                 while ($row = $result->fetch_assoc()) {
-                    $this->ctx->results[] = $this->prepareResponse($row);
+                    $prepared = $this->prepareResponse($row);
+                    if ($prepared !== null) {
+                        $this->ctx->results[] = $prepared;
+                    }
                 }
             } else {
                 $this->ctx->addErrorMessage(9, $this->xquery);
