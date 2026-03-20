@@ -199,7 +199,24 @@ class QuoteContext
         $find    = ['.', ',', ':'];
         $replace = ['', '.', ','];
 
-        if (strpos($querystr, ':') !== false && strpos($querystr, '.') !== false) {
+        // Check if '.' appears after the first chapter/verse separator (: or ,),
+        // not before it (where it would be an abbreviation dot like "Jn.3:16")
+        $hasDotAfterSeparator = false;
+        if (strpos($querystr, '.') !== false) {
+            $queries = explode(';', $querystr);
+            foreach ($queries as $q) {
+                if (preg_match('/[,:]/', $q, $m, PREG_OFFSET_CAPTURE)) {
+                    $separatorPos = $m[0][1];
+                    $afterSeparator = substr($q, $separatorPos + 1);
+                    if (strpos($afterSeparator, '.') !== false) {
+                        $hasDotAfterSeparator = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (strpos($querystr, ':') !== false && $hasDotAfterSeparator) {
             $detectedNotation = 'MIXED';
         } elseif (strpos($querystr, ':') !== false && strpos($querystr, ',') !== false && strpos($querystr, ';') !== false) {
             // Detect per-query separator by finding the first ':' or ',' after the chapter number
