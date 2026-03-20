@@ -299,7 +299,10 @@ class QuoteContext
                 throw new ValidationException('Invalid version identifier format: ' . $variant);
             }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
-            $result = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx');
+            $result = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
+            if ($result === false) {
+                throw new InternalServerErrorException('Failed to load index for version ' . $variant . ': ' . $this->mysqli->error);
+            }
             if ($result instanceof \mysqli_result) {
                 while ($row = $result->fetch_assoc()) {
                     $abbreviations[]  = (string) $row['abbrev'];
@@ -320,7 +323,7 @@ class QuoteContext
 
     private function prepareBibleBooks(): void
     {
-        $result1 = $this->mysqli->query('SELECT * FROM biblebooks_fullname');
+        $result1 = $this->mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY id');
         if (!$result1 instanceof \mysqli_result) {
             throw new InternalServerErrorException('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
         }
@@ -332,7 +335,7 @@ class QuoteContext
             $names[] = $val->name;
         }
 
-        $result2 = $this->mysqli->query('SELECT * FROM biblebooks_abbr');
+        $result2 = $this->mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY id');
         if (!$result2 instanceof \mysqli_result) {
             throw new InternalServerErrorException('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
         }
