@@ -189,6 +189,9 @@ class MetadataHandler extends AbstractHandler
 
         $indexes = [];
         foreach ($versions as $variant) {
+            if (!preg_match('/^[A-Za-z0-9_]+$/', $variant)) {
+                continue;
+            }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
             $result = $mysqli->query('SELECT * FROM ' . $variant . '_idx');
             if ($result instanceof \mysqli_result) {
