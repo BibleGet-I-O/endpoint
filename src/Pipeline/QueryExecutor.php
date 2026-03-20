@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Pipeline;
 
+use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Exception\ValidationException;
 
@@ -139,7 +140,8 @@ class QueryExecutor
         $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            return;
+            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('ss', $this->ipaddress, $this->xquery);
         $stmt->execute();
@@ -168,7 +170,8 @@ class QueryExecutor
         $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            return;
+            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('s', $this->ipaddress);
         $stmt->execute();
@@ -191,7 +194,8 @@ class QueryExecutor
         );
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            return;
+            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('ss', $this->ctx->originHeader, $this->xquery);
         $stmt->execute();
@@ -220,7 +224,8 @@ class QueryExecutor
         );
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            return;
+            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('s', $this->ctx->originHeader);
         $stmt->execute();
@@ -265,6 +270,7 @@ class QueryExecutor
             $sql  = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
             $stmt = $this->ctx->mysqli->prepare($sql);
             if ($stmt === false) {
+                error_log('Geo-IP log lookup prepare failed: ' . $this->ctx->mysqli->error);
                 return false;
             }
             $stmt->bind_param('s', $this->ipaddress);
@@ -284,6 +290,7 @@ class QueryExecutor
     {
         $stmt = $this->ctx->mysqli->prepare('INSERT INTO requests_log__' . $this->curYEAR . ' ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )');
         if ($stmt === false) {
+            error_log('Request log prepare failed: ' . $this->ctx->mysqli->error);
             return;
         }
         $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
