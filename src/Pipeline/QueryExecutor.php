@@ -234,7 +234,10 @@ class QueryExecutor
             $this->geoip_json = (string) ($iprow['WHO_WHERE_JSON'] ?? '');
             $this->haveIPAddressOnRecord = true;
         } elseif ($this->ipaddress != '') {
-            $this->getGeoIpInfo();
+            // Geo-IP lookup is best-effort and only used for logging.
+            // Defer the external API call to avoid adding up to 5s latency
+            // to the synchronous response path. Log a placeholder instead.
+            $this->geoip_json = '{"PENDING":"geo-ip lookup deferred"}';
         }
     }
 
