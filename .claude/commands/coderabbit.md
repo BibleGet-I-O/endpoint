@@ -12,5 +12,6 @@
 
 4. Iteration limit:
    - Maximum of four iterations
-   - If the fourth run shows no critical issues, skip remaining nits
-   - Provide a summary of completed changes and rationale
+   - If the fourth run shows no critical issues, you may defer remaining minor nits
+   - Do not exit with unresolved major issues unless explicitly documented with rationale and a follow-up issue owner
+   - Provide a summary of completed changes, deferred items, and rationale
