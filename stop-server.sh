@@ -49,9 +49,9 @@ stop_pidfile() {
   fi
 }
 
-# Try stopping either pidfile, priority: vscode → normal
-if [[ -f "server.vscode.pid" ]]; then
-  stop_pidfile "server.vscode.pid"
-else
-  stop_pidfile "server.pid"
-fi
+# Stop any running servers
+for pidfile in "server.vscode.pid" "server.pid"; do
+  if [[ -f "$pidfile" ]]; then
+    stop_pidfile "$pidfile"
+  fi
+done
