@@ -73,9 +73,13 @@ jobs:
       - name: Run integration tests
         run: vendor/bin/phpunit --testsuite Integration --testdox --display-warnings
 
+      - name: Run server tests
+        if: matrix.php == '8.2'
+        run: vendor/bin/phpunit --testsuite Server --testdox --display-warnings
+
       - name: Run tests with coverage
         if: matrix.php == '8.2'
-        run: vendor/bin/phpunit --testsuite Unit,Integration --testdox --display-warnings --coverage-clover=coverage.xml --coverage-text
+        run: vendor/bin/phpunit --testsuite Unit,Integration,Server --testdox --display-warnings --coverage-clover=coverage.xml --coverage-text
 
       - name: Upload coverage artifact
         if: matrix.php == '8.2'
