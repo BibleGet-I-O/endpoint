@@ -97,7 +97,10 @@ class MetadataHandler extends AbstractHandler
         while ($row1 = mysqli_fetch_assoc($result1)) {
             $row2 = mysqli_fetch_assoc($result2);
             if ($row2 === null || $row2 === false) {
-                break;
+                throw new InternalServerErrorException('biblebooks_abbr has fewer rows than biblebooks_fullname.');
+            }
+            if (( $row1['BOOK'] ?? null ) !== ( $row2['BOOK'] ?? null )) {
+                throw new InternalServerErrorException('biblebooks_fullname and biblebooks_abbr BOOK keys are mismatched.');
             }
             $biblebooks[$n] = [];
             for ($x = 0; $x < $cols - 1; $x++) {
