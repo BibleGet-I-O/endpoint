@@ -61,6 +61,10 @@ abstract class ServerTestCase extends TestCase
         $status          = proc_get_status($process);
         self::$serverPid = $status['pid'];
 
+        // Close the proc handle — the `exec` prefix replaced the shell process,
+        // so the handle no longer tracks the child. Closing avoids resource leakage.
+        proc_close($process);
+
         // Wait for server to be ready (up to 3 seconds), verifying the process is still alive
         $ready = false;
         for ($i = 0; $i < 30; $i++) {
