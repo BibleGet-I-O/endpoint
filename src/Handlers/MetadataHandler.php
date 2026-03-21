@@ -238,7 +238,9 @@ class MetadataHandler extends AbstractHandler
         $info = $xml->addChild('info');
         $info->addAttribute('ENDPOINT_VERSION', self::ENDPOINT_VERSION);
 
-        // Simplified XML — encode data as JSON attributes for compatibility
+        // Simplified XML — encode data as JSON in the @data attribute for backward
+        // compatibility with existing consumers of the legacy XML format.
+        // A future version could emit proper recursive XML elements instead.
         $results = $xml->addChild('results');
         $results->addAttribute('type', $rootName);
         $json = json_encode($data['results'] ?? $data['indexes'] ?? $data, JSON_UNESCAPED_UNICODE);
