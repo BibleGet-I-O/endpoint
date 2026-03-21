@@ -197,15 +197,16 @@ class MetadataHandler extends AbstractHandler
                 continue;
             }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
-            $result        = $mysqli->query('SELECT * FROM ' . $variant . '_idx');
-            if ($result instanceof \mysqli_result) {
-                while ($row = $result->fetch_assoc()) {
-                    $abbreviations[] = $row['abbrev'];
-                    $bbbooks[]       = $row['fullname'];
-                    $chapter_limit[] = (int) $row['chapters'];
-                    $verse_limit[]   = array_map('intval', explode(',', (string) $row['verses_last']));
-                    $book_num[]      = (int) $row['book'];
-                }
+            $result        = $mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
+            if (!$result instanceof \mysqli_result) {
+                throw new InternalServerErrorException('An internal database error occurred.');
+            }
+            while ($row = $result->fetch_assoc()) {
+                $abbreviations[] = $row['abbrev'];
+                $bbbooks[]       = $row['fullname'];
+                $chapter_limit[] = (int) $row['chapters'];
+                $verse_limit[]   = array_map('intval', explode(',', (string) $row['verses_last']));
+                $book_num[]      = (int) $row['book'];
             }
             $indexes[$variant] = [
                 'abbreviations' => $abbreviations,
