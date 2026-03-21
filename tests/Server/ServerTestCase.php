@@ -21,6 +21,9 @@ abstract class ServerTestCase extends TestCase
     /** @var int|null */
     private static ?int $serverPid = null;
 
+    /** @var resource|null */
+    private static $serverProcess = null;
+
     public static function setUpBeforeClass(): void
     {
         $envPort = getenv('TEST_SERVER_PORT');
@@ -58,12 +61,9 @@ abstract class ServerTestCase extends TestCase
             self::fail('Failed to start PHP built-in server');
         }
 
-        $status          = proc_get_status($process);
-        self::$serverPid = $status['pid'];
-
-        // Close the proc handle — the `exec` prefix replaced the shell process,
-        // so the handle no longer tracks the child. Closing avoids resource leakage.
-        proc_close($process);
+        $status              = proc_get_status($process);
+        self::$serverPid     = $status['pid'];
+        self::$serverProcess = $process;
 
         // Wait for server to be ready (up to 3 seconds), verifying the process is still alive
         $ready = false;
@@ -104,6 +104,10 @@ abstract class ServerTestCase extends TestCase
                 @posix_kill(self::$serverPid, SIGKILL);
             }
             self::$serverPid = null;
+        }
+        if (self::$serverProcess !== null && is_resource(self::$serverProcess)) {
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
         }
     }
 
