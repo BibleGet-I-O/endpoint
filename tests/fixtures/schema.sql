@@ -26,14 +26,14 @@ CREATE TABLE IF NOT EXISTS versions_available (
 -- Bible book full names (73 rows = 73 books, columns = languages)
 -- Simplified: just two language columns for testing
 CREATE TABLE IF NOT EXISTS biblebooks_fullname (
-    id      INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    BOOK    INT NOT NULL PRIMARY KEY,
     ENGLISH VARCHAR(255) NOT NULL DEFAULT '',
     ITALIAN VARCHAR(255) NOT NULL DEFAULT ''
 );
 
 -- Bible book abbreviations (same structure)
 CREATE TABLE IF NOT EXISTS biblebooks_abbr (
-    id      INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    BOOK    INT NOT NULL PRIMARY KEY,
     ENGLISH VARCHAR(255) NOT NULL DEFAULT '',
     ITALIAN VARCHAR(255) NOT NULL DEFAULT ''
 );

@@ -6,15 +6,15 @@ INSERT IGNORE INTO versions_available (sigla, fullname, year, language, imprimat
 ('TEST2', 'Test Bible Version 2', '2021', 'English', 'No', 'PROTESTANT', 'Other Publisher', '', 1, 'BIBLE');
 
 -- Bible book names: just populate first 3 books (Genesis, Exodus, Leviticus) for testing
-INSERT IGNORE INTO biblebooks_fullname (ENGLISH, ITALIAN) VALUES
-('Genesis', 'Genesi'),
-('Exodus', 'Esodo'),
-('Leviticus', 'Levitico');
+INSERT IGNORE INTO biblebooks_fullname (BOOK, ENGLISH, ITALIAN) VALUES
+(1, 'Genesis', 'Genesi'),
+(2, 'Exodus', 'Esodo'),
+(3, 'Leviticus', 'Levitico');
 
-INSERT IGNORE INTO biblebooks_abbr (ENGLISH, ITALIAN) VALUES
-('Gen | Gn', 'Gen | Gn'),
-('Exod | Ex', 'Es | Esod'),
-('Lev | Lv', 'Lv | Lev');
+INSERT IGNORE INTO biblebooks_abbr (BOOK, ENGLISH, ITALIAN) VALUES
+(1, 'Gen | Gn', 'Gen | Gn'),
+(2, 'Exod | Ex', 'Es | Esod'),
+(3, 'Lev | Lv', 'Lv | Lev');
 
 -- Index tables for TEST1 (3 books)
 CREATE TABLE IF NOT EXISTS TEST1_idx (

@@ -76,7 +76,7 @@ class MetadataHandler extends AbstractHandler
     private function getBibleBooks(\mysqli $mysqli): array
     {
         $biblebooks = [];
-        $result1    = $mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY id');
+        $result1    = $mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY BOOK');
         if (!$result1 instanceof \mysqli_result) {
             throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
         }
@@ -88,7 +88,7 @@ class MetadataHandler extends AbstractHandler
             $names[] = $val->name;
         }
 
-        $result2 = $mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY id');
+        $result2 = $mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY BOOK');
         if (!$result2 instanceof \mysqli_result) {
             throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
         }
