@@ -95,7 +95,6 @@ jobs:
         if: matrix.php == '8.2'
         run: |
           cp tests/fixtures/dbcredentials.php dbcredentials.php
-          cp tests/fixtures/.env.test .env.test
           vendor/bin/phpunit --testsuite Server --testdox --display-warnings
 
       - name: Run tests with coverage
