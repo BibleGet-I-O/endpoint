@@ -393,6 +393,11 @@ class QuoteContext
                     $this->addErrorMessage('Invalid version identifier format: <' . $version . '>');
                     continue;
                 }
+                $idxCheck = $this->mysqli->query('SELECT 1 FROM ' . $version . '_idx LIMIT 1');
+                if (!$idxCheck instanceof \mysqli_result) {
+                    $this->addErrorMessage('No index table found for forced version: <' . $version . '>');
+                    continue;
+                }
                 $this->REQUESTED_VERSIONS[] = $version;
             } else {
                 if ($this->isValidVersion($version)) {
