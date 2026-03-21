@@ -259,13 +259,13 @@ class QueryFormulator
             $cvConstructRight     = self::getChapterVerseFromConstruct($range['to']);
             $this->currentChapter = $cvConstructRight['chapter'];
             $this->mapReference($cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . $cvConstructLeft['chapter'] . ' AND verse >= ' . $cvConstructLeft['verse'] . ' )';
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
             $this->accountForMultipleChapterDifference($cvConstructLeft, $cvConstructRight);
-            $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . $cvConstructRight['chapter'] . ' AND verse <= ' . $cvConstructRight['verse'] . ' ) )';
+            $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
         } else {
             $this->mapReference($this->currentChapter, $range['to'], $this->currentChapter, $range['to'], true);
-            $this->sqlQueries[$this->nn]  = $this->sqlQuery . ' AND ( chapter >= ' . $cvConstructLeft['chapter'] . ' AND verse >= ' . $cvConstructLeft['verse'] . ' )';
-            $this->sqlQueries[$this->nn] .= ' AND ( chapter <= ' . $this->currentChapter . ' AND verse <= ' . $range['to'] . ' )';
+            $this->sqlQueries[$this->nn]  = $this->sqlQuery . ' AND ( chapter >= ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
+            $this->sqlQueries[$this->nn] .= ' AND ( chapter <= ' . (int) $this->currentChapter . ' AND verse <= ' . (int) $range['to'] . ' )';
         }
     }
 
@@ -278,7 +278,7 @@ class QueryFormulator
             $this->mapReference($this->currentChapter, $range['from'], $this->currentChapter, $range['from'], true);
             $unusedChapter = null;
             $this->mapReference($this->currentChapter, $range['to'], $unusedChapter, $range['to'], false);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . $this->currentChapter . ' AND verse >= ' . $range['from'] . ' AND verse <= ' . $range['to'] . ' )';
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $this->currentChapter . ' AND verse >= ' . (int) $range['from'] . ' AND verse <= ' . (int) $range['to'] . ' )';
         }
     }
 
@@ -288,10 +288,10 @@ class QueryFormulator
             $cvConstruct          = self::getChapterVerseFromConstruct($chunk);
             $this->currentChapter = $cvConstruct['chapter'];
             $this->mapReference($cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . $cvConstruct['chapter'] . ' AND verse = ' . $cvConstruct['verse'] . ' )';
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $cvConstruct['chapter'] . ' AND verse = ' . (int) $cvConstruct['verse'] . ' )';
         } else {
             $this->mapReference($this->currentChapter, $chunk, $this->currentChapter, $chunk, true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . $this->currentChapter . ' AND verse = ' . $chunk . ' )';
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $this->currentChapter . ' AND verse = ' . (int) $chunk . ' )';
         }
     }
 
@@ -323,28 +323,28 @@ class QueryFormulator
                 if (self::chunkContainsChapterVerseConstruct($range['to'])) {
                     $cvConstructRight = self::getChapterVerseFromConstruct($range['to']);
                     $this->mapReference($cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true);
-                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . $cvConstructLeft['chapter'] . ' AND verse >= ' . $cvConstructLeft['verse'] . ' )';
+                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
                     $this->accountForMultipleChapterDifference($cvConstructLeft, $cvConstructRight);
-                    $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . $cvConstructRight['chapter'] . ' AND verse <= ' . $cvConstructRight['verse'] . ' ) )';
+                    $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
                 } else {
-                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter >= ' . $cvConstructLeft['chapter'] . ' AND verse >= ' . $cvConstructLeft['verse'];
+                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter >= ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'];
                     $this->mapReference($cvConstructLeft['chapter'], $range['to'], $mappedChapter, $range['to'], true);
-                    $this->sqlQueries[$this->nn] .= ' AND chapter <= ' . $mappedChapter . ' AND verse <= ' . $range['to'];
+                    $this->sqlQueries[$this->nn] .= ' AND chapter <= ' . (int) $mappedChapter . ' AND verse <= ' . (int) $range['to'];
                 }
             } else {
                 $this->mapReference($range['from'], null, $range['from'], $nullVerse, true);
                 $this->mapReference($range['to'], null, $range['to'], $nullVerse, false);
-                $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter >= ' . $range['from'] . ' AND chapter <= ' . $range['to'];
+                $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter >= ' . (int) $range['from'] . ' AND chapter <= ' . (int) $range['to'];
             }
         } elseif (self::chunkContainsChapterVerseConstruct($this->currentQuery)) {
             $cvConstruct          = self::getChapterVerseFromConstruct($this->currentQuery);
             $this->currentChapter = $cvConstruct['chapter'];
             $this->mapReference($cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . $cvConstruct['chapter'] . ' AND verse = ' . $cvConstruct['verse'];
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $cvConstruct['chapter'] . ' AND verse = ' . (int) $cvConstruct['verse'];
         } else {
             $this->currentChapter = $this->currentQuery;
             $this->mapReference($this->currentChapter, null, $mappedChapter, $nullVerse, true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . $mappedChapter;
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $mappedChapter;
         }
 
         $this->finalizeQuery();
