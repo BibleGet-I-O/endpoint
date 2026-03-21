@@ -138,12 +138,16 @@ class QuoteContext
 
     public function incrementBadQueryCount(): void
     {
-        $this->mysqli->query('UPDATE counter SET bad = bad + 1');
+        if ($this->mysqli->query('UPDATE counter SET bad = bad + 1') === false) {
+            error_log('Failed to increment bad query counter: ' . $this->mysqli->error);
+        }
     }
 
     public function incrementGoodQueryCount(): void
     {
-        $this->mysqli->query('UPDATE counter SET good = good + 1');
+        if ($this->mysqli->query('UPDATE counter SET good = good + 1') === false) {
+            error_log('Failed to increment good query counter: ' . $this->mysqli->error);
+        }
     }
 
     public static function stringWithUpperAndLowerCaseVariants(string $str): bool
