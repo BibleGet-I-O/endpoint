@@ -48,19 +48,31 @@ require_once $autoloaderPath;
 use BibleGet\Api\Router;
 use Dotenv\Dotenv;
 
-$dotenv = Dotenv::createImmutable($projectFolder, ['.env', '.env.local', '.env.development', '.env.test', '.env.staging', '.env.production'], false);
+try {
+    $dotenv = Dotenv::createImmutable($projectFolder, ['.env', '.env.local', '.env.development', '.env.test', '.env.staging', '.env.production'], false);
 
-if (Router::isLocalhost()) {
-    // In development environment if no .env file is present we don't want to throw an error
-    $dotenv->safeLoad();
-} else {
-    // In production environment we want to throw an error if no .env file is present
-    $dotenv->load();
-    // In production environment these variables are required, in development they will be inferred if not set
-    $dotenv->required(['API_BASE_PATH', 'APP_ENV']);
+    if (Router::isLocalhost()) {
+        // In development environment if no .env file is present we don't want to throw an error
+        $dotenv->safeLoad();
+    } else {
+        // In production environment we want to throw an error if no .env file is present
+        $dotenv->load();
+        // In production environment these variables are required, in development they will be inferred if not set
+        $dotenv->required(['API_BASE_PATH', 'APP_ENV']);
+    }
+
+    $dotenv->ifPresent(['APP_ENV'])->notEmpty()->allowedValues(['development', 'test', 'staging', 'production']);
+
+    $router = new Router();
+    $router->route();
+} catch (\Throwable $e) {
+    http_response_code(500);
+    header('Content-Type: application/problem+json; charset=utf-8');
+    echo json_encode([
+        'type'   => 'https://datatracker.ietf.org/doc/html/rfc9110#name-500-internal-server-error',
+        'title'  => 'Internal Server Error',
+        'status' => 500,
+        'detail' => Router::isLocalhost() ? $e->getMessage() : 'A configuration error prevented the API from starting.',
+    ]);
+    exit;
 }
-
-$dotenv->ifPresent(['APP_ENV'])->notEmpty()->allowedValues(['development', 'test', 'staging', 'production']);
-
-$router = new Router();
-$router->route();
