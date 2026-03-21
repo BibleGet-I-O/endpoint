@@ -74,7 +74,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           extensions: mysqli, json, simplexml, dom, curl, posix
-          coverage: xdebug
+          coverage: ${{ matrix.php == '8.2' && 'xdebug' || 'none' }}
           tools: composer:v2
 
       - name: Install dependencies
