@@ -122,14 +122,24 @@ class Router
                 break;
 
             default:
-                $this->response = new Response(
-                    StatusCode::NOT_FOUND->value,
-                    [],
-                    null,
-                    $this->request->getProtocolVersion(),
-                    StatusCode::NOT_FOUND->reason()
-                );
-                $this->emitResponse();
+                $protocolVersion = $this->request->getProtocolVersion();
+                $this->handler   = new class ($protocolVersion) implements RequestHandlerInterface {
+                    public function __construct(private readonly string $protocolVersion)
+                    {
+                    }
+
+                    public function handle(ServerRequestInterface $request): ResponseInterface
+                    {
+                        return new Response(
+                            StatusCode::NOT_FOUND->value,
+                            [],
+                            null,
+                            $this->protocolVersion,
+                            StatusCode::NOT_FOUND->reason()
+                        );
+                    }
+                };
+                break;
         }
 
         $pipeline = new MiddlewarePipeline($this->handler);
