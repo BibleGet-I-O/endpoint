@@ -393,6 +393,7 @@ class QuoteContext
                     $this->REQUESTED_VERSIONS[] = $version;
                 } else {
                     $this->addErrorMessage('Not a valid version: <' . $version . '>, valid versions are <' . implode(' | ', $this->VALID_VERSIONS) . '>');
+                    continue;
                 }
             }
             if (isset($this->DATA['forcecopyright']) && $this->DATA['forcecopyright'] === 'true') {
