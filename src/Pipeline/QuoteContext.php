@@ -338,7 +338,7 @@ class QuoteContext
 
     private function prepareBibleBooks(): void
     {
-        $result1 = $this->mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY id');
+        $result1 = $this->mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY BOOK');
         if (!$result1 instanceof \mysqli_result) {
             error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
@@ -351,7 +351,7 @@ class QuoteContext
             $names[] = $val->name;
         }
 
-        $result2 = $this->mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY id');
+        $result2 = $this->mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY BOOK');
         if (!$result2 instanceof \mysqli_result) {
             error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
