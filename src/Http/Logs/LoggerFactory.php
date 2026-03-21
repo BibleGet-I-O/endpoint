@@ -77,4 +77,13 @@ class LoggerFactory
         self::$loggers[$cacheKey] = $logger;
         return $logger;
     }
+
+    /**
+     * Reset the logger cache (for testing only).
+     */
+    public static function reset(): void
+    {
+        self::$loggers           = [];
+        self::$defaultLogsFolder = null;
+    }
 }
