@@ -139,6 +139,7 @@ class MetadataHandler extends AbstractHandler
         if ($type !== '') {
             $querystring .= " WHERE type='" . $mysqli->real_escape_string($type) . "'";
         }
+        $querystring .= ' ORDER BY sigla';
 
         $result = $mysqli->query($querystring);
         if (!$result instanceof \mysqli_result) {
