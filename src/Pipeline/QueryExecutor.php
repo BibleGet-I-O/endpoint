@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use Psr\Log\LoggerInterface;
 
 /**
  * Executes SQL queries and collects results.
@@ -15,6 +16,7 @@ use BibleGet\Api\Http\Exception\ValidationException;
 class QueryExecutor
 {
     private QuoteContext $ctx;
+    private LoggerInterface $logger;
     private int $i                      = 0;
     private string $appid               = '';
     private string $domain              = '';
@@ -37,6 +39,7 @@ class QueryExecutor
     public function __construct(QuoteContext $ctx)
     {
         $this->ctx             = $ctx;
+        $this->logger          = $ctx->logger;
         $this->sqlqueries      = $ctx->formulatedQueries;
         $this->queriesversions = $ctx->formulatedVariants;
         $this->appid           = $ctx->DATA['appid'] != '' ? $ctx->DATA['appid'] : 'unknown';
@@ -140,7 +143,7 @@ class QueryExecutor
         $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('ss', $this->ipaddress, $this->xquery);
@@ -170,7 +173,7 @@ class QueryExecutor
         $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('s', $this->ipaddress);
@@ -194,7 +197,7 @@ class QueryExecutor
         );
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('ss', $this->ctx->originHeader, $this->xquery);
@@ -224,7 +227,7 @@ class QueryExecutor
         );
         $stmt = $this->ctx->mysqli->prepare($sql);
         if ($stmt === false) {
-            error_log('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->bind_param('s', $this->ctx->originHeader);
@@ -270,7 +273,7 @@ class QueryExecutor
             $sql  = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
             $stmt = $this->ctx->mysqli->prepare($sql);
             if ($stmt === false) {
-                error_log('Geo-IP log lookup prepare failed: ' . $this->ctx->mysqli->error);
+                $this->logger->error('Geo-IP log lookup prepare failed: ' . $this->ctx->mysqli->error);
                 return false;
             }
             $stmt->bind_param('s', $this->ipaddress);
@@ -290,7 +293,7 @@ class QueryExecutor
     {
         $stmt = $this->ctx->mysqli->prepare('INSERT INTO requests_log__' . $this->curYEAR . ' ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )');
         if ($stmt === false) {
-            error_log('Request log prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Request log prepare failed: ' . $this->ctx->mysqli->error);
             return;
         }
         $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
@@ -313,7 +316,7 @@ class QueryExecutor
         $universal_booknum = $row['book'];
         $booknum           = array_search($row['book'], $this->ctx->INDEXES[$currentVariant]['book_num']);
         if ($booknum === false) {
-            error_log('Unmapped book number ' . ( is_scalar($row['book']) ? (string) $row['book'] : 'unknown' ) . ' in version index for quote result');
+            $this->logger->error('Unmapped book number ' . ( is_scalar($row['book']) ? (string) $row['book'] : 'unknown' ) . ' in version index for quote result');
             return null;
         }
         $row['bookabbrev']  = $this->ctx->INDEXES[$currentVariant]['abbreviations'][$booknum] ?? '';

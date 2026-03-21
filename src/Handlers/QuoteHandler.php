@@ -6,6 +6,7 @@ namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Http\Exception\ForbiddenException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\QueryValidator;
 use BibleGet\Api\Pipeline\QueryFormulator;
@@ -42,6 +43,7 @@ class QuoteHandler extends AbstractHandler
         }
         $ctx = new QuoteContext(
             $stringParams,
+            LoggerFactory::create('api'),
             $request->getHeaderLine('Origin'),
             $request->getMethod(),
             self::safeEncodeHeaders($request->getHeaders())

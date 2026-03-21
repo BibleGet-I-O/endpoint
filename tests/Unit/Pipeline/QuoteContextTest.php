@@ -20,7 +20,7 @@ class QuoteContextTest extends TestCase
 
     public function testConstructorSetsOriginAndMethod(): void
     {
-        $ctx = new QuoteContext([], 'https://example.com', 'POST', '{"Accept":"*/*"}');
+        $ctx = new QuoteContext([], null, 'https://example.com', 'POST', '{"Accept":"*/*"}');
         self::assertSame('https://example.com', $ctx->originHeader);
         self::assertSame('POST', $ctx->requestMethod);
         self::assertSame('{"Accept":"*/*"}', $ctx->jsonEncodedRequestHeaders);

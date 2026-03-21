@@ -7,9 +7,11 @@ namespace BibleGet\Api\Handlers;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Pipeline\QuoteContext;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
 
 class SearchHandler extends AbstractHandler
 {
@@ -17,6 +19,7 @@ class SearchHandler extends AbstractHandler
 
     /** @var list<string>|null */
     private static ?array $cachedValidVersions = null;
+    private LoggerInterface $logger;
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -27,6 +30,7 @@ class SearchHandler extends AbstractHandler
 
         $this->validateRequestMethod($request);
         $this->validateRequestContentType($request);
+        $this->logger = LoggerFactory::create('api');
 
         $params      = $this->getRequestParams($request);
         $contentType = $this->resolveResponseContentType($request, $params);
@@ -82,7 +86,7 @@ class SearchHandler extends AbstractHandler
             self::$cachedValidVersions = [];
             $result                    = $mysqli->query('SELECT sigla FROM versions_available');
             if (!$result instanceof \mysqli_result) {
-                error_log('Failed to query versions_available: ' . $mysqli->error);
+                $this->logger->error('Failed to query versions_available: ' . $mysqli->error);
                 throw new InternalServerErrorException('An internal database error occurred.');
             }
             while ($row = $result->fetch_assoc()) {
@@ -107,7 +111,7 @@ class SearchHandler extends AbstractHandler
         $abbreviations = $books = $book_num = [];
         $idxResult     = $mysqli->query('SELECT * FROM ' . $version . '_idx');
         if (!$idxResult instanceof \mysqli_result) {
-            error_log('Failed to load index for version ' . $version . ': ' . $mysqli->error);
+            $this->logger->error('Failed to load index for version ' . $version . ': ' . $mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         while ($row = $idxResult->fetch_assoc()) {
@@ -141,7 +145,7 @@ class SearchHandler extends AbstractHandler
         }
 
         if (!$searchResult instanceof \mysqli_result) {
-            error_log('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+            $this->logger->error('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         return $searchResult;
@@ -160,7 +164,7 @@ class SearchHandler extends AbstractHandler
             $universal_booknum = $row['book'];
             $bookidx           = array_search($row['book'], $versionIndex['book_num']);
             if ($bookidx === false) {
-                error_log('Unmapped book number ' . $row['book'] . ' in version index for search result');
+                $this->logger->error('Unmapped book number ' . $row['book'] . ' in version index for search result');
                 continue;
             }
             $row['bookabbrev']  = $versionIndex['abbreviations'][$bookidx] ?? '';

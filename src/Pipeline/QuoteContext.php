@@ -8,6 +8,8 @@ use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Util\StringUtils;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 /**
  * Shared data context for the quote pipeline (Validator → Formulator → Executor).
@@ -50,6 +52,7 @@ class QuoteContext
     ];
 
     public \mysqli $mysqli;
+    public LoggerInterface $logger;
     public string $detectedNotation = 'ENGLISH';
     /** @var array<string> */
     public array $WhitelistedDomainsIPs      = [];
@@ -98,10 +101,11 @@ class QuoteContext
     /**
      * @param array<string, string> $params
      */
-    public function __construct(array $params, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')
+    public function __construct(array $params, ?LoggerInterface $logger = null, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')
     {
         $this->DATA                      = array_merge(self::$defaultParameters, $params);
         $this->DATA['preferorigin']      = in_array($this->DATA['preferorigin'], self::ALLOWED_PREFER_ORIGINS) ? $this->DATA['preferorigin'] : '';
+        $this->logger                    = $logger ?? new NullLogger();
         $this->originHeader              = $originHeader;
         $this->requestMethod             = $requestMethod;
         $this->jsonEncodedRequestHeaders = $requestHeadersJson;
@@ -139,14 +143,14 @@ class QuoteContext
     public function incrementBadQueryCount(): void
     {
         if ($this->mysqli->query('UPDATE counter SET bad = bad + 1') === false) {
-            error_log('Failed to increment bad query counter: ' . $this->mysqli->error);
+            $this->logger->error('Failed to increment bad query counter: ' . $this->mysqli->error);
         }
     }
 
     public function incrementGoodQueryCount(): void
     {
         if ($this->mysqli->query('UPDATE counter SET good = good + 1') === false) {
-            error_log('Failed to increment good query counter: ' . $this->mysqli->error);
+            $this->logger->error('Failed to increment good query counter: ' . $this->mysqli->error);
         }
     }
 
@@ -283,7 +287,7 @@ class QuoteContext
     {
         $result = $this->mysqli->query("SELECT * FROM versions_available WHERE type = 'BIBLE'");
         if (!$result instanceof \mysqli_result) {
-            error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            $this->logger->error('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         while ($row = mysqli_fetch_assoc($result)) {
@@ -319,7 +323,7 @@ class QuoteContext
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
             $result        = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
             if ($result === false) {
-                error_log('Failed to load index for version ' . $variant . ': ' . $this->mysqli->error);
+                $this->logger->error('Failed to load index for version ' . $variant . ': ' . $this->mysqli->error);
                 throw new InternalServerErrorException('An internal database error occurred.');
             }
             if ($result instanceof \mysqli_result) {
@@ -344,7 +348,7 @@ class QuoteContext
     {
         $result1 = $this->mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY BOOK');
         if (!$result1 instanceof \mysqli_result) {
-            error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            $this->logger->error('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
 
@@ -357,7 +361,7 @@ class QuoteContext
 
         $result2 = $this->mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY BOOK');
         if (!$result2 instanceof \mysqli_result) {
-            error_log('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+            $this->logger->error('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
             throw new InternalServerErrorException('An internal database error occurred.');
         }
 
