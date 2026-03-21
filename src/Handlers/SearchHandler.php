@@ -21,6 +21,14 @@ class SearchHandler extends AbstractHandler
     private static ?array $cachedValidVersions = null;
     private LoggerInterface $logger;
 
+    /**
+     * Reset cached data (for testing only).
+     */
+    public static function resetCache(): void
+    {
+        self::$cachedValidVersions = null;
+    }
+
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if ($request->getMethod() === 'OPTIONS') {
