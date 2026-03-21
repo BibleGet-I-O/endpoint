@@ -219,8 +219,10 @@ abstract class ServerTestCase extends TestCase
                 [$name, $value] = explode(':', $line, 2);
                 $key            = strtolower(trim($name));
                 // Append multiple values for the same header (e.g. Vary)
+                // Use newline for set-cookie since commas are ambiguous in cookie values
                 if (isset($parsedHeaders[$key])) {
-                    $parsedHeaders[$key] .= ', ' . trim($value);
+                    $separator            = $key === 'set-cookie' ? "\n" : ', ';
+                    $parsedHeaders[$key] .= $separator . trim($value);
                 } else {
                     $parsedHeaders[$key] = trim($value);
                 }
