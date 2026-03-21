@@ -160,11 +160,10 @@ class Router
             throw new ServiceUnavailableException('The API_BASE_PATH environment variable must be set in production environments.');
         }
 
-        if (self::isLocalhost()) {
-            $apiBasePath = '/';
-        } else {
-            /** @var string $apiBasePath */
+        if (isset($_ENV['API_BASE_PATH']) && is_string($_ENV['API_BASE_PATH']) && !empty($_ENV['API_BASE_PATH'])) {
             $apiBasePath = $_ENV['API_BASE_PATH'];
+        } else {
+            $apiBasePath = '/';
         }
 
         // Ensure trailing slash
