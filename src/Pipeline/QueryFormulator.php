@@ -17,8 +17,8 @@ class QueryFormulator
     private string $currentFullQuery        = '';
     private string $currentChapter          = '';
     private string $sqlQuery                = '';
-    private string|int $previousBook        = '';
-    private string|int $currentBook         = '';
+    private int $previousBook               = 0;
+    private int $currentBook                = 0;
     private string $currentVariant          = '';
     private string $currentRequestedVariant = '';
     private string $currentPreferOrigin     = '';
@@ -100,7 +100,7 @@ class QueryFormulator
     private function validateVerseOriginPreference(): void
     {
         $this->currentPreferOrigin = '';
-        if ($this->currentBook == 19 || $this->currentBook === '19') {
+        if ($this->currentBook === 19) {
             if (in_array($this->currentRequestedVariant, $this->ctx->CATHOLIC_VERSIONS)) {
                 $preferOrigin              = $this->ctx->DATA['preferorigin'] ?? '';
                 $origin                    = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true) ? $preferOrigin : 'GREEK';
@@ -111,7 +111,7 @@ class QueryFormulator
 
     private function initSQLStatement(): void
     {
-        $this->sqlQuery = 'SELECT * FROM ' . $this->currentRequestedVariant . ' WHERE book = ' . $this->currentBook;
+        $this->sqlQuery = 'SELECT * FROM ' . $this->currentRequestedVariant . ' WHERE book = ' . (int) $this->currentBook;
     }
 
     private function setSQLLimit(): void
@@ -242,7 +242,7 @@ class QueryFormulator
         $version = $this->currentRequestedVariant;
         $book    = $this->currentBook;
         return in_array($version, $this->ctx->CATHOLIC_VERSIONS)
-            && ( $book == 19 || $book === '19' )
+            && $book === 19
             && ( $version === 'VGCL' || $version === 'DRB' );
     }
 
