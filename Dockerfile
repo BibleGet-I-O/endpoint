@@ -15,3 +15,10 @@ RUN printf '<Directory /var/www/html/public>\n    AllowOverride All\n</Directory
 
 # Set ServerName to avoid localhost detection by the Router
 RUN echo 'ServerName bibleget-api' >> /etc/apache2/apache2.conf
+
+# Use non-privileged port and run as www-data
+RUN sed -ri -e 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf \
+    && sed -ri -e 's/:80>/:8080>/' /etc/apache2/sites-available/*.conf
+RUN chown -R www-data:www-data /var/www/html /var/run/apache2 /var/log/apache2 /var/lock/apache2
+EXPOSE 8080
+USER www-data
