@@ -378,7 +378,7 @@ class QuoteContext
     private function prepareRequestedVersions(): void
     {
         $temp = isset($this->DATA['version']) && $this->DATA['version'] !== ''
-            ? explode(',', strtoupper($this->DATA['version']))
+            ? array_map('trim', explode(',', strtoupper($this->DATA['version'])))
             : ['CEI2008'];
 
         foreach ($temp as $version) {
