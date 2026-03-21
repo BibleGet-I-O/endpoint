@@ -32,7 +32,11 @@ abstract class ServerTestCase extends TestCase
 
         $envPort = getenv('TEST_SERVER_PORT');
         if ($envPort !== false && $envPort !== '') {
-            self::$port = (int) $envPort;
+            $port = filter_var($envPort, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
+            if ($port === false) {
+                self::fail('TEST_SERVER_PORT must be an integer between 1 and 65535, got: ' . $envPort);
+            }
+            self::$port = $port;
         }
         self::$baseUrl = 'http://' . self::$host . ':' . self::$port;
 
