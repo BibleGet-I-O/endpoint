@@ -114,6 +114,34 @@ class AbstractHandlerTest extends TestCase
         $handler->testValidateAcceptHeader($request);
     }
 
+    public function testValidateAcceptHeaderQValuePrecedence(): void
+    {
+        $handler = $this->createHandler();
+        $handler->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML]);
+        $request = new ServerRequest('GET', '/', ['Accept' => 'application/xml;q=0.1, application/json;q=0.9']);
+        $result  = $handler->testValidateAcceptHeader($request);
+        self::assertSame('application/json', $result);
+    }
+
+    public function testValidateAcceptHeaderTypeWildcard(): void
+    {
+        $handler = $this->createHandler();
+        $handler->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML]);
+        $request = new ServerRequest('GET', '/', ['Accept' => 'application/*']);
+        $result  = $handler->testValidateAcceptHeader($request);
+        // application/* matches the first allowed type
+        self::assertSame('application/json', $result);
+    }
+
+    public function testValidateAcceptHeaderZeroQValueExcluded(): void
+    {
+        $handler = $this->createHandler();
+        $handler->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML]);
+        $request = new ServerRequest('GET', '/', ['Accept' => 'application/json;q=0, application/xml']);
+        $result  = $handler->testValidateAcceptHeader($request);
+        self::assertSame('application/xml', $result);
+    }
+
     // -- Content-Type validation --
 
     public function testValidateContentTypeEmpty(): void
