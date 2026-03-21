@@ -359,7 +359,13 @@ class QuoteContext
 
         $n = 0;
         while ($row1 = mysqli_fetch_assoc($result1)) {
-            $row2                 = mysqli_fetch_assoc($result2);
+            $row2 = mysqli_fetch_assoc($result2);
+            if ($row2 === null || $row2 === false) {
+                throw new InternalServerErrorException('biblebooks_abbr has fewer rows than biblebooks_fullname.');
+            }
+            if (( $row1['BOOK'] ?? null ) !== ( $row2['BOOK'] ?? null )) {
+                throw new InternalServerErrorException('biblebooks_fullname and biblebooks_abbr BOOK keys are mismatched.');
+            }
             $this->BIBLEBOOKS[$n] = [];
             for ($x = 1; $x < $cols; $x++) {
                 $val1                     = (string) ( $row1[$names[$x]] ?? '' );
