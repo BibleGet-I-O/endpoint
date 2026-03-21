@@ -154,7 +154,7 @@ class MetadataHandler extends AbstractHandler
             ];
             $validversions_fullname[(string) $row['sigla']] = implode('|', $info);
             $validversions[]                                = $row['sigla'];
-            if ($row['copyright'] == 1) {
+            if ((int) $row['copyright'] === 1) {
                 $copyrightversions[] = $row['sigla'];
             }
         }
