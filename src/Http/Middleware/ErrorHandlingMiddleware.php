@@ -78,7 +78,7 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
             $responseBody = json_encode($problem, JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
             if (false === $responseBody) {
-                $response->getBody()->write('{"type":"about:blank","title":"Internal Server Error","status":500}');
+                $response->getBody()->write('{"type":"about:blank","title":"Internal Server Error","status":' . $status . '}');
             } else {
                 $response->getBody()->write($responseBody);
             }
