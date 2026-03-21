@@ -176,7 +176,8 @@ abstract class ServerTestCase extends TestCase
      */
     private static function httpRequest(string $method, string $path, ?string $body, array $headers): array
     {
-        $ch = curl_init(self::$baseUrl . $path);
+        $url = rtrim(self::$baseUrl, '/') . '/' . ltrim($path, '/');
+        $ch  = curl_init($url);
         if ($ch === false) {
             self::fail('curl_init failed');
         }
