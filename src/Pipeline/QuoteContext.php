@@ -123,7 +123,7 @@ class QuoteContext
     public function addErrorMessage(int|string $num, string $str = ''): void
     {
         $errMessage = '';
-        if (gettype($num) === 'string') {
+        if (is_string($num)) {
             $errMessage = $num;
             $num        = 13;
         } else {
