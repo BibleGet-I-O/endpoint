@@ -25,7 +25,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class Router
 {
-    public static string $apiBase;
+    public static string $apiBase = '/';
     private RequestHandlerInterface $handler;
     private Psr17Factory $psr17Factory;
     private ServerRequestInterface $request;
