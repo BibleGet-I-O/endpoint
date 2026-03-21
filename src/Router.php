@@ -171,13 +171,16 @@ class Router
         }
 
         if (isset($_ENV['API_BASE_PATH']) && is_string($_ENV['API_BASE_PATH']) && !empty($_ENV['API_BASE_PATH'])) {
-            $apiBasePath = $_ENV['API_BASE_PATH'];
+            $apiBasePath = trim($_ENV['API_BASE_PATH']);
         } else {
             $apiBasePath = '/';
         }
 
-        // Ensure trailing slash
-        if (substr($apiBasePath, -1) !== '/') {
+        // Normalize: ensure leading slash, strip duplicates
+        $apiBasePath = '/' . trim($apiBasePath, '/');
+
+        // Ensure trailing slash (but avoid double-slash for root)
+        if ($apiBasePath !== '/' && substr($apiBasePath, -1) !== '/') {
             $apiBasePath .= '/';
         }
 
