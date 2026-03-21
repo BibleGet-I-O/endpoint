@@ -7,9 +7,6 @@ namespace BibleGet\Api;
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
 use BibleGet\Api\Handlers\SearchHandler;
-use BibleGet\Api\Http\Enum\AcceptHeader;
-use BibleGet\Api\Http\Enum\RequestContentType;
-use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
@@ -71,54 +68,15 @@ class Router
         switch ($route) {
             case '':
             case 'quote':
-                $quoteHandler = new QuoteHandler($requestPathParts);
-                $quoteHandler->setAllowedRequestMethods([
-                    RequestMethod::GET,
-                    RequestMethod::POST,
-                    RequestMethod::OPTIONS,
-                ])->setAllowedRequestContentTypes([
-                    RequestContentType::JSON,
-                    RequestContentType::FORMDATA,
-                ])->setAllowedAcceptHeaders([
-                    AcceptHeader::JSON,
-                    AcceptHeader::XML,
-                    AcceptHeader::HTML,
-                ]);
-                $this->handler = $quoteHandler;
+                $this->handler = new QuoteHandler($requestPathParts);
                 break;
 
             case 'metadata':
-                $metadataHandler = new MetadataHandler($requestPathParts);
-                $metadataHandler->setAllowedRequestMethods([
-                    RequestMethod::GET,
-                    RequestMethod::POST,
-                    RequestMethod::OPTIONS,
-                ])->setAllowedRequestContentTypes([
-                    RequestContentType::JSON,
-                    RequestContentType::FORMDATA,
-                ])->setAllowedAcceptHeaders([
-                    AcceptHeader::JSON,
-                    AcceptHeader::XML,
-                    AcceptHeader::HTML,
-                ]);
-                $this->handler = $metadataHandler;
+                $this->handler = new MetadataHandler($requestPathParts);
                 break;
 
             case 'search':
-                $searchHandler = new SearchHandler($requestPathParts);
-                $searchHandler->setAllowedRequestMethods([
-                    RequestMethod::GET,
-                    RequestMethod::POST,
-                    RequestMethod::OPTIONS,
-                ])->setAllowedRequestContentTypes([
-                    RequestContentType::JSON,
-                    RequestContentType::FORMDATA,
-                ])->setAllowedAcceptHeaders([
-                    AcceptHeader::JSON,
-                    AcceptHeader::XML,
-                    AcceptHeader::HTML,
-                ]);
-                $this->handler = $searchHandler;
+                $this->handler = new SearchHandler($requestPathParts);
                 break;
 
             default:
