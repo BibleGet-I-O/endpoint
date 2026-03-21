@@ -37,8 +37,16 @@ abstract class ServerTestCase extends TestCase
         self::$baseUrl = 'http://' . self::$host . ':' . self::$port;
 
         // Don't start a second server if one is already running (e.g. shared across test classes)
-        if (self::$serverPid !== null && self::isProcessRunning(self::$serverPid)) {
-            return;
+        if (self::$serverPid !== null) {
+            if (self::isProcessRunning(self::$serverPid)) {
+                return;
+            }
+            // PID is stale — clean up the old proc handle before spawning a new one
+            if (self::$serverProcess !== null && is_resource(self::$serverProcess)) {
+                proc_close(self::$serverProcess);
+                self::$serverProcess = null;
+            }
+            self::$serverPid = null;
         }
 
         $projectRoot = dirname(__DIR__, 2);
