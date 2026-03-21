@@ -26,6 +26,10 @@ abstract class ServerTestCase extends TestCase
 
     public static function setUpBeforeClass(): void
     {
+        if (!function_exists('posix_kill')) {
+            self::markTestSkipped('Server tests require POSIX extensions (not available on Windows).');
+        }
+
         $envPort = getenv('TEST_SERVER_PORT');
         if ($envPort !== false && $envPort !== '') {
             self::$port = (int) $envPort;
