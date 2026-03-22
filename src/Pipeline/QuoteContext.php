@@ -284,7 +284,7 @@ class QuoteContext
 
     private static function convertAllDashesToHyphens(string $querystr): string
     {
-        return preg_replace('/[\x{2011}-\x{2015}|\x{2212}|\x{23AF}]/u', '-', $querystr) ?? $querystr;
+        return preg_replace('/[\x{2010}-\x{2015}\x{2212}\x{23AF}\x{FE58}\x{FE63}\x{FF0D}]/u', '-', $querystr) ?? $querystr;
     }
 
     /**

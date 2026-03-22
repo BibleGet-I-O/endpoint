@@ -170,6 +170,105 @@ final class ReferenceParserTest extends TestCase
         $this->assertSame(16, $seg->verse);
     }
 
+    // ── Non-Latin script book names ────────────────────────────────
+
+    public function testChineseBookNameParsesToAst(): void
+    {
+        // 創世記 = Genesis in Chinese
+        $q = $this->parse('創世記1,5');
+        $this->assertSame(0, $q->book); // placeholder until validator resolves
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRef::class, $seg);
+        $this->assertSame(1, $seg->chapter);
+        $this->assertSame(5, $seg->verse);
+    }
+
+    public function testArabicBookNameParsesRange(): void
+    {
+        // يوحنا = John in Arabic (RTL)
+        $q = $this->parse('يوحنا3,16-18');
+        $this->assertCount(1, $q->segments);
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRange::class, $seg);
+        $this->assertSame(3, $seg->from->chapter);
+        $this->assertSame(16, $seg->from->verse);
+        $this->assertSame(3, $seg->to->chapter);
+        $this->assertSame(18, $seg->to->verse);
+    }
+
+    public function testKoreanBookNameWholeChapter(): void
+    {
+        // 창세기 = Genesis in Korean
+        $q = $this->parse('창세기1');
+        $this->assertCount(1, $q->segments);
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRef::class, $seg);
+        $this->assertSame(1, $seg->chapter);
+        $this->assertNull($seg->verse);
+    }
+
+    public function testJapaneseBookNameCrossChapterRange(): void
+    {
+        // ヨハネ = John in Japanese (Katakana)
+        $q = $this->parse('ヨハネ1,5-2,3');
+        $this->assertCount(1, $q->segments);
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRange::class, $seg);
+        $this->assertSame(1, $seg->from->chapter);
+        $this->assertSame(5, $seg->from->verse);
+        $this->assertSame(2, $seg->to->chapter);
+        $this->assertSame(3, $seg->to->verse);
+    }
+
+    public function testArabicBookNameNonConsecutiveVerses(): void
+    {
+        // يوحنا3,16.18.20 → three individual verse refs
+        $q = $this->parse('يوحنا3,16.18.20');
+        $this->assertCount(3, $q->segments);
+
+        $this->assertInstanceOf(VerseRef::class, $q->segments[0]);
+        $this->assertSame(16, $q->segments[0]->verse);
+
+        $this->assertInstanceOf(VerseRef::class, $q->segments[1]);
+        $this->assertSame(18, $q->segments[1]->verse);
+
+        $this->assertInstanceOf(VerseRef::class, $q->segments[2]);
+        $this->assertSame(20, $q->segments[2]->verse);
+    }
+
+    public function testUrduBookNameParsesToAst(): void
+    {
+        // پیدائش = Genesis in Urdu (RTL Nastaliq)
+        $q   = $this->parse('پیدائش1,1');
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRef::class, $seg);
+        $this->assertSame(1, $seg->chapter);
+        $this->assertSame(1, $seg->verse);
+    }
+
+    public function testTamilBookNameParsesToAst(): void
+    {
+        // ஆதியாகமம் = Genesis in Tamil (combining marks)
+        $q   = $this->parse('ஆதியாகமம்1,1');
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRef::class, $seg);
+        $this->assertSame(1, $seg->chapter);
+        $this->assertSame(1, $seg->verse);
+    }
+
+    public function testAmharicBookNameChapterRange(): void
+    {
+        // ዘፍጥረት = Genesis in Amharic (Ge'ez script)
+        $q = $this->parse('ዘፍጥረት1-3');
+        $this->assertCount(1, $q->segments);
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRange::class, $seg);
+        $this->assertSame(1, $seg->from->chapter);
+        $this->assertNull($seg->from->verse);
+        $this->assertSame(3, $seg->to->chapter);
+        $this->assertNull($seg->to->verse);
+    }
+
     // ── Non-consecutive verse ranges ──────────────────────────────
 
     public function testNonConsecutiveVerseRanges(): void

@@ -151,12 +151,58 @@ class QuoteContextTest extends TestCase
         self::assertSame('John3,16', $ctx->queries[0]);
     }
 
-    public function testQueryStrCleanNormalizesUnicodeDashes(): void
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function unicodeDashProvider(): array
     {
-        // EN DASH (U+2013)
-        $ctx = new QuoteContext(['query' => "John3,16\u{2013}18"]);
+        return [
+            'U+2010 HYPHEN'                 => ["John3,16\u{2010}18", 'John3,16-18'],
+            'U+2011 NON-BREAKING HYPHEN'    => ["John3,16\u{2011}18", 'John3,16-18'],
+            'U+2012 FIGURE DASH'            => ["John3,16\u{2012}18", 'John3,16-18'],
+            'U+2013 EN DASH'                => ["John3,16\u{2013}18", 'John3,16-18'],
+            'U+2014 EM DASH'                => ["John3,16\u{2014}18", 'John3,16-18'],
+            'U+2015 HORIZONTAL BAR'         => ["John3,16\u{2015}18", 'John3,16-18'],
+            'U+2212 MINUS SIGN'             => ["John3,16\u{2212}18", 'John3,16-18'],
+            'U+23AF HORIZONTAL LINE EXT'    => ["John3,16\u{23AF}18", 'John3,16-18'],
+            'U+FE58 SMALL EM DASH'          => ["John3,16\u{FE58}18", 'John3,16-18'],
+            'U+FE63 SMALL HYPHEN-MINUS'     => ["John3,16\u{FE63}18", 'John3,16-18'],
+            'U+FF0D FULLWIDTH HYPHEN-MINUS' => ["John3,16\u{FF0D}18", 'John3,16-18'],
+            'ASCII hyphen unchanged'        => ['John3,16-18', 'John3,16-18'],
+        ];
+    }
+
+    #[DataProvider('unicodeDashProvider')]
+    public function testQueryStrCleanNormalizesUnicodeDashes(string $input, string $expected): void
+    {
+        $ctx = new QuoteContext(['query' => $input]);
         $ctx->queryStrClean();
-        self::assertStringContainsString('-', $ctx->queries[0]);
+        self::assertSame($expected, $ctx->queries[0]);
+    }
+
+    /**
+     * Verify Unicode dashes work with non-Latin book names.
+     *
+     * @return array<string, array{string, string}>
+     */
+    public static function unicodeDashWithNonLatinProvider(): array
+    {
+        return [
+            'Chinese with en dash'             => ["創世記1,1\u{2013}3", '創世記1,1-3'],
+            'Arabic with em dash'              => ["يوحنا3,16\u{2014}18", 'يوحنا3,16-18'],
+            'Korean with fullwidth hyphen'     => ["창세기1,1\u{FF0D}3", '창세기1,1-3'],
+            'Thai with figure dash'            => ["ปฐมกาล1,1\u{2012}3", 'ปฐมกาล1,1-3'],
+            'Amharic with non-breaking hyphen' => ["ዘፍጥረት1,1\u{2011}3", 'ዘፍጥረት1,1-3'],
+            'Japanese with minus sign'         => ["創世記1,1\u{2212}3", '創世記1,1-3'],
+        ];
+    }
+
+    #[DataProvider('unicodeDashWithNonLatinProvider')]
+    public function testUnicodeDashesWithNonLatinBookNames(string $input, string $expected): void
+    {
+        $ctx = new QuoteContext(['query' => $input]);
+        $ctx->queryStrClean();
+        self::assertSame($expected, $ctx->queries[0]);
     }
 
     /**

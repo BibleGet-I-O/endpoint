@@ -257,6 +257,196 @@ final class ReferenceTokenizerTest extends TestCase
         ], $result);
     }
 
+    // ── Non-Latin script book names ─────────────────────────────
+
+    public function testChineseBookName(): void
+    {
+        // 創世記 = Genesis in Chinese
+        $result = $this->typeValues('創世記1,5');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, '創世記'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '5'],
+        ], $result);
+    }
+
+    public function testChineseBookNameWithRange(): void
+    {
+        $result = $this->typeValues('創世記1,5-10');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, '創世記'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '5'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::VERSE_NUMBER, '10'],
+        ], $result);
+    }
+
+    public function testArabicBookName(): void
+    {
+        // يوحنا = John in Arabic (RTL script)
+        $result = $this->typeValues('يوحنا3,16');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'يوحنا'],
+            [TokenType::CHAPTER_NUMBER, '3'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '16'],
+        ], $result);
+    }
+
+    public function testArabicBookNameWithRange(): void
+    {
+        $result = $this->typeValues('يوحنا3,16-18');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'يوحنا'],
+            [TokenType::CHAPTER_NUMBER, '3'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '16'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::VERSE_NUMBER, '18'],
+        ], $result);
+    }
+
+    public function testKoreanBookName(): void
+    {
+        // 창세기 = Genesis in Korean
+        $result = $this->typeValues('창세기1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, '창세기'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testJapaneseBookName(): void
+    {
+        // ヨハネ = John in Japanese (Katakana)
+        $result = $this->typeValues('ヨハネ3,16');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'ヨハネ'],
+            [TokenType::CHAPTER_NUMBER, '3'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '16'],
+        ], $result);
+    }
+
+    public function testThaiBookName(): void
+    {
+        // ปฐมกาล = Genesis in Thai
+        $result = $this->typeValues('ปฐมกาล1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'ปฐมกาล'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testAmharicBookName(): void
+    {
+        // ዘፍጥረት = Genesis in Amharic (Ge'ez script)
+        $result = $this->typeValues('ዘፍጥረት1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'ዘፍጥረት'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testRussianBookName(): void
+    {
+        // Бытие = Genesis in Russian (Cyrillic)
+        $result = $this->typeValues('Бытие1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Бытие'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testGreekBookName(): void
+    {
+        // Γένεσις = Genesis in Greek
+        $result = $this->typeValues('Γένεσις1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Γένεσις'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testTamilBookName(): void
+    {
+        // ஆதியாகமம் = Genesis in Tamil
+        $result = $this->typeValues('ஆதியாகமம்1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'ஆதியாகமம்'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testUrduBookName(): void
+    {
+        // پیدائش = Genesis in Urdu (RTL, Nastaliq script)
+        $result = $this->typeValues('پیدائش1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'پیدائش'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testNonLatinBookNameWithCrossChapterRange(): void
+    {
+        // Complex reference with CJK book name
+        $result = $this->typeValues('創世記1,5-2,3');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, '創世記'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '5'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::CHAPTER_NUMBER, '2'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '3'],
+        ], $result);
+    }
+
+    public function testNonLatinBookNameWithNonConsecutiveVerses(): void
+    {
+        // Arabic book name with non-consecutive verses
+        $result = $this->typeValues('يوحنا3,16.18.20');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'يوحنا'],
+            [TokenType::CHAPTER_NUMBER, '3'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '16'],
+            [TokenType::EXPLICIT_VERSE_SEPARATOR, '.'],
+            [TokenType::VERSE_NUMBER, '18'],
+            [TokenType::EXPLICIT_VERSE_SEPARATOR, '.'],
+            [TokenType::VERSE_NUMBER, '20'],
+        ], $result);
+    }
+
+    public function testNonLatinPositionsAreCorrectMultibyte(): void
+    {
+        // 創世記 is 9 bytes in UTF-8 (3 chars × 3 bytes each)
+        $tokens = $this->tokenizer->tokenize('創世記1,5');
+        $this->assertSame(0, $tokens[0]->position);  // BOOK_NAME at byte 0
+        $this->assertSame(9, $tokens[1]->position);  // CHAPTER_NUMBER at byte 9
+        $this->assertSame(10, $tokens[2]->position); // CHAPTER_VERSE_SEPARATOR at byte 10
+        $this->assertSame(11, $tokens[3]->position); // VERSE_NUMBER at byte 11
+    }
+
     // ── Reusability: tokenizer can be called multiple times ──────
 
     public function testTokenizerIsReusable(): void
