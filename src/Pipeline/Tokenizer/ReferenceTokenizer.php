@@ -301,6 +301,8 @@ final class ReferenceTokenizer
 
     private function isLetterStart(int $pos): bool
     {
-        return (bool) preg_match('/\p{L}/u', $this->input[$pos]);
+        // Use \G anchor at byte offset to match a single Unicode letter,
+        // which correctly handles multibyte UTF-8 characters.
+        return (bool) preg_match('/\G\p{L}/u', $this->input, matches: $m, offset: $pos);
     }
 }
