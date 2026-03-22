@@ -159,6 +159,36 @@ class QuoteContextTest extends TestCase
         self::assertStringContainsString('-', $ctx->queries[0]);
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function referencePrefixProvider(): array
+    {
+        return [
+            'Cf. with dot'     => ['Cf.John3,16', 'John3,16'],
+            'cf. lowercase'    => ['cf.John3,16', 'John3,16'],
+            'CF. uppercase'    => ['CF.John3,16', 'John3,16'],
+            'Cfr. with dot'    => ['Cfr.John3,16', 'John3,16'],
+            'cfr. lowercase'   => ['cfr.John3,16', 'John3,16'],
+            'Cf without dot'   => ['CfJohn3,16', 'John3,16'],
+            'Cfr without dot'  => ['CfrJohn3,16', 'John3,16'],
+            'Confer'           => ['ConferJohn3,16', 'John3,16'],
+            'confer lowercase' => ['conferJohn3,16', 'John3,16'],
+            'no prefix'        => ['John3,16', 'John3,16'],
+            'prefix on second' => ['Gen1,1;Cf.Ex2,3', 'Ex2,3'],
+        ];
+    }
+
+    #[DataProvider('referencePrefixProvider')]
+    public function testQueryStrCleanStripsReferencePrefix(string $input, string $expectedLastQuery): void
+    {
+        $ctx = new QuoteContext(['query' => $input]);
+        $ctx->queryStrClean();
+        $last = $ctx->queries[array_key_last($ctx->queries)];
+        // Compare only the book+chapter+verse portion (notation may differ)
+        self::assertStringStartsWith($expectedLastQuery, $last);
+    }
+
     public function testErrorMessagesAreComplete(): void
     {
         for ($i = 0; $i <= 12; $i++) {

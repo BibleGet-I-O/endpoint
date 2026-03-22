@@ -190,6 +190,7 @@ class QuoteContext
     {
         $querystr               = self::removeWhitespace($this->DATA['query']);
         $querystr               = trim($querystr);
+        $querystr               = self::stripReferencePrefix($querystr);
         $querystr               = self::convertAllDashesToHyphens($querystr);
         $this->detectedNotation = self::detectAndNormalizeNotation($querystr);
 
@@ -255,6 +256,24 @@ class QuoteContext
         }
 
         return $detectedNotation;
+    }
+
+    /**
+     * Strip "Cf.", "Cfr.", "Confer" and similar Latin reference prefixes
+     * from each semicolon-delimited query. Whitespace has already been
+     * removed, so the prefix is glued to the book name (e.g. "Cf.John3,16").
+     */
+    private static function stripReferencePrefix(string $querystr): string
+    {
+        // Process each semicolon-delimited query independently so that a
+        // prefix on one query does not affect the others.
+        $queries = explode(';', $querystr);
+        foreach ($queries as &$q) {
+            // Match (case-insensitive): Cfr. / Cf. / Cfr / Cf / Confer
+            // The dot is optional; "Confer" has no dot variant.
+            $q = preg_replace('/^(?:cfr\.?|cf\.?|confer)/i', '', $q) ?? $q;
+        }
+        return implode(';', $queries);
     }
 
     private static function removeWhitespace(string $querystr): string
