@@ -313,10 +313,14 @@ class QueryFormulator
         if (self::chunkContainsChapterVerseConstruct($range['from'])) {
             $this->formulateRangeWithChapterVerse($range);
         } else {
-            $this->mapReference($this->currentChapter, $range['from'], $this->currentChapter, $range['from'], true);
-            $unusedChapter = null;
-            $this->mapReference($this->currentChapter, $range['to'], $unusedChapter, $range['to'], false);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $this->currentChapter . ' AND verse >= ' . (int) $range['from'] . ' AND verse <= ' . (int) $range['to'] . ' )';
+            $mappedChapter   = null;
+            $mappedVerseFrom = $range['from'];
+            $this->mapReference($this->currentChapter, $range['from'], $mappedChapter, $mappedVerseFrom, true);
+            $this->currentChapter = $mappedChapter;
+            $mappedVerseTo        = $range['to'];
+            $unusedChapter        = null;
+            $this->mapReference($this->currentChapter, $range['to'], $unusedChapter, $mappedVerseTo, false);
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $this->currentChapter . ' AND verse >= ' . (int) $mappedVerseFrom . ' AND verse <= ' . (int) $mappedVerseTo . ' )';
         }
     }
 
@@ -328,8 +332,11 @@ class QueryFormulator
             $this->mapReference($cvConstruct['chapter'], $cvConstruct['verse'], $cvConstruct['chapter'], $cvConstruct['verse'], true);
             $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $cvConstruct['chapter'] . ' AND verse = ' . (int) $cvConstruct['verse'] . ' )';
         } else {
-            $this->mapReference($this->currentChapter, $chunk, $this->currentChapter, $chunk, true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $this->currentChapter . ' AND verse = ' . (int) $chunk . ' )';
+            $mappedChapter = null;
+            $mappedVerse   = $chunk;
+            $this->mapReference($this->currentChapter, $chunk, $mappedChapter, $mappedVerse, true);
+            $this->currentChapter        = $mappedChapter;
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( chapter = ' . (int) $this->currentChapter . ' AND verse = ' . (int) $mappedVerse . ' )';
         }
     }
 
