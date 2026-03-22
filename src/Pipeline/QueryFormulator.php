@@ -185,6 +185,28 @@ class QueryFormulator
     }
 
     /**
+     * Build a range predicate for two chapter,verse endpoints.
+     * When both endpoints are in the same chapter, uses a simple AND range.
+     * When they span chapters, uses OR with intermediate chapter coverage.
+     *
+     * @param array<string, string|null> $cvConstructLeft
+     * @param array<string, string|null> $cvConstructRight
+     */
+    private function buildRangePredicate(array $cvConstructLeft, array $cvConstructRight): void
+    {
+        if ((int) $cvConstructLeft['chapter'] === (int) $cvConstructRight['chapter']) {
+            $this->sqlQueries[$this->nn] = $this->sqlQuery
+                . ' AND chapter = ' . (int) $cvConstructLeft['chapter']
+                . ' AND verse >= ' . (int) $cvConstructLeft['verse']
+                . ' AND verse <= ' . (int) $cvConstructRight['verse'];
+        } else {
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
+            $this->accountForMultipleChapterDifference($cvConstructLeft, $cvConstructRight);
+            $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
+        }
+    }
+
+    /**
      * Psalm verse-mapping rules for VGCL/DRB versions.
      * Each entry: [[chapter, verseMin, verseMax], ...] => [mappedChapter, mappedVerse]
      * A null verseMin/verseMax means the rule matches when verse is null too.
@@ -267,9 +289,7 @@ class QueryFormulator
             $cvConstructRight     = self::getChapterVerseFromConstruct($range['to']);
             $this->currentChapter = $cvConstructRight['chapter'];
             $this->mapReference($cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
-            $this->accountForMultipleChapterDifference($cvConstructLeft, $cvConstructRight);
-            $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
+            $this->buildRangePredicate($cvConstructLeft, $cvConstructRight);
         } else {
             $mappedChapter = null;
             $mappedVerse   = $range['to'];
@@ -341,9 +361,7 @@ class QueryFormulator
                 if (self::chunkContainsChapterVerseConstruct($range['to'])) {
                     $cvConstructRight = self::getChapterVerseFromConstruct($range['to']);
                     $this->mapReference($cvConstructRight['chapter'], $cvConstructRight['verse'], $cvConstructRight['chapter'], $cvConstructRight['verse'], true);
-                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
-                    $this->accountForMultipleChapterDifference($cvConstructLeft, $cvConstructRight);
-                    $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
+                    $this->buildRangePredicate($cvConstructLeft, $cvConstructRight);
                 } else {
                     $mappedChapter = null;
                     $mappedVerse   = $range['to'];
