@@ -45,21 +45,21 @@ class QueryFormulator
                     continue;
                 }
 
-                // Determine preferOrigin
-                $preferOrigin = $this->buildPreferOrigin($parsedQuery->book, $version);
+                // Determine base preferOrigin for this book/version
+                $basePreferOrigin = $this->buildPreferOrigin($parsedQuery->book, $version);
 
-                // Apply Psalm remapping (AST → AST)
-                [$remappedQuery, $preferOrigin] = $this->remapper->remap(
+                // Apply Psalm remapping (AST → AST), returns per-segment origins
+                [$remappedQuery, $perSegmentOrigins] = $this->remapper->remap(
                     $parsedQuery,
                     $version,
-                    $preferOrigin
+                    $basePreferOrigin
                 );
 
-                // Compile AST → SQL
+                // Compile AST → SQL with per-segment preferOrigin
                 $sqls = $this->compiler->compile(
                     $remappedQuery,
                     $version,
-                    $preferOrigin,
+                    $perSegmentOrigins,
                     $this->ctx->COPYRIGHT_VERSIONS,
                     $this->ctx->REQUESTED_COPYRIGHTED_VERSIONS
                 );

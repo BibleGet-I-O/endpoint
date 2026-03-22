@@ -27,6 +27,8 @@ final class SqlCompiler
      * produce separate SQL queries, each independently finalized with
      * ORDER BY and optional LIMIT.
      *
+     * @param string|array<int, string> $preferOrigin  Single string (applied to all segments)
+     *                                                  or per-segment array of preferOrigin suffixes
      * @param array<int, string> $copyrightVersions
      * @param array<int, string> $requestedCopyrightedVersions
      * @return array<int, string> SQL queries
@@ -34,14 +36,16 @@ final class SqlCompiler
     public function compile(
         BibleQuery $query,
         string $version,
-        string $preferOrigin,
+        string|array $preferOrigin,
         array $copyrightVersions,
         array $requestedCopyrightedVersions,
     ): array {
-        $sqlBase = 'SELECT * FROM ' . $version . ' WHERE book = ' . $query->book;
-        $queries = [];
+        $sqlBase  = 'SELECT * FROM ' . $version . ' WHERE book = ' . $query->book;
+        $queries  = [];
+        $isCopied = in_array($version, $copyrightVersions)
+            || in_array($version, $requestedCopyrightedVersions);
 
-        foreach ($query->segments as $segment) {
+        foreach ($query->segments as $i => $segment) {
             $sql = $sqlBase;
 
             if ($segment instanceof VerseRange) {
@@ -50,13 +54,13 @@ final class SqlCompiler
                 $sql .= $this->compileVerseRef($segment);
             }
 
-            $sql .= $preferOrigin;
-            $sql .= ' ORDER BY verseID';
+            $segmentOrigin = is_array($preferOrigin)
+                ? ( $preferOrigin[$i] ?? '' )
+                : $preferOrigin;
+            $sql          .= $segmentOrigin;
+            $sql          .= ' ORDER BY verseID';
 
-            if (
-                in_array($version, $copyrightVersions)
-                || in_array($version, $requestedCopyrightedVersions)
-            ) {
+            if ($isCopied) {
                 $sql .= ' LIMIT 30';
             }
 

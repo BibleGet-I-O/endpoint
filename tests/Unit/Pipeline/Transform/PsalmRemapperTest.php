@@ -31,19 +31,19 @@ final class PsalmRemapperTest extends TestCase
 
     public function testNoRemapForNonVgclDrb(): void
     {
-        $query         = new BibleQuery(19, [new VerseRef(19, 10, null, 5)]);
-        [$result, $po] = $this->remapper->remap($query, 'CEI2008', '');
+        $query          = new BibleQuery(19, [new VerseRef(19, 10, null, 5)]);
+        [$result, $pos] = $this->remapper->remap($query, 'CEI2008', '');
 
         $this->assertVerseRef($result, 0, 10, 5);
-        $this->assertSame('', $po);
+        $this->assertSame([''], $pos);
     }
 
     // ── No remapping for non-Psalms ──────────────────────────────
 
     public function testNoRemapForNonPsalms(): void
     {
-        $query         = new BibleQuery(1, [new VerseRef(1, 10, null, 5)]);
-        [$result, $po] = $this->remapper->remap($query, 'VGCL', '');
+        $query          = new BibleQuery(1, [new VerseRef(1, 10, null, 5)]);
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', '');
 
         $this->assertVerseRef($result, 0, 10, 5);
     }
@@ -52,19 +52,19 @@ final class PsalmRemapperTest extends TestCase
 
     public function testRemapPsalm10Verse5InVgcl(): void
     {
-        $query         = new BibleQuery(19, [new VerseRef(19, 10, null, 5)]);
-        [$result, $po] = $this->remapper->remap($query, 'VGCL', '');
+        $query          = new BibleQuery(19, [new VerseRef(19, 10, null, 5)]);
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', '');
 
         $this->assertVerseRef($result, 0, 10, 3);
-        $this->assertStringContainsString('GREEK', $po);
+        $this->assertStringContainsString('GREEK', $pos[0]);
     }
 
     // ── Mapping: Psalm 13:1-7 → chapter 3, verse 13 ─────────────
 
     public function testRemapPsalm13Verse3InDrb(): void
     {
-        $query         = new BibleQuery(19, [new VerseRef(19, 13, null, 3)]);
-        [$result, $po] = $this->remapper->remap($query, 'DRB', '');
+        $query          = new BibleQuery(19, [new VerseRef(19, 13, null, 3)]);
+        [$result, $pos] = $this->remapper->remap($query, 'DRB', '');
 
         $this->assertVerseRef($result, 0, 3, 13);
     }
@@ -73,8 +73,8 @@ final class PsalmRemapperTest extends TestCase
 
     public function testRemapPsalm16WholeChapter(): void
     {
-        $query         = new BibleQuery(19, [new VerseRef(19, 16)]);
-        [$result, $po] = $this->remapper->remap($query, 'VGCL', '');
+        $query          = new BibleQuery(19, [new VerseRef(19, 16)]);
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', '');
 
         $this->assertVerseRef($result, 0, 8, 12);
     }
@@ -83,8 +83,8 @@ final class PsalmRemapperTest extends TestCase
 
     public function testNoRemapForUnmappedPsalm(): void
     {
-        $query         = new BibleQuery(19, [new VerseRef(19, 50, null, 1)]);
-        [$result, $po] = $this->remapper->remap($query, 'VGCL', '');
+        $query          = new BibleQuery(19, [new VerseRef(19, 50, null, 1)]);
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', '');
 
         $this->assertVerseRef($result, 0, 50, 1);
     }
@@ -93,10 +93,10 @@ final class PsalmRemapperTest extends TestCase
 
     public function testRemapRange(): void
     {
-        $from          = new VerseRef(19, 10, null, 4);
-        $to            = new VerseRef(19, 10, null, 10);
-        $query         = new BibleQuery(19, [new VerseRange($from, $to)]);
-        [$result, $po] = $this->remapper->remap($query, 'VGCL', '');
+        $from           = new VerseRef(19, 10, null, 4);
+        $to             = new VerseRef(19, 10, null, 10);
+        $query          = new BibleQuery(19, [new VerseRange($from, $to)]);
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', '');
 
         $seg = $result->segments[0];
         $this->assertInstanceOf(VerseRange::class, $seg);
@@ -110,9 +110,25 @@ final class PsalmRemapperTest extends TestCase
 
     public function testDefaultPreferOriginPassedThrough(): void
     {
-        $query         = new BibleQuery(19, [new VerseRef(19, 50, null, 1)]);
-        [$result, $po] = $this->remapper->remap($query, 'VGCL', " AND verseorigin = 'HEBREW'");
+        $query          = new BibleQuery(19, [new VerseRef(19, 50, null, 1)]);
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', " AND verseorigin = 'HEBREW'");
 
-        $this->assertSame(" AND verseorigin = 'HEBREW'", $po);
+        $this->assertSame([" AND verseorigin = 'HEBREW'"], $pos);
+    }
+
+    // ── Per-segment origins ──────────────────────────────────────
+
+    public function testPerSegmentOrigins(): void
+    {
+        // Two segments: one mapped (Psalm 10:5), one unmapped (Psalm 50:1)
+        $query          = new BibleQuery(19, [
+            new VerseRef(19, 10, null, 5),
+            new VerseRef(19, 50, null, 1),
+        ]);
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', '');
+
+        $this->assertCount(2, $pos);
+        $this->assertStringContainsString('GREEK', $pos[0]);
+        $this->assertSame('', $pos[1]);
     }
 }

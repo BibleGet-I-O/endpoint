@@ -54,31 +54,35 @@ final class PsalmRemapper
      * Returns a new BibleQuery with remapped segments, plus the preferorigin
      * annotation to use. If no remapping applies, returns the query unchanged.
      *
-     * @return array{BibleQuery, string} [remappedQuery, preferOriginSuffix]
+     * Returns per-segment preferOrigin strings so each non-consecutive chunk
+     * gets the correct verseorigin filter (matching legacy per-chunk behavior).
+     *
+     * @return array{BibleQuery, array<int, string>} [remappedQuery, perSegmentPreferOrigins]
      */
     public function remap(BibleQuery $query, string $version, string $defaultPreferOrigin): array
     {
         if (!$this->shouldRemap($query->book, $version)) {
-            return [$query, $defaultPreferOrigin];
+            $origins = array_fill(0, count($query->segments), $defaultPreferOrigin);
+            return [$query, $origins];
         }
 
-        $segments     = [];
-        $preferOrigin = $defaultPreferOrigin;
+        $segments = [];
+        $origins  = [];
 
         foreach ($query->segments as $segment) {
             if ($segment instanceof VerseRef) {
                 [$mapped, $po] = $this->remapVerseRef($segment, $defaultPreferOrigin);
                 $segments[]    = $mapped;
-                $preferOrigin  = $po;
+                $origins[]     = $po;
             } elseif ($segment instanceof VerseRange) {
                 [$from, $poFrom] = $this->remapVerseRef($segment->from, $defaultPreferOrigin);
                 [$to, $poTo]     = $this->remapVerseRef($segment->to, $defaultPreferOrigin);
                 $segments[]      = new VerseRange($from, $to);
-                $preferOrigin    = $poFrom;
+                $origins[]       = $poFrom;
             }
         }
 
-        return [new BibleQuery($query->book, $segments), $preferOrigin];
+        return [new BibleQuery($query->book, $segments), $origins];
     }
 
     private function shouldRemap(int $book, string $version): bool
