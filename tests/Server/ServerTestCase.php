@@ -240,7 +240,7 @@ abstract class ServerTestCase extends TestCase
     /**
      * Decode a JSON response body.
      *
-     * @return array<string, mixed>
+     * @return array<array-key, mixed>
      */
     protected static function jsonBody(string $body): array
     {
