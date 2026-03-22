@@ -112,6 +112,12 @@ final class ReferenceParser
 
         if ($this->check(TokenType::CHAPTER_VERSE_SEPARATOR)) {
             $this->advance(); // consume ","
+            if (!$this->check(TokenType::VERSE_NUMBER)) {
+                throw new ParseException(
+                    sprintf('Expected verse number after chapter-verse separator at position %d', $this->current()->position),
+                    $this->current()->position
+                );
+            }
             [$verse, $verseSuffix] = $this->parseVerse();
         }
 
@@ -143,6 +149,12 @@ final class ReferenceParser
 
             if ($this->check(TokenType::CHAPTER_VERSE_SEPARATOR)) {
                 $this->advance();
+                if (!$this->check(TokenType::VERSE_NUMBER)) {
+                    throw new ParseException(
+                        sprintf('Expected verse number after chapter-verse separator at position %d', $this->current()->position),
+                        $this->current()->position
+                    );
+                }
                 [$verse, $verseSuffix] = $this->parseVerse();
             }
 
