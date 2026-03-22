@@ -93,6 +93,9 @@ class QuoteContext
     /** @var array<string, string> */
     public array $DATA = [];
 
+    /** @var array<int, \BibleGet\Api\Pipeline\Ast\BibleQuery> */
+    public array $parsedQueries = [];
+
     /** @var array<array{errNum: int, errMessage: string}> */
     public array $errors = [];
     /** @var array<int, array<string, mixed>> */

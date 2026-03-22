@@ -7,7 +7,6 @@ namespace BibleGet\Tests\Unit\Pipeline\Parser;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
-use BibleGet\Api\Pipeline\Parser\ParseException;
 use BibleGet\Api\Pipeline\Parser\ReferenceParser;
 use BibleGet\Api\Pipeline\Tokenizer\ReferenceTokenizer;
 use PHPUnit\Framework\TestCase;
@@ -152,11 +151,11 @@ final class ReferenceParserTest extends TestCase
 
     // ── Parse exception on invalid input ──────────────────────────
 
-    public function testThrowsOnMissingBookName(): void
+    public function testNoBookProducesZeroBookIndex(): void
     {
-        $this->expectException(ParseException::class);
-        // Tokenize "123" — will produce CHAPTER_NUMBER, not BOOK_NAME
-        $this->parse('123');
+        // "123" has no book name — parser produces book=0 for caller to handle
+        $q = $this->parse('123');
+        $this->assertSame(0, $q->book);
     }
 
     // ── Numbered book ─────────────────────────────────────────────

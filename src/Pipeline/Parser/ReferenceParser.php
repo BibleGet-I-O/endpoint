@@ -56,7 +56,10 @@ final class ReferenceParser
             $this->advance(); // consume prefix
         }
 
-        $this->expect(TokenType::BOOK_NAME);
+        if ($this->check(TokenType::BOOK_NAME)) {
+            $this->advance();
+        }
+        // If no book name found, book stays at 0 (inherited from previous query)
     }
 
     /**
@@ -242,25 +245,5 @@ final class ReferenceParser
         if ($this->pos < count($this->tokens)) {
             $this->pos++;
         }
-    }
-
-    private function expect(TokenType $type): Token
-    {
-        if (!$this->check($type)) {
-            $actual   = $this->pos < count($this->tokens)
-                ? $this->tokens[$this->pos]->type->value
-                : 'end of input';
-            $position = $this->pos < count($this->tokens)
-                ? $this->tokens[$this->pos]->position
-                : -1;
-            throw new ParseException(
-                sprintf('Expected %s but found %s at position %d', $type->value, $actual, $position),
-                $position
-            );
-        }
-
-        $token = $this->tokens[$this->pos];
-        $this->advance();
-        return $token;
     }
 }
