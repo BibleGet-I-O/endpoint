@@ -42,6 +42,10 @@ class QueryValidator
             return false;
         }
 
+        // Reset inherited-book state so repeated calls don't leak stale state
+        $this->previousBook     = 0;
+        $this->previousBookName = '';
+
         // First query must start with a valid book indicator
         if (!$this->startsWithBookIndicator($this->ctx->queries[0])) {
             $this->ctx->addErrorMessage(0);
