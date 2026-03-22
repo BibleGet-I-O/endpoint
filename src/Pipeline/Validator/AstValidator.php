@@ -186,10 +186,10 @@ final class AstValidator
 
     private function validateVerseRef(VerseRef $ref, int $nonZeroBookIdx): void
     {
-        $this->validateChapter($ref->chapter, $nonZeroBookIdx);
+        $this->validateChapter($ref->chapter, $nonZeroBookIdx, $ref->position);
 
         if ($ref->verse !== null) {
-            $this->validateVerse($ref->verse, $ref->chapter, $nonZeroBookIdx);
+            $this->validateVerse($ref->verse, $ref->chapter, $nonZeroBookIdx, $ref->position);
         }
     }
 
@@ -205,7 +205,8 @@ final class AstValidator
                     'Invalid range: start chapter %d is greater than end chapter %d',
                     $range->from->chapter,
                     $range->to->chapter
-                )
+                ),
+                $range->to->position
             );
         } elseif (
             $range->from->chapter === $range->to->chapter
@@ -219,16 +220,18 @@ final class AstValidator
                     $range->from->verse,
                     $range->to->verse,
                     $range->from->chapter
-                )
+                ),
+                $range->to->position
             );
         }
     }
 
-    private function validateChapter(int $chapter, int $nonZeroBookIdx): void
+    private function validateChapter(int $chapter, int $nonZeroBookIdx, int $position = -1): void
     {
         if ($chapter < 1) {
             $this->errors[] = new ValidationError(
-                sprintf('Invalid chapter number: %d. Chapters must be 1 or greater.', $chapter)
+                sprintf('Invalid chapter number: %d. Chapters must be 1 or greater.', $chapter),
+                $position
             );
             return;
         }
@@ -250,17 +253,19 @@ final class AstValidator
                         $chapter,
                         $variant,
                         $chapterLimit
-                    )
+                    ),
+                    $position
                 );
             }
         }
     }
 
-    private function validateVerse(int $verse, int $chapter, int $nonZeroBookIdx): void
+    private function validateVerse(int $verse, int $chapter, int $nonZeroBookIdx, int $position = -1): void
     {
         if ($verse < 1) {
             $this->errors[] = new ValidationError(
-                sprintf('Invalid verse number: %d. Verses must be 1 or greater.', $verse)
+                sprintf('Invalid verse number: %d. Verses must be 1 or greater.', $verse),
+                $position
             );
             return;
         }
@@ -289,7 +294,8 @@ final class AstValidator
                         $chapter,
                         $variant,
                         $verseLimit
-                    )
+                    ),
+                    $position
                 );
             }
         }

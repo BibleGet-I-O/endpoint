@@ -111,7 +111,8 @@ final class ReferenceParser
             return null;
         }
 
-        $chapter = (int) $this->current()->value;
+        $chapterPos = $this->current()->position;
+        $chapter    = (int) $this->current()->value;
         $this->advance();
 
         $alternateChapter = $this->parseAltChapter();
@@ -130,7 +131,7 @@ final class ReferenceParser
             [$verse, $verseSuffix] = $this->parseVerse();
         }
 
-        $fromRef = new VerseRef($this->book, $chapter, $alternateChapter, $verse, $verseSuffix);
+        $fromRef = new VerseRef($this->book, $chapter, $alternateChapter, $verse, $verseSuffix, $chapterPos);
 
         // Check for range
         if ($this->check(TokenType::RANGE_SEPARATOR)) {
@@ -153,7 +154,8 @@ final class ReferenceParser
     {
         // rangeTarget → CHAPTER_NUMBER altChapter? (CHAPTER_VERSE_SEPARATOR verse)? | verse
         if ($this->check(TokenType::CHAPTER_NUMBER)) {
-            $chapter = (int) $this->current()->value;
+            $chapterPos = $this->current()->position;
+            $chapter    = (int) $this->current()->value;
             $this->advance();
 
             $alternateChapter = $this->parseAltChapter();
@@ -172,13 +174,14 @@ final class ReferenceParser
                 [$verse, $verseSuffix] = $this->parseVerse();
             }
 
-            return new VerseRef($this->book, $chapter, $alternateChapter, $verse, $verseSuffix);
+            return new VerseRef($this->book, $chapter, $alternateChapter, $verse, $verseSuffix, $chapterPos);
         }
 
         if ($this->check(TokenType::VERSE_NUMBER)) {
+            $versePos              = $this->current()->position;
             [$verse, $verseSuffix] = $this->parseVerse();
             // Same chapter as the "from" side
-            return new VerseRef($this->book, $fromChapter, $fromAltChapter, $verse, $verseSuffix);
+            return new VerseRef($this->book, $fromChapter, $fromAltChapter, $verse, $verseSuffix, $versePos);
         }
 
         return null;
@@ -195,10 +198,11 @@ final class ReferenceParser
 
         // We need the current chapter context from the first segment.
         // The chapter is inherited from the last segment's chapter.
-        $chapter = $this->inferCurrentChapter();
+        $chapter  = $this->inferCurrentChapter();
+        $versePos = $this->current()->position;
 
         [$verse, $verseSuffix] = $this->parseVerse();
-        $fromRef               = new VerseRef($this->book, $chapter, null, $verse, $verseSuffix);
+        $fromRef               = new VerseRef($this->book, $chapter, null, $verse, $verseSuffix, $versePos);
 
         if ($this->check(TokenType::RANGE_SEPARATOR)) {
             $sepPos = $this->current()->position;
@@ -209,8 +213,9 @@ final class ReferenceParser
                     $sepPos
                 );
             }
+            $toPos                = $this->current()->position;
             [$toVerse, $toSuffix] = $this->parseVerse();
-            $toRef                = new VerseRef($this->book, $chapter, null, $toVerse, $toSuffix);
+            $toRef                = new VerseRef($this->book, $chapter, null, $toVerse, $toSuffix, $toPos);
             return new VerseRange($fromRef, $toRef);
         }
 
