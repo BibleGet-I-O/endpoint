@@ -9,18 +9,20 @@ use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
 
 /**
- * AST→AST transformation that remaps Psalm chapter/verse numbers for
- * VGCL and DRB Catholic versions (Greek/Vulgate numbering).
+ * AST→AST transformation that remaps Esther chapter/verse numbers for
+ * VGCL and DRB Catholic versions (Greek additions to Esther).
+ *
+ * Book 19 = Esther in the Catholic canon. Chapters 10–16 contain the Greek
+ * additions which require verseorigin filtering.
  *
  * This is a pure function of the AST — no database access, no SQL.
- * The mapping table is extracted from the legacy QueryFormulator::PSALM_VGCL_DRB_MAPPINGS.
  */
-final class PsalmRemapper
+final class EstherRemapper
 {
-    private const PSALMS_BOOK_NUM = 19;
+    private const ESTHER_BOOK_NUM = 19;
 
     /**
-     * Psalm verse-mapping rules for VGCL/DRB versions.
+     * Esther verse-mapping rules for VGCL/DRB versions (Greek additions).
      * Each entry: [ranges => [[chapter, verseMin, verseMax], ...], map => [mappedChapter, mappedVerse]]
      * A null verseMin/verseMax means the rule matches when verse is null too.
      *
@@ -49,7 +51,7 @@ final class PsalmRemapper
     }
 
     /**
-     * Remap a BibleQuery AST if it targets Psalms in a VGCL/DRB version.
+     * Remap a BibleQuery AST if it targets Esther in a VGCL/DRB version.
      *
      * Returns a new BibleQuery with remapped segments, plus the preferorigin
      * annotation to use. If no remapping applies, returns the query unchanged.
@@ -87,7 +89,7 @@ final class PsalmRemapper
 
     private function shouldRemap(int $book, string $version): bool
     {
-        return $book === self::PSALMS_BOOK_NUM
+        return $book === self::ESTHER_BOOK_NUM
             && in_array($version, $this->catholicVersions)
             && ( $version === 'VGCL' || $version === 'DRB' );
     }

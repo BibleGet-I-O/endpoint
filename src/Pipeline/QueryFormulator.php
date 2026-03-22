@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace BibleGet\Api\Pipeline;
 
 use BibleGet\Api\Pipeline\Compiler\SqlCompiler;
-use BibleGet\Api\Pipeline\Transform\PsalmRemapper;
+use BibleGet\Api\Pipeline\Transform\EstherRemapper;
+use BibleGet\Api\Pipeline\Transform\PsalmChapterSwapper;
 
 /**
  * Translates validated Bible references into SQL queries.
  *
- * Delegates to PsalmRemapper → SqlCompiler internally using the parsed ASTs
+ * Delegates to EstherRemapper → SqlCompiler internally using the parsed ASTs
  * from QuoteContext. Public API (formulateSQLQueries) and its effects on
  * QuoteContext remain unchanged.
  */
@@ -18,7 +19,8 @@ class QueryFormulator
 {
     private QuoteContext $ctx;
     private SqlCompiler $compiler;
-    private PsalmRemapper $remapper;
+    private EstherRemapper $estherRemapper;
+    private PsalmChapterSwapper $psalmSwapper;
 
     /** @var array<int, string> */
     public array $sqlQueries = [];
@@ -29,9 +31,10 @@ class QueryFormulator
 
     public function __construct(QuoteContext $ctx)
     {
-        $this->ctx      = $ctx;
-        $this->compiler = new SqlCompiler();
-        $this->remapper = new PsalmRemapper($ctx->CATHOLIC_VERSIONS);
+        $this->ctx            = $ctx;
+        $this->compiler       = new SqlCompiler();
+        $this->estherRemapper = new EstherRemapper($ctx->CATHOLIC_VERSIONS);
+        $this->psalmSwapper   = new PsalmChapterSwapper();
     }
 
     public function formulateSQLQueries(): void
@@ -48,12 +51,15 @@ class QueryFormulator
                 // Determine base preferOrigin for this book/version
                 $basePreferOrigin = $this->buildPreferOrigin($parsedQuery->book, $version);
 
-                // Apply Psalm remapping (AST → AST), returns per-segment origins
-                [$remappedQuery, $perSegmentOrigins] = $this->remapper->remap(
+                // Apply Esther Greek additions remapping (AST → AST)
+                [$remappedQuery, $perSegmentOrigins] = $this->estherRemapper->remap(
                     $parsedQuery,
                     $version,
                     $basePreferOrigin
                 );
+
+                // Apply Psalm chapter swap for Vulgate-numbered versions
+                $remappedQuery = $this->psalmSwapper->swap($remappedQuery, $version);
 
                 // Compile AST → SQL with per-segment preferOrigin
                 $sqls = $this->compiler->compile(
@@ -80,9 +86,11 @@ class QueryFormulator
         $this->ctx->formulatedVariants = $this->queriesVersions;
     }
 
+    private const ESTHER_BOOK_NUM = 19;
+
     private function buildPreferOrigin(int $book, string $version): string
     {
-        if ($book === 19 && in_array($version, $this->ctx->CATHOLIC_VERSIONS)) {
+        if ($book === self::ESTHER_BOOK_NUM && in_array($version, $this->ctx->CATHOLIC_VERSIONS)) {
             $preferOrigin = $this->ctx->DATA['preferorigin'] ?? '';
             $origin       = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true)
                 ? $preferOrigin
