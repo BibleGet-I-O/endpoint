@@ -264,8 +264,7 @@ class QueryFormulator
             $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
         } else {
             $this->mapReference($this->currentChapter, $range['to'], $this->currentChapter, $range['to'], true);
-            $this->sqlQueries[$this->nn]  = $this->sqlQuery . ' AND ( chapter >= ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
-            $this->sqlQueries[$this->nn] .= ' AND ( chapter <= ' . (int) $this->currentChapter . ' AND verse <= ' . (int) $range['to'] . ' )';
+            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' AND verse <= ' . (int) $range['to'];
         }
     }
 
@@ -327,10 +326,9 @@ class QueryFormulator
                     $this->accountForMultipleChapterDifference($cvConstructLeft, $cvConstructRight);
                     $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
                 } else {
-                    $mappedChapter               = null;
-                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter >= ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'];
+                    $mappedChapter = null;
                     $this->mapReference($cvConstructLeft['chapter'], $range['to'], $mappedChapter, $range['to'], true);
-                    $this->sqlQueries[$this->nn] .= ' AND chapter <= ' . (int) $mappedChapter . ' AND verse <= ' . (int) $range['to'];
+                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' AND verse <= ' . (int) $range['to'];
                 }
             } else {
                 $nullVerse = null;
