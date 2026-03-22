@@ -226,7 +226,11 @@ final class AstValidator
 
     private function validateChapter(int $chapter, int $nonZeroBookIdx): void
     {
-        foreach ($this->indexes as $variant => $index) {
+        foreach ($this->validatedVariants as $variant) {
+            if (!isset($this->indexes[$variant])) {
+                continue;
+            }
+            $index   = $this->indexes[$variant];
             $bookidx = array_search($nonZeroBookIdx, $index['book_num']);
             if ($bookidx === false) {
                 continue;
@@ -247,7 +251,11 @@ final class AstValidator
 
     private function validateVerse(int $verse, int $chapter, int $nonZeroBookIdx): void
     {
-        foreach ($this->indexes as $variant => $index) {
+        foreach ($this->validatedVariants as $variant) {
+            if (!isset($this->indexes[$variant])) {
+                continue;
+            }
+            $index   = $this->indexes[$variant];
             $bookidx = array_search($nonZeroBookIdx, $index['book_num']);
             if ($bookidx === false) {
                 continue;
