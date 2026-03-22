@@ -137,7 +137,7 @@ final class ReferenceParser
         if ($this->check(TokenType::RANGE_SEPARATOR)) {
             $sepPos = $this->current()->position;
             $this->advance(); // consume "-"
-            $toRef = $this->parseRangeTarget($chapter, $alternateChapter, $verse);
+            $toRef = $this->parseRangeTarget($chapter, $alternateChapter);
             if ($toRef === null) {
                 throw new ParseException(
                     sprintf('Expected chapter or verse number after range separator at position %d', $sepPos),
@@ -150,7 +150,7 @@ final class ReferenceParser
         return $fromRef;
     }
 
-    private function parseRangeTarget(int $fromChapter, ?int $fromAltChapter, ?int $fromVerse): ?VerseRef
+    private function parseRangeTarget(int $fromChapter, ?int $fromAltChapter): ?VerseRef
     {
         // rangeTarget → CHAPTER_NUMBER altChapter? (CHAPTER_VERSE_SEPARATOR verse)? | verse
         if ($this->check(TokenType::CHAPTER_NUMBER)) {
