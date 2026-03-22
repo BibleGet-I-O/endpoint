@@ -76,6 +76,13 @@ starts at `chapter_level` after each `BOOK_NAME` and shifts to `verse_level` aft
 > All other positions are fully determined by the immediately adjacent tokens.
 > The tokenizer tracks this with a single boolean flag, not a grammar stack.
 
+Two additional classification rules for special constructs:
+
+| Pattern | Classification | Example | Rationale |
+|---|---|---|---|
+| Lowercase letter immediately after `VERSE_NUMBER` | `PARTIAL_VERSE_SUFFIX` | **a** in `4a` | Indicates a sub-verse; always follows a `VERSE_NUMBER` with no intervening separator |
+| `(` after `CHAPTER_NUMBER`, number inside, `)` | `OPEN_PARENTHESIS` + `ALTERNATE_CHAPTER` + `CLOSE_PARENTHESIS` | **(50)** in `Psalm51(50)` | Dual Psalm numbering; the number outside parens is `CHAPTER_NUMBER`, the one inside is `ALTERNATE_CHAPTER` |
+
 ```php
 enum TokenType: string
 {
@@ -86,6 +93,12 @@ enum TokenType: string
     // ── Numeric tokens (resolved by context during tokenization) ─
     case CHAPTER_NUMBER       = 'CHAPTER_NUMBER';       // number in chapter position
     case VERSE_NUMBER         = 'VERSE_NUMBER';         // number in verse position
+    case PARTIAL_VERSE_SUFFIX = 'PARTIAL_VERSE_SUFFIX'; // "a", "b", "c" etc. after a VERSE_NUMBER
+
+    // ── Psalm dual numbering ────────────────────────────────────
+    case OPEN_PARENTHESIS     = 'OPEN_PARENTHESIS';     // "(" — begins alternate chapter number
+    case ALTERNATE_CHAPTER    = 'ALTERNATE_CHAPTER';     // number inside parentheses (alternate numbering system)
+    case CLOSE_PARENTHESIS    = 'CLOSE_PARENTHESIS';    // ")" — ends alternate chapter number
 
     // ── Structural separators (semantic, post-normalization) ────
     case CHAPTER_VERSE_SEPARATOR          = 'CHAPTER_VERSE_SEPARATOR';          // "," — delimits chapter from verse
@@ -112,6 +125,47 @@ Each `Token` value object carries:
 > separator role. If we later need to support mixed-notation or pre-normalization tokenization,
 > we can add a `CHAPTER_VERSE_SEPARATOR_ENGLISH` variant without changing the grammar.
 
+#### Partial verse suffixes
+
+Some references include a lowercase letter after a verse number to indicate a sub-verse
+(e.g. `Genesis2,4a`, `Mark16,9b`). The tokenizer emits these as `PARTIAL_VERSE_SUFFIX`
+tokens immediately following the `VERSE_NUMBER` they modify.
+
+The suffix is **preserved in the token stream and AST** for completeness (the user typed
+it, so we record it), but **silently discarded during SQL compilation**. We cannot map
+partial verse indicators to database rows because there is no standard for which portion
+of the text they refer to — the database stores whole verses. The SQL compiler treats
+`VERSE_NUMBER("4") PARTIAL_VERSE_SUFFIX("a")` identically to `VERSE_NUMBER("4")`.
+
+#### Dual Psalm numbering
+
+Psalms have two numbering traditions that diverge for Psalms 10–147:
+- **Hebrew (Masoretic)** — used by Protestant translations and most modern Catholic translations
+- **Greek (Septuagint/Vulgate)** — used by traditional Catholic/Orthodox liturgical sources
+
+Many editions show both numbers, with the alternate in parentheses. The convention for
+which number is primary vs parenthetical varies:
+
+| Source | Format | Example |
+|---|---|---|
+| Modern Catholic (NABRE, CEI) | Hebrew first, Greek in parens | `Psalm 51(50)` |
+| Traditional/Liturgical (Vulgate, older Catholic) | Greek first, Hebrew in parens | `Psalm 50(51)` |
+
+The tokenizer recognizes this pattern: `CHAPTER_NUMBER OPEN_PARENTHESIS ALTERNATE_CHAPTER
+CLOSE_PARENTHESIS`. It does not determine *which* numbering system is primary — that is
+the parser's/validator's job based on the requested Bible version:
+
+- For versions using Hebrew numbering (most modern translations): the primary
+  `CHAPTER_NUMBER` is used; the `ALTERNATE_CHAPTER` is informational
+- For versions using Greek numbering (VGCL, DRB): the `ALTERNATE_CHAPTER` may be
+  used instead, or the validator can cross-check both against the version's index
+
+**Standard for reliability**: the tokenizer always treats the **number outside
+parentheses as the primary `CHAPTER_NUMBER`** and the **number inside parentheses as
+`ALTERNATE_CHAPTER`**. The version-aware validator/compiler then decides which to use
+for the actual query. This keeps the tokenizer stateless with respect to Bible version
+metadata while allowing downstream stages to handle the version-specific mapping.
+
 #### Tokenizer examples
 
 | Input (normalized) | Token stream |
@@ -123,6 +177,9 @@ Each `Token` value object carries:
 | `Genesis1,5-2,3` | `… CHAPTER_NUMBER("1") CHAPTER_VERSE_SEPARATOR(",") VERSE_NUMBER("5") RANGE_SEPARATOR("-") CHAPTER_NUMBER("2") CHAPTER_VERSE_SEPARATOR(",") VERSE_NUMBER("3") EOF` |
 | `Genesis1,1-3.5.10` | `… CHAPTER_NUMBER("1") CHAPTER_VERSE_SEPARATOR(",") VERSE_NUMBER("1") RANGE_SEPARATOR("-") VERSE_NUMBER("3") EXPLICIT_VERSE_SEPARATOR(".") VERSE_NUMBER("5") EXPLICIT_VERSE_SEPARATOR(".") VERSE_NUMBER("10") EOF` |
 | `1John3,16` | `BOOK_NUMERIC_PREFIX("1") BOOK_NAME("John") CHAPTER_NUMBER("3") CHAPTER_VERSE_SEPARATOR(",") VERSE_NUMBER("16") EOF` |
+| `Genesis2,4a` | `… CHAPTER_NUMBER("2") CHAPTER_VERSE_SEPARATOR(",") VERSE_NUMBER("4") PARTIAL_VERSE_SUFFIX("a") EOF` |
+| `Genesis2,4a-7b` | `… VERSE_NUMBER("4") PARTIAL_VERSE_SUFFIX("a") RANGE_SEPARATOR("-") VERSE_NUMBER("7") PARTIAL_VERSE_SUFFIX("b") EOF` |
+| `Psalm51(50),1` | `BOOK_NAME("Psalm") CHAPTER_NUMBER("51") OPEN_PARENTHESIS("(") ALTERNATE_CHAPTER("50") CLOSE_PARENTHESIS(")") CHAPTER_VERSE_SEPARATOR(",") VERSE_NUMBER("1") EOF` |
 
 ### Phase 2: AST Node Types
 
@@ -134,7 +191,9 @@ In particular, the parser resolves `RANGE_SEPARATOR` into the correct range node
 class VerseRef {
     public int $book;
     public int $chapter;
-    public ?int $verse;  // null = whole chapter
+    public ?int $alternateChapter;  // dual Psalm numbering: number in parentheses
+    public ?int $verse;             // null = whole chapter
+    public ?string $partialSuffix;  // "a", "b", etc. — preserved but ignored in SQL
 }
 
 // A consecutive range of verses, possibly spanning chapters
@@ -163,14 +222,16 @@ has already resolved `CHAPTER_NUMBER` vs `VERSE_NUMBER`, the grammar productions
 directly to AST nodes without further disambiguation:
 
 ```
-query        → bookRef segments
-bookRef      → BOOK_NUMERIC_PREFIX? BOOK_NAME
-segments     → segment (EXPLICIT_VERSE_SEPARATOR verseRef)*
-segment      → chapterRef (RANGE_SEPARATOR rangeTarget)?
-chapterRef   → CHAPTER_NUMBER (CHAPTER_VERSE_SEPARATOR VERSE_NUMBER)?
-rangeTarget  → CHAPTER_NUMBER (CHAPTER_VERSE_SEPARATOR VERSE_NUMBER)?
-             | VERSE_NUMBER
-verseRef     → VERSE_NUMBER (RANGE_SEPARATOR VERSE_NUMBER)?
+query          → bookRef segments
+bookRef        → BOOK_NUMERIC_PREFIX? BOOK_NAME
+segments       → segment (EXPLICIT_VERSE_SEPARATOR verseRef)*
+segment        → chapterRef (RANGE_SEPARATOR rangeTarget)?
+chapterRef     → CHAPTER_NUMBER altChapter? (CHAPTER_VERSE_SEPARATOR verse)?
+rangeTarget    → CHAPTER_NUMBER altChapter? (CHAPTER_VERSE_SEPARATOR verse)?
+               | verse
+verseRef       → verse (RANGE_SEPARATOR verse)?
+verse          → VERSE_NUMBER PARTIAL_VERSE_SUFFIX?
+altChapter     → OPEN_PARENTHESIS ALTERNATE_CHAPTER CLOSE_PARENTHESIS
 ```
 
 The parser reads the already-classified token types and builds the correct AST node:
@@ -181,6 +242,8 @@ The parser reads the already-classified token types and builds the correct AST n
 - `Genesis1-3` → `BibleQuery(book, [VerseRange(from=ch1, to=ch3)])` — `CHAPTER_NUMBER("3")` tells parser it's a chapter range
 - `Genesis1,5-2,3` → `BibleQuery(book, [VerseRange(from=1:5, to=2:3)])` — `CHAPTER_NUMBER("2")` tells parser it's cross-chapter
 - `Genesis1,1-3.5.10` → `BibleQuery(book, [VerseRange(from=1:1, to=1:3), VerseRef(1:5), VerseRef(1:10)])`
+- `Genesis2,4a` → `BibleQuery(book, [VerseRef(chapter=2, verse=4, partialSuffix="a")])` — suffix preserved in AST, ignored in SQL
+- `Psalm51(50),1` → `BibleQuery(book, [VerseRef(chapter=51, altChapter=50, verse=1)])` — validator picks the correct chapter per version
 
 ### Phase 4: Validation Pass
 
