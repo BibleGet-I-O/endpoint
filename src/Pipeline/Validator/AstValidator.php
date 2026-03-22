@@ -254,7 +254,7 @@ final class AstValidator
                 continue;
             }
             $index   = $this->indexes[$variant];
-            $bookidx = array_search($nonZeroBookIdx, $index['book_num']);
+            $bookidx = array_search($nonZeroBookIdx, $index['book_num'], true);
             if ($bookidx === false) {
                 continue;
             }
@@ -288,7 +288,7 @@ final class AstValidator
                 continue;
             }
             $index   = $this->indexes[$variant];
-            $bookidx = array_search($nonZeroBookIdx, $index['book_num']);
+            $bookidx = array_search($nonZeroBookIdx, $index['book_num'], true);
             if ($bookidx === false) {
                 continue;
             }
