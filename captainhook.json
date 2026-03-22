@@ -1,0 +1,86 @@
+{
+    "commit-msg": {
+        "enabled": false,
+        "actions": []
+    },
+    "pre-push": {
+        "enabled": true,
+        "actions": [
+            {
+                "action": "composer analyse",
+                "config": {
+                    "allow-failure": false
+                }
+            },
+            {
+                "action": "composer test:quick",
+                "config": {
+                    "allow-failure": false
+                }
+            },
+            {
+                "action": "composer lint:openapi",
+                "config": {
+                    "allow-failure": false
+                }
+            }
+        ]
+    },
+    "pre-commit": {
+        "enabled": true,
+        "actions": [
+            {
+                "action": "files=$(git diff --cached --name-only --diff-filter=ACM -- '*.php'); [ -z \"$files\" ] || echo \"$files\" | xargs -n1 php -l",
+                "conditions": [
+                    {
+                        "exec": "\\CaptainHook\\App\\Hook\\Condition\\FileStaged\\OfType",
+                        "args": [
+                            "php"
+                        ]
+                    }
+                ],
+                "config": {
+                    "allow-failure": false
+                }
+            },
+            {
+                "action": "composer lint",
+                "conditions": [
+                    {
+                        "exec": "\\CaptainHook\\App\\Hook\\Condition\\FileStaged\\OfType",
+                        "args": [
+                            "php"
+                        ]
+                    }
+                ],
+                "config": {
+                    "allow-failure": false
+                }
+            }
+        ]
+    },
+    "prepare-commit-msg": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-commit": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-merge": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-checkout": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-rewrite": {
+        "enabled": false,
+        "actions": []
+    },
+    "post-change": {
+        "enabled": false,
+        "actions": []
+    }
+}

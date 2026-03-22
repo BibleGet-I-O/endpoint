@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master, development]
+  push:
+    branches: [master, development]
+
+jobs:
+  codesniffer:
+    name: PHPCS (PSR-12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, json, simplexml, dom
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHPCS
+        run: composer lint
+
+  lint:
+    name: PHPStan (Level 10)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, json, simplexml, dom
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHPStan
+        run: composer analyse
+
+  test:
+    name: Tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bibleget_test
+          MYSQL_USER: bibleget_test
+          MYSQL_PASSWORD: bibleget_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, json, simplexml, dom, curl, posix
+          coverage: ${{ matrix.php == '8.2' && 'xdebug' || 'none' }}
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Set up test database
+        run: |
+          mysql -h 127.0.0.1 -u bibleget_test -pbibleget_test bibleget_test < tests/fixtures/schema.sql
+          mysql -h 127.0.0.1 -u bibleget_test -pbibleget_test bibleget_test < tests/fixtures/seed.sql
+
+      - name: Run unit tests
+        run: vendor/bin/phpunit --testsuite Unit --testdox --display-warnings
+
+      - name: Run integration tests
+        run: vendor/bin/phpunit --testsuite Integration --testdox --display-warnings
+
+      - name: Run server tests
+        if: matrix.php == '8.2'
+        run: |
+          cp tests/fixtures/dbcredentials.php dbcredentials.php
+          vendor/bin/phpunit --testsuite Server --testdox --display-warnings
+
+      - name: Run tests with coverage
+        if: matrix.php == '8.2'
+        run: vendor/bin/phpunit --testsuite Unit,Integration,Server --testdox --display-warnings --coverage-clover=coverage.xml --coverage-text
+
+      - name: Upload coverage artifact
+        if: matrix.php == '8.2'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 14

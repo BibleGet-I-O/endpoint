@@ -1,0 +1,24 @@
+name: Lint OpenAPI spec
+
+on:
+  push:
+    paths:
+      - 'openapi.json'
+      - 'redocly.yaml'
+  pull_request:
+    paths:
+      - 'openapi.json'
+      - 'redocly.yaml'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Lint OpenAPI spec with Redocly
+        run: npx @redocly/cli lint openapi.json

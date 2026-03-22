@@ -1,0 +1,87 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BibleGet\Api\Http\Middleware;
+
+use BibleGet\Api\Http\Logs\LoggerFactory;
+use Monolog\Logger;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+
+class LoggingMiddleware implements MiddlewareInterface
+{
+    private Logger $logger;
+    private bool $debug;
+
+    public function __construct(bool $debug = false)
+    {
+        $this->debug  = $debug;
+        $this->logger = LoggerFactory::create('api', null, 30, $debug);
+    }
+
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        if ($this->debug) {
+            $requestId      = $request->getAttribute('request_id');
+            $reqContentType = $request->getHeaderLine('Content-Type');
+            $reqBody        = $request->getBody();
+            if (!$reqBody->isSeekable()) {
+                $safeReqBody = '[non-seekable body omitted]';
+            } elseif (str_starts_with($reqContentType, 'application/json') || str_starts_with($reqContentType, 'text/')) {
+                $safeReqBody = self::readBody($reqBody);
+            } else {
+                $safeReqBody = '[body omitted]';
+            }
+
+            $this->logger->debug('Incoming request', [
+                'request_id'   => $requestId,
+                'method'       => $request->getMethod(),
+                'uri'          => (string) $request->getUri(),
+                'content_type' => $reqContentType,
+                'request_body' => $safeReqBody,
+            ]);
+        }
+
+        $response = $handler->handle($request);
+
+        if ($this->debug) {
+            $requestId      = $requestId ?? $request->getAttribute('request_id');
+            $resContentType = $response->getHeaderLine('Content-Type');
+            $responseBody   = $response->getBody();
+            if (!$responseBody->isSeekable()) {
+                $safeResBody = '[non-seekable body omitted]';
+            } elseif (str_starts_with($resContentType, 'application/json') || str_starts_with($resContentType, 'application/problem+json') || str_starts_with($resContentType, 'text/')) {
+                $safeResBody = self::readBody($responseBody);
+            } else {
+                $safeResBody = '[body omitted]';
+            }
+
+            $this->logger->debug('Outgoing response', [
+                'request_id'    => $requestId,
+                'status'        => $response->getStatusCode(),
+                'content_type'  => $resContentType,
+                'response_body' => $safeResBody,
+            ]);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Read a seekable stream body without consuming it.
+     * Callers must check isSeekable() before calling this method.
+     */
+    private static function readBody(StreamInterface $body): string
+    {
+        $position = $body->tell();
+        $body->rewind();
+        $contents = (string) $body;
+        $body->seek($position);
+
+        return $contents;
+    }
+}
