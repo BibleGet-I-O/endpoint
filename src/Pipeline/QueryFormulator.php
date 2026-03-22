@@ -343,7 +343,9 @@ class QueryFormulator
     private function formulateNonConsecutiveVerses(): void
     {
         $nonConsecutiveChunks = self::getNonConsecutiveChunks($this->currentQuery);
+        $basePreferOrigin     = $this->currentPreferOrigin;
         foreach ($nonConsecutiveChunks as $chunk) {
+            $this->currentPreferOrigin        = $basePreferOrigin;
             $this->originalQueries[$this->nn] = $this->currentFullQuery;
             if (self::chunkContainsRange($chunk)) {
                 $this->formulateRangeChunk($chunk);
