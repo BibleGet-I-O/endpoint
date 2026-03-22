@@ -77,10 +77,6 @@ src/
 └── Database/Connection.php          # MySQLi connection singleton
 ```
 
-### Legacy Files (to be removed)
-
-`index.php`, `metadata.php`, `search.php`, `includes/` — the old direct-access endpoints, superseded by `public/index.php` + Router + Handlers.
-
 ### Quote Pipeline
 
 `QuoteHandler` orchestrates: `QuoteContext` → `QueryValidator` → `QueryFormulator` → `QueryExecutor`
