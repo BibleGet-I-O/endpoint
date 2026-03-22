@@ -226,6 +226,13 @@ final class AstValidator
 
     private function validateChapter(int $chapter, int $nonZeroBookIdx): void
     {
+        if ($chapter < 1) {
+            $this->errors[] = new ValidationError(
+                sprintf('Invalid chapter number: %d. Chapters must be 1 or greater.', $chapter)
+            );
+            return;
+        }
+
         foreach ($this->validatedVariants as $variant) {
             if (!isset($this->indexes[$variant])) {
                 continue;
@@ -251,6 +258,13 @@ final class AstValidator
 
     private function validateVerse(int $verse, int $chapter, int $nonZeroBookIdx): void
     {
+        if ($verse < 1) {
+            $this->errors[] = new ValidationError(
+                sprintf('Invalid verse number: %d. Verses must be 1 or greater.', $verse)
+            );
+            return;
+        }
+
         foreach ($this->validatedVariants as $variant) {
             if (!isset($this->indexes[$variant])) {
                 continue;
