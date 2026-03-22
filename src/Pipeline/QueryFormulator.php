@@ -85,7 +85,7 @@ class QueryFormulator
     {
         if (QuoteContext::stringWithUpperAndLowerCaseVariants($this->currentQuery)) {
             if (preg_match('/^([1-4]{0,1}((\p{Lu}\p{Ll}*)+))/u', $this->currentQuery, $res)) {
-                $this->currentQuery = preg_replace('/^[1-4]{0,1}\p{Lu}\p{Ll}*/u', '', $this->currentQuery) ?? $this->currentQuery;
+                $this->currentQuery = substr($this->currentQuery, strlen($res[0]));
                 return $res;
             }
             return false;
