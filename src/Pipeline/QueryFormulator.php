@@ -159,6 +159,11 @@ class QueryFormulator
         } else {
             $this->currentBook = $this->previousBook;
         }
+        if ($this->currentBook === 0) {
+            $this->ctx->logger->warning('No valid book indicator found for query', [
+                'query' => $this->currentFullQuery,
+            ]);
+        }
     }
 
     /**
