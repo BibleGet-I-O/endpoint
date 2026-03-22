@@ -116,7 +116,10 @@ class QueryFormulator
 
     private function setSQLLimit(): void
     {
-        if (in_array($this->currentRequestedVariant, $this->ctx->COPYRIGHT_VERSIONS)) {
+        if (
+            in_array($this->currentRequestedVariant, $this->ctx->COPYRIGHT_VERSIONS)
+            || in_array($this->currentRequestedVariant, $this->ctx->REQUESTED_COPYRIGHTED_VERSIONS)
+        ) {
             $this->sqlQueries[$this->nn] .= ' LIMIT 30';
         }
     }
