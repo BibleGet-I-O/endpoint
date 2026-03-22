@@ -83,7 +83,7 @@ final class AstValidator
 
         // Determine which requested versions have this book
         foreach ($this->requestedVersions as $variant) {
-            if (isset($this->indexes[$variant]) && in_array($nonZeroBookIdx, $this->indexes[$variant]['book_num'])) {
+            if (isset($this->indexes[$variant]) && in_array($nonZeroBookIdx, $this->indexes[$variant]['book_num'], true)) {
                 $this->validatedVariants[] = $variant;
             }
         }
@@ -188,7 +188,7 @@ final class AstValidator
         foreach ($this->bibleBooks as $index => $value) {
             if (is_array($value)) {
                 foreach ($value as $subValue) {
-                    if (is_array($subValue) && in_array($needle, $subValue)) {
+                    if (is_array($subValue) && in_array($needle, $subValue, true)) {
                         return $index;
                     }
                 }
