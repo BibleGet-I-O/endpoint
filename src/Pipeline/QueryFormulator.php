@@ -271,8 +271,19 @@ class QueryFormulator
             $this->accountForMultipleChapterDifference($cvConstructLeft, $cvConstructRight);
             $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
         } else {
-            $this->mapReference($this->currentChapter, $range['to'], $this->currentChapter, $range['to'], true);
-            $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' AND verse <= ' . (int) $range['to'];
+            $mappedChapter = null;
+            $mappedVerse   = $range['to'];
+            $this->mapReference($this->currentChapter, $range['to'], $mappedChapter, $mappedVerse, true);
+            if ((int) $mappedChapter !== (int) $cvConstructLeft['chapter']) {
+                // Mapping crossed a chapter boundary — emit a cross-chapter predicate
+                $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
+                $leftArr                     = ['chapter' => $cvConstructLeft['chapter'], 'verse' => $cvConstructLeft['verse']];
+                $rightArr                    = ['chapter' => $mappedChapter, 'verse' => $mappedVerse];
+                $this->accountForMultipleChapterDifference($leftArr, $rightArr);
+                $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $mappedChapter . ' AND verse <= ' . (int) $mappedVerse . ' ) )';
+            } else {
+                $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' AND verse <= ' . (int) $mappedVerse;
+            }
         }
     }
 
@@ -335,8 +346,17 @@ class QueryFormulator
                     $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $cvConstructRight['chapter'] . ' AND verse <= ' . (int) $cvConstructRight['verse'] . ' ) )';
                 } else {
                     $mappedChapter = null;
-                    $this->mapReference($cvConstructLeft['chapter'], $range['to'], $mappedChapter, $range['to'], true);
-                    $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' AND verse <= ' . (int) $range['to'];
+                    $mappedVerse   = $range['to'];
+                    $this->mapReference($cvConstructLeft['chapter'], $range['to'], $mappedChapter, $mappedVerse, true);
+                    if ((int) $mappedChapter !== (int) $cvConstructLeft['chapter']) {
+                        $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND ( ( chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' )';
+                        $leftArr                     = ['chapter' => $cvConstructLeft['chapter'], 'verse' => $cvConstructLeft['verse']];
+                        $rightArr                    = ['chapter' => $mappedChapter, 'verse' => $mappedVerse];
+                        $this->accountForMultipleChapterDifference($leftArr, $rightArr);
+                        $this->sqlQueries[$this->nn] .= ' OR ( chapter = ' . (int) $mappedChapter . ' AND verse <= ' . (int) $mappedVerse . ' ) )';
+                    } else {
+                        $this->sqlQueries[$this->nn] = $this->sqlQuery . ' AND chapter = ' . (int) $cvConstructLeft['chapter'] . ' AND verse >= ' . (int) $cvConstructLeft['verse'] . ' AND verse <= ' . (int) $mappedVerse;
+                    }
                 }
             } else {
                 $nullVerse = null;
