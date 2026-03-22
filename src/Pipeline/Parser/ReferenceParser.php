@@ -125,11 +125,16 @@ final class ReferenceParser
 
         // Check for range
         if ($this->check(TokenType::RANGE_SEPARATOR)) {
+            $sepPos = $this->current()->position;
             $this->advance(); // consume "-"
             $toRef = $this->parseRangeTarget($chapter, $alternateChapter, $verse);
-            if ($toRef !== null) {
-                return new VerseRange($fromRef, $toRef);
+            if ($toRef === null) {
+                throw new ParseException(
+                    sprintf('Expected chapter or verse number after range separator at position %d', $sepPos),
+                    $sepPos
+                );
             }
+            return new VerseRange($fromRef, $toRef);
         }
 
         return $fromRef;
@@ -187,12 +192,17 @@ final class ReferenceParser
         $fromRef               = new VerseRef($this->book, $chapter, null, $verse, $verseSuffix);
 
         if ($this->check(TokenType::RANGE_SEPARATOR)) {
+            $sepPos = $this->current()->position;
             $this->advance();
-            if ($this->check(TokenType::VERSE_NUMBER)) {
-                [$toVerse, $toSuffix] = $this->parseVerse();
-                $toRef                = new VerseRef($this->book, $chapter, null, $toVerse, $toSuffix);
-                return new VerseRange($fromRef, $toRef);
+            if (!$this->check(TokenType::VERSE_NUMBER)) {
+                throw new ParseException(
+                    sprintf('Expected verse number after range separator at position %d', $sepPos),
+                    $sepPos
+                );
             }
+            [$toVerse, $toSuffix] = $this->parseVerse();
+            $toRef                = new VerseRef($this->book, $chapter, null, $toVerse, $toSuffix);
+            return new VerseRange($fromRef, $toRef);
         }
 
         return $fromRef;
@@ -222,17 +232,25 @@ final class ReferenceParser
         if (!$this->check(TokenType::OPEN_PARENTHESIS)) {
             return null;
         }
+        $openPos = $this->current()->position;
         $this->advance(); // consume "("
 
-        $alt = null;
-        if ($this->check(TokenType::ALTERNATE_CHAPTER)) {
-            $alt = (int) $this->current()->value;
-            $this->advance();
+        if (!$this->check(TokenType::ALTERNATE_CHAPTER)) {
+            throw new ParseException(
+                sprintf('Expected alternate chapter number after opening parenthesis at position %d', $openPos),
+                $openPos
+            );
         }
+        $alt = (int) $this->current()->value;
+        $this->advance();
 
-        if ($this->check(TokenType::CLOSE_PARENTHESIS)) {
-            $this->advance(); // consume ")"
+        if (!$this->check(TokenType::CLOSE_PARENTHESIS)) {
+            throw new ParseException(
+                sprintf('Expected closing parenthesis after alternate chapter number at position %d', $this->current()->position),
+                $this->current()->position
+            );
         }
+        $this->advance(); // consume ")"
 
         return $alt;
     }
