@@ -88,6 +88,19 @@ final class AstValidator
             }
         }
 
+        if (empty($this->validatedVariants)) {
+            $position       = $this->extractBookPosition($tokens);
+            $this->errors[] = new ValidationError(
+                sprintf(
+                    'The book (index %d) is not available in any of the requested versions: %s',
+                    $nonZeroBookIdx,
+                    implode(', ', $this->requestedVersions)
+                ),
+                $position
+            );
+            return null;
+        }
+
         // Validate each segment
         foreach ($query->segments as $segment) {
             if ($segment instanceof VerseRef) {
