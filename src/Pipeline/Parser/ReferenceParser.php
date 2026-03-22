@@ -45,6 +45,15 @@ final class ReferenceParser
         $this->parseBookRef();
         $segments = $this->parseSegments();
 
+        // Reject trailing tokens that were not consumed by the grammar
+        if (!$this->check(TokenType::EOF)) {
+            $token = $this->current();
+            throw new ParseException(
+                sprintf('Unexpected token %s at position %d', $token->type->value, $token->position),
+                $token->position
+            );
+        }
+
         return new BibleQuery($this->book, $segments);
     }
 
