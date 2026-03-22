@@ -78,19 +78,28 @@ final class ReferenceParser
     {
         $segments = [];
 
-        // First segment starts with a chapter
+        // First segment must start with a chapter number
         $segment = $this->parseSegment();
-        if ($segment !== null) {
-            $segments[] = $segment;
+        if ($segment === null) {
+            throw new ParseException(
+                sprintf('Expected chapter number at position %d', $this->current()->position),
+                $this->current()->position
+            );
         }
+        $segments[] = $segment;
 
         // Additional segments after EXPLICIT_VERSE_SEPARATOR
         while ($this->check(TokenType::EXPLICIT_VERSE_SEPARATOR)) {
+            $dotPos = $this->current()->position;
             $this->advance(); // consume "."
             $verseOrRange = $this->parseVerseRef();
-            if ($verseOrRange !== null) {
-                $segments[] = $verseOrRange;
+            if ($verseOrRange === null) {
+                throw new ParseException(
+                    sprintf('Expected verse number after verse separator at position %d', $dotPos),
+                    $dotPos
+                );
             }
+            $segments[] = $verseOrRange;
         }
 
         return $segments;
