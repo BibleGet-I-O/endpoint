@@ -249,36 +249,41 @@ pg_copy_from_stdin 'requests_log' \
     < "$MIGRATION_TMPDIR/requests_log.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('requests_log', 'COUNTER'), COALESCE((SELECT MAX(\"COUNTER\") FROM requests_log), 1));" > /dev/null
 
-# Yearly tables with int unsigned IP (2014-2019)
+# Discover yearly log tables from MariaDB and migrate each one.
+# Schema evolved: pre-2020 tables lack ORIGIN/ORIGINALQUERY and use int unsigned for IP,
+# 2020+ tables have ORIGIN/ORIGINALQUERY and use varbinary(16) for IP.
 OLD_LOG_COLS='"COUNTER","WHO_WHEN","WHO_IP","WHO_WHERE_JSON","HEADERS_JSON","QUERY","REQUEST_METHOD","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR","HTTP_X_REAL_IP","REMOTE_ADDR","APP_ID","DOMAIN","PLUGINVERSION"'
-for YEAR in 2014 2015 2016 2017 2018 2019; do
-    TABLE="requests_log__${YEAR}"
-    COUNT=$(maria_sql "SELECT COUNT(*) FROM \`$TABLE\`")
-    if [ "$COUNT" -eq 0 ]; then
-        log "Skipping $TABLE (empty)"
-        continue
-    fi
-    log "Migrating $TABLE ($COUNT rows)..."
-    maria_dump_csv "$TABLE" \
-        "SELECT COUNTER, WHO_WHEN, INET_NTOA(WHO_IP), WHO_WHERE_JSON, HEADERS_JSON, \`QUERY\`, REQUEST_METHOD, HTTP_CLIENT_IP, HTTP_X_FORWARDED_FOR, HTTP_X_REAL_IP, REMOTE_ADDR, APP_ID, DOMAIN, PLUGINVERSION FROM \`$TABLE\` ORDER BY COUNTER"
-    pg_copy_from_stdin "$TABLE" "$OLD_LOG_COLS" < "$MIGRATION_TMPDIR/${TABLE}.tsv"
-    pg_sql "SELECT setval(pg_get_serial_sequence('$TABLE', 'COUNTER'), COALESCE((SELECT MAX(\"COUNTER\") FROM $TABLE), 1));" > /dev/null
-done
-
-# Yearly tables with varbinary(16) IP + ORIGIN/ORIGINALQUERY (2020+)
 NEW_LOG_COLS='"COUNTER","WHO_WHEN","WHO_IP","WHO_WHERE_JSON","HEADERS_JSON","ORIGIN","QUERY","ORIGINALQUERY","REQUEST_METHOD","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR","HTTP_X_REAL_IP","REMOTE_ADDR","APP_ID","DOMAIN","PLUGINVERSION"'
-for YEAR in 2020 2021 2022 2023 2024 2025 2026 2027 2028 2029 2030; do
-    TABLE="requests_log__${YEAR}"
+
+YEARLY_TABLES=$(maria_sql "SELECT table_name FROM information_schema.tables WHERE table_schema = '$MARIA_DB' AND table_name LIKE 'requests\_log\_\_%' ORDER BY table_name")
+for TABLE in $YEARLY_TABLES; do
     COUNT=$(maria_sql "SELECT COUNT(*) FROM \`$TABLE\`")
     if [ "$COUNT" -eq 0 ]; then
         log "Skipping $TABLE (empty)"
         continue
     fi
+
+    # Determine schema variant by checking if ORIGIN column exists
+    HAS_ORIGIN=$(maria_sql "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = '$MARIA_DB' AND table_name = '$TABLE' AND column_name = 'ORIGIN'")
+    # Determine IP column type to choose INET_NTOA vs INET6_NTOA
+    IP_TYPE=$(maria_sql "SELECT column_type FROM information_schema.columns WHERE table_schema = '$MARIA_DB' AND table_name = '$TABLE' AND column_name = 'WHO_IP'")
+
+    if [[ "$IP_TYPE" == *"varbinary"* ]]; then
+        IP_EXPR="INET6_NTOA(WHO_IP)"
+    else
+        IP_EXPR="INET_NTOA(WHO_IP)"
+    fi
+
     log "Migrating $TABLE ($COUNT rows)..."
-    # INET6_NTOA for varbinary(16), handles both IPv4 and IPv6; NULLs preserved
-    maria_dump_csv "$TABLE" \
-        "SELECT COUNTER, WHO_WHEN, INET6_NTOA(WHO_IP), WHO_WHERE_JSON, HEADERS_JSON, ORIGIN, \`QUERY\`, ORIGINALQUERY, REQUEST_METHOD, HTTP_CLIENT_IP, HTTP_X_FORWARDED_FOR, HTTP_X_REAL_IP, REMOTE_ADDR, APP_ID, DOMAIN, PLUGINVERSION FROM \`$TABLE\` ORDER BY COUNTER"
-    pg_copy_from_stdin "$TABLE" "$NEW_LOG_COLS" < "$MIGRATION_TMPDIR/${TABLE}.tsv"
+    if [ "$HAS_ORIGIN" -gt 0 ]; then
+        maria_dump_csv "$TABLE" \
+            "SELECT COUNTER, WHO_WHEN, $IP_EXPR, WHO_WHERE_JSON, HEADERS_JSON, ORIGIN, \`QUERY\`, ORIGINALQUERY, REQUEST_METHOD, HTTP_CLIENT_IP, HTTP_X_FORWARDED_FOR, HTTP_X_REAL_IP, REMOTE_ADDR, APP_ID, DOMAIN, PLUGINVERSION FROM \`$TABLE\` ORDER BY COUNTER"
+        pg_copy_from_stdin "$TABLE" "$NEW_LOG_COLS" < "$MIGRATION_TMPDIR/${TABLE}.tsv"
+    else
+        maria_dump_csv "$TABLE" \
+            "SELECT COUNTER, WHO_WHEN, $IP_EXPR, WHO_WHERE_JSON, HEADERS_JSON, \`QUERY\`, REQUEST_METHOD, HTTP_CLIENT_IP, HTTP_X_FORWARDED_FOR, HTTP_X_REAL_IP, REMOTE_ADDR, APP_ID, DOMAIN, PLUGINVERSION FROM \`$TABLE\` ORDER BY COUNTER"
+        pg_copy_from_stdin "$TABLE" "$OLD_LOG_COLS" < "$MIGRATION_TMPDIR/${TABLE}.tsv"
+    fi
     pg_sql "SELECT setval(pg_get_serial_sequence('$TABLE', 'COUNTER'), COALESCE((SELECT MAX(\"COUNTER\") FROM $TABLE), 1));" > /dev/null
 done
 
@@ -305,9 +310,8 @@ for T in $TABLES; do
     printf "%-30s %10s %10s %s\n" "$T" "$M_COUNT" "$P_COUNT" "$STATUS"
 done
 
-# Yearly log tables
-for YEAR in 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025 2026; do
-    T="requests_log__${YEAR}"
+# Yearly log tables (discovered dynamically)
+for T in $YEARLY_TABLES; do
     M_COUNT=$(maria_sql "SELECT COUNT(*) FROM \`$T\`" 2>/dev/null || echo "N/A")
     P_COUNT=$(docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -t -A -c "SELECT COUNT(*) FROM $T" 2>/dev/null || echo "N/A")
     if [ "$M_COUNT" = "$P_COUNT" ]; then
