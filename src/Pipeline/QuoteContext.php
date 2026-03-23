@@ -93,6 +93,9 @@ class QuoteContext
     /** @var array<string, string> */
     public array $DATA = [];
 
+    /** @var array<int, \BibleGet\Api\Pipeline\Ast\BibleQuery> */
+    public array $parsedQueries = [];
+
     /** @var array<array{errNum: int, errMessage: string}> */
     public array $errors = [];
     /** @var array<int, array<string, mixed>> */
@@ -187,6 +190,7 @@ class QuoteContext
     {
         $querystr               = self::removeWhitespace($this->DATA['query']);
         $querystr               = trim($querystr);
+        $querystr               = self::stripReferencePrefix($querystr);
         $querystr               = self::convertAllDashesToHyphens($querystr);
         $this->detectedNotation = self::detectAndNormalizeNotation($querystr);
 
@@ -254,6 +258,24 @@ class QuoteContext
         return $detectedNotation;
     }
 
+    /**
+     * Strip "Cf.", "Cfr.", "Confer" and similar Latin reference prefixes
+     * from each semicolon-delimited query. Whitespace has already been
+     * removed, so the prefix is glued to the book name (e.g. "Cf.John3,16").
+     */
+    private static function stripReferencePrefix(string $querystr): string
+    {
+        // Process each semicolon-delimited query independently so that a
+        // prefix on one query does not affect the others.
+        $queries = explode(';', $querystr);
+        foreach ($queries as &$q) {
+            // Match (case-insensitive): Cfr. / Cf. / Cfr / Cf / Confer
+            // The dot is optional; "Confer" has no dot variant.
+            $q = preg_replace('/^(?:cfr\.?|cf\.?|confer)/i', '', $q) ?? $q;
+        }
+        return implode(';', $queries);
+    }
+
     private static function removeWhitespace(string $querystr): string
     {
         $querystr = preg_replace('/\s+/', '', $querystr) ?? $querystr;
@@ -262,7 +284,7 @@ class QuoteContext
 
     private static function convertAllDashesToHyphens(string $querystr): string
     {
-        return preg_replace('/[\x{2011}-\x{2015}|\x{2212}|\x{23AF}]/u', '-', $querystr) ?? $querystr;
+        return preg_replace('/[\x{2010}-\x{2015}\x{2212}\x{23AF}\x{FE58}\x{FE63}\x{FF0D}]/u', '-', $querystr) ?? $querystr;
     }
 
     /**
