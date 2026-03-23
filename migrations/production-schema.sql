@@ -473,4 +473,4 @@ SELECT create_yearly_log_table('2029', TRUE);
 SELECT create_yearly_log_table('2030', TRUE);
 
 -- Drop the helper function (not needed at runtime)
-DROP FUNCTION create_yearly_log_table;
+DROP FUNCTION IF EXISTS create_yearly_log_table(TEXT, BOOLEAN);
