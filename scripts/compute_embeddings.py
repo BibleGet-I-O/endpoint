@@ -21,6 +21,7 @@ import sys
 import time
 
 import psycopg2
+from psycopg2 import sql
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
@@ -56,24 +57,28 @@ def load_verses(conn, version, force=False):
     with conn.cursor() as cur:
         if force:
             cur.execute(
-                f'SELECT "verseID", text FROM "{version}" ORDER BY "verseID"'
+                sql.SQL('SELECT "verseID", text FROM {} ORDER BY "verseID"').format(
+                    sql.Identifier(version)
+                )
             )
         else:
             cur.execute(
-                f'SELECT "verseID", text FROM "{version}" '
-                f"WHERE embedding IS NULL ORDER BY \"verseID\""
+                sql.SQL(
+                    'SELECT "verseID", text FROM {} WHERE embedding IS NULL ORDER BY "verseID"'
+                ).format(sql.Identifier(version))
             )
         return cur.fetchall()
 
 
 def write_embeddings(conn, version, verse_ids, embeddings):
     """Write embeddings back to the database in a single transaction."""
+    query = sql.SQL('UPDATE {} SET embedding = %s WHERE "verseID" = %s').format(
+        sql.Identifier(version)
+    )
     with conn.cursor() as cur:
-        for verse_id, embedding in zip(verse_ids, embeddings):
-            cur.execute(
-                f'UPDATE "{version}" SET embedding = %s WHERE "verseID" = %s',
-                (embedding.tolist(), verse_id),
-            )
+        cur.executemany(
+            query, [(embedding.tolist(), verse_id) for verse_id, embedding in zip(verse_ids, embeddings)]
+        )
     conn.commit()
 
 
