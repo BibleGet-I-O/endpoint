@@ -58,16 +58,16 @@ class MetadataHandler extends AbstractHandler
         $data['info'] = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
 
         if ($contentType === 'application/json') {
-            return $this->jsonResponse($response, $data);
+            $response = $this->jsonResponse($response, $data);
+        } elseif ($contentType === 'application/xml') {
+            $response = $this->xmlResponse($response, $this->toXml($data, $subResource));
+        } else {
+            // HTML fallback
+            $json     = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            $response = $this->htmlResponse($response, '<pre>' . htmlspecialchars($json !== false ? $json : '{}') . '</pre>');
         }
 
-        if ($contentType === 'application/xml') {
-            return $this->xmlResponse($response, $this->toXml($data, $subResource));
-        }
-
-        // HTML fallback
-        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        return $this->htmlResponse($response, '<pre>' . htmlspecialchars($json !== false ? $json : '{}') . '</pre>');
+        return $this->withCacheHeaders($request, $response);
     }
 
     /**

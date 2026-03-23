@@ -345,6 +345,56 @@ abstract class AbstractHandler implements RequestHandlerInterface
     }
 
     /**
+     * Add Cache-Control and ETag headers to the response.
+     *
+     * If the client sent an If-None-Match header that matches the ETag,
+     * a 304 Not Modified response is returned instead.
+     *
+     * @param int $maxAge Cache max-age in seconds (default: 259200 = 3 days)
+     */
+    protected function withCacheHeaders(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        int $maxAge = 259200
+    ): ResponseInterface {
+        $body = (string) $response->getBody();
+        $etag = '"' . md5($body) . '"';
+
+        $response = $response
+            ->withHeader('Cache-Control', 'must-revalidate, max-age=' . $maxAge)
+            ->withHeader('ETag', $etag);
+
+        $ifNoneMatch = $request->getHeaderLine('If-None-Match');
+        if ($ifNoneMatch !== '' && self::etagMatches($ifNoneMatch, $etag)) {
+            return $response
+                ->withStatus(StatusCode::NOT_MODIFIED->value, StatusCode::NOT_MODIFIED->reason())
+                ->withBody(Stream::create(''));
+        }
+
+        return $response;
+    }
+
+    /**
+     * Check whether an ETag is present in an If-None-Match header value.
+     *
+     * Handles the wildcard "*" and comma-separated lists per RFC 9110 §13.1.2.
+     */
+    private static function etagMatches(string $ifNoneMatch, string $etag): bool
+    {
+        if ($ifNoneMatch === '*') {
+            return true;
+        }
+
+        foreach (explode(',', $ifNoneMatch) as $candidate) {
+            if (trim($candidate) === $etag) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Write a JSON-encoded body to the response.
      *
      * @param mixed $data

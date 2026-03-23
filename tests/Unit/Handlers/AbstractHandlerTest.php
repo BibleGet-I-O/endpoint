@@ -32,6 +32,11 @@ class AbstractHandlerTest extends TestCase
             }
 
             // Expose protected methods for testing
+            public function testWithCacheHeaders(ServerRequestInterface $request, ResponseInterface $response, int $maxAge = 259200): ResponseInterface
+            {
+                return $this->withCacheHeaders($request, $response, $maxAge);
+            }
+
             public function testValidateRequestMethod(ServerRequestInterface $request): void
             {
                 $this->validateRequestMethod($request);
@@ -272,6 +277,86 @@ class AbstractHandlerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('GET', $response->getHeaderLine('Allow'));
+    }
+
+    // -- Cache headers --
+
+    public function testCacheHeadersAdded(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/');
+        $body     = '{"hello":"world"}';
+        $response = new \Nyholm\Psr7\Response(200, [], $body);
+
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame('must-revalidate, max-age=259200', $response->getHeaderLine('Cache-Control'));
+        $expectedEtag = '"' . md5($body) . '"';
+        self::assertSame($expectedEtag, $response->getHeaderLine('ETag'));
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    public function testCacheHeadersCustomMaxAge(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/');
+        $response = new \Nyholm\Psr7\Response(200, [], 'test');
+
+        $response = $handler->testWithCacheHeaders($request, $response, 86400);
+
+        self::assertSame('must-revalidate, max-age=86400', $response->getHeaderLine('Cache-Control'));
+    }
+
+    public function testCacheHeaders304WhenEtagMatches(): void
+    {
+        $handler = $this->createHandler();
+        $body    = '{"hello":"world"}';
+        $etag    = '"' . md5($body) . '"';
+        $request = new ServerRequest('GET', '/', ['If-None-Match' => $etag]);
+
+        $response = new \Nyholm\Psr7\Response(200, [], $body);
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame(304, $response->getStatusCode());
+        self::assertSame('', (string) $response->getBody());
+        self::assertSame($etag, $response->getHeaderLine('ETag'));
+    }
+
+    public function testCacheHeadersNoMatchReturns200(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/', ['If-None-Match' => '"stale-etag"']);
+        $body     = '{"hello":"world"}';
+        $response = new \Nyholm\Psr7\Response(200, [], $body);
+
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame($body, (string) $response->getBody());
+    }
+
+    public function testCacheHeaders304WhenWildcardIfNoneMatch(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/', ['If-None-Match' => '*']);
+        $response = new \Nyholm\Psr7\Response(200, [], '{"hello":"world"}');
+
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame(304, $response->getStatusCode());
+    }
+
+    public function testCacheHeaders304WhenEtagInMultiValueHeader(): void
+    {
+        $handler = $this->createHandler();
+        $body    = '{"hello":"world"}';
+        $etag    = '"' . md5($body) . '"';
+        $request = new ServerRequest('GET', '/', ['If-None-Match' => '"old-etag", ' . $etag . ', "other"']);
+
+        $response = new \Nyholm\Psr7\Response(200, [], $body);
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame(304, $response->getStatusCode());
     }
 
     // -- Fluent setters --
