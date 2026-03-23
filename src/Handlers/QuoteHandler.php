@@ -188,7 +188,7 @@ class QuoteHandler extends AbstractHandler
             $html .= '<table id="errorsTbl" class="errorsTbl">';
             foreach ($errors as $err) {
                 $html .= '<tr class="errorsRow">';
-                $html .= '<td class="errNum">errNum</td><td class="errNumVal">' . $err['errNum'] . '</td>';
+                $html .= '<td class="errNum">errNum</td><td class="errNumVal">' . (int) $err['errNum'] . '</td>';
                 $html .= '<td class="errMessage">errMessage</td><td class="errMessageVal">' . htmlspecialchars($err['errMessage']) . '</td>';
                 $html .= '</tr>';
             }
