@@ -112,7 +112,7 @@ class QuoteHandler extends AbstractHandler
             $info['bibleVersionsInfo'] = $encoded !== false ? $encoded : '{}';
 
             foreach ($ctx->errors as $err) {
-                $errNode = $errors->addChild('error', $err['errMessage']);
+                $errNode = $errors->addChild('error', htmlspecialchars($err['errMessage'], ENT_XML1, 'UTF-8'));
                 $errNode->addAttribute('errNum', (string) $err['errNum']);
             }
 
