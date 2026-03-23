@@ -79,7 +79,8 @@ class MetadataHandler extends AbstractHandler
         try {
             $result1 = $pdo->query('SELECT * FROM biblebooks_fullname ORDER BY "BOOK"');
         } catch (\PDOException $e) {
-            throw new InternalServerErrorException('Database error: ' . $e->getMessage());
+            error_log('Database error: ' . $e->getMessage());
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         if ($result1 === false) {
             throw new InternalServerErrorException('An internal database error occurred.');
@@ -95,7 +96,8 @@ class MetadataHandler extends AbstractHandler
         try {
             $result2 = $pdo->query('SELECT * FROM biblebooks_abbr ORDER BY "BOOK"');
         } catch (\PDOException $e) {
-            throw new InternalServerErrorException('Database error: ' . $e->getMessage());
+            error_log('Database error: ' . $e->getMessage());
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         if ($result2 === false) {
             throw new InternalServerErrorException('An internal database error occurred.');
