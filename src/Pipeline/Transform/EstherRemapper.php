@@ -78,7 +78,7 @@ final class EstherRemapper
                 $origins[]     = $po;
             } elseif ($segment instanceof VerseRange) {
                 [$from, $poFrom] = $this->remapVerseRef($segment->from, $defaultPreferOrigin);
-                [$to, $poTo]     = $this->remapVerseRef($segment->to, $defaultPreferOrigin);
+                [$to ]           = $this->remapVerseRef($segment->to, $defaultPreferOrigin);
                 $segments[]      = new VerseRange($from, $to);
                 $origins[]       = $poFrom;
             }

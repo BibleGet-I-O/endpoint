@@ -258,7 +258,7 @@ final class AstValidator
             if ($bookidx === false) {
                 continue;
             }
-            $chapterLimit = $index['chapter_limit'][$bookidx];
+            $chapterLimit = $index['chapter_limit'][$bookidx] ?? 0;
             if ($chapter > $chapterLimit) {
                 $this->errors[] = new ValidationError(
                     sprintf(
@@ -297,7 +297,7 @@ final class AstValidator
                 // Already reported by validateChapter
                 continue;
             }
-            $verseLimits = $index['verse_limit'][$bookidx];
+            $verseLimits = $index['verse_limit'][$bookidx] ?? [];
             $verseLimit  = $verseLimits[$chapter - 1] ?? 0;
             if ($verse > $verseLimit) {
                 $this->errors[] = new ValidationError(

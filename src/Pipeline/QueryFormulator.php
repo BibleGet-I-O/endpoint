@@ -44,7 +44,7 @@ class QueryFormulator
         foreach ($this->ctx->REQUESTED_VERSIONS as $version) {
             foreach ($this->ctx->parsedQueries as $i => $parsedQuery) {
                 // Check if this version was validated for this query
-                if (!in_array($version, $this->ctx->validatedVariants[$i], true)) {
+                if (!in_array($version, $this->ctx->validatedVariants[$i] ?? [], true)) {
                     continue;
                 }
 
