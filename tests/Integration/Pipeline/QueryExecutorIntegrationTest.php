@@ -164,10 +164,10 @@ class QueryExecutorIntegrationTest extends DatabaseTestCase
     {
         $this->executePipeline('Genesis1,1');
 
-        $mysqli = $this->getConnection();
-        $result = $mysqli->query('SELECT good FROM counter');
-        self::assertInstanceOf(\mysqli_result::class, $result);
-        $row = $result->fetch_assoc();
+        $pdo    = $this->getConnection();
+        $result = $pdo->query('SELECT good FROM counter');
+        self::assertInstanceOf(\PDOStatement::class, $result);
+        $row = $result->fetch();
         self::assertNotNull($row);
         self::assertGreaterThan(0, (int) $row['good']);
     }
@@ -178,10 +178,10 @@ class QueryExecutorIntegrationTest extends DatabaseTestCase
     {
         $this->executePipeline('Genesis1,1');
 
-        $mysqli = $this->getConnection();
-        $result = $mysqli->query('SELECT COUNT(*) AS cnt FROM requests_log__' . date('Y'));
-        self::assertInstanceOf(\mysqli_result::class, $result);
-        $row = $result->fetch_assoc();
+        $pdo    = $this->getConnection();
+        $result = $pdo->query('SELECT COUNT(*) AS cnt FROM requests_log__' . date('Y'));
+        self::assertInstanceOf(\PDOStatement::class, $result);
+        $row = $result->fetch();
         self::assertNotNull($row);
         self::assertGreaterThan(0, (int) $row['cnt']);
     }

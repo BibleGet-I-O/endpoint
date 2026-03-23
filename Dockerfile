@@ -1,6 +1,9 @@
 FROM php:8.4-apache
 
-RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+RUN apt-get update && apt-get install -y libpq-dev \
+    && docker-php-ext-install pdo pdo_pgsql \
+    && docker-php-ext-enable pdo_pgsql \
+    && rm -rf /var/lib/apt/lists/*
 RUN a2enmod rewrite
 
 # Apache serves from /var/www/html/public, rewrite rules handle routing

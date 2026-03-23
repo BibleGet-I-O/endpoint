@@ -44,15 +44,15 @@ abstract class DatabaseTestCase extends TestCase
     protected function tearDown(): void
     {
         // Clean transient tables using the year captured at setUp
-        $mysqli = Connection::getConnection();
-        $mysqli->query('UPDATE counter SET good = 0, bad = 0');
-        $mysqli->query('DELETE FROM requests_log__' . $this->testYear);
-        $mysqli->query('DELETE FROM curl_error');
+        $pdo = Connection::getConnection();
+        $pdo->exec('UPDATE counter SET good = 0, bad = 0');
+        $pdo->exec('DELETE FROM requests_log__' . $this->testYear);
+        $pdo->exec('DELETE FROM curl_error');
 
         Connection::reset();
     }
 
-    protected function getConnection(): \mysqli
+    protected function getConnection(): \PDO
     {
         return Connection::getConnection();
     }

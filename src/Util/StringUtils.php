@@ -44,4 +44,51 @@ class StringUtils
     {
         return self::toProperCase(preg_replace('/\s+/', '', trim($str)) ?? trim($str));
     }
+
+    /**
+     * Safely convert a mixed database value to string.
+     * PDO returns column values as string|null; this handles the mixed type at PHPStan level 10.
+     */
+    public static function asString(mixed $value, string $default = ''): string
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+        return $default;
+    }
+
+    /**
+     * Safely convert a mixed database value to int.
+     * PDO returns column values as string|null; this handles the mixed type at PHPStan level 10.
+     */
+    public static function asInt(mixed $value, int $default = 0): int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+        return $default;
+    }
+
+    /**
+     * Convert a mixed-keyed array (from PDO fetch) to a string-keyed associative array.
+     * PDO FETCH_ASSOC always returns string keys, but PHPStan infers array<mixed, mixed>
+     * when the fetch result is narrowed from mixed via is_array().
+     *
+     * @param array<mixed, mixed> $row
+     * @return array<string, mixed>
+     */
+    public static function toAssocArray(array $row): array
+    {
+        $result = [];
+        foreach ($row as $key => $value) {
+            $result[is_string($key) ? $key : (string) $key] = $value;
+        }
+        return $result;
+    }
 }

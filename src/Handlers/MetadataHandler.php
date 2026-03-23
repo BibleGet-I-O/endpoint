@@ -30,7 +30,7 @@ class MetadataHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
-        $mysqli = Connection::getConnection();
+        $pdo = Connection::getConnection();
 
         // Determine metadata sub-resource from path or legacy `query` param
         $subResourceRaw = $this->requestPathParams[0] ?? $params['query'] ?? '';
@@ -38,18 +38,18 @@ class MetadataHandler extends AbstractHandler
 
         switch ($subResource) {
             case 'biblebooks':
-                $data = $this->getBibleBooks($mysqli);
+                $data = $this->getBibleBooks($pdo);
                 break;
             case 'bibleversions':
-                $data = $this->getBibleVersions($mysqli, 'BIBLE');
+                $data = $this->getBibleVersions($pdo, 'BIBLE');
                 break;
             case 'literatureversions':
-                $data = $this->getBibleVersions($mysqli, 'LITERATURE');
+                $data = $this->getBibleVersions($pdo, 'LITERATURE');
                 break;
             case 'versionindex':
                 $versionsRaw = $params['versions'] ?? '';
                 $versionsStr = is_string($versionsRaw) ? $versionsRaw : '';
-                $data        = $this->getVersionIndex($mysqli, $versionsStr);
+                $data        = $this->getVersionIndex($pdo, $versionsStr);
                 break;
             default:
                 throw new NotFoundException('Unknown metadata query: ' . $subResource);
@@ -73,30 +73,38 @@ class MetadataHandler extends AbstractHandler
     /**
      * @return array<string, mixed>
      */
-    private function getBibleBooks(\mysqli $mysqli): array
+    private function getBibleBooks(\PDO $pdo): array
     {
         $biblebooks = [];
-        $result1    = $mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY BOOK');
-        if (!$result1 instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+        try {
+            $result1 = $pdo->query('SELECT * FROM biblebooks_fullname ORDER BY "BOOK"');
+        } catch (\PDOException $e) {
+            throw new InternalServerErrorException('Database error: ' . $e->getMessage());
+        }
+        if ($result1 === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
 
-        $cols  = mysqli_num_fields($result1);
+        $cols  = $result1->columnCount();
         $names = [];
-        $finfo = mysqli_fetch_fields($result1);
-        foreach ($finfo as $val) {
-            $names[] = $val->name;
+        for ($i = 0; $i < $cols; $i++) {
+            $meta    = $result1->getColumnMeta($i);
+            $names[] = $meta !== false ? $meta['name'] : '';
         }
 
-        $result2 = $mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY BOOK');
-        if (!$result2 instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+        try {
+            $result2 = $pdo->query('SELECT * FROM biblebooks_abbr ORDER BY "BOOK"');
+        } catch (\PDOException $e) {
+            throw new InternalServerErrorException('Database error: ' . $e->getMessage());
+        }
+        if ($result2 === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
 
         $n = 0;
-        while ($row1 = mysqli_fetch_assoc($result1)) {
-            $row2 = mysqli_fetch_assoc($result2);
-            if ($row2 === null || $row2 === false) {
+        while (is_array($row1 = $result1->fetch(\PDO::FETCH_ASSOC))) {
+            $row2 = $result2->fetch(\PDO::FETCH_ASSOC);
+            if (!is_array($row2)) {
                 throw new InternalServerErrorException('biblebooks_abbr has fewer rows than biblebooks_fullname.');
             }
             if (( $row1['BOOK'] ?? null ) !== ( $row2['BOOK'] ?? null )) {
@@ -104,8 +112,8 @@ class MetadataHandler extends AbstractHandler
             }
             $biblebooks[$n] = [];
             for ($x = 0; $x < $cols - 1; $x++) {
-                $val1               = (string) ( $row1[$names[$x + 1]] ?? '' );
-                $val2               = (string) ( $row2[$names[$x + 1]] ?? '' );
+                $val1               = StringUtils::asString($row1[$names[$x + 1]] ?? '');
+                $val2               = StringUtils::asString($row2[$names[$x + 1]] ?? '');
                 $temparray          = [$val1, $val2];
                 $arr1               = explode(' | ', $val1);
                 $booknames          = array_map(fn($s) => StringUtils::toProperCase(trim($s)), $arr1);
@@ -129,36 +137,36 @@ class MetadataHandler extends AbstractHandler
     /**
      * @return array<string, mixed>
      */
-    private function getBibleVersions(\mysqli $mysqli, string $type = ''): array
+    private function getBibleVersions(\PDO $pdo, string $type = ''): array
     {
         $validversions          = [];
         $validversions_fullname = [];
         $copyrightversions      = [];
 
-        $querystring = 'SELECT * FROM versions_available';
         if ($type !== '') {
-            $querystring .= " WHERE type='" . $mysqli->real_escape_string($type) . "'";
+            $stmt = $pdo->prepare('SELECT * FROM versions_available WHERE type = ? ORDER BY sigla');
+            $stmt->execute([$type]);
+        } else {
+            $stmt = $pdo->query('SELECT * FROM versions_available ORDER BY sigla');
         }
-        $querystring .= ' ORDER BY sigla';
-
-        $result = $mysqli->query($querystring);
-        if (!$result instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+        if ($stmt === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
 
-        while ($row = $result->fetch_assoc()) {
-            $info                                           = [
-                $row['fullname'],
-                $row['year'],
-                $row['language'],
-                $row['imprimatur'],
-                $row['canon'],
-                $row['copyright_holder'],
-                $row['notes'],
+        while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
+            $sigla                          = StringUtils::asString($row['sigla']);
+            $info                           = [
+                StringUtils::asString($row['fullname']),
+                StringUtils::asString($row['year']),
+                StringUtils::asString($row['language']),
+                StringUtils::asString($row['imprimatur']),
+                StringUtils::asString($row['canon']),
+                StringUtils::asString($row['copyright_holder']),
+                StringUtils::asString($row['notes']),
             ];
-            $validversions_fullname[(string) $row['sigla']] = implode('|', $info);
-            $validversions[]                                = $row['sigla'];
-            if ((int) $row['copyright'] === 1) {
+            $validversions_fullname[$sigla] = implode('|', $info);
+            $validversions[]                = $row['sigla'];
+            if (StringUtils::asInt($row['copyright']) === 1) {
                 $copyrightversions[] = $row['sigla'];
             }
         }
@@ -174,7 +182,7 @@ class MetadataHandler extends AbstractHandler
     /**
      * @return array<string, mixed>
      */
-    private function getVersionIndex(\mysqli $mysqli, string $versionsStr): array
+    private function getVersionIndex(\PDO $pdo, string $versionsStr): array
     {
         if ($versionsStr === '') {
             throw new ValidationException('The versions parameter is required for versionindex queries.');
@@ -182,11 +190,11 @@ class MetadataHandler extends AbstractHandler
 
         // Get valid versions
         $allValid = [];
-        $result   = $mysqli->query('SELECT sigla FROM versions_available');
-        if (!$result instanceof \mysqli_result) {
-            throw new InternalServerErrorException('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
+        $result   = $pdo->query('SELECT sigla FROM versions_available');
+        if ($result === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
-        while ($row = $result->fetch_assoc()) {
+        while (is_array($row = $result->fetch(\PDO::FETCH_ASSOC))) {
             $allValid[] = $row['sigla'];
         }
 
@@ -201,16 +209,20 @@ class MetadataHandler extends AbstractHandler
                 continue;
             }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
-            $result        = $mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
-            if (!$result instanceof \mysqli_result) {
+            try {
+                $result = $pdo->query('SELECT * FROM "' . $variant . '_idx" ORDER BY book');
+            } catch (\PDOException) {
                 throw new InternalServerErrorException('An internal database error occurred.');
             }
-            while ($row = $result->fetch_assoc()) {
+            if ($result === false) {
+                throw new InternalServerErrorException('An internal database error occurred.');
+            }
+            while (is_array($row = $result->fetch(\PDO::FETCH_ASSOC))) {
                 $abbreviations[] = $row['abbrev'];
                 $bbbooks[]       = $row['fullname'];
-                $chapter_limit[] = (int) $row['chapters'];
-                $verse_limit[]   = array_map('intval', explode(',', (string) $row['verses_last']));
-                $book_num[]      = (int) $row['book'];
+                $chapter_limit[] = StringUtils::asInt($row['chapters']);
+                $verse_limit[]   = array_map('intval', explode(',', StringUtils::asString($row['verses_last'])));
+                $book_num[]      = StringUtils::asInt($row['book']);
             }
             $indexes[$variant] = [
                 'abbreviations' => $abbreviations,

@@ -9,11 +9,10 @@ use BibleGet\Tests\Integration\DatabaseTestCase;
 
 class ConnectionTest extends DatabaseTestCase
 {
-    public function testGetConnectionReturnsMysqli(): void
+    public function testGetConnectionReturnsPdo(): void
     {
-        $mysqli = Connection::getConnection();
-        self::assertInstanceOf(\mysqli::class, $mysqli);
-        self::assertSame(0, $mysqli->connect_errno);
+        $pdo = Connection::getConnection();
+        self::assertInstanceOf(\PDO::class, $pdo);
     }
 
     public function testGetConnectionReturnsSingleton(): void
@@ -38,9 +37,10 @@ class ConnectionTest extends DatabaseTestCase
         self::assertIsArray($result);
     }
 
-    public function testCharsetIsUtf8mb4(): void
+    public function testClientEncodingIsUtf8(): void
     {
-        $mysqli = Connection::getConnection();
-        self::assertSame('utf8mb4', $mysqli->character_set_name());
+        $pdo      = Connection::getConnection();
+        $encoding = $pdo->query('SHOW client_encoding')->fetchColumn();
+        self::assertSame('UTF8', $encoding);
     }
 }

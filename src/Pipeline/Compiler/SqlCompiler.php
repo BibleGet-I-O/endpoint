@@ -40,7 +40,7 @@ final class SqlCompiler
         array $copyrightVersions,
         array $requestedCopyrightedVersions,
     ): array {
-        $sqlBase  = 'SELECT * FROM ' . $version . ' WHERE book = ' . $query->book;
+        $sqlBase  = 'SELECT * FROM "' . $version . '" WHERE book = ' . $query->book;
         $queries  = [];
         $isCopied = in_array($version, $copyrightVersions)
             || in_array($version, $requestedCopyrightedVersions);
@@ -58,7 +58,7 @@ final class SqlCompiler
                 ? ( $preferOrigin[$i] ?? '' )
                 : $preferOrigin;
             $sql          .= $segmentOrigin;
-            $sql          .= ' ORDER BY verseID';
+            $sql          .= ' ORDER BY "verseID"';
 
             if ($isCopied) {
                 $sql .= ' LIMIT 30';

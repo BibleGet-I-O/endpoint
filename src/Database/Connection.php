@@ -8,15 +8,15 @@ use BibleGet\Api\Http\Exception\InternalServerErrorException;
 
 class Connection
 {
-    private static ?\mysqli $instance = null;
+    private static ?\PDO $instance = null;
 
     /** @var string[] */
     private static array $whitelistedDomainsIPs = [];
 
     /**
-     * Get (or create) the shared mysqli connection.
+     * Get (or create) the shared PDO connection.
      */
-    public static function getConnection(): \mysqli
+    public static function getConnection(): \PDO
     {
         if (self::$instance !== null) {
             return self::$instance;
@@ -36,20 +36,28 @@ class Connection
         $dbpass = DBPASS;
         /** @var string $database */
         $database = DATABASE;
-        $mysqli   = new \mysqli($server, $dbuser, $dbpass, $database);
+        $portRaw  = defined('DBPORT') ? DBPORT : 5432;
+        $port     = is_int($portRaw) ? $portRaw : ( is_numeric($portRaw) ? (int) $portRaw : 5432 );
 
-        if ($mysqli->connect_errno) {
+        try {
+            $pdo = new \PDO(
+                "pgsql:host={$server};port={$port};dbname={$database}",
+                $dbuser,
+                $dbpass,
+                [
+                    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+                    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+                    \PDO::ATTR_EMULATE_PREPARES   => false,
+                ]
+            );
+        } catch (\PDOException $e) {
             throw new InternalServerErrorException(
-                'Failed to connect to MySQL: (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error
+                'Failed to connect to database: ' . $e->getMessage()
             );
         }
 
-        if (!$mysqli->set_charset('utf8mb4')) {
-            throw new InternalServerErrorException(
-                'Failed to set database charset: ' . $mysqli->error
-            );
-        }
-        self::$instance = $mysqli;
+        $pdo->exec("SET client_encoding = 'UTF8'");
+        self::$instance = $pdo;
 
         if (defined('WHITELISTED_DOMAINS_IPS') && is_array(WHITELISTED_DOMAINS_IPS)) {
             /** @var array<string> $wl */
@@ -73,9 +81,6 @@ class Connection
      */
     public static function reset(): void
     {
-        if (self::$instance !== null && self::$instance->thread_id) {
-            self::$instance->close();
-        }
         self::$instance              = null;
         self::$whitelistedDomainsIPs = [];
     }

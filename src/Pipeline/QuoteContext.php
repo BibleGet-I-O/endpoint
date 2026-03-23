@@ -51,7 +51,7 @@ class QuoteContext
         'preferorigin'   => '',
     ];
 
-    public \mysqli $mysqli;
+    public \PDO $pdo;
     public LoggerInterface $logger;
     public string $detectedNotation = 'ENGLISH';
     /** @var array<string> */
@@ -119,7 +119,7 @@ class QuoteContext
      */
     public function initialize(): void
     {
-        $this->mysqli                = Connection::getConnection();
+        $this->pdo                   = Connection::getConnection();
         $this->WhitelistedDomainsIPs = Connection::getWhitelistedDomainsIPs();
         $this->populateVersionsInfo();
         $this->prepareBibleBooks();
@@ -145,15 +145,19 @@ class QuoteContext
 
     public function incrementBadQueryCount(): void
     {
-        if ($this->mysqli->query('UPDATE counter SET bad = bad + 1') === false) {
-            $this->logger->error('Failed to increment bad query counter: ' . $this->mysqli->error);
+        try {
+            $this->pdo->exec('UPDATE counter SET bad = bad + 1');
+        } catch (\PDOException $e) {
+            $this->logger->error('Failed to increment bad query counter: ' . $e->getMessage());
         }
     }
 
     public function incrementGoodQueryCount(): void
     {
-        if ($this->mysqli->query('UPDATE counter SET good = good + 1') === false) {
-            $this->logger->error('Failed to increment good query counter: ' . $this->mysqli->error);
+        try {
+            $this->pdo->exec('UPDATE counter SET good = good + 1');
+        } catch (\PDOException $e) {
+            $this->logger->error('Failed to increment good query counter: ' . $e->getMessage());
         }
     }
 
@@ -307,30 +311,35 @@ class QuoteContext
 
     private function populateVersionsInfo(): void
     {
-        $result = $this->mysqli->query("SELECT * FROM versions_available WHERE type = 'BIBLE'");
-        if (!$result instanceof \mysqli_result) {
-            $this->logger->error('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+        try {
+            $result = $this->pdo->query("SELECT * FROM versions_available WHERE type = 'BIBLE'");
+        } catch (\PDOException $e) {
+            $this->logger->error('Database error: ' . $e->getMessage());
             throw new InternalServerErrorException('An internal database error occurred.');
         }
-        while ($row = mysqli_fetch_assoc($result)) {
-            $output_info_array                                     = [
-                $row['fullname'],
-                $row['year'],
-                $row['language'],
-                $row['imprimatur'],
-                $row['canon'],
-                $row['copyright_holder'],
-                $row['notes'],
+        if ($result === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        while (is_array($row = $result->fetch(\PDO::FETCH_ASSOC))) {
+            $sigla                                 = StringUtils::asString($row['sigla']);
+            $output_info_array                     = [
+                StringUtils::asString($row['fullname']),
+                StringUtils::asString($row['year']),
+                StringUtils::asString($row['language']),
+                StringUtils::asString($row['imprimatur']),
+                StringUtils::asString($row['canon']),
+                StringUtils::asString($row['copyright_holder']),
+                StringUtils::asString($row['notes']),
             ];
-            $this->VALID_VERSIONS[]                                = (string) $row['sigla'];
-            $this->VALID_VERSIONS_FULLNAME[(string) $row['sigla']] = implode('|', $output_info_array);
-            if ((int) $row['copyright'] === 1) {
-                $this->COPYRIGHT_VERSIONS[] = (string) $row['sigla'];
+            $this->VALID_VERSIONS[]                = $sigla;
+            $this->VALID_VERSIONS_FULLNAME[$sigla] = implode('|', $output_info_array);
+            if (StringUtils::asInt($row['copyright']) === 1) {
+                $this->COPYRIGHT_VERSIONS[] = $sigla;
             }
             if ($row['canon'] === 'CATHOLIC') {
-                $this->CATHOLIC_VERSIONS[] = (string) $row['sigla'];
+                $this->CATHOLIC_VERSIONS[] = $sigla;
             } elseif ($row['canon'] === 'PROTESTANT') {
-                $this->PROTESTANT_VERSIONS[] = (string) $row['sigla'];
+                $this->PROTESTANT_VERSIONS[] = $sigla;
             }
         }
     }
@@ -343,19 +352,21 @@ class QuoteContext
                 throw new ValidationException('Invalid version identifier format: ' . $variant);
             }
             $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
-            $result        = $this->mysqli->query('SELECT * FROM ' . $variant . '_idx ORDER BY book');
-            if ($result === false) {
-                $this->logger->error('Failed to load index for version ' . $variant . ': ' . $this->mysqli->error);
+            try {
+                $result = $this->pdo->query('SELECT * FROM "' . $variant . '_idx" ORDER BY book');
+            } catch (\PDOException $e) {
+                $this->logger->error('Failed to load index for version ' . $variant . ': ' . $e->getMessage());
                 throw new InternalServerErrorException('An internal database error occurred.');
             }
-            if ($result instanceof \mysqli_result) {
-                while ($row = $result->fetch_assoc()) {
-                    $abbreviations[] = (string) $row['abbrev'];
-                    $bbbooks[]       = (string) $row['fullname'];
-                    $chapter_limit[] = (int) $row['chapters'];
-                    $verse_limit[]   = array_map('intval', explode(',', (string) $row['verses_last']));
-                    $book_num[]      = (int) $row['book'];
-                }
+            if ($result === false) {
+                throw new InternalServerErrorException('An internal database error occurred.');
+            }
+            while (is_array($row = $result->fetch(\PDO::FETCH_ASSOC))) {
+                $abbreviations[] = StringUtils::asString($row['abbrev']);
+                $bbbooks[]       = StringUtils::asString($row['fullname']);
+                $chapter_limit[] = StringUtils::asInt($row['chapters']);
+                $verse_limit[]   = array_map('intval', explode(',', StringUtils::asString($row['verses_last'])));
+                $book_num[]      = StringUtils::asInt($row['book']);
             }
             $indexes[$variant]['abbreviations'] = $abbreviations;
             $indexes[$variant]['biblebooks']    = $bbbooks;
@@ -368,29 +379,37 @@ class QuoteContext
 
     private function prepareBibleBooks(): void
     {
-        $result1 = $this->mysqli->query('SELECT * FROM biblebooks_fullname ORDER BY BOOK');
-        if (!$result1 instanceof \mysqli_result) {
-            $this->logger->error('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+        try {
+            $result1 = $this->pdo->query('SELECT * FROM biblebooks_fullname ORDER BY "BOOK"');
+        } catch (\PDOException $e) {
+            $this->logger->error('Database error: ' . $e->getMessage());
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        if ($result1 === false) {
             throw new InternalServerErrorException('An internal database error occurred.');
         }
 
-        $cols  = mysqli_num_fields($result1);
+        $cols  = $result1->columnCount();
         $names = [];
-        $finfo = mysqli_fetch_fields($result1);
-        foreach ($finfo as $val) {
-            $names[] = $val->name;
+        for ($i = 0; $i < $cols; $i++) {
+            $meta    = $result1->getColumnMeta($i);
+            $names[] = $meta !== false ? $meta['name'] : '';
         }
 
-        $result2 = $this->mysqli->query('SELECT * FROM biblebooks_abbr ORDER BY BOOK');
-        if (!$result2 instanceof \mysqli_result) {
-            $this->logger->error('MySQL ERROR ' . $this->mysqli->errno . ': ' . $this->mysqli->error);
+        try {
+            $result2 = $this->pdo->query('SELECT * FROM biblebooks_abbr ORDER BY "BOOK"');
+        } catch (\PDOException $e) {
+            $this->logger->error('Database error: ' . $e->getMessage());
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        if ($result2 === false) {
             throw new InternalServerErrorException('An internal database error occurred.');
         }
 
         $n = 0;
-        while ($row1 = mysqli_fetch_assoc($result1)) {
-            $row2 = mysqli_fetch_assoc($result2);
-            if ($row2 === null || $row2 === false) {
+        while (is_array($row1 = $result1->fetch(\PDO::FETCH_ASSOC))) {
+            $row2 = $result2->fetch(\PDO::FETCH_ASSOC);
+            if (!is_array($row2)) {
                 throw new InternalServerErrorException('biblebooks_abbr has fewer rows than biblebooks_fullname.');
             }
             if (( $row1['BOOK'] ?? null ) !== ( $row2['BOOK'] ?? null )) {
@@ -398,8 +417,8 @@ class QuoteContext
             }
             $this->BIBLEBOOKS[$n] = [];
             for ($x = 1; $x < $cols; $x++) {
-                $val1                     = (string) ( $row1[$names[$x]] ?? '' );
-                $val2                     = (string) ( $row2[$names[$x]] ?? '' );
+                $val1                     = StringUtils::asString($row1[$names[$x]] ?? '');
+                $val2                     = StringUtils::asString($row2[$names[$x]] ?? '');
                 $temparray                = [$val1, $val2];
                 $arr1                     = explode(' | ', $val1);
                 $booknames                = array_map([self::class, 'normalizeBibleBook'], $arr1);
@@ -423,8 +442,12 @@ class QuoteContext
                     $this->addErrorMessage('Invalid version identifier format: <' . $version . '>');
                     continue;
                 }
-                $idxCheck = $this->mysqli->query('SELECT 1 FROM ' . $version . '_idx LIMIT 1');
-                if (!$idxCheck instanceof \mysqli_result) {
+                try {
+                    $idxCheck = $this->pdo->query('SELECT 1 FROM "' . $version . '_idx" LIMIT 1');
+                } catch (\PDOException) {
+                    $idxCheck = false;
+                }
+                if ($idxCheck === false) {
                     $this->addErrorMessage('No index table found for forced version: <' . $version . '>');
                     continue;
                 }

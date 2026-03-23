@@ -6,3 +6,4 @@ define('SERVER', '127.0.0.1');
 define('DBUSER', 'bibleget_test');
 define('DBPASS', 'bibleget_test');
 define('DATABASE', 'bibleget_test');
+define('DBPORT', 5432);
