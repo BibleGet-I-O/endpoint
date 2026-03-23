@@ -438,7 +438,7 @@ class QuoteContext
             : ['CEI2008'];
 
         foreach ($temp as $version) {
-            if (isset($this->DATA['forceversion']) && $this->DATA['forceversion'] === 'true') {
+            if (isset($this->DATA['forceversion']) && filter_var($this->DATA['forceversion'], FILTER_VALIDATE_BOOLEAN)) {
                 if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
                     $this->addErrorMessage('Invalid version identifier format: <' . $version . '>');
                     continue;
@@ -461,7 +461,7 @@ class QuoteContext
                     continue;
                 }
             }
-            if (isset($this->DATA['forcecopyright']) && $this->DATA['forcecopyright'] === 'true') {
+            if (isset($this->DATA['forcecopyright']) && filter_var($this->DATA['forcecopyright'], FILTER_VALIDATE_BOOLEAN)) {
                 $this->REQUESTED_COPYRIGHTED_VERSIONS[] = $version;
             }
         }
