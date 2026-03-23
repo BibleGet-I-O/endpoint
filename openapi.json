@@ -613,6 +613,262 @@
                     }
                 }
             }
+        },
+        "/search/keyword": {
+            "get": {
+                "summary": "Text-based keyword search with stemming support",
+                "description": "Search Bible verses by keyword with configurable match modes. The `fulltext` mode (default) uses language-aware stemming so that e.g. searching 'forgive' also matches 'forgiveness' and 'forgiven'. The `exact` mode uses regex word-boundary matching with no minimum keyword length. The `boolean` mode supports explicit operators like `&` (AND), `|` (OR), and `!` (NOT).",
+                "operationId": "keywordSearchByGET",
+                "tags": [
+                    "SearchAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "keyword",
+                        "in": "query",
+                        "description": "The keyword or expression to search for",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "creation": {
+                                "summary": "Search for verses containing 'creation' (with stemming)",
+                                "value": "creation"
+                            }
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "description": "The sigla of the Bible version to search within",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "match",
+                        "in": "query",
+                        "description": "Matching strategy. `fulltext` (default) uses language-aware stemming. `exact` uses regex word-boundary match (no min length). `boolean` supports AND/OR/NOT operators.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "fulltext",
+                                "exact",
+                                "boolean"
+                            ],
+                            "default": "fulltext"
+                        }
+                    },
+                    {
+                        "name": "exactmatch",
+                        "in": "query",
+                        "description": "Legacy parameter. When `true`, equivalent to `match=exact`. The `match` parameter takes precedence if both are provided.",
+                        "required": false,
+                        "deprecated": true,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/return"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search results",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KeywordSearchResponseJSON"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KeywordSearchResponseXML"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error (missing/invalid parameters)"
+                    }
+                }
+            }
+        },
+        "/search/semantic": {
+            "get": {
+                "summary": "Conceptual search using natural language",
+                "description": "Search Bible verses by concept rather than exact keywords. Accepts a natural language query (e.g. 'passages about forgiveness after betrayal'), embeds it into a vector, and finds verses with similar meaning using cosine similarity. Requires the embedding microservice to be running.",
+                "operationId": "semanticSearchByGET",
+                "tags": [
+                    "SearchAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "description": "Natural language search query describing the concept to search for",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "forgiveness": {
+                                "summary": "Find passages about forgiveness",
+                                "value": "passages about forgiveness after betrayal"
+                            },
+                            "creation": {
+                                "summary": "Find passages about creation",
+                                "value": "God creating the world and everything in it"
+                            }
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "description": "The sigla of the Bible version to search within",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Maximum number of results to return",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "threshold",
+                        "in": "query",
+                        "description": "Minimum similarity score (0.0–1.0) to include in results. Higher values return fewer but more relevant results.",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "format": "float",
+                            "default": 0.0,
+                            "minimum": 0.0,
+                            "maximum": 1.0
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/return"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Semantic search results ranked by similarity",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SemanticSearchResponseJSON"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error (missing/invalid parameters)"
+                    },
+                    "503": {
+                        "description": "Embedding service unavailable. Use `/search/keyword` for text-based search as a fallback."
+                    }
+                }
+            }
+        },
+        "/search/similar": {
+            "get": {
+                "summary": "Find thematically related passages by verse reference",
+                "description": "Given a specific verse reference, finds other passages with similar themes or content using pre-computed embeddings. No embedding service call is needed at query time — similarity is computed directly from stored vectors.",
+                "operationId": "similarSearchByGET",
+                "tags": [
+                    "SearchAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "reference",
+                        "in": "query",
+                        "description": "Bible verse reference in the format BookChapter:Verse (e.g. Gen1:1, Ps51:3, 1Sam3:4)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "genesis": {
+                                "summary": "Find passages similar to Genesis 1:1",
+                                "value": "Gen1:1"
+                            },
+                            "psalm": {
+                                "summary": "Find passages similar to Psalm 51:3",
+                                "value": "Ps51:3"
+                            }
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "description": "The sigla of the Bible version to search within",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Maximum number of similar passages to return",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "crossversion",
+                        "in": "query",
+                        "description": "When true, search for similar passages across all available Bible versions, not just the specified one",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/return"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Similar passages ranked by similarity",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SimilarSearchResponseJSON"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced verse not found or has no embedding"
+                    },
+                    "422": {
+                        "description": "Validation error (missing/invalid parameters or unknown book abbreviation)"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -14389,6 +14645,109 @@
             "KeywordSearchResponseHTML": {
                 "type": "string",
                 "example": "<html><head></head><body><div class=\"results\" id=\"results\"><table id=\"SearchResultsTbl\" class=\"SearchResultsTbl\"><tbody><tr><td>1</td><td>2</td><td>1Maccabees</td><td>9</td><td></td><td>7</td><td></td><td></td><td>When Judas saw that his army was melting away just as the battle was imminent, he was brokenhearted, because he had no time to gather them together. </td><td></td><td></td><td></td><td>NABRE</td><td>1Mc</td><td>19</td><td>20</td><td>1Mc9:7</td></tr><tr><td>1</td><td>3</td><td>Psalms</td><td>34</td><td></td><td>19</td><td></td><td></td><td>&lt;po&gt;The L&lt;sm&gt;ORD&lt;/sm&gt; is close to the brokenhearted,&lt;/po&gt;&lt;poi&gt;saves those whose spirit is crushed.&lt;/poi&gt;</td><td></td><td></td><td></td><td>NABRE</td><td>Ps</td><td>22</td><td>23</td><td>Ps34:19</td></tr><tr><td>1</td><td>3</td><td>Psalms</td><td>109</td><td></td><td>16</td><td></td><td></td><td>&lt;po&gt;For he did not remember to show mercy,&lt;/po&gt;&lt;poi&gt;but hounded the wretched poor&lt;/poi&gt;&lt;poi&gt;and brought death to the brokenhearted.&lt;/poi&gt;</td><td></td><td></td><td></td><td>NABRE</td><td>Ps</td><td>22</td><td>23</td><td>Ps109:16</td></tr><tr><td>1</td><td>3</td><td>Psalms</td><td>147</td><td></td><td>3</td><td></td><td></td><td>&lt;po&gt;Healing the brokenhearted,&lt;/po&gt;&lt;poi&gt;and binding up their wounds.&lt;/poi&gt;</td><td></td><td></td><td></td><td>NABRE</td><td>Ps</td><td>22</td><td>23</td><td>Ps147:3</td></tr><tr><td>1</td><td>4</td><td>Isaiah</td><td>61</td><td></td><td>1</td><td></td><td></td><td>&lt;pof&gt; The spirit of the Lord G&lt;sm&gt;OD&lt;/sm&gt; is upon me,&lt;/pof&gt;&lt;poi&gt;because the L&lt;sm&gt;ORD&lt;/sm&gt; has anointed me;&lt;/poi&gt;&lt;po&gt;He has sent me to bring good news to the afflicted,&lt;/po&gt;&lt;poi&gt;to bind up the brokenhearted,&lt;/poi&gt;&lt;po&gt;To proclaim liberty to the captives,&lt;/po&gt;&lt;poi&gt;release to the prisoners,&lt;/poi&gt;</td><td></td><td></td><td></td><td>NABRE</td><td>Is</td><td>28</td><td>29</td><td>Is61:1</td></tr></tbody></table></div><div class=\"errors\" id=\"errors\"></div><input type=\"hidden\" name=\"ENDPOINT_VERSION\" value=\"3.0\"></body></html>"
+            },
+            "SemanticSearchResultItem": {
+                "type": "object",
+                "description": "A verse result from semantic or similar search, including a similarity score",
+                "properties": {
+                    "version": {
+                        "type": "string",
+                        "description": "Bible version sigla"
+                    },
+                    "testament": {
+                        "type": "integer",
+                        "description": "`1` = Old Testament, `2` = New Testament"
+                    },
+                    "section": {
+                        "type": "integer",
+                        "description": "Section of the Bible (1-9)"
+                    },
+                    "book": {
+                        "type": "string",
+                        "description": "Full name of the book"
+                    },
+                    "bookabbrev": {
+                        "type": "string",
+                        "description": "Abbreviated book name"
+                    },
+                    "booknum": {
+                        "type": "integer",
+                        "description": "0-based book index in the version"
+                    },
+                    "univbooknum": {
+                        "type": "string",
+                        "description": "Universal book number (Catholic canon)"
+                    },
+                    "chapter": {
+                        "type": "integer"
+                    },
+                    "verse": {
+                        "type": "integer"
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "The verse text"
+                    },
+                    "similarity": {
+                        "type": "number",
+                        "format": "float",
+                        "description": "Cosine similarity score (0.0–1.0). Higher means more similar.",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    }
+                }
+            },
+            "SemanticSearchResponseJSON": {
+                "type": "object",
+                "properties": {
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SemanticSearchResultItem"
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "info": {
+                        "type": "object",
+                        "properties": {
+                            "ENDPOINT_VERSION": {
+                                "type": "string",
+                                "example": "3.0"
+                            }
+                        }
+                    }
+                }
+            },
+            "SimilarSearchResponseJSON": {
+                "type": "object",
+                "properties": {
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SemanticSearchResultItem"
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "info": {
+                        "type": "object",
+                        "properties": {
+                            "ENDPOINT_VERSION": {
+                                "type": "string",
+                                "example": "3.0"
+                            }
+                        }
+                    }
+                }
             }
         },
         "parameters": {
