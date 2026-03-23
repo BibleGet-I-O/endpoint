@@ -8,6 +8,7 @@ use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
 use BibleGet\Api\Handlers\KeywordSearchHandler;
 use BibleGet\Api\Handlers\SearchHandler;
+use BibleGet\Api\Handlers\SemanticSearchHandler;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
@@ -83,12 +84,14 @@ class Router
                     case 'keyword':
                         $this->handler = new KeywordSearchHandler($subPathParts);
                         break;
+                    case 'semantic':
+                        $this->handler = new SemanticSearchHandler($subPathParts);
+                        break;
                     case '':
                         // Backward-compatible alias: /v3/search → KeywordSearchHandler
                         $this->handler = new SearchHandler($requestPathParts);
                         break;
                     default:
-                        // Future: 'semantic', 'similar' will be added here
                         $protocolVersion = $this->request->getProtocolVersion();
                         $this->handler   = new class ($protocolVersion) implements RequestHandlerInterface {
                             public function __construct(private readonly string $protocolVersion)
