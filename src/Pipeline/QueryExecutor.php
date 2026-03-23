@@ -172,14 +172,18 @@ class QueryExecutor
         if ($this->ipaddress === '') {
             return;
         }
-        $sql  = $this->buildLogUnion('"WHO_IP" = ?::inet AND "WHO_WHEN" > NOW() - INTERVAL \'2 days\'');
+        $sql  = $this->buildLogUnionAggregated(
+            'COUNT(*) AS cnt',
+            '"WHO_IP" = ?::inet AND "WHO_WHEN" > NOW() - INTERVAL \'2 days\'',
+            ''
+        );
         $stmt = $this->ctx->pdo->prepare($sql);
         if ($stmt === false) {
             $this->logger->error('Rate-limit prepare failed');
             throw new InternalServerErrorException('An internal database error occurred.');
         }
         $stmt->execute([$this->ipaddress]);
-        $count = $stmt->rowCount();
+        $count = (int) $stmt->fetchColumn();
 
         if ($count > 100) {
             throw new TooManyRequestsException(
