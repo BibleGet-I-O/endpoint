@@ -1,17 +1,19 @@
 #!/bin/bash
 set -e
 
-# Generate dbcredentials.php from environment variables if not already present
-CRED_FILE="/var/www/html/dbcredentials.php"
-if [ ! -f "$CRED_FILE" ] && [ -n "$DB_HOST" ]; then
-    cat > "$CRED_FILE" <<EOPHP
-<?php
-define('SERVER', '${DB_HOST}');
-define('DBPORT', ${DB_PORT:-5432});
-define('DATABASE', '${DB_NAME}');
-define('DBUSER', '${DB_USER}');
-define('DBPASS', '${DB_PASS}');
-EOPHP
+# Generate .env from Docker environment variables if not already present.
+# The front controller (public/index.php) loads this via phpdotenv.
+ENV_FILE="/var/www/html/.env"
+if [ ! -f "$ENV_FILE" ] && [ -n "$DB_HOST" ]; then
+    cat > "$ENV_FILE" <<EOF
+APP_ENV=${APP_ENV:-production}
+API_BASE_PATH=${API_BASE_PATH:-/v3}
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT:-5432}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASS=${DB_PASS}
+EOF
 fi
 
 exec apache2-foreground "$@"

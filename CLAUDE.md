@@ -103,7 +103,7 @@ All errors throw `ApiException` subclasses (`src/Http/Exception/`), caught by `E
 ### Database
 
 - **PostgreSQL** via PDO (`ext-pdo_pgsql`)
-- Credentials loaded from `dbcredentials.php` (searched at project root and parent directories)
+- Credentials loaded from environment variables (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`) via `vlucas/phpdotenv`
 - Managed by `src/Database/Connection.php` (PDO singleton with `ERRMODE_EXCEPTION` and `FETCH_ASSOC`)
 - Key tables: `versions_available`, `biblebooks_fullname`, `biblebooks_abbr`, `"{VERSION}_idx"`, `"{VERSION}"`, `requests_log__YYYY`
 - IP addresses stored as PostgreSQL native `inet` type

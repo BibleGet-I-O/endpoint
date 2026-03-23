@@ -92,9 +92,7 @@ jobs:
 
       - name: Run server tests
         if: matrix.php == '8.2'
-        run: |
-          cp tests/fixtures/dbcredentials.php dbcredentials.php
-          vendor/bin/phpunit --testsuite Server --testdox --display-warnings
+        run: vendor/bin/phpunit --testsuite Server --testdox --display-warnings
 
       - name: Run tests with coverage
         if: matrix.php == '8.2'

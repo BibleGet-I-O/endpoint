@@ -15,6 +15,9 @@ class Connection
 
     /**
      * Get (or create) the shared PDO connection.
+     *
+     * Reads credentials from environment variables (loaded by phpdotenv in the front controller
+     * or set directly via Docker/CI environment). Required variables: DB_HOST, DB_USER, DB_PASS, DB_NAME.
      */
     public static function getConnection(): \PDO
     {
@@ -22,22 +25,17 @@ class Connection
             return self::$instance;
         }
 
-        self::loadCredentials();
+        $server   = self::env('DB_HOST');
+        $dbuser   = self::env('DB_USER');
+        $dbpass   = self::env('DB_PASS');
+        $database = self::env('DB_NAME');
+        $port     = self::env('DB_PORT', '5432');
 
-        if (!defined('SERVER') || !defined('DBUSER') || !defined('DBPASS') || !defined('DATABASE')) {
-            throw new InternalServerErrorException('Database credentials not found.');
+        if ($server === '' || $dbuser === '' || $database === '') {
+            throw new InternalServerErrorException(
+                'Database credentials not found. Set DB_HOST, DB_USER, DB_PASS, DB_NAME environment variables.'
+            );
         }
-
-        /** @var string $server */
-        $server = SERVER;
-        /** @var string $dbuser */
-        $dbuser = DBUSER;
-        /** @var string $dbpass */
-        $dbpass = DBPASS;
-        /** @var string $database */
-        $database = DATABASE;
-        $portRaw  = defined('DBPORT') ? DBPORT : 5432;
-        $port     = is_int($portRaw) ? $portRaw : ( is_numeric($portRaw) ? (int) $portRaw : 5432 );
 
         try {
             $pdo = new \PDO(
@@ -59,10 +57,11 @@ class Connection
         $pdo->exec("SET client_encoding = 'UTF8'");
         self::$instance = $pdo;
 
-        if (defined('WHITELISTED_DOMAINS_IPS') && is_array(WHITELISTED_DOMAINS_IPS)) {
-            /** @var array<string> $wl */
-            $wl                          = WHITELISTED_DOMAINS_IPS;
-            self::$whitelistedDomainsIPs = $wl;
+        $whitelistRaw = self::env('WHITELISTED_DOMAINS_IPS');
+        if ($whitelistRaw !== '') {
+            self::$whitelistedDomainsIPs = array_filter(
+                array_map('trim', explode(',', $whitelistRaw))
+            );
         }
 
         return self::$instance;
@@ -86,33 +85,17 @@ class Connection
     }
 
     /**
-     * Search for dbcredentials.php up to three directory levels from the public/ entry point.
+     * Read an environment variable from $_ENV, $_SERVER, or getenv().
      */
-    private static function loadCredentials(): void
+    private static function env(string $key, string $default = ''): string
     {
-        // If credentials are already defined (e.g. by test fixtures), skip file search
-        if (defined('SERVER') && defined('DBUSER') && defined('DBPASS') && defined('DATABASE')) {
-            return;
+        if (isset($_ENV[$key]) && is_string($_ENV[$key])) {
+            return $_ENV[$key];
         }
-
-        $dbCredentials = 'dbcredentials.php';
-
-        // Search from the project root (one level up from public/)
-        $baseDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR;
-
-        $searchPaths = [
-            $baseDir . $dbCredentials,
-            dirname($baseDir) . DIRECTORY_SEPARATOR . $dbCredentials,
-            dirname($baseDir, 2) . DIRECTORY_SEPARATOR . $dbCredentials,
-        ];
-
-        foreach ($searchPaths as $path) {
-            if (file_exists($path)) {
-                include_once $path;
-                return;
-            }
+        if (isset($_SERVER[$key]) && is_string($_SERVER[$key])) {
+            return $_SERVER[$key];
         }
-
-        throw new InternalServerErrorException('Database credentials file not found.');
+        $val = getenv($key);
+        return $val !== false ? $val : $default;
     }
 }

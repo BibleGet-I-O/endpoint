@@ -10,3 +10,7 @@ if (!file_exists($autoloaderPath)) {
 }
 
 require_once $autoloaderPath;
+
+// Load .env.test for database credentials and other test configuration
+$dotenv = Dotenv\Dotenv::createImmutable($projectFolder, '.env.test');
+$dotenv->safeLoad();
