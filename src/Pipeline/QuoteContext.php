@@ -147,7 +147,7 @@ class QuoteContext
     public function incrementBadQueryCount(): void
     {
         try {
-            $this->pdo->exec('UPDATE counter SET bad = bad + 1');
+            $this->pdo->exec('UPDATE counter SET bad = bad + 1 WHERE id = 1');
         } catch (\PDOException $e) {
             $this->logger->error('Failed to increment bad query counter: ' . $e->getMessage());
         }
@@ -156,7 +156,7 @@ class QuoteContext
     public function incrementGoodQueryCount(): void
     {
         try {
-            $this->pdo->exec('UPDATE counter SET good = good + 1');
+            $this->pdo->exec('UPDATE counter SET good = good + 1 WHERE id = 1');
         } catch (\PDOException $e) {
             $this->logger->error('Failed to increment good query counter: ' . $e->getMessage());
         }
