@@ -104,9 +104,11 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding   vector(384)
 );
 CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "TEST1_embedding_hnsw" ON "TEST1" USING hnsw (embedding vector_cosine_ops);
 
 INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heavens and the earth.', 1, 1),
@@ -148,9 +150,11 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding   vector(384)
 );
 CREATE INDEX IF NOT EXISTS "TEST2_text_fts" ON "TEST2" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "TEST2_embedding_hnsw" ON "TEST2" USING hnsw (embedding vector_cosine_ops);
 
 INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heaven and the earth.', 1, 1),
@@ -187,9 +191,11 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding   vector(384)
 );
 CREATE INDEX IF NOT EXISTS "VGCL_text_fts" ON "VGCL" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "VGCL_embedding_hnsw" ON "VGCL" USING hnsw (embedding vector_cosine_ops);
 
 -- VGCL Psalm 50 (= Hebrew Psalm 51, "Miserere mei")
 INSERT INTO "VGCL" (book, chapter, verse, text, testament, section) VALUES
@@ -230,9 +236,11 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding   vector(384)
 );
 CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "DRB_embedding_hnsw" ON "DRB" USING hnsw (embedding vector_cosine_ops);
 
 -- DRB Psalm 50 (= Hebrew Psalm 51, "Have mercy")
 INSERT INTO "DRB" (book, chapter, verse, text, testament, section) VALUES

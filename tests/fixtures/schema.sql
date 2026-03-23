@@ -1,5 +1,8 @@
 -- Test database schema for BibleGet endpoint integration tests (PostgreSQL)
 
+-- Enable pgvector for embedding-based semantic search
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Counter table for tracking good/bad queries
 CREATE TABLE IF NOT EXISTS counter (
     id   SMALLINT NOT NULL PRIMARY KEY,
