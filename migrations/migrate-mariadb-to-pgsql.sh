@@ -313,7 +313,7 @@ done
 # Yearly log tables (discovered dynamically)
 for T in $YEARLY_TABLES; do
     M_COUNT=$(maria_sql "SELECT COUNT(*) FROM \`$T\`" 2>/dev/null || echo "N/A")
-    P_COUNT=$(docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -t -A -c "SELECT COUNT(*) FROM $T" 2>/dev/null || echo "N/A")
+    P_COUNT=$(docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -t -A -c "SELECT COUNT(*) FROM \"$T\"" 2>/dev/null || echo "N/A")
     if [ "$M_COUNT" = "$P_COUNT" ]; then
         STATUS="✓"
     else
