@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BibleGet\Api\Services;
 
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
+use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 
 /**
  * Client for the Python embedding microservice.
@@ -95,11 +96,17 @@ class EmbeddingClient
         if ($raw === false) {
             $error = curl_error($ch);
             curl_close($ch);
-            throw new InternalServerErrorException('Embedding service unavailable: ' . $error);
+            throw new ServiceUnavailableException('Embedding service unavailable: ' . $error);
         }
 
         $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        if ($statusCode === 503) {
+            throw new ServiceUnavailableException(
+                'Embedding service temporarily unavailable (HTTP 503)'
+            );
+        }
 
         if ($statusCode !== 200) {
             throw new InternalServerErrorException(
@@ -136,7 +143,7 @@ class EmbeddingClient
         if ($raw === false) {
             $error = curl_error($ch);
             curl_close($ch);
-            throw new InternalServerErrorException('Embedding service unavailable: ' . $error);
+            throw new ServiceUnavailableException('Embedding service unavailable: ' . $error);
         }
 
         curl_close($ch);

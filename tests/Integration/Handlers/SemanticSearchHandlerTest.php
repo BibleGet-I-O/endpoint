@@ -8,6 +8,7 @@ use BibleGet\Api\Handlers\SemanticSearchHandler;
 use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
+use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Services\EmbeddingClient;
 use BibleGet\Tests\Integration\DatabaseTestCase;
@@ -66,6 +67,23 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         $handler  = $this->createHandler();
         $response = $handler->handle(new ServerRequest('OPTIONS', '/v3/search/semantic'));
         self::assertSame(200, $response->getStatusCode());
+    }
+
+    // ── Graceful fallback when embedding service is down ────
+
+    public function testThrows503WithHelpfulMessageWhenServiceDown(): void
+    {
+        $mockClient = $this->createMock(EmbeddingClient::class);
+        $mockClient->method('embed')
+            ->willThrowException(new ServiceUnavailableException('Embedding service unavailable: connection refused'));
+
+        $handler = $this->createHandler($mockClient);
+        $request = ( new ServerRequest('GET', '/v3/search/semantic') )
+            ->withQueryParams(['query' => 'passages about creation', 'version' => 'TEST1']);
+
+        $this->expectException(ServiceUnavailableException::class);
+        $this->expectExceptionMessage('/v3/search/keyword');
+        $handler->handle($request);
     }
 
     // ── With mock embedding client ──────────────────────────

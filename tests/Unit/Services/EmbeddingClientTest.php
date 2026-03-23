@@ -29,10 +29,10 @@ class EmbeddingClientTest extends TestCase
         self::assertFalse($client->isHealthy());
     }
 
-    public function testEmbedThrowsWhenServiceUnavailable(): void
+    public function testEmbedThrowsServiceUnavailableWhenDown(): void
     {
         $client = new EmbeddingClient('http://127.0.0.1:19999');
-        $this->expectException(\BibleGet\Api\Http\Exception\InternalServerErrorException::class);
+        $this->expectException(\BibleGet\Api\Http\Exception\ServiceUnavailableException::class);
         $this->expectExceptionMessage('Embedding service unavailable');
         $client->embed('test text');
     }

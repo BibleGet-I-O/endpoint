@@ -6,6 +6,7 @@ namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
+use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Services\EmbeddingClient;
@@ -66,10 +67,23 @@ class SemanticSearchHandler extends AbstractHandler
         $this->assertValidVersionFormat($version);
 
         // Embed the user's query via the Python microservice
-        $queryVector = $this->embeddingClient->embed($query);
+        $embedStart = microtime(true);
+        try {
+            $queryVector = $this->embeddingClient->embed($query);
+        } catch (ServiceUnavailableException $e) {
+            $this->logger->warning('Embedding service unavailable: ' . $e->getMessage());
+            throw new ServiceUnavailableException(
+                'Semantic search is temporarily unavailable. Use /v3/search/keyword for text-based search.'
+            );
+        }
+        $embedMs = round(( microtime(true) - $embedStart ) * 1000, 1);
+        $this->logger->info('Embedding latency: ' . $embedMs . 'ms for query: ' . substr($query, 0, 100));
 
         // Run pgvector cosine similarity search
+        $dbStart = microtime(true);
         $results = $this->executeSimilaritySearch($pdo, $version, $queryVector, $limit, $threshold);
+        $dbMs    = round(( microtime(true) - $dbStart ) * 1000, 1);
+        $this->logger->info('Similarity search latency: ' . $dbMs . 'ms (' . count($results) . ' results)');
 
         $body          = new \stdClass();
         $body->results = $results;
