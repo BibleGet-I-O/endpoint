@@ -402,8 +402,9 @@ CREATE TABLE IF NOT EXISTS requests_log (
     "DOMAIN"               VARCHAR(200) NOT NULL DEFAULT '',
     "PLUGINVERSION"        VARCHAR(20) NOT NULL DEFAULT ''
 );
+CREATE INDEX IF NOT EXISTS "requests_log_ip_when" ON requests_log ("WHO_IP", "WHO_WHEN" DESC);
 
--- Function to create yearly log tables (used by migration script)
+-- Function to create yearly log tables (used by migration script and at runtime)
 CREATE OR REPLACE FUNCTION create_yearly_log_table(table_year TEXT, has_origin BOOLEAN DEFAULT TRUE)
 RETURNS VOID AS $$
 BEGIN
@@ -429,6 +430,11 @@ BEGIN
             )', 'requests_log__' || table_year,
             '', '', '', '', '', '', '', '', '', '', '', '', ''
         );
+        EXECUTE format(
+            'CREATE INDEX IF NOT EXISTS %I ON %I ("WHO_IP", "WHO_WHEN" DESC)',
+            'requests_log__' || table_year || '_ip_when',
+            'requests_log__' || table_year
+        );
     ELSE
         EXECUTE format(
             'CREATE TABLE IF NOT EXISTS %I (
@@ -448,6 +454,11 @@ BEGIN
                 "PLUGINVERSION" VARCHAR(20) NOT NULL DEFAULT %L
             )', 'requests_log__' || table_year,
             '', '', '', '', '', '', '', '', '', '', ''
+        );
+        EXECUTE format(
+            'CREATE INDEX IF NOT EXISTS %I ON %I ("WHO_IP", "WHO_WHEN" DESC)',
+            'requests_log__' || table_year || '_ip_when',
+            'requests_log__' || table_year
         );
     END IF;
 END;
