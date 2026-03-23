@@ -67,7 +67,7 @@ class QueryExecutor
                 "SELECT EXISTS(SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?)"
             );
             $stmt->execute([$prevTable]);
-            if ($stmt->fetchColumn() === true) {
+            if ($stmt->fetchColumn()) {
                 $tables[] = $prevTable;
             }
         }
