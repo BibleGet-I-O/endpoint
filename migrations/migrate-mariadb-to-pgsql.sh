@@ -105,14 +105,14 @@ docker exec "$MARIA_CONTAINER" mariadb -u"$MARIA_USER" -p"$MARIA_PASS" "$MARIA_D
         copyright,
         CONCAT('\"', REPLACE(copyright_holder,'\"','\"\"'), '\"'),
         imprimatur,
-        CASE WHEN canon IS NULL THEN '' ELSE CONCAT('\"', canon, '\"') END,
+        CASE WHEN canon IS NULL THEN '\\N' ELSE CONCAT('\"', canon, '\"') END,
         CONCAT('\"', REPLACE(notes,'\"','\"\"'), '\"'),
         CONCAT('\"', REPLACE(type,'\"','\"\"'), '\"')
     ) FROM versions_available ORDER BY sigla" \
     2>/dev/null | tr -d '\r' > "$MIGRATION_TMPDIR/versions_available.csv"
 docker exec -i -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
     psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" \
-    -c "\copy versions_available (sigla,fullname,year,language,copyright,copyright_holder,imprimatur,canon,notes,type) FROM STDIN WITH (FORMAT csv)" \
+    -c "\copy versions_available (sigla,fullname,year,language,copyright,copyright_holder,imprimatur,canon,notes,type) FROM STDIN WITH (FORMAT csv, NULL '\\N')" \
     < "$MIGRATION_TMPDIR/versions_available.csv"
 
 log "Migrating usage_counter..."
