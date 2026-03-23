@@ -2,6 +2,7 @@
 
 **Status**: Proposed
 **Date**: 2026-03-23
+**Related Issue**: https://github.com/BibleGet-I-O/endpoint/issues/62
 
 ## Motivation
 
