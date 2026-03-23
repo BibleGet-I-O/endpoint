@@ -147,7 +147,7 @@ class SearchHandler extends AbstractHandler
         if ($exactmatch) {
             // PostgreSQL word boundary is \y (equivalent to MySQL's \b)
             $stmt = $pdo->prepare(
-                'SELECT * FROM "' . $version . '" WHERE text ~* (\'\y\' || $1 || \'\y\') ORDER BY book, chapter, verse'
+                'SELECT * FROM "' . $version . '" WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY book, chapter, verse'
             );
             $stmt->execute([$keyword]);
         } else {
@@ -155,13 +155,11 @@ class SearchHandler extends AbstractHandler
             if (mb_strlen($sanitizedKeyword) < 4) {
                 throw new ValidationException('Search keyword must be at least 4 characters long (use exactmatch=true for shorter keywords).');
             }
-            // PostgreSQL full-text search with prefix matching
-            // Append :* for prefix matching (equivalent to MySQL's * wildcard in BOOLEAN MODE)
-            $tsqueryKeyword = $sanitizedKeyword . ':*';
-            $stmt           = $pdo->prepare(
-                'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'simple\', text) @@ to_tsquery(\'simple\', ?) ORDER BY book, chapter, verse'
+            // PostgreSQL full-text search: websearch_to_tsquery safely handles raw user input
+            $stmt = $pdo->prepare(
+                'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'simple\', text) @@ websearch_to_tsquery(\'simple\', ?) ORDER BY book, chapter, verse'
             );
-            $stmt->execute([$tsqueryKeyword]);
+            $stmt->execute([$sanitizedKeyword]);
         }
 
         return $stmt;
