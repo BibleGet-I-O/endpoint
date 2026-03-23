@@ -6,6 +6,7 @@ namespace BibleGet\Api;
 
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
+use BibleGet\Api\Handlers\KeywordSearchHandler;
 use BibleGet\Api\Handlers\SearchHandler;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
@@ -76,7 +77,37 @@ class Router
                 break;
 
             case 'search':
-                $this->handler = new SearchHandler($requestPathParts);
+                $subRoute     = $requestPathParts[0] ?? '';
+                $subPathParts = array_slice($requestPathParts, 1);
+                switch ($subRoute) {
+                    case 'keyword':
+                        $this->handler = new KeywordSearchHandler($subPathParts);
+                        break;
+                    case '':
+                        // Backward-compatible alias: /v3/search → KeywordSearchHandler
+                        $this->handler = new SearchHandler($requestPathParts);
+                        break;
+                    default:
+                        // Future: 'semantic', 'similar' will be added here
+                        $protocolVersion = $this->request->getProtocolVersion();
+                        $this->handler   = new class ($protocolVersion) implements RequestHandlerInterface {
+                            public function __construct(private readonly string $protocolVersion)
+                            {
+                            }
+
+                            public function handle(ServerRequestInterface $request): ResponseInterface
+                            {
+                                return new Response(
+                                    StatusCode::NOT_FOUND->value,
+                                    [],
+                                    null,
+                                    $this->protocolVersion,
+                                    StatusCode::NOT_FOUND->reason()
+                                );
+                            }
+                        };
+                        break;
+                }
                 break;
 
             default:

@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS versions_available (
     copyright_holder VARCHAR(255) NOT NULL DEFAULT '',
     notes            TEXT,
     copyright        SMALLINT NOT NULL DEFAULT 0,
-    type             VARCHAR(20) NOT NULL DEFAULT 'BIBLE'
+    type             VARCHAR(20) NOT NULL DEFAULT 'BIBLE',
+    ts_language      VARCHAR(30) NOT NULL DEFAULT 'simple'
 );
 
 -- Bible book full names (73 rows = 73 books, columns = languages)

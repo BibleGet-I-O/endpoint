@@ -1,11 +1,11 @@
 -- Seed data for integration tests (PostgreSQL)
 
 -- Test Bible versions
-INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type) VALUES
-('TEST1', 'Test Bible Version 1', '2020', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Test notes', 0, 'BIBLE'),
-('TEST2', 'Test Bible Version 2', '2021', 'English', 'No', 'PROTESTANT', 'Other Publisher', '', 1, 'BIBLE'),
-('VGCL', 'Vulgata Clementina', '1592', 'Latin', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE'),
-('DRB', 'Douay-Rheims Bible', '1752', 'English', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE')
+INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type, ts_language) VALUES
+('TEST1', 'Test Bible Version 1', '2020', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Test notes', 0, 'BIBLE', 'english'),
+('TEST2', 'Test Bible Version 2', '2021', 'English', 'No', 'PROTESTANT', 'Other Publisher', '', 1, 'BIBLE', 'english'),
+('VGCL', 'Vulgata Clementina', '1592', 'Latin', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE', 'simple'),
+('DRB', 'Douay-Rheims Bible', '1752', 'English', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE', 'english')
 ON CONFLICT DO NOTHING;
 
 -- Bible book names: books 1-3 (Genesis, Exodus, Leviticus) + 4-22 (fillers) + 23 (Psalms)
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('english', text));
 
 INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heavens and the earth.', 1, 1),
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS "TEST2_text_fts" ON "TEST2" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "TEST2_text_fts" ON "TEST2" USING gin(to_tsvector('english', text));
 
 INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heaven and the earth.', 1, 1),
@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('english', text));
 
 -- DRB Psalm 50 (= Hebrew Psalm 51, "Have mercy")
 INSERT INTO "DRB" (book, chapter, verse, text, testament, section) VALUES
