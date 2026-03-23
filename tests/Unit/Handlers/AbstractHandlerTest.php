@@ -346,6 +346,20 @@ class AbstractHandlerTest extends TestCase
         self::assertSame(304, $response->getStatusCode());
     }
 
+    public function testCacheHeaders304WhenWeakEtagMatches(): void
+    {
+        $handler = $this->createHandler();
+        $body    = '{"hello":"world"}';
+        $etag    = '"' . md5($body) . '"';
+        // Client sends weak ETag W/"..." which should match strong "..."
+        $request = new ServerRequest('GET', '/', ['If-None-Match' => 'W/' . $etag]);
+
+        $response = new \Nyholm\Psr7\Response(200, [], $body);
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame(304, $response->getStatusCode());
+    }
+
     public function testCacheHeaders304WhenEtagInMultiValueHeader(): void
     {
         $handler = $this->createHandler();

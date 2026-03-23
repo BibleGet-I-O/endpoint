@@ -129,34 +129,38 @@ def main():
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE, help="Batch size")
     args = parser.parse_args()
 
+    if args.batch_size < 1:
+        print("Error: --batch-size must be a positive integer.", file=sys.stderr)
+        sys.exit(1)
+
     print(f"Loading model: {MODEL_NAME}")
     start = time.time()
     model = SentenceTransformer(MODEL_NAME)
     print(f"Model loaded in {time.time() - start:.1f}s")
 
     conn = get_connection()
+    try:
+        # Ensure pgvector and embedding columns exist
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        conn.commit()
 
-    # Ensure pgvector and embedding columns exist
-    with conn.cursor() as cur:
-        cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    conn.commit()
+        versions = get_versions(conn, args.version)
+        if not versions:
+            print("No versions found to process.")
+            sys.exit(1)
 
-    versions = get_versions(conn, args.version)
-    if not versions:
-        print("No versions found to process.")
-        sys.exit(1)
+        print(f"Processing {len(versions)} version(s): {', '.join(versions)}")
+        total = 0
+        start = time.time()
 
-    print(f"Processing {len(versions)} version(s): {', '.join(versions)}")
-    total = 0
-    start = time.time()
+        for version in versions:
+            total += process_version(conn, model, version, force=args.force, batch_size=args.batch_size)
 
-    for version in versions:
-        total += process_version(conn, model, version, force=args.force, batch_size=args.batch_size)
-
-    elapsed = time.time() - start
-    print(f"\nDone: {total} embeddings computed in {elapsed:.1f}s")
-
-    conn.close()
+        elapsed = time.time() - start
+        print(f"\nDone: {total} embeddings computed in {elapsed:.1f}s")
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

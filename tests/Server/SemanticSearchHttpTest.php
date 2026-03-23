@@ -17,17 +17,14 @@ class SemanticSearchHttpTest extends ServerTestCase
 {
     public function testSemanticRouteExists(): void
     {
-        // Even without the embedding service, missing params should give 422, not 404
         $r = self::httpGet('/v3/search/semantic?version=TEST1');
-        // 422 = route exists but query param missing, 500 = embedding service unavailable
-        self::assertContains($r['status'], [422, 500]);
+        // Route exists — should get 422 (validation), not 404
+        self::assertNotSame(404, $r['status']);
     }
 
     public function testMissingQueryReturns422(): void
     {
         $r = self::httpGet('/v3/search/semantic?version=TEST1');
-        // Could be 422 (validation) or 500 (if it tries to connect to embedding service first)
-        // The handler validates params before calling the service, so expect 422
         self::assertSame(422, $r['status']);
 
         $body = self::jsonBody($r['body']);

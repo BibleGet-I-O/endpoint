@@ -92,7 +92,7 @@ class Router
                         $this->handler = new SimilarSearchHandler($subPathParts);
                         break;
                     case '':
-                        // Backward-compatible alias: /v3/search → KeywordSearchHandler
+                        // Backward-compatible alias: /v3/search → SearchHandler (delegates to KeywordSearchHandler)
                         $this->handler = new SearchHandler($requestPathParts);
                         break;
                     default:

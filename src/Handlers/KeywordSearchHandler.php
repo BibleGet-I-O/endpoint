@@ -211,10 +211,16 @@ class KeywordSearchHandler extends AbstractHandler
                         'Search keyword must be at least 4 characters long (use match=exact for shorter keywords).'
                     );
                 }
-                $stmt = $pdo->prepare(
-                    'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
-                );
-                $stmt->execute([$keyword]);
+                try {
+                    $stmt = $pdo->prepare(
+                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
+                    );
+                    $stmt->execute([$keyword]);
+                } catch (\PDOException) {
+                    throw new ValidationException(
+                        'Invalid boolean search expression. Use operators like & (AND), | (OR), ! (NOT).'
+                    );
+                }
                 break;
 
             default: // fulltext

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Services;
 
-use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use Psr\Log\LoggerInterface;
 
 /**

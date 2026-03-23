@@ -15,10 +15,19 @@ DECLARE
     idx_name TEXT;
 BEGIN
     FOR rec IN SELECT sigla FROM versions_available LOOP
+        -- Skip if the corresponding table doesn't exist
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = rec.sigla
+        ) THEN
+            RAISE NOTICE 'Skipping %: table does not exist', rec.sigla;
+            CONTINUE;
+        END IF;
+
         -- Add embedding column if not exists
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.columns
-            WHERE table_name = rec.sigla AND column_name = 'embedding'
+            WHERE table_schema = 'public' AND table_name = rec.sigla AND column_name = 'embedding'
         ) THEN
             EXECUTE format(
                 'ALTER TABLE %I ADD COLUMN embedding vector(384)',
@@ -26,12 +35,16 @@ BEGIN
             );
         END IF;
 
-        -- Create HNSW index for approximate nearest neighbor search
+        -- Create HNSW index if not exists
         idx_name := rec.sigla || '_embedding_hnsw';
-        EXECUTE format('DROP INDEX IF EXISTS %I', idx_name);
-        EXECUTE format(
-            'CREATE INDEX %I ON %I USING hnsw (embedding vector_cosine_ops)',
-            idx_name, rec.sigla
-        );
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_indexes
+            WHERE schemaname = 'public' AND indexname = idx_name
+        ) THEN
+            EXECUTE format(
+                'CREATE INDEX %I ON %I USING hnsw (embedding vector_cosine_ops)',
+                idx_name, rec.sigla
+            );
+        END IF;
     END LOOP;
 END $$;

@@ -57,7 +57,10 @@ abstract class ApiException extends \RuntimeException
         if ($includeDebug) {
             $data['file']  = $this->getFile();
             $data['line']  = $this->getLine();
-            $data['trace'] = $this->getTrace();
+            $data['trace'] = array_map(static function (array $frame): array {
+                unset($frame['args']);
+                return $frame;
+            }, $this->getTrace());
         }
 
         return $data;
