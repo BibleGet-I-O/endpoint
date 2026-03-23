@@ -9,6 +9,7 @@ use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Pipeline\QuoteContext;
+use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -46,11 +47,11 @@ class SearchHandler extends AbstractHandler
 
         [$keyword, $version, $exactmatch] = $this->extractSearchParams($params);
 
-        $mysqli       = Connection::getConnection();
-        $version      = $this->validateVersion($mysqli, $version);
-        $versionIndex = $this->loadVersionIndex($mysqli, $version);
+        $pdo          = Connection::getConnection();
+        $version      = $this->validateVersion($pdo, $version);
+        $versionIndex = $this->loadVersionIndex($pdo, $version);
 
-        $searchResult = $this->executeSearch($mysqli, $version, $keyword, $exactmatch);
+        $searchResult = $this->executeSearch($pdo, $version, $keyword, $exactmatch);
         $results      = $this->mapSearchResults($searchResult, $version, $versionIndex);
 
         $body          = new \stdClass();
@@ -88,17 +89,17 @@ class SearchHandler extends AbstractHandler
         return [$keyword, $version, $exactmatch];
     }
 
-    private function validateVersion(\mysqli $mysqli, string $version): string
+    private function validateVersion(\PDO $pdo, string $version): string
     {
         if (self::$cachedValidVersions === null) {
             self::$cachedValidVersions = [];
-            $result                    = $mysqli->query('SELECT sigla FROM versions_available');
-            if (!$result instanceof \mysqli_result) {
-                $this->logger->error('Failed to query versions_available: ' . $mysqli->error);
+            $result                    = $pdo->query('SELECT sigla FROM versions_available');
+            if ($result === false) {
+                $this->logger->error('Failed to query versions_available');
                 throw new InternalServerErrorException('An internal database error occurred.');
             }
-            while ($row = $result->fetch_assoc()) {
-                self::$cachedValidVersions[] = (string) $row['sigla'];
+            while (is_array($row = $result->fetch(\PDO::FETCH_ASSOC))) {
+                self::$cachedValidVersions[] = StringUtils::asString($row['sigla']);
             }
         }
         $version = strtoupper($version);
@@ -108,24 +109,33 @@ class SearchHandler extends AbstractHandler
         return $version;
     }
 
-    /**
-     * @return array{abbreviations: list<string>, books: list<string>, book_num: list<string>}
-     */
-    private function loadVersionIndex(\mysqli $mysqli, string $version): array
+    private function assertValidVersionFormat(string $version): void
     {
         if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
             throw new ValidationException('Invalid version identifier format: ' . $version);
         }
+    }
+
+    /**
+     * @return array{abbreviations: list<string>, books: list<string>, book_num: list<string>}
+     */
+    private function loadVersionIndex(\PDO $pdo, string $version): array
+    {
+        $this->assertValidVersionFormat($version);
         $abbreviations = $books = $book_num = [];
-        $idxResult     = $mysqli->query('SELECT * FROM ' . $version . '_idx');
-        if (!$idxResult instanceof \mysqli_result) {
-            $this->logger->error('Failed to load index for version ' . $version . ': ' . $mysqli->error);
+        try {
+            $idxResult = $pdo->query('SELECT * FROM "' . $version . '_idx"');
+        } catch (\PDOException $e) {
+            $this->logger->error('Failed to load index for version ' . $version . ': ' . $e->getMessage());
             throw new InternalServerErrorException('An internal database error occurred.');
         }
-        while ($row = $idxResult->fetch_assoc()) {
-            $abbreviations[] = (string) ( $row['abbrev'] ?? '' );
-            $books[]         = (string) ( $row['fullname'] ?? '' );
-            $book_num[]      = (string) ( $row['book'] ?? '' );
+        if ($idxResult === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        while (is_array($row = $idxResult->fetch(\PDO::FETCH_ASSOC))) {
+            $abbreviations[] = StringUtils::asString($row['abbrev'] ?? '');
+            $books[]         = StringUtils::asString($row['fullname'] ?? '');
+            $book_num[]      = StringUtils::asString($row['book'] ?? '');
         }
         if (empty($abbreviations)) {
             throw new InternalServerErrorException('No index data found for version: ' . $version);
@@ -133,57 +143,58 @@ class SearchHandler extends AbstractHandler
         return ['abbreviations' => $abbreviations, 'books' => $books, 'book_num' => $book_num];
     }
 
-    private function executeSearch(\mysqli $mysqli, string $version, string $keyword, bool $exactmatch): \mysqli_result
+    private function executeSearch(\PDO $pdo, string $version, string $keyword, bool $exactmatch): \PDOStatement
     {
+        $this->assertValidVersionFormat($version);
+
         if ($exactmatch) {
-            $regexKeyword        = preg_quote($keyword, '/');
-            $escapedRegexKeyword = $mysqli->real_escape_string($regexKeyword);
-            $searchResult        = $mysqli->query(
-                "SELECT * FROM {$version} WHERE text RLIKE '\\\\b{$escapedRegexKeyword}\\\\b' ORDER BY book, chapter, verse"
+            // PostgreSQL word boundary is \y (equivalent to MySQL's \b)
+            $stmt = $pdo->prepare(
+                'SELECT * FROM "' . $version . '" WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY book, chapter, verse'
             );
+            $stmt->execute([$keyword]);
         } else {
             $sanitizedKeyword = preg_replace('/[+\-><~*"()]+/', '', $keyword) ?? $keyword;
             if (mb_strlen($sanitizedKeyword) < 4) {
                 throw new ValidationException('Search keyword must be at least 4 characters long (use exactmatch=true for shorter keywords).');
             }
-            $escapedSanitized = $mysqli->real_escape_string($sanitizedKeyword);
-            $searchResult     = $mysqli->query(
-                "SELECT * FROM {$version} WHERE MATCH(text) AGAINST ('{$escapedSanitized}*' IN BOOLEAN MODE) ORDER BY book, chapter, verse"
+            // PostgreSQL full-text search: websearch_to_tsquery safely handles raw user input
+            $stmt = $pdo->prepare(
+                'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'simple\', text) @@ websearch_to_tsquery(\'simple\', ?) ORDER BY book, chapter, verse'
             );
+            $stmt->execute([$sanitizedKeyword]);
         }
 
-        if (!$searchResult instanceof \mysqli_result) {
-            $this->logger->error('MySQL ERROR ' . $mysqli->errno . ': ' . $mysqli->error);
-            throw new InternalServerErrorException('An internal database error occurred.');
-        }
-        return $searchResult;
+        return $stmt;
     }
 
     /**
      * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
      * @return array<int, array<string, mixed>>
      */
-    private function mapSearchResults(\mysqli_result $searchResult, string $version, array $versionIndex): array
+    private function mapSearchResults(\PDOStatement $searchResult, string $version, array $versionIndex): array
     {
         $results = [];
-        while ($row = $searchResult->fetch_assoc()) {
-            $row['version']    = $version;
-            $row['testament']  = (int) $row['testament'];
+        while (is_array($row = $searchResult->fetch(\PDO::FETCH_ASSOC))) {
             $universal_booknum = $row['book'];
             $bookidx           = array_search($row['book'], $versionIndex['book_num']);
             if ($bookidx === false) {
-                $this->logger->error('Unmapped book number ' . $row['book'] . ' in version index for search result');
+                $this->logger->error('Unmapped book number ' . ( is_scalar($row['book']) ? (string) $row['book'] : 'unknown' ) . ' in version index for search result');
                 continue;
             }
-            $row['bookabbrev']  = $versionIndex['abbreviations'][$bookidx] ?? '';
-            $row['booknum']     = (int) $bookidx;
-            $row['univbooknum'] = $universal_booknum;
-            $row['book']        = $versionIndex['books'][$bookidx] ?? '';
-            $row['section']     = (int) $row['section'];
-            $row['chapter']     = (int) $row['chapter'];
-            $row['verse']       = (int) $row['verse'];
-            unset($row['verseID']);
-            $results[] = $row;
+            $entry     = [
+                'version'     => $version,
+                'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
+                'text'        => StringUtils::asString($row['text'] ?? ''),
+                'bookabbrev'  => $versionIndex['abbreviations'][$bookidx] ?? '',
+                'booknum'     => (int) $bookidx,
+                'univbooknum' => $universal_booknum,
+                'book'        => $versionIndex['books'][$bookidx] ?? '',
+                'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
+                'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
+                'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
+            ];
+            $results[] = $entry;
         }
         return $results;
     }

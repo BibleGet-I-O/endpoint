@@ -36,7 +36,7 @@ final class SqlCompilerTest extends TestCase
 
         $this->assertCount(1, $result);
         $this->assertSame(
-            'SELECT * FROM CEI2008 WHERE book = 1 AND chapter = 3 AND verse = 16 ORDER BY verseID',
+            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter = 3 AND verse = 16 ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -49,7 +49,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM CEI2008 WHERE book = 1 AND chapter = 5 ORDER BY verseID',
+            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter = 5 ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -64,7 +64,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM CEI2008 WHERE book = 1 AND chapter = 3 AND verse >= 1 AND verse <= 10 ORDER BY verseID',
+            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter = 3 AND verse >= 1 AND verse <= 10 ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -79,7 +79,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM CEI2008 WHERE book = 1 AND chapter >= 1 AND chapter <= 3 ORDER BY verseID',
+            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter >= 1 AND chapter <= 3 ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -94,7 +94,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM CEI2008 WHERE book = 1 AND ( ( chapter = 1 AND verse >= 5 ) OR ( chapter = 2 AND verse <= 3 ) ) ORDER BY verseID',
+            'SELECT * FROM "CEI2008" WHERE book = 1 AND ( ( chapter = 1 AND verse >= 5 ) OR ( chapter = 2 AND verse <= 3 ) ) ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -109,7 +109,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM CEI2008 WHERE book = 1 AND ( ( chapter = 1 AND verse >= 5 ) OR ( chapter = 2 ) OR ( chapter = 3 ) OR ( chapter = 4 AND verse <= 3 ) ) ORDER BY verseID',
+            'SELECT * FROM "CEI2008" WHERE book = 1 AND ( ( chapter = 1 AND verse >= 5 ) OR ( chapter = 2 ) OR ( chapter = 3 ) OR ( chapter = 4 AND verse <= 3 ) ) ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -157,7 +157,7 @@ final class SqlCompilerTest extends TestCase
         $query  = new BibleQuery(1, [new VerseRef(1, 1)]);
         $result = $this->compiler->compile($query, 'CEI2008', '', ['NABRE'], []);
 
-        $this->assertStringEndsWith('ORDER BY verseID', $result[0]);
+        $this->assertStringEndsWith('ORDER BY "verseID"', $result[0]);
     }
 
     public function testForcedCopyrightLimit(): void

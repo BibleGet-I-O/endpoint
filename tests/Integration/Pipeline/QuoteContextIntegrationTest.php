@@ -128,9 +128,9 @@ class QuoteContextIntegrationTest extends DatabaseTestCase
         $ctx->incrementGoodQueryCount();
         $ctx->incrementBadQueryCount();
 
-        $result = $ctx->mysqli->query('SELECT good, bad FROM counter');
-        self::assertInstanceOf(\mysqli_result::class, $result);
-        $row = $result->fetch_assoc();
+        $result = $ctx->pdo->query('SELECT good, bad FROM counter');
+        self::assertInstanceOf(\PDOStatement::class, $result);
+        $row = $result->fetch();
         self::assertNotNull($row);
         self::assertSame('2', (string) $row['good']);
         self::assertSame('1', (string) $row['bad']);

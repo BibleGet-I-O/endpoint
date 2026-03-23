@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -62,8 +63,11 @@ class QueryExecutor
         if ((int) date('z') < 2) {
             $prevTable = 'requests_log__' . $this->prevYEAR;
             // Verify the table exists before including it
-            $check = $this->ctx->mysqli->query("SHOW TABLES LIKE '" . $this->ctx->mysqli->real_escape_string($prevTable) . "'");
-            if ($check instanceof \mysqli_result && $check->num_rows > 0) {
+            $stmt = $this->ctx->pdo->prepare(
+                "SELECT EXISTS(SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?)"
+            );
+            $stmt->execute([$prevTable]);
+            if ($stmt->fetchColumn() === true) {
                 $tables[] = $prevTable;
             }
         }
@@ -140,28 +144,26 @@ class QueryExecutor
         if ($this->ipaddress === '') {
             return;
         }
-        $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
-        $stmt = $this->ctx->mysqli->prepare($sql);
+        $sql  = $this->buildLogUnion('"WHO_IP" = ?::inet AND "QUERY" = ? AND "WHO_WHEN" > NOW() - INTERVAL \'2 days\'');
+        $stmt = $this->ctx->pdo->prepare($sql);
         if ($stmt === false) {
-            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed');
             throw new InternalServerErrorException('An internal database error occurred.');
         }
-        $stmt->bind_param('ss', $this->ipaddress, $this->xquery);
-        $stmt->execute();
-        $ipresult = $stmt->get_result();
+        $stmt->execute([$this->ipaddress, $this->xquery]);
+        $rows = $stmt->fetchAll();
 
-        if ($ipresult instanceof \mysqli_result) {
-            if ($ipresult->num_rows > 10 && $ipresult->num_rows < 30) {
-                $this->ctx->addErrorMessage(10, $this->currentOriginalQuery());
-                $iprow                       = $ipresult->fetch_assoc();
-                $this->geoip_json            = (string) ( $iprow['WHO_WHERE_JSON'] ?? '' );
-                $this->haveIPAddressOnRecord = true;
-            } elseif ($ipresult->num_rows > 29) {
-                throw new TooManyRequestsException(
-                    QuoteContext::$errorMessages[11] . ' > ' . $this->currentOriginalQuery(),
-                    172800 // 2 days in seconds
-                );
-            }
+        $count = count($rows);
+        if ($count > 10 && $count < 30) {
+            $this->ctx->addErrorMessage(10, $this->currentOriginalQuery());
+            $firstRow                    = $rows[0];
+            $this->geoip_json            = is_array($firstRow) ? StringUtils::asString($firstRow['WHO_WHERE_JSON'] ?? '') : '';
+            $this->haveIPAddressOnRecord = true;
+        } elseif ($count > 29) {
+            throw new TooManyRequestsException(
+                QuoteContext::$errorMessages[11] . ' > ' . $this->currentOriginalQuery(),
+                172800 // 2 days in seconds
+            );
         }
     }
 
@@ -170,17 +172,20 @@ class QueryExecutor
         if ($this->ipaddress === '') {
             return;
         }
-        $sql  = $this->buildLogUnion('WHO_IP = INET6_ATON(?) AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)');
-        $stmt = $this->ctx->mysqli->prepare($sql);
+        $sql  = $this->buildLogUnionAggregated(
+            'COUNT(*) AS cnt',
+            '"WHO_IP" = ?::inet AND "WHO_WHEN" > NOW() - INTERVAL \'2 days\'',
+            ''
+        );
+        $stmt = $this->ctx->pdo->prepare($sql);
         if ($stmt === false) {
-            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed');
             throw new InternalServerErrorException('An internal database error occurred.');
         }
-        $stmt->bind_param('s', $this->ipaddress);
-        $stmt->execute();
-        $ipresult = $stmt->get_result();
+        $stmt->execute([$this->ipaddress]);
+        $count = (int) $stmt->fetchColumn();
 
-        if ($ipresult instanceof \mysqli_result && $ipresult->num_rows > 100) {
+        if ($count > 100) {
             throw new TooManyRequestsException(
                 QuoteContext::$errorMessages[12] . ' > ' . $this->currentOriginalQuery(),
                 172800
@@ -191,29 +196,25 @@ class QueryExecutor
     private function checkRequestsFromSameOrigin(): void
     {
         $sql  = $this->buildLogUnionAggregated(
-            'ORIGIN, COUNT(*) AS ORIGIN_CNT',
-            "ORIGIN != '' AND ORIGIN = ? AND QUERY = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)",
-            'GROUP BY ORIGIN'
+            '"ORIGIN", COUNT(*) AS "ORIGIN_CNT"',
+            '"ORIGIN" != \'\' AND "ORIGIN" = ? AND "QUERY" = ? AND "WHO_WHEN" > NOW() - INTERVAL \'2 days\'',
+            'GROUP BY "ORIGIN"'
         );
-        $stmt = $this->ctx->mysqli->prepare($sql);
+        $stmt = $this->ctx->pdo->prepare($sql);
         if ($stmt === false) {
-            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed');
             throw new InternalServerErrorException('An internal database error occurred.');
         }
-        $stmt->bind_param('ss', $this->ctx->originHeader, $this->xquery);
-        $stmt->execute();
-        $originres = $stmt->get_result();
-        if ($originres instanceof \mysqli_result && $originres->num_rows > 0) {
-            $originRow = $originres->fetch_assoc();
-            if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow)) {
-                if ($originRow['ORIGIN_CNT'] > 10 && $originRow['ORIGIN_CNT'] < 30) {
-                    $this->ctx->addErrorMessage(10, $this->currentOriginalQuery());
-                } elseif ($originRow['ORIGIN_CNT'] > 29) {
-                    throw new TooManyRequestsException(
-                        QuoteContext::$errorMessages[11] . ' > ' . $this->currentOriginalQuery(),
-                        172800
-                    );
-                }
+        $stmt->execute([$this->ctx->originHeader, $this->xquery]);
+        $originRow = $stmt->fetch();
+        if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow)) {
+            if ($originRow['ORIGIN_CNT'] > 10 && $originRow['ORIGIN_CNT'] < 30) {
+                $this->ctx->addErrorMessage(10, $this->currentOriginalQuery());
+            } elseif ($originRow['ORIGIN_CNT'] > 29) {
+                throw new TooManyRequestsException(
+                    QuoteContext::$errorMessages[11] . ' > ' . $this->currentOriginalQuery(),
+                    172800
+                );
             }
         }
     }
@@ -221,26 +222,22 @@ class QueryExecutor
     private function checkDiverseRequestsFromSameOrigin(): void
     {
         $sql  = $this->buildLogUnionAggregated(
-            'ORIGIN, COUNT(*) AS ORIGIN_CNT',
-            "ORIGIN != '' AND ORIGIN = ? AND WHO_WHEN > DATE_SUB(NOW(), INTERVAL 2 DAY)",
-            'GROUP BY ORIGIN'
+            '"ORIGIN", COUNT(*) AS "ORIGIN_CNT"',
+            '"ORIGIN" != \'\' AND "ORIGIN" = ? AND "WHO_WHEN" > NOW() - INTERVAL \'2 days\'',
+            'GROUP BY "ORIGIN"'
         );
-        $stmt = $this->ctx->mysqli->prepare($sql);
+        $stmt = $this->ctx->pdo->prepare($sql);
         if ($stmt === false) {
-            $this->logger->error('Rate-limit prepare failed: ' . $this->ctx->mysqli->error);
+            $this->logger->error('Rate-limit prepare failed');
             throw new InternalServerErrorException('An internal database error occurred.');
         }
-        $stmt->bind_param('s', $this->ctx->originHeader);
-        $stmt->execute();
-        $originres = $stmt->get_result();
-        if ($originres instanceof \mysqli_result && $originres->num_rows > 0) {
-            $originRow = $originres->fetch_assoc();
-            if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow) && $originRow['ORIGIN_CNT'] > 100) {
-                throw new TooManyRequestsException(
-                    QuoteContext::$errorMessages[12] . ' > ' . $this->currentOriginalQuery(),
-                    172800
-                );
-            }
+        $stmt->execute([$this->ctx->originHeader]);
+        $originRow = $stmt->fetch();
+        if (is_array($originRow) && array_key_exists('ORIGIN_CNT', $originRow) && $originRow['ORIGIN_CNT'] > 100) {
+            throw new TooManyRequestsException(
+                QuoteContext::$errorMessages[12] . ' > ' . $this->currentOriginalQuery(),
+                172800
+            );
         }
     }
 
@@ -255,30 +252,33 @@ class QueryExecutor
     private function getGeoIPInfoFromLogsElseOnline(): void
     {
         $geoIPFromLogs = $this->getGeoIPFromLogs();
-        if ($geoIPFromLogs instanceof \mysqli_result && $geoIPFromLogs->num_rows > 0) {
-            $iprow                       = $geoIPFromLogs->fetch_assoc();
-            $this->geoip_json            = (string) ( $iprow['WHO_WHERE_JSON'] ?? '' );
-            $this->haveIPAddressOnRecord = true;
+        if ($geoIPFromLogs instanceof \PDOStatement) {
+            $iprow = $geoIPFromLogs->fetch(\PDO::FETCH_ASSOC);
+            if (is_array($iprow)) {
+                $this->geoip_json            = StringUtils::asString($iprow['WHO_WHERE_JSON'] ?? '');
+                $this->haveIPAddressOnRecord = true;
+            } elseif ($this->ipaddress != '') {
+                // Geo-IP lookup is best-effort and only used for logging.
+                // Defer the external API call to avoid adding up to 5s latency
+                // to the synchronous response path. Log a placeholder instead.
+                $this->geoip_json = '{"PENDING":"geo-ip lookup deferred"}';
+            }
         } elseif ($this->ipaddress != '') {
-            // Geo-IP lookup is best-effort and only used for logging.
-            // Defer the external API call to avoid adding up to 5s latency
-            // to the synchronous response path. Log a placeholder instead.
             $this->geoip_json = '{"PENDING":"geo-ip lookup deferred"}';
         }
     }
 
-    private function getGeoIPFromLogs(): \mysqli_result|bool
+    private function getGeoIPFromLogs(): \PDOStatement|false
     {
         if ($this->ipaddress != '') {
-            $sql  = $this->buildLogUnion("WHO_IP = INET6_ATON(?) AND WHO_WHERE_JSON NOT LIKE '{\"ERROR\":\"%\"}'");
-            $stmt = $this->ctx->mysqli->prepare($sql);
+            $sql  = $this->buildLogUnion('"WHO_IP" = ?::inet AND "WHO_WHERE_JSON" NOT LIKE \'{"ERROR":"%"}\'');
+            $stmt = $this->ctx->pdo->prepare($sql);
             if ($stmt === false) {
-                $this->logger->error('Geo-IP log lookup prepare failed: ' . $this->ctx->mysqli->error);
+                $this->logger->error('Geo-IP log lookup prepare failed');
                 return false;
             }
-            $stmt->bind_param('s', $this->ipaddress);
-            $stmt->execute();
-            return $stmt->get_result();
+            $stmt->execute([$this->ipaddress]);
+            return $stmt;
         }
         return false;
     }
@@ -291,15 +291,35 @@ class QueryExecutor
 
     private function logQuery(): void
     {
-        $stmt = $this->ctx->mysqli->prepare('INSERT INTO requests_log__' . $this->curYEAR . ' ( WHO_IP,WHO_WHERE_JSON,HEADERS_JSON,ORIGIN,QUERY,ORIGINALQUERY,REQUEST_METHOD,HTTP_CLIENT_IP,HTTP_X_FORWARDED_FOR,HTTP_X_REAL_IP,REMOTE_ADDR,APP_ID,DOMAIN,PLUGINVERSION ) VALUES ( INET6_ATON( ? ), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )');
-        if ($stmt === false) {
-            $this->logger->error('Request log prepare failed: ' . $this->ctx->mysqli->error);
-            return;
+        try {
+            $sql  = 'INSERT INTO requests_log__' . $this->curYEAR
+                . ' ( "WHO_IP","WHO_WHERE_JSON","HEADERS_JSON","ORIGIN","QUERY","ORIGINALQUERY","REQUEST_METHOD","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR","HTTP_X_REAL_IP","REMOTE_ADDR","APP_ID","DOMAIN","PLUGINVERSION" )'
+                . ' VALUES ( ?::inet, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )';
+            $stmt = $this->ctx->pdo->prepare($sql);
+            if ($stmt === false) {
+                $this->logger->error('Request log prepare failed');
+                return;
+            }
+            $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
+            $stmt->execute([
+                $this->ipaddress,
+                $this->geoip_json,
+                $this->ctx->jsonEncodedRequestHeaders,
+                $this->ctx->originHeader,
+                $this->xquery,
+                $originalQuery,
+                $this->ctx->requestMethod,
+                $this->clientip,
+                $this->forwardedip,
+                $this->realip,
+                $this->remote_address,
+                $this->appid,
+                $this->domain,
+                $this->pluginversion,
+            ]);
+        } catch (\PDOException $e) {
+            $this->logger->error('Request log insert failed: ' . $e->getMessage());
         }
-        $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
-        $stmt->bind_param('ssssssssssssss', $this->ipaddress, $this->geoip_json, $this->ctx->jsonEncodedRequestHeaders, $this->ctx->originHeader, $this->xquery, $originalQuery, $this->ctx->requestMethod, $this->clientip, $this->forwardedip, $this->realip, $this->remote_address, $this->appid, $this->domain, $this->pluginversion);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -352,9 +372,9 @@ class QueryExecutor
                 $this->enforceQueryLimits();
             }
 
-            $result = $this->ctx->mysqli->query($xquery);
+            $result = $this->ctx->pdo->query($xquery);
 
-            if ($result instanceof \mysqli_result) {
+            if ($result instanceof \PDOStatement) {
                 $this->ctx->incrementGoodQueryCount();
 
                 if ($this->geoIPInfoIsEmptyOrIsError()) {
@@ -369,8 +389,8 @@ class QueryExecutor
 
                 $this->logQuery();
 
-                while ($row = $result->fetch_assoc()) {
-                    $prepared = $this->prepareResponse($row);
+                while (is_array($fetchedRow = $result->fetch(\PDO::FETCH_ASSOC))) {
+                    $prepared = $this->prepareResponse(StringUtils::toAssocArray($fetchedRow));
                     if ($prepared !== null) {
                         $this->ctx->results[] = $prepared;
                     }

@@ -10,21 +10,13 @@ use PHPUnit\Framework\TestCase;
 /**
  * Base class for integration tests that require a database connection.
  *
- * Loads test credentials, resets Connection singleton between tests,
- * and cleans transient data (counter, request logs) after each test.
+ * Database credentials are loaded from .env.test by the test bootstrap.
+ * Resets Connection singleton between tests and cleans transient data
+ * (counter, request logs) after each test.
  */
 abstract class DatabaseTestCase extends TestCase
 {
-    protected static bool $credentialsLoaded = false;
     private string $testYear;
-
-    public static function setUpBeforeClass(): void
-    {
-        if (!self::$credentialsLoaded) {
-            require_once __DIR__ . '/../fixtures/dbcredentials.php';
-            self::$credentialsLoaded = true;
-        }
-    }
 
     protected function setUp(): void
     {
@@ -44,15 +36,19 @@ abstract class DatabaseTestCase extends TestCase
     protected function tearDown(): void
     {
         // Clean transient tables using the year captured at setUp
-        $mysqli = Connection::getConnection();
-        $mysqli->query('UPDATE counter SET good = 0, bad = 0');
-        $mysqli->query('DELETE FROM requests_log__' . $this->testYear);
-        $mysqli->query('DELETE FROM curl_error');
+        try {
+            $pdo = Connection::getConnection();
+            $pdo->exec('UPDATE counter SET good = 0, bad = 0');
+            $pdo->exec('DELETE FROM requests_log__' . $this->testYear);
+            $pdo->exec('DELETE FROM curl_error');
+        } catch (\Throwable) {
+            // DB not available (test was skipped), nothing to clean
+        }
 
         Connection::reset();
     }
 
-    protected function getConnection(): \mysqli
+    protected function getConnection(): \PDO
     {
         return Connection::getConnection();
     }

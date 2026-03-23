@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BibleGet I/O Endpoint (v3.0) — a REST API service for retrieving Bible quotations across multiple versions and languages. Production URL: `https://query.bibleget.io/v3/`. Written in PHP 8.2+ with a MySQL/MariaDB backend.
+BibleGet I/O Endpoint (v3.0) — a REST API service for retrieving Bible quotations across multiple versions and languages. Production URL: `https://query.bibleget.io/v3/`. Written in PHP 8.2+ with a PostgreSQL backend.
 
 ## Architecture
 
@@ -25,7 +25,13 @@ composer install          # Install dependencies
 composer dump-autoload    # Regenerate autoloader
 ```
 
-For local development with PHP's built-in server:
+For local development with Docker Compose (PostgreSQL + PHP/Apache):
+```bash
+docker compose up -d          # Start PostgreSQL + app
+docker compose down            # Stop services
+```
+
+For local development with PHP's built-in server (requires external PostgreSQL):
 ```bash
 php -S localhost:8000 -t public public/router.php
 ```
@@ -74,7 +80,7 @@ src/
 │   ├── Middleware/                   # ErrorHandlingMiddleware, LoggingMiddleware
 │   ├── Server/MiddlewarePipeline.php
 │   └── Logs/LoggerFactory.php       # Monolog factory
-└── Database/Connection.php          # MySQLi connection singleton
+└── Database/Connection.php          # PDO/PostgreSQL connection singleton
 ```
 
 ### Quote Pipeline
@@ -96,9 +102,12 @@ All errors throw `ApiException` subclasses (`src/Http/Exception/`), caught by `E
 
 ### Database
 
-- Credentials loaded from `dbcredentials.php` (searched at project root and parent directories)
-- Managed by `src/Database/Connection.php` (singleton)
-- Key tables: `versions_available`, `biblebooks_fullname`, `biblebooks_abbr`, `{VERSION}_idx`, `{VERSION}`, `requests_log__YYYY`
+- **PostgreSQL** via PDO (`ext-pdo_pgsql`)
+- Credentials loaded from environment variables (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`) via `vlucas/phpdotenv`
+- Managed by `src/Database/Connection.php` (PDO singleton with `ERRMODE_EXCEPTION` and `FETCH_ASSOC`)
+- Key tables: `versions_available`, `biblebooks_fullname`, `biblebooks_abbr`, `"{VERSION}_idx"`, `"{VERSION}"`, `requests_log__YYYY`
+- IP addresses stored as PostgreSQL native `inet` type
+- Full-text search uses `tsvector`/`tsquery` with GIN indexes
 
 ### Response Formats
 
@@ -106,7 +115,7 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 
 ## Development Notes
 
-- **Testing** — PHPUnit 11 with unit, integration (MySQL), and HTTP server test suites; run via `composer test` or `composer test:quick`
+- **Testing** — PHPUnit 11 with unit, integration (PostgreSQL), and HTTP server test suites; run via `composer test` or `composer test:quick`
 - **Code style** — PHPCS (PSR-12 base with custom rules) via `composer lint`; auto-fix with `composer lint:fix`
 - **Static analysis** — PHPStan level 10 via `composer analyse`
 - **CI/CD** — GitHub Actions (`.github/workflows/ci.yaml`) runs PHPCS + PHPStan + tests on PRs; `readme.yaml` syncs `openapi.json` to ReadMe.io on push to `master`
