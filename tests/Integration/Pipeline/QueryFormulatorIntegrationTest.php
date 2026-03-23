@@ -32,11 +32,11 @@ class QueryFormulatorIntegrationTest extends DatabaseTestCase
 
         self::assertNotEmpty($ctx->formulatedQueries);
         self::assertCount(1, $ctx->formulatedQueries);
-        self::assertStringContainsString('SELECT * FROM TEST1', $ctx->formulatedQueries[0]);
+        self::assertStringContainsString('SELECT * FROM "TEST1"', $ctx->formulatedQueries[0]);
         self::assertStringContainsString('book = 1', $ctx->formulatedQueries[0]);
         self::assertStringContainsString('chapter = 1', $ctx->formulatedQueries[0]);
         self::assertStringContainsString('verse = 1', $ctx->formulatedQueries[0]);
-        self::assertStringContainsString('ORDER BY verseID', $ctx->formulatedQueries[0]);
+        self::assertStringContainsString('ORDER BY "verseID"', $ctx->formulatedQueries[0]);
     }
 
     public function testFormulatesVerseRange(): void
@@ -87,10 +87,10 @@ class QueryFormulatorIntegrationTest extends DatabaseTestCase
         $hasTest1 = false;
         $hasTest2 = false;
         foreach ($ctx->formulatedQueries as $q) {
-            if (str_contains($q, 'FROM TEST1')) {
+            if (str_contains($q, 'FROM "TEST1"')) {
                 $hasTest1 = true;
             }
-            if (str_contains($q, 'FROM TEST2')) {
+            if (str_contains($q, 'FROM "TEST2"')) {
                 $hasTest2 = true;
             }
         }
