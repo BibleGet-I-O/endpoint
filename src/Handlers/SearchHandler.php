@@ -59,7 +59,8 @@ class SearchHandler extends AbstractHandler
         $body->errors  = [];
         $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
 
-        return $this->buildSearchResponse($response, $contentType, $body, $results);
+        $response = $this->buildSearchResponse($response, $contentType, $body, $results);
+        return $this->withCacheHeaders($request, $response);
     }
 
     /**

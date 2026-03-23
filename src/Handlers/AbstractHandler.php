@@ -345,6 +345,36 @@ abstract class AbstractHandler implements RequestHandlerInterface
     }
 
     /**
+     * Add Cache-Control and ETag headers to the response.
+     *
+     * If the client sent an If-None-Match header that matches the ETag,
+     * a 304 Not Modified response is returned instead.
+     *
+     * @param int $maxAge Cache max-age in seconds (default: 259200 = 3 days)
+     */
+    protected function withCacheHeaders(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        int $maxAge = 259200
+    ): ResponseInterface {
+        $body = (string) $response->getBody();
+        $etag = '"' . md5($body) . '"';
+
+        $response = $response
+            ->withHeader('Cache-Control', 'must-revalidate, max-age=' . $maxAge)
+            ->withHeader('ETag', $etag);
+
+        $ifNoneMatch = $request->getHeaderLine('If-None-Match');
+        if ($ifNoneMatch !== '' && $ifNoneMatch === $etag) {
+            return $response
+                ->withStatus(StatusCode::NOT_MODIFIED->value, StatusCode::NOT_MODIFIED->reason())
+                ->withBody(Stream::create(''));
+        }
+
+        return $response;
+    }
+
+    /**
      * Write a JSON-encoded body to the response.
      *
      * @param mixed $data

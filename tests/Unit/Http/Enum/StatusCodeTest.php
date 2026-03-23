@@ -18,6 +18,7 @@ class StatusCodeTest extends TestCase
         return [
             'OK'                     => [StatusCode::OK, 200, 'OK'],
             'No Content'             => [StatusCode::NO_CONTENT, 204, 'No Content'],
+            'Not Modified'           => [StatusCode::NOT_MODIFIED, 304, 'Not Modified'],
             'Bad Request'            => [StatusCode::BAD_REQUEST, 400, 'Bad Request'],
             'Not Found'              => [StatusCode::NOT_FOUND, 404, 'Not Found'],
             'Method Not Allowed'     => [StatusCode::METHOD_NOT_ALLOWED, 405, 'Method Not Allowed'],

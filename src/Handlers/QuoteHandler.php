@@ -74,7 +74,8 @@ class QuoteHandler extends AbstractHandler
         }
 
         // Build response body
-        return $this->buildResponse($response, $contentType, $ctx);
+        $response = $this->buildResponse($response, $contentType, $ctx);
+        return $this->withCacheHeaders($request, $response);
     }
 
     private function buildResponse(ResponseInterface $response, string $contentType, QuoteContext $ctx): ResponseInterface

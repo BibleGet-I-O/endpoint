@@ -8,6 +8,7 @@ enum StatusCode: int
 {
     case OK                     = 200;
     case NO_CONTENT             = 204;
+    case NOT_MODIFIED           = 304;
     case BAD_REQUEST            = 400;
     case FORBIDDEN              = 403;
     case NOT_FOUND              = 404;
@@ -24,6 +25,7 @@ enum StatusCode: int
         return match ($this) {
             self::OK                     => 'OK',
             self::NO_CONTENT             => 'No Content',
+            self::NOT_MODIFIED           => 'Not Modified',
             self::BAD_REQUEST            => 'Bad Request',
             self::FORBIDDEN              => 'Forbidden',
             self::NOT_FOUND              => 'Not Found',
