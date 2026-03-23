@@ -335,6 +335,30 @@ class AbstractHandlerTest extends TestCase
         self::assertSame($body, (string) $response->getBody());
     }
 
+    public function testCacheHeaders304WhenWildcardIfNoneMatch(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/', ['If-None-Match' => '*']);
+        $response = new \Nyholm\Psr7\Response(200, [], '{"hello":"world"}');
+
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame(304, $response->getStatusCode());
+    }
+
+    public function testCacheHeaders304WhenEtagInMultiValueHeader(): void
+    {
+        $handler = $this->createHandler();
+        $body    = '{"hello":"world"}';
+        $etag    = '"' . md5($body) . '"';
+        $request = new ServerRequest('GET', '/', ['If-None-Match' => '"old-etag", ' . $etag . ', "other"']);
+
+        $response = new \Nyholm\Psr7\Response(200, [], $body);
+        $response = $handler->testWithCacheHeaders($request, $response);
+
+        self::assertSame(304, $response->getStatusCode());
+    }
+
     // -- Fluent setters --
 
     public function testFluentSetters(): void

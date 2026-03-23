@@ -365,13 +365,33 @@ abstract class AbstractHandler implements RequestHandlerInterface
             ->withHeader('ETag', $etag);
 
         $ifNoneMatch = $request->getHeaderLine('If-None-Match');
-        if ($ifNoneMatch !== '' && $ifNoneMatch === $etag) {
+        if ($ifNoneMatch !== '' && self::etagMatches($ifNoneMatch, $etag)) {
             return $response
                 ->withStatus(StatusCode::NOT_MODIFIED->value, StatusCode::NOT_MODIFIED->reason())
                 ->withBody(Stream::create(''));
         }
 
         return $response;
+    }
+
+    /**
+     * Check whether an ETag is present in an If-None-Match header value.
+     *
+     * Handles the wildcard "*" and comma-separated lists per RFC 9110 §13.1.2.
+     */
+    private static function etagMatches(string $ifNoneMatch, string $etag): bool
+    {
+        if ($ifNoneMatch === '*') {
+            return true;
+        }
+
+        foreach (explode(',', $ifNoneMatch) as $candidate) {
+            if (trim($candidate) === $etag) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
