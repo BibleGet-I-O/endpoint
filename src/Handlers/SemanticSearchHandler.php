@@ -10,6 +10,7 @@ use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Services\EmbeddingClient;
+use BibleGet\Api\Services\EmbeddingModelValidator;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -78,6 +79,12 @@ class SemanticSearchHandler extends AbstractHandler
         }
         $embedMs = round(( microtime(true) - $embedStart ) * 1000, 1);
         $this->logger->info('Embedding latency: ' . $embedMs . 'ms for query: ' . substr($query, 0, 100));
+
+        // Warn if stored embeddings were computed with a different model
+        $serviceModel = $this->embeddingClient->getLastModel();
+        if ($serviceModel !== '') {
+            EmbeddingModelValidator::validate($pdo, $version, $serviceModel, $this->logger);
+        }
 
         // Run pgvector cosine similarity search
         $dbStart = microtime(true);

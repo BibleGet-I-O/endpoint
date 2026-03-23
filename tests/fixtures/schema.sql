@@ -71,6 +71,15 @@ BEGIN
     );
 END $$;
 
+-- Tracks which embedding model was used for each version's stored embeddings
+CREATE TABLE IF NOT EXISTS embedding_metadata (
+    version_sigla VARCHAR(20) NOT NULL PRIMARY KEY REFERENCES versions_available(sigla),
+    model_name    VARCHAR(100) NOT NULL,
+    model_version VARCHAR(50) NOT NULL DEFAULT '',
+    dimensions    INT NOT NULL,
+    computed_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- curl error log
 CREATE TABLE IF NOT EXISTS curl_error (
     id    SERIAL PRIMARY KEY,

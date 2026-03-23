@@ -11,14 +11,37 @@ use BibleGet\Api\Http\Exception\ServiceUnavailableException;
  * Client for the Python embedding microservice.
  *
  * Calls the FastAPI service to vectorize text for pgvector similarity search.
+ * Includes a circuit breaker that trips open after repeated failures and
+ * short-circuits to a 503 for a cooldown period, avoiding unnecessary load.
  */
 class EmbeddingClient
 {
+    private const FAILURE_THRESHOLD = 5;
+    private const COOLDOWN_SECONDS  = 30;
+
     private string $baseUrl;
+
+    /** Consecutive failure count (persists across requests in CLI server / PHP-FPM). */
+    private static int $failures = 0;
+
+    /** Timestamp when the circuit was tripped open (0 = closed). */
+    private static float $openSince = 0.0;
+
+    /** Model name from the last successful embed() response. */
+    private string $lastModel = '';
 
     public function __construct(?string $baseUrl = null)
     {
         $this->baseUrl = $baseUrl ?? self::resolveBaseUrl();
+    }
+
+    /**
+     * Reset the circuit breaker state (for testing only).
+     */
+    public static function resetCircuitBreaker(): void
+    {
+        self::$failures  = 0;
+        self::$openSince = 0.0;
     }
 
     /**
@@ -28,14 +51,35 @@ class EmbeddingClient
      */
     public function embed(string $text): array
     {
-        $response = $this->post('/embed', ['text' => $text]);
+        $this->checkCircuit();
+
+        try {
+            $response = $this->post('/embed', ['text' => $text]);
+        } catch (ServiceUnavailableException $e) {
+            $this->recordFailure();
+            throw $e;
+        }
+
+        $this->recordSuccess();
 
         if (!isset($response['embedding']) || !is_array($response['embedding'])) {
             throw new InternalServerErrorException('Embedding service returned invalid response.');
         }
 
+        if (isset($response['model']) && is_string($response['model'])) {
+            $this->lastModel = $response['model'];
+        }
+
         /** @var float[] */
         return $response['embedding'];
+    }
+
+    /**
+     * Get the model name from the last successful embed() call.
+     */
+    public function getLastModel(): string
+    {
+        return $this->lastModel;
     }
 
     /**
@@ -46,7 +90,16 @@ class EmbeddingClient
      */
     public function embedBatch(array $texts): array
     {
-        $response = $this->post('/embed/batch', ['texts' => array_values($texts)]);
+        $this->checkCircuit();
+
+        try {
+            $response = $this->post('/embed/batch', ['texts' => array_values($texts)]);
+        } catch (ServiceUnavailableException $e) {
+            $this->recordFailure();
+            throw $e;
+        }
+
+        $this->recordSuccess();
 
         if (!isset($response['embeddings']) || !is_array($response['embeddings'])) {
             throw new InternalServerErrorException('Embedding service returned invalid response.');
@@ -67,6 +120,44 @@ class EmbeddingClient
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /**
+     * Check the circuit breaker state. Throws immediately if the circuit is open
+     * and the cooldown has not elapsed. Allows a single probe request (half-open)
+     * once the cooldown expires.
+     */
+    private function checkCircuit(): void
+    {
+        if (self::$openSince === 0.0) {
+            return; // Circuit is closed
+        }
+
+        $elapsed = microtime(true) - self::$openSince;
+        if ($elapsed < self::COOLDOWN_SECONDS) {
+            throw new ServiceUnavailableException(
+                'Embedding service circuit breaker is open (cooldown ' . (int) ( self::COOLDOWN_SECONDS - $elapsed ) . 's remaining). '
+                . 'Use /v3/search/keyword for text-based search.'
+            );
+        }
+
+        // Cooldown elapsed — transition to half-open (allow one probe request)
+        // Reset openSince so only one request goes through; if it fails, recordFailure re-trips
+        self::$openSince = 0.0;
+    }
+
+    private function recordFailure(): void
+    {
+        self::$failures++;
+        if (self::$failures >= self::FAILURE_THRESHOLD) {
+            self::$openSince = microtime(true);
+        }
+    }
+
+    private function recordSuccess(): void
+    {
+        self::$failures  = 0;
+        self::$openSince = 0.0;
     }
 
     /**

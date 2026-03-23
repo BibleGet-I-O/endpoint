@@ -98,8 +98,28 @@ def process_version(conn, model, version, force=False, batch_size=DEFAULT_BATCH_
         if len(texts) > batch_size:
             print(f"    {total_written}/{len(texts)} written")
 
+    # Record which model was used for this version's embeddings
+    update_metadata(conn, version, MODEL_NAME, EMBEDDING_DIM)
+
     print(f"  {version}: done ({total_written} embeddings)")
     return total_written
+
+
+def update_metadata(conn, version, model_name, dimensions):
+    """Insert or update the embedding_metadata record for a version."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO embedding_metadata (version_sigla, model_name, dimensions, computed_at)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (version_sigla) DO UPDATE
+                SET model_name = EXCLUDED.model_name,
+                    dimensions = EXCLUDED.dimensions,
+                    computed_at = CURRENT_TIMESTAMP
+            """,
+            (version, model_name, dimensions),
+        )
+    conn.commit()
 
 
 def main():
