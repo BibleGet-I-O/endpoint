@@ -9,8 +9,7 @@ use PHPUnit\Framework\Attributes\Group;
 /**
  * HTTP tests for /v3/search/semantic route.
  *
- * Semantic search requires the embedding microservice to be running.
- * Tests that need the service are skipped when it's unavailable.
+ * These tests exercise input validation only and do not require the embedding microservice.
  */
 #[Group('slow')]
 class SemanticSearchHttpTest extends ServerTestCase

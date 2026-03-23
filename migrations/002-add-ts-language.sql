@@ -36,6 +36,15 @@ DECLARE
     idx_name TEXT;
 BEGIN
     FOR rec IN SELECT sigla, ts_language FROM versions_available LOOP
+        -- Skip if the corresponding table doesn't exist
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = rec.sigla
+        ) THEN
+            RAISE NOTICE 'Skipping %: table does not exist', rec.sigla;
+            CONTINUE;
+        END IF;
+
         idx_name := rec.sigla || '_text_fts';
         -- Drop the old simple-config index if it exists
         EXECUTE format('DROP INDEX IF EXISTS %I', idx_name);

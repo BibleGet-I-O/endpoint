@@ -17,7 +17,7 @@ class Connection
      * Get (or create) the shared PDO connection.
      *
      * Reads credentials from environment variables (loaded by phpdotenv in the front controller
-     * or set directly via Docker/CI environment). Required variables: DB_HOST, DB_USER, DB_PASS, DB_NAME.
+     * or set directly via Docker/CI environment). Required variables: DB_HOST, DB_USER, DB_NAME. DB_PASS may be empty for local development.
      */
     public static function getConnection(): \PDO
     {
@@ -49,8 +49,9 @@ class Connection
                 ]
             );
         } catch (\PDOException $e) {
+            error_log('Database connection failed: ' . $e->getMessage());
             throw new InternalServerErrorException(
-                'Failed to connect to database: ' . $e->getMessage()
+                'Failed to connect to database. Please check server configuration.'
             );
         }
 

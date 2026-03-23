@@ -55,7 +55,7 @@ class EmbeddingClient
 
         try {
             $response = $this->post('/embed', ['text' => $text]);
-        } catch (ServiceUnavailableException $e) {
+        } catch (ServiceUnavailableException | InternalServerErrorException $e) {
             $this->recordFailure();
             throw $e;
         }
@@ -94,7 +94,7 @@ class EmbeddingClient
 
         try {
             $response = $this->post('/embed/batch', ['texts' => array_values($texts)]);
-        } catch (ServiceUnavailableException $e) {
+        } catch (ServiceUnavailableException | InternalServerErrorException $e) {
             $this->recordFailure();
             throw $e;
         }
@@ -237,7 +237,20 @@ class EmbeddingClient
             throw new ServiceUnavailableException('Embedding service unavailable: ' . $error);
         }
 
+        $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        if ($statusCode === 503) {
+            throw new ServiceUnavailableException(
+                'Embedding service temporarily unavailable (HTTP 503)'
+            );
+        }
+
+        if ($statusCode !== 200) {
+            throw new InternalServerErrorException(
+                'Embedding service returned HTTP ' . $statusCode . ': ' . substr((string) $raw, 0, 200)
+            );
+        }
 
         $decoded = json_decode((string) $raw, true);
         if (!is_array($decoded)) {
