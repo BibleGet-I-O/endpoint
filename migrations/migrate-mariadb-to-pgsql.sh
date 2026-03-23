@@ -83,7 +83,13 @@ log "Migrating counter..."
 COUNTER_DATA=$(maria_sql "SELECT good, bad FROM counter LIMIT 1")
 GOOD=$(echo "$COUNTER_DATA" | cut -f1)
 BAD=$(echo "$COUNTER_DATA" | cut -f2)
-pg_sql "INSERT INTO counter (good, bad) VALUES ($GOOD, $BAD) ON CONFLICT DO NOTHING;"
+EXISTING=$(docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
+    psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" -t -A -c "SELECT COUNT(*) FROM counter;")
+if [ "$EXISTING" = "0" ]; then
+    pg_sql "INSERT INTO counter (good, bad) VALUES ($GOOD, $BAD);"
+else
+    log "  counter row already exists, skipping insert."
+fi
 
 log "Migrating section..."
 maria_dump_csv section "SELECT * FROM section ORDER BY IDX"
