@@ -51,8 +51,7 @@ class QuoteHandler extends AbstractHandler
         $ctx->initialize();
 
         $queryRaw = $params['query'] ?? '';
-        $query    = is_string($queryRaw) ? $queryRaw : '';
-        if ($query === '') {
+        if (!is_string($queryRaw) || $queryRaw === '') {
             throw new ValidationException('The query parameter is required.');
         }
 
