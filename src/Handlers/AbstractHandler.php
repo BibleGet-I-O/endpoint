@@ -107,10 +107,6 @@ abstract class AbstractHandler implements RequestHandlerInterface
             $response = $response->withStatus(StatusCode::NO_CONTENT->value, StatusCode::NO_CONTENT->reason());
             $response = $this->setAccessControlAllowOriginHeader($request, $response);
 
-            if ($response->getHeaderLine('Access-Control-Allow-Origin') !== '*') {
-                $response = $response->withAddedHeader('Vary', 'Origin');
-            }
-
             $response = $response
                 ->withAddedHeader('Vary', 'Access-Control-Request-Method')
                 ->withAddedHeader('Vary', 'Access-Control-Request-Headers');
