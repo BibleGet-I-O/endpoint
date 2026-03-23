@@ -291,31 +291,35 @@ class QueryExecutor
 
     private function logQuery(): void
     {
-        $sql  = 'INSERT INTO requests_log__' . $this->curYEAR
-            . ' ( "WHO_IP","WHO_WHERE_JSON","HEADERS_JSON","ORIGIN","QUERY","ORIGINALQUERY","REQUEST_METHOD","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR","HTTP_X_REAL_IP","REMOTE_ADDR","APP_ID","DOMAIN","PLUGINVERSION" )'
-            . ' VALUES ( ?::inet, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )';
-        $stmt = $this->ctx->pdo->prepare($sql);
-        if ($stmt === false) {
-            $this->logger->error('Request log prepare failed');
-            return;
+        try {
+            $sql  = 'INSERT INTO requests_log__' . $this->curYEAR
+                . ' ( "WHO_IP","WHO_WHERE_JSON","HEADERS_JSON","ORIGIN","QUERY","ORIGINALQUERY","REQUEST_METHOD","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR","HTTP_X_REAL_IP","REMOTE_ADDR","APP_ID","DOMAIN","PLUGINVERSION" )'
+                . ' VALUES ( ?::inet, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )';
+            $stmt = $this->ctx->pdo->prepare($sql);
+            if ($stmt === false) {
+                $this->logger->error('Request log prepare failed');
+                return;
+            }
+            $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
+            $stmt->execute([
+                $this->ipaddress,
+                $this->geoip_json,
+                $this->ctx->jsonEncodedRequestHeaders,
+                $this->ctx->originHeader,
+                $this->xquery,
+                $originalQuery,
+                $this->ctx->requestMethod,
+                $this->clientip,
+                $this->forwardedip,
+                $this->realip,
+                $this->remote_address,
+                $this->appid,
+                $this->domain,
+                $this->pluginversion,
+            ]);
+        } catch (\PDOException $e) {
+            $this->logger->error('Request log insert failed: ' . $e->getMessage());
         }
-        $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
-        $stmt->execute([
-            $this->ipaddress,
-            $this->geoip_json,
-            $this->ctx->jsonEncodedRequestHeaders,
-            $this->ctx->originHeader,
-            $this->xquery,
-            $originalQuery,
-            $this->ctx->requestMethod,
-            $this->clientip,
-            $this->forwardedip,
-            $this->realip,
-            $this->remote_address,
-            $this->appid,
-            $this->domain,
-            $this->pluginversion,
-        ]);
     }
 
     /**
