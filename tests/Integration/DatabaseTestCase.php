@@ -44,10 +44,14 @@ abstract class DatabaseTestCase extends TestCase
     protected function tearDown(): void
     {
         // Clean transient tables using the year captured at setUp
-        $pdo = Connection::getConnection();
-        $pdo->exec('UPDATE counter SET good = 0, bad = 0');
-        $pdo->exec('DELETE FROM requests_log__' . $this->testYear);
-        $pdo->exec('DELETE FROM curl_error');
+        try {
+            $pdo = Connection::getConnection();
+            $pdo->exec('UPDATE counter SET good = 0, bad = 0');
+            $pdo->exec('DELETE FROM requests_log__' . $this->testYear);
+            $pdo->exec('DELETE FROM curl_error');
+        } catch (\Throwable) {
+            // DB not available (test was skipped), nothing to clean
+        }
 
         Connection::reset();
     }
