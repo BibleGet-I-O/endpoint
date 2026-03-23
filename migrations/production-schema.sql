@@ -323,6 +323,7 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     title3      VARCHAR(100) DEFAULT NULL,
     "verseID"   SERIAL PRIMARY KEY
 );
+CREATE INDEX IF NOT EXISTS "VGCL_bcv" ON "VGCL" (book, chapter, verse, verseequiv, verseorigin);
 CREATE INDEX IF NOT EXISTS "VGCL_text_fts" ON "VGCL" USING gin(to_tsvector('simple', text));
 
 CREATE TABLE IF NOT EXISTS "VGCL_idx" (
@@ -349,6 +350,7 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     title3      VARCHAR(100) DEFAULT NULL,
     "verseID"   SERIAL PRIMARY KEY
 );
+CREATE INDEX IF NOT EXISTS "DRB_bcv" ON "DRB" (book, chapter, verse, verseequiv, verseorigin);
 CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('simple', text));
 
 CREATE TABLE IF NOT EXISTS "DRB_idx" (
@@ -451,26 +453,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create yearly tables: 2014-2019 (without ORIGIN/ORIGINALQUERY columns)
-SELECT create_yearly_log_table('2014', FALSE);
-SELECT create_yearly_log_table('2015', FALSE);
-SELECT create_yearly_log_table('2016', FALSE);
-SELECT create_yearly_log_table('2017', FALSE);
-SELECT create_yearly_log_table('2018', FALSE);
-SELECT create_yearly_log_table('2019', FALSE);
-
--- Create yearly tables: 2020+ (with ORIGIN/ORIGINALQUERY columns)
-SELECT create_yearly_log_table('2020', TRUE);
-SELECT create_yearly_log_table('2021', TRUE);
-SELECT create_yearly_log_table('2022', TRUE);
-SELECT create_yearly_log_table('2023', TRUE);
-SELECT create_yearly_log_table('2024', TRUE);
-SELECT create_yearly_log_table('2025', TRUE);
-SELECT create_yearly_log_table('2026', TRUE);
-SELECT create_yearly_log_table('2027', TRUE);
-SELECT create_yearly_log_table('2028', TRUE);
-SELECT create_yearly_log_table('2029', TRUE);
-SELECT create_yearly_log_table('2030', TRUE);
-
--- Drop the helper function (not needed at runtime)
-DROP FUNCTION IF EXISTS create_yearly_log_table(TEXT, BOOLEAN);
+-- Create yearly tables dynamically from 2014 through next year.
+-- Tables before 2020 lack ORIGIN/ORIGINALQUERY columns.
+-- The helper function is kept for runtime use (creating future yearly tables on demand).
+SELECT create_yearly_log_table(y::TEXT, y >= 2020)
+FROM generate_series(2014, EXTRACT(YEAR FROM NOW())::INT + 1) AS y;
