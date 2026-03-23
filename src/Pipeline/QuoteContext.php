@@ -107,7 +107,8 @@ class QuoteContext
     public function __construct(array $params, ?LoggerInterface $logger = null, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')
     {
         $this->DATA                      = array_merge(self::$defaultParameters, $params);
-        $this->DATA['preferorigin']      = in_array($this->DATA['preferorigin'], self::ALLOWED_PREFER_ORIGINS) ? $this->DATA['preferorigin'] : '';
+        $preferOriginUpper               = strtoupper($this->DATA['preferorigin']);
+        $this->DATA['preferorigin']      = in_array($preferOriginUpper, self::ALLOWED_PREFER_ORIGINS, true) ? $preferOriginUpper : '';
         $this->logger                    = $logger ?? new NullLogger();
         $this->originHeader              = $originHeader;
         $this->requestMethod             = $requestMethod;
