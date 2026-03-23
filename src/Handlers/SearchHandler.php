@@ -109,14 +109,19 @@ class SearchHandler extends AbstractHandler
         return $version;
     }
 
+    private function assertValidVersionFormat(string $version): void
+    {
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
+            throw new ValidationException('Invalid version identifier format: ' . $version);
+        }
+    }
+
     /**
      * @return array{abbreviations: list<string>, books: list<string>, book_num: list<string>}
      */
     private function loadVersionIndex(\PDO $pdo, string $version): array
     {
-        if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
-            throw new ValidationException('Invalid version identifier format: ' . $version);
-        }
+        $this->assertValidVersionFormat($version);
         $abbreviations = $books = $book_num = [];
         try {
             $idxResult = $pdo->query('SELECT * FROM "' . $version . '_idx"');
@@ -140,9 +145,7 @@ class SearchHandler extends AbstractHandler
 
     private function executeSearch(\PDO $pdo, string $version, string $keyword, bool $exactmatch): \PDOStatement
     {
-        if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
-            throw new ValidationException('Invalid version identifier format: ' . $version);
-        }
+        $this->assertValidVersionFormat($version);
 
         if ($exactmatch) {
             // PostgreSQL word boundary is \y (equivalent to MySQL's \b)
@@ -182,7 +185,7 @@ class SearchHandler extends AbstractHandler
             $entry     = [
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
-                'text'        => $row['text'] ?? '',
+                'text'        => StringUtils::asString($row['text'] ?? ''),
                 'bookabbrev'  => $versionIndex['abbreviations'][$bookidx] ?? '',
                 'booknum'     => (int) $bookidx,
                 'univbooknum' => $universal_booknum,
