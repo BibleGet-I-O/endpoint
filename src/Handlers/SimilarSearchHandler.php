@@ -364,7 +364,11 @@ class SimilarSearchHandler extends AbstractHandler
         $stmt = $pdo->prepare('SELECT copyright FROM versions_available WHERE sigla = ?');
         $stmt->execute([$version]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return is_array($row) && ( (int) ( $row['copyright'] ?? 0 ) ) === 1;
+        if (!is_array($row)) {
+            return false;
+        }
+        $copyright = $row['copyright'] ?? 0;
+        return is_numeric($copyright) && ( (int) $copyright ) === 1;
     }
 
     /**

@@ -286,7 +286,7 @@ final class ReferenceParser
     private function current(): Token
     {
         if ($this->pos >= count($this->tokens)) {
-            throw new ParseException('Unexpected end of token stream');
+            throw new ParseException('Unexpected end of token stream', $this->pos);
         }
         return $this->tokens[$this->pos];
     }
