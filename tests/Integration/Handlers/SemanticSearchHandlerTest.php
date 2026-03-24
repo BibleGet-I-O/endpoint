@@ -29,6 +29,13 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
     {
         parent::setUp();
         SemanticSearchHandler::resetCache();
+
+        $pdo = $this->getConnection();
+        try {
+            $pdo->query('SELECT 1 FROM "TEST1" LIMIT 1');
+        } catch (\PDOException $e) {
+            self::markTestSkipped('Test table TEST1 not available: ' . $e->getMessage());
+        }
     }
 
     // ── Validation ──────────────────────────────────────────
