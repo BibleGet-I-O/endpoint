@@ -54,6 +54,11 @@ class SimilarSearchHandler extends AbstractHandler
         $version = $this->validateVersion($pdo, $version);
         $this->assertValidVersionFormat($version);
 
+        // Enforce copyright restriction: limit to 30 results for copyrighted versions
+        if ($this->isVersionCopyrighted($pdo, $version)) {
+            $limit = min($limit, 30);
+        }
+
         // Parse the reference into book abbreviation, chapter, and verse
         [$bookAbbrev, $chapter, $verse] = $this->parseReference($reference);
 
@@ -324,6 +329,14 @@ class SimilarSearchHandler extends AbstractHandler
         if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
             throw new ValidationException('Invalid version identifier format: ' . $version);
         }
+    }
+
+    private function isVersionCopyrighted(\PDO $pdo, string $version): bool
+    {
+        $stmt = $pdo->prepare('SELECT copyright FROM versions_available WHERE sigla = ?');
+        $stmt->execute([$version]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return is_array($row) && ( (int) ( $row['copyright'] ?? 0 ) ) === 1;
     }
 
     /**
