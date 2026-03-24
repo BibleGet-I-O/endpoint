@@ -17,7 +17,6 @@ use BibleGet\Api\Http\Middleware\LoggingMiddleware;
 use BibleGet\Api\Http\Server\MiddlewarePipeline;
 use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Nyholm\Psr7\Factory\Psr17Factory;
-use Nyholm\Psr7\Response;
 use Nyholm\Psr7Server\ServerRequestCreator;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -173,20 +172,18 @@ class Router
     private function createNotFoundHandler(): RequestHandlerInterface
     {
         $protocolVersion = $this->request->getProtocolVersion();
-        return new class ($protocolVersion) implements RequestHandlerInterface {
-            public function __construct(private readonly string $protocolVersion)
-            {
+        $factory         = $this->psr17Factory;
+        return new class ($protocolVersion, $factory) implements RequestHandlerInterface {
+            public function __construct(
+                private readonly string $protocolVersion,
+                private readonly Psr17Factory $psr17Factory
+            ) {
             }
 
             public function handle(ServerRequestInterface $request): ResponseInterface
             {
-                return new Response(
-                    StatusCode::NOT_FOUND->value,
-                    [],
-                    null,
-                    $this->protocolVersion,
-                    StatusCode::NOT_FOUND->reason()
-                );
+                return $this->psr17Factory->createResponse(StatusCode::NOT_FOUND->value, StatusCode::NOT_FOUND->reason())
+                    ->withProtocolVersion($this->protocolVersion);
             }
         };
     }

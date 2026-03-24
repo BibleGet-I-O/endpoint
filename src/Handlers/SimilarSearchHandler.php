@@ -125,8 +125,8 @@ class SimilarSearchHandler extends AbstractHandler
      */
     private function parseReference(string $reference): array
     {
-        // Match patterns like "Gen1:1", "1Sam3:4", "2Kgs5:10", "Ps51:3"
-        if (!preg_match('/^(\d?\s*[A-Za-z]+)\s*(\d+)\s*[:,.]\s*(\d+)$/', $reference, $matches)) {
+        // Match patterns like "Gen1:1", "1Sam3:4", "2Kgs5:10", "Ps51:3", "Song of Songs 1:1"
+        if (!preg_match('/^(\d?\s*[A-Za-z]+(?:\s+[A-Za-z]+)*)\s*(\d+)\s*[:,.]\s*(\d+)$/', $reference, $matches)) {
             throw new ValidationException(
                 'Invalid reference format: ' . $reference . '. Expected format: Book Chapter:Verse (e.g., Gen1:1, Ps51:3)'
             );
@@ -252,6 +252,9 @@ class SimilarSearchHandler extends AbstractHandler
 
             $versionIndex = $this->loadVersionIndex($pdo, $v);
 
+            // Enforce copyright restriction per target version
+            $versionLimit = $this->isVersionCopyrighted($pdo, $v) ? min($limit, 30) : $limit;
+
             $isSourceVersion = ( $v === $sourceVersion );
             if ($isSourceVersion) {
                 $sql  = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
@@ -261,15 +264,16 @@ class SimilarSearchHandler extends AbstractHandler
                      . 'ORDER BY embedding <=> ?::vector '
                      . 'LIMIT ?';
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$sourceEmbedding, $excludeBook, $excludeChapter, $excludeVerse, $sourceEmbedding, $limit]);
+                $stmt->execute([$sourceEmbedding, $excludeBook, $excludeChapter, $excludeVerse, $sourceEmbedding, $versionLimit]);
             } else {
                 $sql  = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
                      . 'FROM "' . $v . '" '
                      . 'WHERE embedding IS NOT NULL '
+                     . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
                      . 'ORDER BY embedding <=> ?::vector '
                      . 'LIMIT ?';
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$sourceEmbedding, $sourceEmbedding, $limit]);
+                $stmt->execute([$sourceEmbedding, $excludeBook, $excludeChapter, $excludeVerse, $sourceEmbedding, $versionLimit]);
             }
 
             $versionResults = $this->mapResults($stmt, $v, $versionIndex);

@@ -6,9 +6,12 @@
 -- ── Reference tables ─────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS counter (
+    id   SMALLINT NOT NULL PRIMARY KEY,
     good INT NOT NULL DEFAULT 0,
     bad  INT NOT NULL DEFAULT 0
 );
+INSERT INTO counter (id, good, bad) VALUES (1, 0, 0)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS section (
     "IDX"     INT NOT NULL PRIMARY KEY,

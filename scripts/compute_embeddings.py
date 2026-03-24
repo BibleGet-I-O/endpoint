@@ -32,6 +32,7 @@ from psycopg2 import sql
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_VERSION = "1.0"
 EMBEDDING_DIM = 384
 DEFAULT_BATCH_SIZE = 128
 
@@ -221,26 +222,27 @@ def process_version(conn, model, version, force=False, batch_size=DEFAULT_BATCH_
 
     # Record which model was used and the current content fingerprint
     content_xor = compute_content_xor(conn, version)
-    update_metadata(conn, version, MODEL_NAME, EMBEDDING_DIM, content_xor)
+    update_metadata(conn, version, MODEL_NAME, EMBEDDING_DIM, content_xor, MODEL_VERSION)
 
     print(f"  {version}: done ({total_written} embeddings)")
     return total_written
 
 
-def update_metadata(conn, version, model_name, dimensions, content_xor=None):
+def update_metadata(conn, version, model_name, dimensions, content_xor=None, model_version=""):
     """Insert or update the embedding_metadata record for a version."""
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO embedding_metadata (version_sigla, model_name, dimensions, computed_at, content_xor)
-            VALUES (%s, %s, %s, CURRENT_TIMESTAMP, %s)
+            INSERT INTO embedding_metadata (version_sigla, model_name, model_version, dimensions, computed_at, content_xor)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
             ON CONFLICT (version_sigla) DO UPDATE
                 SET model_name = EXCLUDED.model_name,
+                    model_version = EXCLUDED.model_version,
                     dimensions = EXCLUDED.dimensions,
                     computed_at = CURRENT_TIMESTAMP,
                     content_xor = EXCLUDED.content_xor
             """,
-            (version, model_name, dimensions, content_xor),
+            (version, model_name, model_version, dimensions, content_xor),
         )
     conn.commit()
 
