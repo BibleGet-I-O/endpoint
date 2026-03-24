@@ -36,13 +36,12 @@ DECLARE
     idx_name TEXT;
 BEGIN
     FOR rec IN SELECT sigla, ts_language FROM versions_available LOOP
-        -- Skip if the corresponding table doesn't exist
+        -- Fail if the corresponding table doesn't exist (dangling sigla would break search)
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.tables
             WHERE table_schema = 'public' AND table_name = rec.sigla
         ) THEN
-            RAISE NOTICE 'Skipping %: table does not exist', rec.sigla;
-            CONTINUE;
+            RAISE EXCEPTION 'Table "%" referenced by versions_available does not exist. Create the table or remove the entry before running this migration.', rec.sigla;
         END IF;
 
         idx_name := rec.sigla || '_text_fts';
