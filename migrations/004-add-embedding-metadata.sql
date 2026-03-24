@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS embedding_metadata (
     model_name    VARCHAR(100) NOT NULL,
     model_version VARCHAR(50) NOT NULL DEFAULT '',
     dimensions    INT NOT NULL CHECK (dimensions > 0),
-    computed_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    computed_at   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
