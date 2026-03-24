@@ -14695,10 +14695,12 @@
                         "minimum": 0.0,
                         "maximum": 1.0
                     }
-                }
+                },
+                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "similarity"]
             },
             "SemanticSearchResponseJSON": {
                 "type": "object",
+                "required": ["results", "errors", "info"],
                 "properties": {
                     "results": {
                         "type": "array",
@@ -14714,6 +14716,7 @@
                     },
                     "info": {
                         "type": "object",
+                        "required": ["ENDPOINT_VERSION"],
                         "properties": {
                             "ENDPOINT_VERSION": {
                                 "type": "string",
@@ -14725,6 +14728,7 @@
             },
             "SimilarSearchResponseJSON": {
                 "type": "object",
+                "required": ["results", "errors", "info"],
                 "properties": {
                     "results": {
                         "type": "array",
@@ -14740,6 +14744,7 @@
                     },
                     "info": {
                         "type": "object",
+                        "required": ["ENDPOINT_VERSION"],
                         "properties": {
                             "ENDPOINT_VERSION": {
                                 "type": "string",
