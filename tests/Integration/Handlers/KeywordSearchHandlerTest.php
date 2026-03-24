@@ -27,6 +27,14 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
     {
         parent::setUp();
         KeywordSearchHandler::resetCache();
+
+        $pdo = $this->getConnection();
+        try {
+            $pdo->query('SELECT 1 FROM "TEST1" LIMIT 1');
+            $pdo->query('SELECT 1 FROM "VGCL" LIMIT 1');
+        } catch (\PDOException $e) {
+            self::markTestSkipped('Required test tables not available: ' . $e->getMessage());
+        }
     }
 
     // ── Fulltext mode (default) with stemming ───────────────
