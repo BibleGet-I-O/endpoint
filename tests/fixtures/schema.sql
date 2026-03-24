@@ -77,7 +77,51 @@ CREATE TABLE IF NOT EXISTS embedding_metadata (
     model_name    VARCHAR(100) NOT NULL,
     model_version VARCHAR(50) NOT NULL DEFAULT '',
     dimensions    INT NOT NULL CHECK (dimensions > 0),
-    computed_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    computed_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    content_xor   BYTEA
+);
+
+-- Trigger function to auto-maintain text_hash on verse tables
+CREATE OR REPLACE FUNCTION update_text_hash()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.text_hash := decode(md5(NEW.text), 'hex');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- XOR aggregate for BYTEA (used for version-level content fingerprinting)
+CREATE OR REPLACE FUNCTION bytea_xor(a BYTEA, b BYTEA) RETURNS BYTEA AS $$
+BEGIN
+    IF a IS NULL THEN RETURN b; END IF;
+    IF b IS NULL THEN RETURN a; END IF;
+    RETURN set_byte(set_byte(set_byte(set_byte(
+           set_byte(set_byte(set_byte(set_byte(
+           set_byte(set_byte(set_byte(set_byte(
+           set_byte(set_byte(set_byte(set_byte(
+               a,
+               0, get_byte(a,0) # get_byte(b,0)),
+               1, get_byte(a,1) # get_byte(b,1)),
+               2, get_byte(a,2) # get_byte(b,2)),
+               3, get_byte(a,3) # get_byte(b,3)),
+               4, get_byte(a,4) # get_byte(b,4)),
+               5, get_byte(a,5) # get_byte(b,5)),
+               6, get_byte(a,6) # get_byte(b,6)),
+               7, get_byte(a,7) # get_byte(b,7)),
+               8, get_byte(a,8) # get_byte(b,8)),
+               9, get_byte(a,9) # get_byte(b,9)),
+              10, get_byte(a,10) # get_byte(b,10)),
+              11, get_byte(a,11) # get_byte(b,11)),
+              12, get_byte(a,12) # get_byte(b,12)),
+              13, get_byte(a,13) # get_byte(b,13)),
+              14, get_byte(a,14) # get_byte(b,14)),
+              15, get_byte(a,15) # get_byte(b,15));
+END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+CREATE AGGREGATE bytea_xor_agg(BYTEA) (
+    SFUNC = bytea_xor,
+    STYPE = BYTEA
 );
 
 -- curl error log
