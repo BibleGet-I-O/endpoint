@@ -69,7 +69,7 @@ class EmbeddingClientTest extends TestCase
         }
     }
 
-    public function testCircuitBreakerResetsOnSuccess(): void
+    public function testResetCircuitBreakerClosesCircuit(): void
     {
         // After a reset, the circuit should be closed
         EmbeddingClient::resetCircuitBreaker();
