@@ -72,12 +72,16 @@ def load_verses(conn, version, force=False):
 
 def write_embeddings(conn, version, verse_ids, embeddings):
     """Write embeddings back to the database in a single transaction."""
-    query = sql.SQL('UPDATE {} SET embedding = %s WHERE "verseID" = %s').format(
+    query = sql.SQL('UPDATE {} SET embedding = %s::vector WHERE "verseID" = %s').format(
         sql.Identifier(version)
     )
     with conn.cursor() as cur:
         cur.executemany(
-            query, [(embedding.tolist(), verse_id) for verse_id, embedding in zip(verse_ids, embeddings)]
+            query,
+            [
+                ("[" + ",".join(str(x) for x in embedding.tolist()) + "]", verse_id)
+                for verse_id, embedding in zip(verse_ids, embeddings)
+            ],
         )
     conn.commit()
 
@@ -145,10 +149,16 @@ def main():
 
     conn = get_connection()
     try:
-        # Ensure pgvector and embedding columns exist
+        # Verify pgvector extension is available (must be provisioned by DB migrations)
         with conn.cursor() as cur:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        conn.commit()
+            cur.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
+            if cur.fetchone() is None:
+                print(
+                    "Error: pgvector extension is not installed.\n"
+                    "Run the database migrations (migrations/003-add-pgvector-embeddings.sql) first.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
         versions = get_versions(conn, args.version)
         if not versions:
