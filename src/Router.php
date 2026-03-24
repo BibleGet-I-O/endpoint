@@ -96,45 +96,13 @@ class Router
                         $this->handler = new SearchHandler($requestPathParts);
                         break;
                     default:
-                        $protocolVersion = $this->request->getProtocolVersion();
-                        $this->handler   = new class ($protocolVersion) implements RequestHandlerInterface {
-                            public function __construct(private readonly string $protocolVersion)
-                            {
-                            }
-
-                            public function handle(ServerRequestInterface $request): ResponseInterface
-                            {
-                                return new Response(
-                                    StatusCode::NOT_FOUND->value,
-                                    [],
-                                    null,
-                                    $this->protocolVersion,
-                                    StatusCode::NOT_FOUND->reason()
-                                );
-                            }
-                        };
+                        $this->handler = $this->createNotFoundHandler();
                         break;
                 }
                 break;
 
             default:
-                $protocolVersion = $this->request->getProtocolVersion();
-                $this->handler   = new class ($protocolVersion) implements RequestHandlerInterface {
-                    public function __construct(private readonly string $protocolVersion)
-                    {
-                    }
-
-                    public function handle(ServerRequestInterface $request): ResponseInterface
-                    {
-                        return new Response(
-                            StatusCode::NOT_FOUND->value,
-                            [],
-                            null,
-                            $this->protocolVersion,
-                            StatusCode::NOT_FOUND->reason()
-                        );
-                    }
-                };
+                $this->handler = $this->createNotFoundHandler();
                 break;
         }
 
@@ -200,6 +168,27 @@ class Router
         return in_array($serverAddress, $localhostAddresses)
             || in_array($remoteAddress, $localhostAddresses)
             || in_array($serverName, $localhostNames);
+    }
+
+    private function createNotFoundHandler(): RequestHandlerInterface
+    {
+        $protocolVersion = $this->request->getProtocolVersion();
+        return new class ($protocolVersion) implements RequestHandlerInterface {
+            public function __construct(private readonly string $protocolVersion)
+            {
+            }
+
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(
+                    StatusCode::NOT_FOUND->value,
+                    [],
+                    null,
+                    $this->protocolVersion,
+                    StatusCode::NOT_FOUND->reason()
+                );
+            }
+        };
     }
 
     private function retrieveRequest(): ServerRequestInterface
