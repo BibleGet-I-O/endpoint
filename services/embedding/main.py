@@ -11,17 +11,20 @@ import os
 import time
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+
+MAX_TEXT_LENGTH = 10000
+MAX_BATCH_SIZE = 128
 
 app = FastAPI(title="BibleGet Embedding Service", version="1.0.0")
 model = None
 
 
 class EmbedRequest(BaseModel):
-    text: str = Field(..., min_length=1, description="Text to embed")
+    text: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH, description="Text to embed")
 
 
 class EmbedResponse(BaseModel):
@@ -31,7 +34,17 @@ class EmbedResponse(BaseModel):
 
 
 class BatchEmbedRequest(BaseModel):
-    texts: list[str] = Field(..., min_length=1, description="List of texts to embed")
+    texts: list[str] = Field(..., min_length=1, max_length=MAX_BATCH_SIZE, description="List of texts to embed")
+
+    @field_validator("texts")
+    @classmethod
+    def validate_text_lengths(cls, v: list[str]) -> list[str]:
+        for i, text in enumerate(v):
+            if len(text) > MAX_TEXT_LENGTH:
+                raise ValueError(f"texts[{i}] exceeds maximum length of {MAX_TEXT_LENGTH} characters")
+            if len(text) == 0:
+                raise ValueError(f"texts[{i}] must not be empty")
+        return v
 
 
 class BatchEmbedResponse(BaseModel):
