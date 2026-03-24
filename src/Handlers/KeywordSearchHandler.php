@@ -200,10 +200,16 @@ class KeywordSearchHandler extends AbstractHandler
             case 'exact':
                 // Escape PostgreSQL regex metacharacters so the keyword is matched literally
                 $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $keyword) ?? $keyword;
-                $stmt           = $pdo->prepare(
-                    'SELECT * FROM "' . $version . '" WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY book, chapter, verse'
-                );
-                $stmt->execute([$escapedKeyword]);
+                try {
+                    $stmt = $pdo->prepare(
+                        'SELECT * FROM "' . $version . '" WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY book, chapter, verse'
+                    );
+                    $stmt->execute([$escapedKeyword]);
+                } catch (\PDOException) {
+                    throw new ValidationException(
+                        'Search failed for keyword in version ' . $version . '. Please try a different keyword.'
+                    );
+                }
                 break;
 
             case 'boolean':
@@ -232,10 +238,16 @@ class KeywordSearchHandler extends AbstractHandler
                         'Search keyword must be at least 4 characters long (use match=exact for shorter keywords).'
                     );
                 }
-                $stmt = $pdo->prepare(
-                    'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
-                );
-                $stmt->execute([$sanitizedKeyword]);
+                try {
+                    $stmt = $pdo->prepare(
+                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
+                    );
+                    $stmt->execute([$sanitizedKeyword]);
+                } catch (\PDOException) {
+                    throw new ValidationException(
+                        'Full-text search failed. Please try a different keyword.'
+                    );
+                }
                 break;
         }
 
