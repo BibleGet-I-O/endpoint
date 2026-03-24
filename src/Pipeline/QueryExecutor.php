@@ -345,7 +345,7 @@ class QueryExecutor
         $row['book']        = $this->ctx->INDEXES[$currentVariant]['biblebooks'][$booknum];
 
         $row['section'] = is_numeric($row['section']) ? (int) $row['section'] : 0;
-        unset($row['verseID']);
+        unset($row['verseID'], $row['embedding'], $row['text_hash'], $row['embedded_text_hash']);
         $row['chapter']       = is_numeric($row['chapter']) ? (int) $row['chapter'] : 0;
         $row['originalquery'] = $this->ctx->originalQueries[$this->i] ?? '';
 
