@@ -22,7 +22,7 @@ services:
     ports:
       - "8001:8000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()\""]
       interval: 10s
       timeout: 5s
       retries: 10
