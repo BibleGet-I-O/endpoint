@@ -9,16 +9,10 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('slow')]
 class SimilarSearchHttpTest extends ServerTestCase
 {
-    public function testSimilarRouteExists(): void
-    {
-        $r = self::httpGet('/v3/search/similar?version=TEST1');
-        // 422 = route exists but reference param missing
-        self::assertSame(422, $r['status']);
-    }
-
     public function testMissingReferenceReturns422(): void
     {
         $r = self::httpGet('/v3/search/similar?version=TEST1');
+        // 422 proves the route exists (not 404) and validates input
         self::assertSame(422, $r['status']);
 
         $body = self::jsonBody($r['body']);
