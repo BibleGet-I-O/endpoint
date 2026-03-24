@@ -29,11 +29,17 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         parent::setUp();
         SimilarSearchHandler::resetCache();
 
-        // Seed embeddings on a few test verses
         $pdo = $this->getConnection();
-        $v1  = '[' . implode(',', array_fill(0, 384, 0.1)) . ']';
-        $v2  = '[' . implode(',', array_fill(0, 384, 0.2)) . ']';
-        $v3  = '[' . implode(',', array_fill(0, 384, -0.1)) . ']';
+        try {
+            $pdo->query('SELECT 1 FROM "TEST1" LIMIT 1');
+        } catch (\PDOException $e) {
+            self::markTestSkipped('Test table TEST1 not available: ' . $e->getMessage());
+        }
+
+        // Seed embeddings on a few test verses
+        $v1 = '[' . implode(',', array_fill(0, 384, 0.1)) . ']';
+        $v2 = '[' . implode(',', array_fill(0, 384, 0.2)) . ']';
+        $v3 = '[' . implode(',', array_fill(0, 384, -0.1)) . ']';
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $v1 . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $v2 . '\' WHERE book = 1 AND chapter = 1 AND verse = 2');
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $v3 . '\' WHERE book = 1 AND chapter = 1 AND verse = 3');
