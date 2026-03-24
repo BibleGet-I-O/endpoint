@@ -234,9 +234,20 @@ class SimilarSearchHandler extends AbstractHandler
     ): array {
         $allResults = [];
 
+        // Only include versions whose embeddings were computed with the same model
+        $sourceModel = $this->getEmbeddingModel($pdo, $sourceVersion);
+
         foreach ($versions as $v) {
             if (!preg_match('/^[A-Za-z0-9_]+$/', $v)) {
                 continue;
+            }
+
+            if ($v !== $sourceVersion && $sourceModel !== '') {
+                $vModel = $this->getEmbeddingModel($pdo, $v);
+                if ($vModel !== '' && $vModel !== $sourceModel) {
+                    $this->logger->info('Skipping version ' . $v . ' in cross-version search: embedding model mismatch (' . $vModel . ' vs ' . $sourceModel . ')');
+                    continue;
+                }
             }
 
             $versionIndex = $this->loadVersionIndex($pdo, $v);
@@ -328,6 +339,23 @@ class SimilarSearchHandler extends AbstractHandler
     {
         if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
             throw new ValidationException('Invalid version identifier format: ' . $version);
+        }
+    }
+
+    /**
+     * Get the embedding model name for a version from embedding_metadata.
+     * Returns empty string if no metadata exists.
+     */
+    private function getEmbeddingModel(\PDO $pdo, string $version): string
+    {
+        try {
+            $stmt = $pdo->prepare('SELECT model_name FROM embedding_metadata WHERE version_sigla = ?');
+            $stmt->execute([$version]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return is_array($row) ? StringUtils::asString($row['model_name'] ?? '') : '';
+        } catch (\PDOException) {
+            // embedding_metadata table may not exist yet
+            return '';
         }
     }
 
