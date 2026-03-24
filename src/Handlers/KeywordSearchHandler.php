@@ -198,10 +198,12 @@ class KeywordSearchHandler extends AbstractHandler
 
         switch ($matchMode) {
             case 'exact':
-                $stmt = $pdo->prepare(
+                // Escape PostgreSQL regex metacharacters so the keyword is matched literally
+                $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $keyword) ?? $keyword;
+                $stmt           = $pdo->prepare(
                     'SELECT * FROM "' . $version . '" WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY book, chapter, verse'
                 );
-                $stmt->execute([$keyword]);
+                $stmt->execute([$escapedKeyword]);
                 break;
 
             case 'boolean':
