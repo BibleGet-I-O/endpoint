@@ -241,12 +241,31 @@ class QueryExecutor
         }
     }
 
+    /**
+     * Enforce rate limits atomically using a PostgreSQL advisory lock
+     * keyed on the client IP. This prevents TOCTOU races where concurrent
+     * requests from the same IP read stale counts before the current
+     * request is logged.
+     *
+     * The advisory lock is released automatically at transaction end.
+     */
     private function enforceQueryLimits(): void
     {
-        $this->checkIPAddressPastTwoDaysWithSameRequest();
-        $this->checkQueriesFromSameIPAddress();
-        $this->checkRequestsFromSameOrigin();
-        $this->checkDiverseRequestsFromSameOrigin();
+        $lockKey = $this->ipaddress !== '' ? crc32($this->ipaddress) : 0;
+        $this->ctx->pdo->beginTransaction();
+        try {
+            $this->ctx->pdo->exec('SELECT pg_advisory_xact_lock(' . (int) $lockKey . ')');
+            $this->checkIPAddressPastTwoDaysWithSameRequest();
+            $this->checkQueriesFromSameIPAddress();
+            $this->checkRequestsFromSameOrigin();
+            $this->checkDiverseRequestsFromSameOrigin();
+            $this->ctx->pdo->commit();
+        } catch (\Throwable $e) {
+            if ($this->ctx->pdo->inTransaction()) {
+                $this->ctx->pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     private function getGeoIPInfoFromLogsElseOnline(): void
