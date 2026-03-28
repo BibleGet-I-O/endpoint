@@ -44,10 +44,12 @@ CREATE TABLE IF NOT EXISTS versions_available (
 );
 
 CREATE TABLE IF NOT EXISTS usage_counter (
-    datetime      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP PRIMARY KEY,
-    currentcount  INT NOT NULL DEFAULT 0,
+    id             SERIAL PRIMARY KEY,
+    datetime       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    currentcount   INT NOT NULL DEFAULT 0,
     quarthourcount INT NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS usage_counter_datetime ON usage_counter (datetime);
 
 -- ── Bible book names (25 languages) ─────────────────────────────────────────
 
