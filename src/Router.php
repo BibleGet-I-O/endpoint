@@ -14,8 +14,8 @@ use BibleGet\Api\Http\Middleware\LoggingMiddleware;
 use BibleGet\Api\Http\Server\MiddlewarePipeline;
 use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Nyholm\Psr7\Factory\Psr17Factory;
-use Nyholm\Psr7\Response;
 use Nyholm\Psr7Server\ServerRequestCreator;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -68,33 +68,29 @@ class Router
         switch ($route) {
             case '':
             case 'quote':
-                $this->handler = new QuoteHandler($requestPathParts);
+                $this->handler = new QuoteHandler($this->psr17Factory, $requestPathParts);
                 break;
 
             case 'metadata':
-                $this->handler = new MetadataHandler($requestPathParts);
+                $this->handler = new MetadataHandler($this->psr17Factory, $requestPathParts);
                 break;
 
             case 'search':
-                $this->handler = new SearchHandler($requestPathParts);
+                $this->handler = new SearchHandler($this->psr17Factory, $requestPathParts);
                 break;
 
             default:
-                $protocolVersion = $this->request->getProtocolVersion();
-                $this->handler   = new class ($protocolVersion) implements RequestHandlerInterface {
-                    public function __construct(private readonly string $protocolVersion)
+                $responseFactory = $this->psr17Factory;
+                $this->handler   = new class ($responseFactory) implements RequestHandlerInterface {
+                    public function __construct(private readonly ResponseFactoryInterface $responseFactory)
                     {
                     }
 
                     public function handle(ServerRequestInterface $request): ResponseInterface
                     {
-                        return new Response(
-                            StatusCode::NOT_FOUND->value,
-                            [],
-                            null,
-                            $this->protocolVersion,
-                            StatusCode::NOT_FOUND->reason()
-                        );
+                        return $this->responseFactory
+                            ->createResponse(StatusCode::NOT_FOUND->value, StatusCode::NOT_FOUND->reason())
+                            ->withProtocolVersion($request->getProtocolVersion());
                     }
                 };
                 break;

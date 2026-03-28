@@ -13,8 +13,8 @@ use BibleGet\Api\Http\Exception\NotAcceptableException;
 use BibleGet\Api\Http\Exception\UnsupportedMediaTypeException;
 use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\ValidationException;
-use Nyholm\Psr7\Response;
 use Nyholm\Psr7\Stream;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -33,13 +33,16 @@ abstract class AbstractHandler implements RequestHandlerInterface
     /** @var string[] */
     protected array $requestPathParams;
 
+    protected ResponseFactoryInterface $responseFactory;
+
     abstract public function handle(ServerRequestInterface $request): ResponseInterface;
 
     /**
      * @param string[] $requestPathParams
      */
-    public function __construct(array $requestPathParams = [])
+    public function __construct(ResponseFactoryInterface $responseFactory, array $requestPathParams = [])
     {
+        $this->responseFactory            = $responseFactory;
         $this->requestPathParams          = $requestPathParams;
         $this->allowedAcceptHeaders       = AcceptHeader::cases();
         $this->allowedRequestMethods      = [RequestMethod::GET, RequestMethod::POST, RequestMethod::OPTIONS];
@@ -333,13 +336,9 @@ abstract class AbstractHandler implements RequestHandlerInterface
      */
     protected function initResponse(ServerRequestInterface $request, string $contentType): ResponseInterface
     {
-        $response = new Response(
-            StatusCode::OK->value,
-            ['Content-Type' => $contentType . '; charset=utf-8'],
-            null,
-            $request->getProtocolVersion(),
-            StatusCode::OK->reason()
-        );
+        $response = $this->responseFactory->createResponse(StatusCode::OK->value, StatusCode::OK->reason())
+            ->withProtocolVersion($request->getProtocolVersion())
+            ->withHeader('Content-Type', $contentType . '; charset=utf-8');
 
         return $this->setAccessControlAllowOriginHeader($request, $response);
     }
