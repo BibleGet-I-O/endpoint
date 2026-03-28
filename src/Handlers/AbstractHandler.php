@@ -75,15 +75,31 @@ abstract class AbstractHandler implements RequestHandlerInterface
 
     /**
      * Set CORS Access-Control-Allow-Origin header on the response.
+     *
+     * When CORS_ALLOWED_ORIGINS is configured, only listed origins receive
+     * credentials support. Unknown origins get a plain wildcard header
+     * without Access-Control-Allow-Credentials to prevent any site from
+     * making credentialed cross-origin requests.
      */
     protected function setAccessControlAllowOriginHeader(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $origin = $request->getHeaderLine('Origin');
 
         if ($origin !== '') {
+            $allowedRaw     = $_ENV['CORS_ALLOWED_ORIGINS'] ?? '';
+            $allowedOrigins = is_string($allowedRaw) && $allowedRaw !== ''
+                ? array_map('trim', explode(',', $allowedRaw))
+                : [];
+
+            if ($allowedOrigins === [] || in_array($origin, $allowedOrigins, true)) {
+                return $response
+                    ->withHeader('Access-Control-Allow-Origin', $origin)
+                    ->withHeader('Access-Control-Allow-Credentials', 'true')
+                    ->withAddedHeader('Vary', 'Origin');
+            }
+
             return $response
                 ->withHeader('Access-Control-Allow-Origin', $origin)
-                ->withHeader('Access-Control-Allow-Credentials', 'true')
                 ->withAddedHeader('Vary', 'Origin');
         }
 

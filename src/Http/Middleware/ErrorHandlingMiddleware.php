@@ -136,9 +136,20 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
     {
         $origin = $request->getHeaderLine('Origin');
         if ($origin !== '') {
+            $allowedRaw     = $_ENV['CORS_ALLOWED_ORIGINS'] ?? '';
+            $allowedOrigins = is_string($allowedRaw) && $allowedRaw !== ''
+                ? array_map('trim', explode(',', $allowedRaw))
+                : [];
+
+            if ($allowedOrigins === [] || in_array($origin, $allowedOrigins, true)) {
+                return $response
+                    ->withHeader('Access-Control-Allow-Origin', $origin)
+                    ->withHeader('Access-Control-Allow-Credentials', 'true')
+                    ->withAddedHeader('Vary', 'Origin');
+            }
+
             return $response
                 ->withHeader('Access-Control-Allow-Origin', $origin)
-                ->withHeader('Access-Control-Allow-Credentials', 'true')
                 ->withAddedHeader('Vary', 'Origin');
         }
         return $response->withHeader('Access-Control-Allow-Origin', '*');
