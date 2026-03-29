@@ -245,10 +245,13 @@ class QueryExecutor
      * Enforce rate limits and log the query atomically under PostgreSQL
      * advisory locks keyed on both the client IP and the request Origin.
      *
-     * Two locks are acquired — one per IP for IP-based quota checks and one
-     * per Origin for Origin-based quota checks — so that concurrent requests
-     * from the same Origin on different IPs are also serialised.  Locks are
-     * always acquired in sorted order to prevent deadlocks.
+     * Two locks are acquired using the two-argument form of
+     * pg_advisory_xact_lock(namespace, key) — namespace 1 for IP and
+     * namespace 2 for Origin — so that concurrent requests from the same
+     * Origin on different IPs are also serialised, not only same-IP requests.
+     * Using distinct namespaces prevents key-space collisions between IP and
+     * Origin hashes.  Locks are always acquired in namespace order (1 then 2)
+     * to prevent deadlocks.
      *
      * The locks are held until the log INSERT commits, closing the TOCTOU
      * window where concurrent requests could observe stale counts before the
@@ -259,24 +262,16 @@ class QueryExecutor
      */
     private function enforceQueryLimitsAndLog(): bool
     {
-        $ipLockKey = $this->ipaddress !== '' ? crc32($this->ipaddress) : 0;
-
-        // Use bitwise complement for origin keys to avoid key-space collision
-        // with IP keys.  Only add an origin lock when the header is present.
-        $locks = [$ipLockKey];
-        if ($this->ctx->originHeader !== '') {
-            $locks[] = ~crc32($this->ctx->originHeader);
-        }
-
-        // Acquire in sorted order to prevent deadlocks when two requests share
-        // an Origin but arrive from different IPs.
-        sort($locks);
+        $ipKey     = $this->ipaddress !== '' ? crc32($this->ipaddress) : 0;
+        $originKey = $this->ctx->originHeader !== '' ? crc32($this->ctx->originHeader) : 0;
 
         $this->ctx->pdo->beginTransaction();
         try {
-            foreach ($locks as $lock) {
-                $this->ctx->pdo->exec('SELECT pg_advisory_xact_lock(' . (int) $lock . ')');
-            }
+            // Namespace 1 = IP, namespace 2 = Origin.  Always acquired in
+            // namespace order to prevent deadlocks.
+            $lockStmt = $this->ctx->pdo->prepare('SELECT pg_advisory_xact_lock(:ns, :key)');
+            $lockStmt->execute(['ns' => 1, 'key' => (int) $ipKey]);
+            $lockStmt->execute(['ns' => 2, 'key' => (int) $originKey]);
             $this->checkIPAddressPastTwoDaysWithSameRequest();
             $this->checkQueriesFromSameIPAddress();
             $this->checkRequestsFromSameOrigin();
