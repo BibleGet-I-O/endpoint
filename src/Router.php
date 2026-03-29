@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api;
 
+use BibleGet\Api\Handlers\DocsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
 use BibleGet\Api\Handlers\SearchHandler;
@@ -15,6 +16,7 @@ use BibleGet\Api\Http\Server\MiddlewarePipeline;
 use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
+use Nyholm\Psr7\Stream;
 use Nyholm\Psr7Server\ServerRequestCreator;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -77,6 +79,54 @@ class Router
 
             case 'search':
                 $this->handler = new SearchHandler($requestPathParts);
+                break;
+
+            case 'docs':
+                $this->handler = new DocsHandler($requestPathParts);
+                break;
+
+            case 'openapi.json':
+                $specPath      = dirname(__DIR__) . '/openapi.json';
+                $this->handler = new class ($specPath) implements RequestHandlerInterface {
+                    public function __construct(private readonly string $specPath)
+                    {
+                    }
+
+                    public function handle(ServerRequestInterface $request): ResponseInterface
+                    {
+                        if (!is_readable($this->specPath)) {
+                            return new Response(
+                                StatusCode::NOT_FOUND->value,
+                                [],
+                                null,
+                                $request->getProtocolVersion(),
+                                StatusCode::NOT_FOUND->reason()
+                            );
+                        }
+
+                        $json = file_get_contents($this->specPath);
+                        if ($json === false) {
+                            return new Response(
+                                StatusCode::INTERNAL_SERVER_ERROR->value,
+                                [],
+                                null,
+                                $request->getProtocolVersion(),
+                                StatusCode::INTERNAL_SERVER_ERROR->reason()
+                            );
+                        }
+                        return ( new Response(
+                            StatusCode::OK->value,
+                            [
+                                'Content-Type'                => 'application/json; charset=utf-8',
+                                'Access-Control-Allow-Origin' => '*',
+                                'Cache-Control'               => 'public, max-age=3600',
+                            ],
+                            null,
+                            $request->getProtocolVersion(),
+                            StatusCode::OK->reason()
+                        ) )->withBody(Stream::create($json));
+                    }
+                };
                 break;
 
             default:
