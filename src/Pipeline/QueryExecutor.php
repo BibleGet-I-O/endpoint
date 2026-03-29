@@ -242,14 +242,18 @@ class QueryExecutor
     }
 
     /**
-     * Enforce rate limits atomically using a PostgreSQL advisory lock
-     * keyed on the client IP. This prevents TOCTOU races where concurrent
-     * requests from the same IP read stale counts before the current
-     * request is logged.
+     * Enforce rate limits and log the query atomically under a PostgreSQL
+     * advisory lock keyed on the client IP.
      *
-     * The advisory lock is released automatically at transaction end.
+     * The lock is acquired before reading any counts and held until the
+     * log INSERT commits, closing the TOCTOU window where concurrent
+     * requests from the same IP could observe stale counts before the
+     * current request is recorded.
+     *
+     * Returns true to signal the caller that logQuery() has already run
+     * inside the transaction and must not be called again.
      */
-    private function enforceQueryLimits(): void
+    private function enforceQueryLimitsAndLog(): bool
     {
         $lockKey = $this->ipaddress !== '' ? crc32($this->ipaddress) : 0;
         $this->ctx->pdo->beginTransaction();
@@ -259,6 +263,7 @@ class QueryExecutor
             $this->checkQueriesFromSameIPAddress();
             $this->checkRequestsFromSameOrigin();
             $this->checkDiverseRequestsFromSameOrigin();
+            $this->logQuery();
             $this->ctx->pdo->commit();
         } catch (\Throwable $e) {
             if ($this->ctx->pdo->inTransaction()) {
@@ -266,6 +271,8 @@ class QueryExecutor
             }
             throw $e;
         }
+
+        return true;
     }
 
     private function getGeoIPInfoFromLogsElseOnline(): void
@@ -387,10 +394,6 @@ class QueryExecutor
         foreach ($this->sqlqueries as $xquery) {
             $this->xquery = $xquery;
 
-            if ($notWhitelisted) {
-                $this->enforceQueryLimits();
-            }
-
             $result = $this->ctx->pdo->query($xquery);
 
             if ($result instanceof \PDOStatement) {
@@ -406,7 +409,11 @@ class QueryExecutor
                     $this->geoip_json = '{"ERROR":""}';
                 }
 
-                $this->logQuery();
+                if ($notWhitelisted) {
+                    $this->enforceQueryLimitsAndLog();
+                } else {
+                    $this->logQuery();
+                }
 
                 while (is_array($fetchedRow = $result->fetch(\PDO::FETCH_ASSOC))) {
                     $prepared = $this->prepareResponse(StringUtils::toAssocArray($fetchedRow));
