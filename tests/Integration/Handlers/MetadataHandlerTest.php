@@ -11,13 +11,14 @@ use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
 
 class MetadataHandlerTest extends DatabaseTestCase
 {
     private function createHandler(array $pathParams = []): MetadataHandler
     {
-        $handler = new MetadataHandler($pathParams);
+        $handler = new MetadataHandler(new Psr17Factory(), $pathParams);
         $handler->setAllowedRequestMethods([RequestMethod::GET, RequestMethod::POST, RequestMethod::OPTIONS])
             ->setAllowedRequestContentTypes([RequestContentType::JSON, RequestContentType::FORMDATA])
             ->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML, AcceptHeader::HTML]);

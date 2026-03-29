@@ -12,9 +12,11 @@ use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\MethodNotAllowedException;
 use BibleGet\Api\Http\Exception\NotAcceptableException;
 use BibleGet\Api\Http\Exception\UnsupportedMediaTypeException;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
 use Nyholm\Psr7\Stream;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -22,7 +24,7 @@ class AbstractHandlerTest extends TestCase
 {
     private function createHandler(): AbstractHandler
     {
-        return new class extends AbstractHandler {
+        return new class (new Psr17Factory()) extends AbstractHandler {
             public function handle(ServerRequestInterface $request): ResponseInterface
             {
                 $params      = $this->getRequestParams($request);

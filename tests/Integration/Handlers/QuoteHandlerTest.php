@@ -9,6 +9,7 @@ use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
 use Nyholm\Psr7\Stream;
 
@@ -28,7 +29,7 @@ class QuoteHandlerTest extends DatabaseTestCase
 
     private function createHandler(): QuoteHandler
     {
-        $handler = new QuoteHandler();
+        $handler = new QuoteHandler(new Psr17Factory());
         $handler->setAllowedRequestMethods([RequestMethod::GET, RequestMethod::POST, RequestMethod::OPTIONS])
             ->setAllowedRequestContentTypes([RequestContentType::JSON, RequestContentType::FORMDATA])
             ->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML, AcceptHeader::HTML]);
