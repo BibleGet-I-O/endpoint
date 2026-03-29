@@ -242,12 +242,16 @@ class QueryExecutor
     }
 
     /**
-     * Enforce rate limits and log the query atomically under a PostgreSQL
-     * advisory lock keyed on the client IP.
+     * Enforce rate limits and log the query atomically under PostgreSQL
+     * advisory locks keyed on both the client IP and the request Origin.
      *
-     * The lock is acquired before reading any counts and held until the
-     * log INSERT commits, closing the TOCTOU window where concurrent
-     * requests from the same IP could observe stale counts before the
+     * Two locks are acquired — one per IP for IP-based quota checks and one
+     * per Origin for Origin-based quota checks — so that concurrent requests
+     * from the same Origin on different IPs are also serialised.  Locks are
+     * always acquired in sorted order to prevent deadlocks.
+     *
+     * The locks are held until the log INSERT commits, closing the TOCTOU
+     * window where concurrent requests could observe stale counts before the
      * current request is recorded.
      *
      * Returns true to signal the caller that logQuery() has already run
@@ -255,10 +259,24 @@ class QueryExecutor
      */
     private function enforceQueryLimitsAndLog(): bool
     {
-        $lockKey = $this->ipaddress !== '' ? crc32($this->ipaddress) : 0;
+        $ipLockKey = $this->ipaddress !== '' ? crc32($this->ipaddress) : 0;
+
+        // Use bitwise complement for origin keys to avoid key-space collision
+        // with IP keys.  Only add an origin lock when the header is present.
+        $locks = [$ipLockKey];
+        if ($this->ctx->originHeader !== '') {
+            $locks[] = ~crc32($this->ctx->originHeader);
+        }
+
+        // Acquire in sorted order to prevent deadlocks when two requests share
+        // an Origin but arrive from different IPs.
+        sort($locks);
+
         $this->ctx->pdo->beginTransaction();
         try {
-            $this->ctx->pdo->exec('SELECT pg_advisory_xact_lock(' . (int) $lockKey . ')');
+            foreach ($locks as $lock) {
+                $this->ctx->pdo->exec('SELECT pg_advisory_xact_lock(' . (int) $lock . ')');
+            }
             $this->checkIPAddressPastTwoDaysWithSameRequest();
             $this->checkQueriesFromSameIPAddress();
             $this->checkRequestsFromSameOrigin();
@@ -315,37 +333,41 @@ class QueryExecutor
         return $this->haveIPAddressOnRecord === false || $this->geoip_json === '' || (bool) preg_match('/' . $pregmatch . '/', $this->geoip_json);
     }
 
+    /**
+     * Insert a row into the current year's request log.
+     *
+     * This method does NOT catch exceptions.  When called inside the
+     * advisory-locked transaction in enforceQueryLimitsAndLog() any failure
+     * must propagate so the transaction is rolled back and the request is not
+     * counted.  Callers that want best-effort logging must catch exceptions
+     * themselves.
+     */
     private function logQuery(): void
     {
-        try {
-            $sql  = 'INSERT INTO requests_log__' . $this->curYEAR
-                . ' ( "WHO_IP","WHO_WHERE_JSON","HEADERS_JSON","ORIGIN","QUERY","ORIGINALQUERY","REQUEST_METHOD","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR","HTTP_X_REAL_IP","REMOTE_ADDR","APP_ID","DOMAIN","PLUGINVERSION" )'
-                . ' VALUES ( ?::inet, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )';
-            $stmt = $this->ctx->pdo->prepare($sql);
-            if ($stmt === false) {
-                $this->logger->error('Request log prepare failed');
-                return;
-            }
-            $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
-            $stmt->execute([
-                $this->ipaddress,
-                $this->geoip_json,
-                $this->ctx->jsonEncodedRequestHeaders,
-                $this->ctx->originHeader,
-                $this->xquery,
-                $originalQuery,
-                $this->ctx->requestMethod,
-                $this->clientip,
-                $this->forwardedip,
-                $this->realip,
-                $this->remote_address,
-                $this->appid,
-                $this->domain,
-                $this->pluginversion,
-            ]);
-        } catch (\PDOException $e) {
-            $this->logger->error('Request log insert failed: ' . $e->getMessage());
+        $sql  = 'INSERT INTO requests_log__' . $this->curYEAR
+            . ' ( "WHO_IP","WHO_WHERE_JSON","HEADERS_JSON","ORIGIN","QUERY","ORIGINALQUERY","REQUEST_METHOD","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR","HTTP_X_REAL_IP","REMOTE_ADDR","APP_ID","DOMAIN","PLUGINVERSION" )'
+            . ' VALUES ( ?::inet, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )';
+        $stmt = $this->ctx->pdo->prepare($sql);
+        if ($stmt === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
+        $originalQuery = $this->ctx->originalQueries[$this->i] ?? '';
+        $stmt->execute([
+            $this->ipaddress,
+            $this->geoip_json,
+            $this->ctx->jsonEncodedRequestHeaders,
+            $this->ctx->originHeader,
+            $this->xquery,
+            $originalQuery,
+            $this->ctx->requestMethod,
+            $this->clientip,
+            $this->forwardedip,
+            $this->realip,
+            $this->remote_address,
+            $this->appid,
+            $this->domain,
+            $this->pluginversion,
+        ]);
     }
 
     /**
@@ -412,7 +434,12 @@ class QueryExecutor
                 if ($notWhitelisted) {
                     $this->enforceQueryLimitsAndLog();
                 } else {
-                    $this->logQuery();
+                    // Whitelisted requests bypass rate-limit checks; logging is best-effort.
+                    try {
+                        $this->logQuery();
+                    } catch (\Throwable $e) {
+                        $this->logger->error('Request log insert failed: ' . $e->getMessage());
+                    }
                 }
 
                 while (is_array($fetchedRow = $result->fetch(\PDO::FETCH_ASSOC))) {
