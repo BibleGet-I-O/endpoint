@@ -1,5 +1,5 @@
 -- Migration: Add id primary key to counter table and seed the initial row
--- Purpose: The counter table in production-schema.sql lacks an id column,
+-- Purpose: Legacy databases may lack an id column on the counter table,
 --          but QuoteContext::incrementGoodQueryCount/incrementBadQueryCount
 --          use WHERE id = 1. This migration adds the column and ensures
 --          a seed row exists.

@@ -255,26 +255,14 @@ class SimilarSearchHandler extends AbstractHandler
             // Enforce copyright restriction per target version
             $versionLimit = $this->isVersionCopyrighted($pdo, $v) ? min($limit, 30) : $limit;
 
-            $isSourceVersion = ( $v === $sourceVersion );
-            if ($isSourceVersion) {
-                $sql  = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
-                     . 'FROM "' . $v . '" '
-                     . 'WHERE embedding IS NOT NULL '
-                     . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
-                     . 'ORDER BY embedding <=> ?::vector '
-                     . 'LIMIT ?';
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$sourceEmbedding, $excludeBook, $excludeChapter, $excludeVerse, $sourceEmbedding, $versionLimit]);
-            } else {
-                $sql  = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
-                     . 'FROM "' . $v . '" '
-                     . 'WHERE embedding IS NOT NULL '
-                     . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
-                     . 'ORDER BY embedding <=> ?::vector '
-                     . 'LIMIT ?';
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$sourceEmbedding, $excludeBook, $excludeChapter, $excludeVerse, $sourceEmbedding, $versionLimit]);
-            }
+            $sql  = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
+                 . 'FROM "' . $v . '" '
+                 . 'WHERE embedding IS NOT NULL '
+                 . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
+                 . 'ORDER BY embedding <=> ?::vector '
+                 . 'LIMIT ?';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$sourceEmbedding, $excludeBook, $excludeChapter, $excludeVerse, $sourceEmbedding, $versionLimit]);
 
             $versionResults = $this->mapResults($stmt, $v, $versionIndex);
             array_push($allResults, ...$versionResults);

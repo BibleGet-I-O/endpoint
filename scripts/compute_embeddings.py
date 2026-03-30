@@ -127,7 +127,7 @@ def write_embeddings(conn, version, verse_ids, embeddings):
             query,
             [
                 ("[" + ",".join(str(x) for x in embedding.tolist()) + "]", verse_id)
-                for verse_id, embedding in zip(verse_ids, embeddings)
+                for verse_id, embedding in zip(verse_ids, embeddings, strict=True)
             ],
         )
     conn.commit()
