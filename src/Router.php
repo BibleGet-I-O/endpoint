@@ -6,7 +6,10 @@ namespace BibleGet\Api;
 
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
+use BibleGet\Api\Handlers\KeywordSearchHandler;
 use BibleGet\Api\Handlers\SearchHandler;
+use BibleGet\Api\Handlers\SemanticSearchHandler;
+use BibleGet\Api\Handlers\SimilarSearchHandler;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
@@ -15,7 +18,6 @@ use BibleGet\Api\Http\Server\MiddlewarePipeline;
 use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7Server\ServerRequestCreator;
-use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -76,23 +78,30 @@ class Router
                 break;
 
             case 'search':
-                $this->handler = new SearchHandler($this->psr17Factory, $requestPathParts);
+                $subRoute     = $requestPathParts[0] ?? '';
+                $subPathParts = array_slice($requestPathParts, 1);
+                switch ($subRoute) {
+                    case 'keyword':
+                        $this->handler = new KeywordSearchHandler($this->psr17Factory, $subPathParts);
+                        break;
+                    case 'semantic':
+                        $this->handler = new SemanticSearchHandler($this->psr17Factory, $subPathParts);
+                        break;
+                    case 'similar':
+                        $this->handler = new SimilarSearchHandler($this->psr17Factory, $subPathParts);
+                        break;
+                    case '':
+                        // Backward-compatible alias: /v3/search → SearchHandler (delegates to KeywordSearchHandler)
+                        $this->handler = new SearchHandler($this->psr17Factory, $requestPathParts);
+                        break;
+                    default:
+                        $this->handler = $this->createNotFoundHandler();
+                        break;
+                }
                 break;
 
             default:
-                $responseFactory = $this->psr17Factory;
-                $this->handler   = new class ($responseFactory) implements RequestHandlerInterface {
-                    public function __construct(private readonly ResponseFactoryInterface $responseFactory)
-                    {
-                    }
-
-                    public function handle(ServerRequestInterface $request): ResponseInterface
-                    {
-                        return $this->responseFactory
-                            ->createResponse(StatusCode::NOT_FOUND->value, StatusCode::NOT_FOUND->reason())
-                            ->withProtocolVersion($request->getProtocolVersion());
-                    }
-                };
+                $this->handler = $this->createNotFoundHandler();
                 break;
         }
 
@@ -158,6 +167,25 @@ class Router
         return in_array($serverAddress, $localhostAddresses)
             || in_array($remoteAddress, $localhostAddresses)
             || in_array($serverName, $localhostNames);
+    }
+
+    private function createNotFoundHandler(): RequestHandlerInterface
+    {
+        $protocolVersion = $this->request->getProtocolVersion();
+        $factory         = $this->psr17Factory;
+        return new class ($protocolVersion, $factory) implements RequestHandlerInterface {
+            public function __construct(
+                private readonly string $protocolVersion,
+                private readonly Psr17Factory $psr17Factory
+            ) {
+            }
+
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return $this->psr17Factory->createResponse(StatusCode::NOT_FOUND->value, StatusCode::NOT_FOUND->reason())
+                    ->withProtocolVersion($this->protocolVersion);
+            }
+        };
     }
 
     private function retrieveRequest(): ServerRequestInterface

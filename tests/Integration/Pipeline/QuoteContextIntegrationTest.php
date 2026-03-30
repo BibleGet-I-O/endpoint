@@ -128,10 +128,10 @@ class QuoteContextIntegrationTest extends DatabaseTestCase
         $ctx->incrementGoodQueryCount();
         $ctx->incrementBadQueryCount();
 
-        $result = $ctx->pdo->query('SELECT good, bad FROM counter');
+        $result = $ctx->pdo->query('SELECT good, bad FROM counter WHERE id = 1');
         self::assertInstanceOf(\PDOStatement::class, $result);
         $row = $result->fetch();
-        self::assertNotNull($row);
+        self::assertIsArray($row, 'Expected counter row to exist');
         self::assertSame('2', (string) $row['good']);
         self::assertSame('1', (string) $row['bad']);
     }

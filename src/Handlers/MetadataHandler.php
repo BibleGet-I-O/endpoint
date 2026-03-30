@@ -8,13 +8,17 @@ use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
 
 class MetadataHandler extends AbstractHandler
 {
     private const ENDPOINT_VERSION = '3.0';
+
+    private LoggerInterface $logger;
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -25,6 +29,7 @@ class MetadataHandler extends AbstractHandler
 
         $this->validateRequestMethod($request);
         $this->validateRequestContentType($request);
+        $this->logger = LoggerFactory::create('api');
 
         $params      = $this->getRequestParams($request);
         $contentType = $this->resolveResponseContentType($request, $params);
@@ -79,7 +84,8 @@ class MetadataHandler extends AbstractHandler
         try {
             $result1 = $pdo->query('SELECT * FROM biblebooks_fullname ORDER BY "BOOK"');
         } catch (\PDOException $e) {
-            throw new InternalServerErrorException('Database error: ' . $e->getMessage());
+            $this->logger->error('Database error while handling metadata', ['exception_class' => get_class($e), 'context' => 'metadata_fetch']);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         if ($result1 === false) {
             throw new InternalServerErrorException('An internal database error occurred.');
@@ -95,7 +101,8 @@ class MetadataHandler extends AbstractHandler
         try {
             $result2 = $pdo->query('SELECT * FROM biblebooks_abbr ORDER BY "BOOK"');
         } catch (\PDOException $e) {
-            throw new InternalServerErrorException('Database error: ' . $e->getMessage());
+            $this->logger->error('Database error while handling metadata', ['exception_class' => get_class($e), 'context' => 'metadata_fetch']);
+            throw new InternalServerErrorException('An internal database error occurred.');
         }
         if ($result2 === false) {
             throw new InternalServerErrorException('An internal database error occurred.');

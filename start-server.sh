@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -20,7 +21,7 @@ fi
 if [ -f "server.pid" ]; then
   pid=$(cat server.pid)
   if kill -0 "$pid" 2>/dev/null; then
-    if [ "$RUN_MODE" = "vscode" ]; then
+    if [ "${RUN_MODE:-}" = "vscode" ]; then
       echo -e "❌ ${YELLOW}Server already started in background with PID $pid, please stop it from there before starting in VSCode.${NC}"
       exit 1
     else
@@ -39,7 +40,7 @@ echo "Starting PHP built-in web server..."
 : "${API_HOST:=localhost}"
 : "${API_PORT:=8000}"
 
-if [ "$RUN_MODE" = "vscode" ]; then
+if [ "${RUN_MODE:-}" = "vscode" ]; then
   # Run in foreground (for VSCode tasks)
   pid=$$
   echo "$pid" > server.vscode.pid

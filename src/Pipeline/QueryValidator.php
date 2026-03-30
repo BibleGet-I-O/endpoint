@@ -114,8 +114,8 @@ class QueryValidator
         if ($validated === null) {
             foreach ($validator->getErrors() as $error) {
                 $this->ctx->addErrorMessage($error->message);
-                $this->ctx->incrementBadQueryCount();
             }
+            $this->ctx->incrementBadQueryCount();
             return;
         }
 

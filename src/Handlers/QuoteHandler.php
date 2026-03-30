@@ -51,8 +51,7 @@ class QuoteHandler extends AbstractHandler
         $ctx->initialize();
 
         $queryRaw = $params['query'] ?? '';
-        $query    = is_string($queryRaw) ? $queryRaw : '';
-        if ($query === '') {
+        if (!is_string($queryRaw) || $queryRaw === '') {
             throw new ValidationException('The query parameter is required.');
         }
 
@@ -112,7 +111,7 @@ class QuoteHandler extends AbstractHandler
             $info['bibleVersionsInfo'] = $encoded !== false ? $encoded : '{}';
 
             foreach ($ctx->errors as $err) {
-                $errNode = $errors->addChild('error', $err['errMessage']);
+                $errNode = $errors->addChild('error', htmlspecialchars($err['errMessage'], ENT_XML1, 'UTF-8'));
                 $errNode->addAttribute('errNum', (string) $err['errNum']);
             }
 
@@ -188,7 +187,7 @@ class QuoteHandler extends AbstractHandler
             $html .= '<table id="errorsTbl" class="errorsTbl">';
             foreach ($errors as $err) {
                 $html .= '<tr class="errorsRow">';
-                $html .= '<td class="errNum">errNum</td><td class="errNumVal">' . $err['errNum'] . '</td>';
+                $html .= '<td class="errNum">errNum</td><td class="errNumVal">' . (int) $err['errNum'] . '</td>';
                 $html .= '<td class="errMessage">errMessage</td><td class="errMessageVal">' . htmlspecialchars($err['errMessage']) . '</td>';
                 $html .= '</tr>';
             }

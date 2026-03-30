@@ -1,11 +1,11 @@
 -- Seed data for integration tests (PostgreSQL)
 
 -- Test Bible versions
-INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type) VALUES
-('TEST1', 'Test Bible Version 1', '2020', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Test notes', 0, 'BIBLE'),
-('TEST2', 'Test Bible Version 2', '2021', 'English', 'No', 'PROTESTANT', 'Other Publisher', '', 1, 'BIBLE'),
-('VGCL', 'Vulgata Clementina', '1592', 'Latin', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE'),
-('DRB', 'Douay-Rheims Bible', '1752', 'English', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE')
+INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type, ts_language) VALUES
+('TEST1', 'Test Bible Version 1', '2020', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Test notes', 0, 'BIBLE', 'english'),
+('TEST2', 'Test Bible Version 2', '2021', 'English', 'No', 'PROTESTANT', 'Other Publisher', '', 1, 'BIBLE', 'english'),
+('VGCL', 'Vulgata Clementina', '1592', 'Latin', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE', 'simple'),
+('DRB', 'Douay-Rheims Bible', '1752', 'English', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE', 'english')
 ON CONFLICT DO NOTHING;
 
 -- Bible book names: books 1-3 (Genesis, Exodus, Leviticus) + 4-22 (fillers) + 23 (Psalms)
@@ -104,9 +104,19 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding           vector(384),
+    text_hash           BYTEA,
+    embedded_text_hash  BYTEA
 );
-CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "TEST1_embedding_hnsw" ON "TEST1" USING hnsw (embedding vector_cosine_ops);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'TEST1_text_hash_trigger' AND tgrelid = '"TEST1"'::regclass) THEN
+        CREATE TRIGGER "TEST1_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "TEST1"
+            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
+    END IF;
+END $$;
 
 INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heavens and the earth.', 1, 1),
@@ -148,9 +158,19 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding           vector(384),
+    text_hash           BYTEA,
+    embedded_text_hash  BYTEA
 );
-CREATE INDEX IF NOT EXISTS "TEST2_text_fts" ON "TEST2" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "TEST2_text_fts" ON "TEST2" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "TEST2_embedding_hnsw" ON "TEST2" USING hnsw (embedding vector_cosine_ops);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'TEST2_text_hash_trigger' AND tgrelid = '"TEST2"'::regclass) THEN
+        CREATE TRIGGER "TEST2_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "TEST2"
+            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
+    END IF;
+END $$;
 
 INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 1, 'In the beginning God created the heaven and the earth.', 1, 1),
@@ -187,9 +207,19 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding           vector(384),
+    text_hash           BYTEA,
+    embedded_text_hash  BYTEA
 );
 CREATE INDEX IF NOT EXISTS "VGCL_text_fts" ON "VGCL" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "VGCL_embedding_hnsw" ON "VGCL" USING hnsw (embedding vector_cosine_ops);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'VGCL_text_hash_trigger' AND tgrelid = '"VGCL"'::regclass) THEN
+        CREATE TRIGGER "VGCL_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "VGCL"
+            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
+    END IF;
+END $$;
 
 -- VGCL Psalm 50 (= Hebrew Psalm 51, "Miserere mei")
 INSERT INTO "VGCL" (book, chapter, verse, text, testament, section) VALUES
@@ -230,9 +260,19 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     text        TEXT NOT NULL,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT ''
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    embedding           vector(384),
+    text_hash           BYTEA,
+    embedded_text_hash  BYTEA
 );
-CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('simple', text));
+CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "DRB_embedding_hnsw" ON "DRB" USING hnsw (embedding vector_cosine_ops);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'DRB_text_hash_trigger' AND tgrelid = '"DRB"'::regclass) THEN
+        CREATE TRIGGER "DRB_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "DRB"
+            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
+    END IF;
+END $$;
 
 -- DRB Psalm 50 (= Hebrew Psalm 51, "Have mercy")
 INSERT INTO "DRB" (book, chapter, verse, text, testament, section) VALUES

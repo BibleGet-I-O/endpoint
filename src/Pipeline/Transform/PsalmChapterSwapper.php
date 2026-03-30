@@ -64,6 +64,8 @@ final class PsalmChapterSwapper
                     $this->swapVerseRef($segment->from),
                     $this->swapVerseRef($segment->to),
                 );
+            } else {
+                $newSegments[] = $segment;
             }
         }
 

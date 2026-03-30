@@ -364,7 +364,8 @@ abstract class AbstractHandler implements RequestHandlerInterface
     /**
      * Check whether an ETag is present in an If-None-Match header value.
      *
-     * Handles the wildcard "*" and comma-separated lists per RFC 9110 §13.1.2.
+     * Handles the wildcard "*", comma-separated lists, and weak ETags (W/ prefix)
+     * per RFC 9110 §13.1.2. If-None-Match uses weak comparison, so W/"abc" matches "abc".
      */
     private static function etagMatches(string $ifNoneMatch, string $etag): bool
     {
@@ -372,8 +373,11 @@ abstract class AbstractHandler implements RequestHandlerInterface
             return true;
         }
 
+        $stripWeak     = static fn(string $e): string => str_starts_with($e, 'W/') ? substr($e, 2) : $e;
+        $normalizedTag = $stripWeak($etag);
+
         foreach (explode(',', $ifNoneMatch) as $candidate) {
-            if (trim($candidate) === $etag) {
+            if ($stripWeak(trim($candidate)) === $normalizedTag) {
                 return true;
             }
         }

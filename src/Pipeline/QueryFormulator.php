@@ -44,7 +44,7 @@ class QueryFormulator
         foreach ($this->ctx->REQUESTED_VERSIONS as $version) {
             foreach ($this->ctx->parsedQueries as $i => $parsedQuery) {
                 // Check if this version was validated for this query
-                if (!in_array($version, $this->ctx->validatedVariants[$i])) {
+                if (!in_array($version, $this->ctx->validatedVariants[$i] ?? [], true)) {
                     continue;
                 }
 
@@ -90,7 +90,7 @@ class QueryFormulator
 
     private function buildPreferOrigin(int $book, string $version): string
     {
-        if ($book === self::ESTHER_BOOK_NUM && in_array($version, $this->ctx->CATHOLIC_VERSIONS)) {
+        if ($book === self::ESTHER_BOOK_NUM && in_array($version, $this->ctx->CATHOLIC_VERSIONS, true)) {
             $preferOrigin = $this->ctx->DATA['preferorigin'] ?? '';
             $origin       = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true)
                 ? $preferOrigin

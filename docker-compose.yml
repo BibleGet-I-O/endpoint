@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: bibleget
       POSTGRES_USER: bibleget
@@ -17,12 +17,25 @@ services:
       timeout: 5s
       retries: 5
 
+  embedding:
+    build: ./services/embedding
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   app:
     build: .
     ports:
       - "8080:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      embedding:
         condition: service_healthy
     volumes:
       - .:/var/www/html
@@ -32,6 +45,7 @@ services:
       DB_NAME: bibleget
       DB_USER: bibleget
       DB_PASS: bibleget
+      EMBEDDING_SERVICE_URL: http://embedding:8000
 
 volumes:
   pgdata:

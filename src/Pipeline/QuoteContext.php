@@ -107,7 +107,8 @@ class QuoteContext
     public function __construct(array $params, ?LoggerInterface $logger = null, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')
     {
         $this->DATA                      = array_merge(self::$defaultParameters, $params);
-        $this->DATA['preferorigin']      = in_array($this->DATA['preferorigin'], self::ALLOWED_PREFER_ORIGINS) ? $this->DATA['preferorigin'] : '';
+        $preferOriginUpper               = strtoupper($this->DATA['preferorigin']);
+        $this->DATA['preferorigin']      = in_array($preferOriginUpper, self::ALLOWED_PREFER_ORIGINS, true) ? $preferOriginUpper : '';
         $this->logger                    = $logger ?? new NullLogger();
         $this->originHeader              = $originHeader;
         $this->requestMethod             = $requestMethod;
@@ -146,7 +147,7 @@ class QuoteContext
     public function incrementBadQueryCount(): void
     {
         try {
-            $this->pdo->exec('UPDATE counter SET bad = bad + 1');
+            $this->pdo->exec('UPDATE counter SET bad = bad + 1 WHERE id = 1');
         } catch (\PDOException $e) {
             $this->logger->error('Failed to increment bad query counter: ' . $e->getMessage());
         }
@@ -155,7 +156,7 @@ class QuoteContext
     public function incrementGoodQueryCount(): void
     {
         try {
-            $this->pdo->exec('UPDATE counter SET good = good + 1');
+            $this->pdo->exec('UPDATE counter SET good = good + 1 WHERE id = 1');
         } catch (\PDOException $e) {
             $this->logger->error('Failed to increment good query counter: ' . $e->getMessage());
         }
@@ -437,7 +438,7 @@ class QuoteContext
             : ['CEI2008'];
 
         foreach ($temp as $version) {
-            if (isset($this->DATA['forceversion']) && $this->DATA['forceversion'] === 'true') {
+            if (isset($this->DATA['forceversion']) && filter_var($this->DATA['forceversion'], FILTER_VALIDATE_BOOLEAN)) {
                 if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
                     $this->addErrorMessage('Invalid version identifier format: <' . $version . '>');
                     continue;
@@ -460,7 +461,7 @@ class QuoteContext
                     continue;
                 }
             }
-            if (isset($this->DATA['forcecopyright']) && $this->DATA['forcecopyright'] === 'true') {
+            if (isset($this->DATA['forcecopyright']) && filter_var($this->DATA['forcecopyright'], FILTER_VALIDATE_BOOLEAN)) {
                 $this->REQUESTED_COPYRIGHTED_VERSIONS[] = $version;
             }
         }

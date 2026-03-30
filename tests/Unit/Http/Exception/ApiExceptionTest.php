@@ -59,7 +59,9 @@ class ApiExceptionTest extends TestCase
         self::assertArrayHasKey('detail', $array);
         self::assertSame($expectedStatus, $array['status']);
         self::assertSame($expectedTitle, $array['title']);
-        self::assertSame('Test message', $array['detail']);
+        // 5xx errors hide the detail in production to avoid leaking internals
+        $expectedDetail = $expectedStatus >= 500 ? $expectedTitle : 'Test message';
+        self::assertSame($expectedDetail, $array['detail']);
         self::assertArrayNotHasKey('file', $array);
         self::assertArrayNotHasKey('line', $array);
         self::assertArrayNotHasKey('trace', $array);
