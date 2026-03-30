@@ -19,12 +19,15 @@ class EmbeddingClient
     private const FAILURE_THRESHOLD = 5;
     private const COOLDOWN_SECONDS  = 30;
 
+    private const APCU_KEY_FAILURES   = 'bibleget:embedding_cb:failures';
+    private const APCU_KEY_OPEN_SINCE = 'bibleget:embedding_cb:open_since';
+
     private string $baseUrl;
 
-    /** Consecutive failure count (persists across requests in CLI server / PHP-FPM). */
+    /** Fallback failure count when APCu is unavailable. */
     private static int $failures = 0;
 
-    /** Timestamp when the circuit was tripped open (0 = closed). */
+    /** Fallback open-since timestamp when APCu is unavailable. */
     private static float $openSince = 0.0;
 
     /** Model name from the last successful embed() response. */
@@ -42,6 +45,53 @@ class EmbeddingClient
     {
         self::$failures  = 0;
         self::$openSince = 0.0;
+        if (self::hasApcu()) {
+            apcu_delete(self::APCU_KEY_FAILURES);
+            apcu_delete(self::APCU_KEY_OPEN_SINCE);
+        }
+    }
+
+    private static function hasApcu(): bool
+    {
+        return function_exists('apcu_store') && apcu_enabled();
+    }
+
+    private static function getFailures(): int
+    {
+        if (self::hasApcu()) {
+            $val = apcu_fetch(self::APCU_KEY_FAILURES);
+            return is_int($val) ? $val : 0;
+        }
+        return self::$failures;
+    }
+
+    private static function setFailures(int $count): void
+    {
+        if (self::hasApcu()) {
+            apcu_store(self::APCU_KEY_FAILURES, $count, self::COOLDOWN_SECONDS * 2);
+        }
+        self::$failures = $count;
+    }
+
+    private static function getOpenSince(): float
+    {
+        if (self::hasApcu()) {
+            $val = apcu_fetch(self::APCU_KEY_OPEN_SINCE);
+            return is_float($val) ? $val : 0.0;
+        }
+        return self::$openSince;
+    }
+
+    private static function setOpenSince(float $timestamp): void
+    {
+        if (self::hasApcu()) {
+            if ($timestamp === 0.0) {
+                apcu_delete(self::APCU_KEY_OPEN_SINCE);
+            } else {
+                apcu_store(self::APCU_KEY_OPEN_SINCE, $timestamp, self::COOLDOWN_SECONDS * 2);
+            }
+        }
+        self::$openSince = $timestamp;
     }
 
     /**
@@ -129,11 +179,12 @@ class EmbeddingClient
      */
     private function checkCircuit(): void
     {
-        if (self::$openSince === 0.0) {
+        $openSince = self::getOpenSince();
+        if ($openSince === 0.0) {
             return; // Circuit is closed
         }
 
-        $elapsed = microtime(true) - self::$openSince;
+        $elapsed = microtime(true) - $openSince;
         if ($elapsed < self::COOLDOWN_SECONDS) {
             throw new ServiceUnavailableException(
                 'Embedding service circuit breaker is open (cooldown ' . (int) ( self::COOLDOWN_SECONDS - $elapsed ) . 's remaining). '
@@ -143,21 +194,22 @@ class EmbeddingClient
 
         // Cooldown elapsed — transition to half-open (allow one probe request)
         // Reset openSince so only one request goes through; if it fails, recordFailure re-trips
-        self::$openSince = 0.0;
+        self::setOpenSince(0.0);
     }
 
     private function recordFailure(): void
     {
-        self::$failures++;
-        if (self::$failures >= self::FAILURE_THRESHOLD) {
-            self::$openSince = microtime(true);
+        $failures = self::getFailures() + 1;
+        self::setFailures($failures);
+        if ($failures >= self::FAILURE_THRESHOLD) {
+            self::setOpenSince(microtime(true));
         }
     }
 
     private function recordSuccess(): void
     {
-        self::$failures  = 0;
-        self::$openSince = 0.0;
+        self::setFailures(0);
+        self::setOpenSince(0.0);
     }
 
     /**
