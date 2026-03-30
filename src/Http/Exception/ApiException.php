@@ -51,7 +51,9 @@ abstract class ApiException extends \RuntimeException
             'type'   => $this->getType(),
             'title'  => $this->getTitle(),
             'status' => $this->getStatus(),
-            'detail' => $this->getMessage(),
+            'detail' => ( $includeDebug || $this->getStatus() < 500 )
+                ? $this->getMessage()
+                : $this->getTitle(),
         ];
 
         if ($includeDebug) {

@@ -253,7 +253,7 @@ class EmbeddingClient
 
         if ($statusCode !== 200) {
             throw new InternalServerErrorException(
-                'Embedding service returned unexpected HTTP ' . $statusCode
+                'Embedding service returned HTTP ' . $statusCode . ': ' . substr((string) $raw, 0, 200)
             );
         }
 
@@ -300,7 +300,7 @@ class EmbeddingClient
 
         if ($statusCode !== 200) {
             throw new InternalServerErrorException(
-                'Embedding service returned unexpected HTTP ' . $statusCode
+                'Embedding service returned HTTP ' . $statusCode . ': ' . substr((string) $raw, 0, 200)
             );
         }
 
