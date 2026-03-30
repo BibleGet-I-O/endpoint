@@ -262,16 +262,20 @@ class QueryExecutor
      */
     private function enforceQueryLimitsAndLog(): bool
     {
-        $ipKey     = $this->ipaddress !== '' ? crc32($this->ipaddress) : 0;
-        $originKey = $this->ctx->originHeader !== '' ? crc32($this->ctx->originHeader) : 0;
+        // crc32() on 64-bit PHP returns uint32 range (0–4294967295).
+        // pg_advisory_xact_lock takes int4 (−2147483648–2147483647), so
+        // reinterpret values above 0x7FFFFFFF as their signed int32 equivalent.
+        $toInt32   = static fn (int $v): int => $v > 0x7FFFFFFF ? $v - 0x100000000 : $v;
+        $ipKey     = $this->ipaddress !== '' ? $toInt32(crc32($this->ipaddress)) : 0;
+        $originKey = $this->ctx->originHeader !== '' ? $toInt32(crc32($this->ctx->originHeader)) : 0;
 
         $this->ctx->pdo->beginTransaction();
         try {
             // Namespace 1 = IP, namespace 2 = Origin.  Always acquired in
             // namespace order to prevent deadlocks.
             $lockStmt = $this->ctx->pdo->prepare('SELECT pg_advisory_xact_lock(:ns, :key)');
-            $lockStmt->execute(['ns' => 1, 'key' => (int) $ipKey]);
-            $lockStmt->execute(['ns' => 2, 'key' => (int) $originKey]);
+            $lockStmt->execute(['ns' => 1, 'key' => $ipKey]);
+            $lockStmt->execute(['ns' => 2, 'key' => $originKey]);
             $this->checkIPAddressPastTwoDaysWithSameRequest();
             $this->checkQueriesFromSameIPAddress();
             $this->checkRequestsFromSameOrigin();
