@@ -58,11 +58,28 @@ abstract class ServerTestCase extends TestCase
         $router      = $docRoot . '/router.php';
 
         $command = sprintf(
-            'exec env PHP_CLI_SERVER_WORKERS=2 php -S %s:%d -t %s %s',
+            'exec php -S %s:%d -t %s %s',
             self::$host,
             self::$port,
             escapeshellarg($docRoot),
             escapeshellarg($router)
+        );
+
+        // Pass the test environment (loaded from .env.test by bootstrap) into the
+        // server process, overriding whatever .env the app would otherwise read.
+        // This ensures the server hits bibleget_test, not the dev DB.
+        $env = array_merge(
+            getenv() ?: [],
+            [
+                'PHP_CLI_SERVER_WORKERS' => '2',
+                'DB_HOST'                => (string) ( $_ENV['DB_HOST'] ?? '127.0.0.1' ),
+                'DB_PORT'                => (string) ( $_ENV['DB_PORT'] ?? '5432' ),
+                'DB_NAME'                => (string) ( $_ENV['DB_NAME'] ?? '' ),
+                'DB_USER'                => (string) ( $_ENV['DB_USER'] ?? '' ),
+                'DB_PASS'                => (string) ( $_ENV['DB_PASS'] ?? '' ),
+                'APP_ENV'                => (string) ( $_ENV['APP_ENV'] ?? 'test' ),
+                'API_BASE_PATH'          => (string) ( $_ENV['API_BASE_PATH'] ?? '/v3' ),
+            ]
         );
 
         // Start server in background, redirect output to /dev/null
@@ -72,7 +89,7 @@ abstract class ServerTestCase extends TestCase
             2 => ['file', '/dev/null', 'w'],
         ];
 
-        $process = proc_open($command, $descriptors, $pipes);
+        $process = proc_open($command, $descriptors, $pipes, null, $env);
         if (!is_resource($process)) {
             self::fail('Failed to start PHP built-in server');
         }
@@ -203,13 +220,11 @@ abstract class ServerTestCase extends TestCase
         $raw = curl_exec($ch);
         if ($raw === false) {
             $error = curl_error($ch);
-            curl_close($ch);
             self::fail('curl request failed: ' . $error);
         }
 
         $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
 
         $rawHeaders   = substr((string) $raw, 0, $headerSize);
         $responseBody = substr((string) $raw, $headerSize);

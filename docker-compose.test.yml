@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bibleget_test
+      POSTGRES_USER: bibleget_test
+      POSTGRES_PASSWORD: bibleget_test
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./tests/fixtures/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./tests/fixtures/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bibleget_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
