@@ -11,6 +11,7 @@ use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\MethodNotAllowedException;
 use BibleGet\Api\Http\Exception\NotAcceptableException;
 use BibleGet\Api\Http\Exception\UnsupportedMediaTypeException;
+use BibleGet\Api\Http\CorsPolicy;
 use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use Nyholm\Psr7\Stream;
@@ -81,16 +82,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
      */
     protected function setAccessControlAllowOriginHeader(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $origin = $request->getHeaderLine('Origin');
-
-        if ($origin !== '') {
-            return $response
-                ->withHeader('Access-Control-Allow-Origin', $origin)
-                ->withHeader('Access-Control-Allow-Credentials', 'true')
-                ->withAddedHeader('Vary', 'Origin');
-        }
-
-        return $response->withHeader('Access-Control-Allow-Origin', '*');
+        return ( new CorsPolicy() )->applyHeaders($request, $response);
     }
 
     /**
@@ -109,10 +101,6 @@ abstract class AbstractHandler implements RequestHandlerInterface
         if ($isCorsRequest) {
             $response = $response->withStatus(StatusCode::NO_CONTENT->value, StatusCode::NO_CONTENT->reason());
             $response = $this->setAccessControlAllowOriginHeader($request, $response);
-
-            if ($response->getHeaderLine('Access-Control-Allow-Origin') !== '*') {
-                $response = $response->withAddedHeader('Vary', 'Origin');
-            }
 
             $response = $response
                 ->withAddedHeader('Vary', 'Access-Control-Request-Method')
