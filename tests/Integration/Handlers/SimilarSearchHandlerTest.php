@@ -11,13 +11,14 @@ use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
 
 class SimilarSearchHandlerTest extends DatabaseTestCase
 {
     private function createHandler(): SimilarSearchHandler
     {
-        $handler = new SimilarSearchHandler();
+        $handler = new SimilarSearchHandler(new Psr17Factory());
         $handler->setAllowedRequestMethods([RequestMethod::GET, RequestMethod::POST, RequestMethod::OPTIONS])
             ->setAllowedRequestContentTypes([RequestContentType::JSON, RequestContentType::FORMDATA])
             ->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML, AcceptHeader::HTML]);

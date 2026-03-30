@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Http\Middleware;
 
+use BibleGet\Api\Http\CorsPolicy;
 use BibleGet\Api\Http\Exception\ApiException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
@@ -134,14 +135,7 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
 
     private function applyCorsHeaders(ResponseInterface $response, ServerRequestInterface $request): ResponseInterface
     {
-        $origin = $request->getHeaderLine('Origin');
-        if ($origin !== '') {
-            return $response
-                ->withHeader('Access-Control-Allow-Origin', $origin)
-                ->withHeader('Access-Control-Allow-Credentials', 'true')
-                ->withAddedHeader('Vary', 'Origin');
-        }
-        return $response->withHeader('Access-Control-Allow-Origin', '*');
+        return ( new CorsPolicy() )->applyHeaders($request, $response);
     }
 
     private function logException(\Throwable $e, string $severity = 'error'): void

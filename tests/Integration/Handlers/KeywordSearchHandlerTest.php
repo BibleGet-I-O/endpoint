@@ -10,13 +10,14 @@ use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
 
 class KeywordSearchHandlerTest extends DatabaseTestCase
 {
     private function createHandler(): KeywordSearchHandler
     {
-        $handler = new KeywordSearchHandler();
+        $handler = new KeywordSearchHandler(new Psr17Factory());
         $handler->setAllowedRequestMethods([RequestMethod::GET, RequestMethod::POST, RequestMethod::OPTIONS])
             ->setAllowedRequestContentTypes([RequestContentType::JSON, RequestContentType::FORMDATA])
             ->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML, AcceptHeader::HTML]);

@@ -12,6 +12,7 @@ use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Services\EmbeddingClient;
 use BibleGet\Api\Services\EmbeddingModelValidator;
 use BibleGet\Api\Util\StringUtils;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -32,9 +33,9 @@ class SemanticSearchHandler extends AbstractHandler
     /**
      * @param string[] $requestPathParams
      */
-    public function __construct(array $requestPathParams = [], ?EmbeddingClient $embeddingClient = null)
+    public function __construct(ResponseFactoryInterface $responseFactory, array $requestPathParams = [], ?EmbeddingClient $embeddingClient = null)
     {
-        parent::__construct($requestPathParams);
+        parent::__construct($responseFactory, $requestPathParams);
         $this->embeddingClient = $embeddingClient ?? new EmbeddingClient();
     }
 

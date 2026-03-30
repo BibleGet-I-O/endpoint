@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -20,10 +21,10 @@ class SearchHandler extends AbstractHandler
     /**
      * @param string[] $requestPathParams
      */
-    public function __construct(array $requestPathParams = [])
+    public function __construct(ResponseFactoryInterface $responseFactory, array $requestPathParams = [])
     {
-        parent::__construct($requestPathParams);
-        $this->delegate = new KeywordSearchHandler($requestPathParams);
+        parent::__construct($responseFactory, $requestPathParams);
+        $this->delegate = new KeywordSearchHandler($responseFactory, $requestPathParams);
     }
 
     /**

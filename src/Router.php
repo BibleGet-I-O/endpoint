@@ -70,11 +70,11 @@ class Router
         switch ($route) {
             case '':
             case 'quote':
-                $this->handler = new QuoteHandler($requestPathParts);
+                $this->handler = new QuoteHandler($this->psr17Factory, $requestPathParts);
                 break;
 
             case 'metadata':
-                $this->handler = new MetadataHandler($requestPathParts);
+                $this->handler = new MetadataHandler($this->psr17Factory, $requestPathParts);
                 break;
 
             case 'search':
@@ -82,17 +82,17 @@ class Router
                 $subPathParts = array_slice($requestPathParts, 1);
                 switch ($subRoute) {
                     case 'keyword':
-                        $this->handler = new KeywordSearchHandler($subPathParts);
+                        $this->handler = new KeywordSearchHandler($this->psr17Factory, $subPathParts);
                         break;
                     case 'semantic':
-                        $this->handler = new SemanticSearchHandler($subPathParts);
+                        $this->handler = new SemanticSearchHandler($this->psr17Factory, $subPathParts);
                         break;
                     case 'similar':
-                        $this->handler = new SimilarSearchHandler($subPathParts);
+                        $this->handler = new SimilarSearchHandler($this->psr17Factory, $subPathParts);
                         break;
                     case '':
                         // Backward-compatible alias: /v3/search → SearchHandler (delegates to KeywordSearchHandler)
-                        $this->handler = new SearchHandler($requestPathParts);
+                        $this->handler = new SearchHandler($this->psr17Factory, $requestPathParts);
                         break;
                     default:
                         $this->handler = $this->createNotFoundHandler();

@@ -12,13 +12,14 @@ use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Services\EmbeddingClient;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
 
 class SemanticSearchHandlerTest extends DatabaseTestCase
 {
     private function createHandler(?EmbeddingClient $client = null): SemanticSearchHandler
     {
-        $handler = new SemanticSearchHandler([], $client);
+        $handler = new SemanticSearchHandler(new Psr17Factory(), [], $client);
         $handler->setAllowedRequestMethods([RequestMethod::GET, RequestMethod::POST, RequestMethod::OPTIONS])
             ->setAllowedRequestContentTypes([RequestContentType::JSON, RequestContentType::FORMDATA])
             ->setAllowedAcceptHeaders([AcceptHeader::JSON, AcceptHeader::XML, AcceptHeader::HTML]);
