@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f0380d1d00ab685552fa614eba26f066",
+    "content-hash": "ff890fed82272a5982567cada4555f83",
     "packages": [
         {
             "name": "graham-campbell/result-type",
@@ -1068,7 +1068,7 @@
     "packages-dev": [
         {
             "name": "captainhook/captainhook-phar",
-            "version": "5.28.5",
+            "version": "5.29.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/captainhook-git/captainhook-phar.git",
@@ -1122,7 +1122,7 @@
             ],
             "support": {
                 "issues": "https://github.com/captainhook-git/captainhook/issues",
-                "source": "https://github.com/captainhook-git/captainhook-phar/tree/5.28.5"
+                "source": "https://github.com/captainhook-git/captainhook-phar/tree/5.29.2"
             },
             "funding": [
                 {
@@ -3316,7 +3316,7 @@
     "prefer-lowest": false,
     "platform": {
         "php": ">=8.2",
-        "ext-mysqli": "*",
+        "ext-pdo_pgsql": "*",
         "ext-json": "*",
         "ext-simplexml": "*",
         "ext-dom": "*"
