@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
-      - uses: readmeio/github-readme-sync@c6e52d127a92145c2aef0a7337f3718a57ac56c4 # 2.0.0
+      - uses: readmeio/github-readme-sync@e3e7be426a70b10265e9dd0770652f173cc34d60 # 2.1.3
         with:
           readme-oas-key: ${{ secrets.README_OAS_KEY }}
 
