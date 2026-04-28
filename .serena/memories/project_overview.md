@@ -34,7 +34,6 @@ Serves the BibleGet WordPress / Google Docs / Microsoft Word / OpenOffice / Libr
 The v3 codebase explicitly follows the same PSR-based architecture as `LiturgicalCalendarAPI` (Router → MiddlewarePipeline → AbstractHandler → response via Negotiator). Familiarity with that codebase carries over here.
 
 ## Repo Location
-`/home/johnrdorazio/development/BibleGet-I-O/endpoint`
 
 Sibling repos under `BibleGet-I-O/`:
 - `bibleget-wordpress` — WP plugin
@@ -53,7 +52,7 @@ PRs target `development`.
 ## Operational notes
 - **Bot protection**: User-Agent regex blocks `bot|crawl|slurp|spider`
 - **CORS**: enabled with dynamic origin headers via `AbstractHandler`
-- **Rate limiting**: IP-based, 2-day windows, thresholds 10/30/100 → `TooManyRequestsException`
+- **Rate limiting**: IP-based, 2-day rolling window. Per-IP+query: 11–29 occurrences add a warning to `errors[]` (request still served); ≥30 throws `TooManyRequestsException`. Per-IP across all queries: ≥101 throws. Same Origin+query follows the same warning/throw pattern.
 - **Copyright versions**: enforce 30-verses-per-request limit (e.g. `CEI2008`, `NABRE`, `BLPD`)
 - **Notation**: auto-detect ENGLISH (`John 3:16`) vs EUROPEAN (`Giovanni 3,16`); MIXED is an error
 - **Verse ordering**: uses `verseID` field to handle Greek subverses correctly

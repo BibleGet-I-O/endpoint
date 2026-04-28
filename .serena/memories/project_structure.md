@@ -1,7 +1,7 @@
 # Codebase Structure — BibleGet endpoint
 
 ## Top-level layout
-```
+```text
 endpoint/
 ├── public/                # Web entry point (front controller + .htaccess routing)
 ├── src/                   # PHP source (PSR-4: BibleGet\Api\)
@@ -33,13 +33,17 @@ endpoint/
 3. `src/Router.php` parses URL path and dispatches to a PSR-15 handler
 
 ## Routes (v3)
-| Route                          | Handler           | Description                          |
-|--------------------------------|-------------------|--------------------------------------|
-| `/v3/quote`                    | `QuoteHandler`    | Bible quote retrieval (GET/POST)     |
-| `/v3/metadata/biblebooks`      | `MetadataHandler` | Book names in 25+ languages          |
-| `/v3/metadata/bibleversions`   | `MetadataHandler` | Available Bible versions             |
-| `/v3/metadata/versionindex`    | `MetadataHandler` | Chapter/verse indexes for versions   |
-| `/v3/search`                   | `SearchHandler`   | Keyword search                       |
+
+| Route                          | Handler                  | Description                                       |
+|--------------------------------|--------------------------|---------------------------------------------------|
+| `/v3/quote`                    | `QuoteHandler`           | Bible quote retrieval (GET/POST)                  |
+| `/v3/metadata/biblebooks`      | `MetadataHandler`        | Book names in 25+ languages                       |
+| `/v3/metadata/bibleversions`   | `MetadataHandler`        | Available Bible versions                          |
+| `/v3/metadata/versionindex`    | `MetadataHandler`        | Chapter/verse indexes for versions                |
+| `/v3/search/keyword`           | `KeywordSearchHandler`   | Keyword search (text matches)                     |
+| `/v3/search/semantic`          | `SemanticSearchHandler`  | Semantic vector search                            |
+| `/v3/search/similar`           | `SimilarSearchHandler`   | Similarity search                                 |
+| `/v3/search`                   | `SearchHandler`          | Backward-compat alias → `KeywordSearchHandler`    |
 
 ## Middleware pipeline (for every request)
 1. `ErrorHandlingMiddleware` — outermost; converts exceptions → RFC 9457 `problem+json`
@@ -47,7 +51,7 @@ endpoint/
 3. Endpoint-specific PSR-15 handler
 
 ## src/ layout
-```
+```text
 src/
 ├── Router.php
 ├── Handlers/
