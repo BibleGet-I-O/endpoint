@@ -237,7 +237,7 @@ class KeywordSearchHandler extends AbstractHandler
                     ? 'ORDER BY ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), to_tsquery(\'' . $tsLanguage . '\', ?)) DESC, book, chapter, verse'
                     : 'ORDER BY book, chapter, verse';
                 try {
-                    $stmt = $pdo->prepare(
+                    $stmt     = $pdo->prepare(
                         'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) ' . $orderBy
                     );
                     $bindings = $rankMode === 'relevance' ? [$keyword, $keyword] : [$keyword];
@@ -260,7 +260,7 @@ class KeywordSearchHandler extends AbstractHandler
                     ? 'ORDER BY ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), websearch_to_tsquery(\'' . $tsLanguage . '\', ?)) DESC, book, chapter, verse'
                     : 'ORDER BY book, chapter, verse';
                 try {
-                    $stmt = $pdo->prepare(
+                    $stmt     = $pdo->prepare(
                         'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) ' . $orderBy
                     );
                     $bindings = $rankMode === 'relevance' ? [$sanitizedKeyword, $sanitizedKeyword] : [$sanitizedKeyword];

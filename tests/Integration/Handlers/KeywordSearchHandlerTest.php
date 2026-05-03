@@ -173,7 +173,7 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
     {
         $handler = $this->createHandler();
 
-        $defaultReq = ( new ServerRequest('GET', '/v3/search/keyword') )
+        $defaultReq  = ( new ServerRequest('GET', '/v3/search/keyword') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
         $explicitReq = ( new ServerRequest('GET', '/v3/search/keyword') )
             ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'rank' => 'canonical']);
@@ -221,21 +221,36 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
     {
         // rank=relevance is accepted (not rejected) with match=exact for client convenience,
         // but exact-mode results are silently kept in canonical order since regex has no
-        // native relevance signal. This guards against a future "throw on combo" regression.
-        $handler  = $this->createHandler();
-        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
-            ->withQueryParams([
-                'keyword' => 'God',
-                'version' => 'TEST1',
-                'match'   => 'exact',
-                'rank'    => 'relevance',
-            ]);
-        $response = $handler->handle($request);
+        // native relevance signal. This guards against a future "throw on combo" regression
+        // and verifies the silent-fallback contract: rank is ignored for match=exact.
+        $handler         = $this->createHandler();
+        $relevanceParams = [
+            'keyword' => 'God',
+            'version' => 'TEST1',
+            'match'   => 'exact',
+            'rank'    => 'relevance',
+        ];
+        $canonicalParams = ['rank' => 'canonical'] + $relevanceParams;
 
-        self::assertSame(200, $response->getStatusCode());
-        $body = json_decode((string) $response->getBody(), true);
-        self::assertIsArray($body);
-        self::assertNotEmpty($body['results']);
+        $relevanceReq = ( new ServerRequest('GET', '/v3/search/keyword') )->withQueryParams($relevanceParams);
+        $canonicalReq = ( new ServerRequest('GET', '/v3/search/keyword') )->withQueryParams($canonicalParams);
+
+        $relevanceRes = $handler->handle($relevanceReq);
+        $canonicalRes = $handler->handle($canonicalReq);
+
+        self::assertSame(200, $relevanceRes->getStatusCode());
+        self::assertSame(200, $canonicalRes->getStatusCode());
+
+        $relevanceBody = json_decode((string) $relevanceRes->getBody(), true);
+        $canonicalBody = json_decode((string) $canonicalRes->getBody(), true);
+        self::assertIsArray($relevanceBody);
+        self::assertIsArray($canonicalBody);
+        self::assertNotEmpty($relevanceBody['results']);
+        self::assertSame(
+            $canonicalBody['results'],
+            $relevanceBody['results'],
+            'Exact mode must ignore rank: relevance and canonical results should be identical'
+        );
     }
 
     public function testInvalidRankModeThrows(): void
