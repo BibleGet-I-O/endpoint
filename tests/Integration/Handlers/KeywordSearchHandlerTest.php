@@ -145,6 +145,109 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         }
     }
 
+    // ── Rank ordering ───────────────────────────────────────
+
+    public function testDefaultRankIsCanonicalBookChapterVerse(): void
+    {
+        // No rank param → canonical (book, chapter, verse) order, matching legacy behavior.
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+
+        $previous = null;
+        foreach ($body['results'] as $verse) {
+            $current = [(int) $verse['booknum'], (int) $verse['chapter'], (int) $verse['verse']];
+            if ($previous !== null) {
+                self::assertGreaterThanOrEqual(0, $current <=> $previous, 'Default ordering must be canonical');
+            }
+            $previous = $current;
+        }
+    }
+
+    public function testExplicitRankCanonicalMatchesDefault(): void
+    {
+        $handler = $this->createHandler();
+
+        $defaultReq = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
+        $explicitReq = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'rank' => 'canonical']);
+
+        $defaultBody  = json_decode((string) $handler->handle($defaultReq)->getBody(), true);
+        $explicitBody = json_decode((string) $handler->handle($explicitReq)->getBody(), true);
+
+        self::assertIsArray($defaultBody);
+        self::assertIsArray($explicitBody);
+        self::assertSame($defaultBody['results'], $explicitBody['results']);
+    }
+
+    public function testRankRelevanceReturnsResults(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'rank' => 'relevance']);
+        $response = $handler->handle($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+    }
+
+    public function testRankRelevanceWithBooleanModeReturnsResults(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams([
+                'keyword' => 'light & good',
+                'version' => 'TEST1',
+                'match'   => 'boolean',
+                'rank'    => 'relevance',
+            ]);
+        $response = $handler->handle($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+    }
+
+    public function testRankRelevanceAcceptedWithExactMode(): void
+    {
+        // rank=relevance is accepted (not rejected) with match=exact for client convenience,
+        // but exact-mode results are silently kept in canonical order since regex has no
+        // native relevance signal. This guards against a future "throw on combo" regression.
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams([
+                'keyword' => 'God',
+                'version' => 'TEST1',
+                'match'   => 'exact',
+                'rank'    => 'relevance',
+            ]);
+        $response = $handler->handle($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+    }
+
+    public function testInvalidRankModeThrows(): void
+    {
+        $handler = $this->createHandler();
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('Invalid rank mode');
+        $request = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'rank' => 'magic']);
+        $handler->handle($request);
+    }
+
     // ── Legacy backward compatibility ───────────────────────
 
     public function testLegacyExactmatchParamMapsToExactMode(): void

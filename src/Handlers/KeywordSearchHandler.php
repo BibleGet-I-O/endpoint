@@ -19,6 +19,8 @@ class KeywordSearchHandler extends AbstractHandler
 
     private const VALID_MATCH_MODES = ['fulltext', 'exact', 'boolean'];
 
+    private const VALID_RANK_MODES = ['canonical', 'relevance'];
+
     /** @var list<string>|null */
     private static ?array $cachedValidVersions = null;
 
@@ -51,14 +53,14 @@ class KeywordSearchHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
-        [$keyword, $version, $matchMode] = $this->extractSearchParams($params);
+        [$keyword, $version, $matchMode, $rankMode] = $this->extractSearchParams($params);
 
         $pdo          = Connection::getConnection();
         $version      = $this->validateVersion($pdo, $version);
         $tsLanguage   = $this->getVersionLanguage($pdo, $version);
         $versionIndex = $this->loadVersionIndex($pdo, $version);
 
-        $searchResult = $this->executeSearch($pdo, $version, $keyword, $matchMode, $tsLanguage);
+        $searchResult = $this->executeSearch($pdo, $version, $keyword, $matchMode, $tsLanguage, $rankMode);
         $results      = $this->mapSearchResults($searchResult, $version, $versionIndex);
 
         $body          = new \stdClass();
@@ -72,7 +74,7 @@ class KeywordSearchHandler extends AbstractHandler
 
     /**
      * @param array<string, mixed> $params
-     * @return array{string, string, string}
+     * @return array{string, string, string, string}
      */
     private function extractSearchParams(array $params): array
     {
@@ -96,6 +98,10 @@ class KeywordSearchHandler extends AbstractHandler
             $match = $exactmatch ? 'exact' : 'fulltext';
         }
 
+        // Resolve rank mode: default `canonical` preserves legacy book/chapter/verse ordering
+        $rankRaw = $params['rank'] ?? '';
+        $rank    = is_string($rankRaw) && $rankRaw !== '' ? strtolower($rankRaw) : 'canonical';
+
         if ($keyword === '') {
             throw new ValidationException('The keyword parameter is required.');
         }
@@ -107,8 +113,13 @@ class KeywordSearchHandler extends AbstractHandler
                 'Invalid match mode: ' . $match . '. Valid modes are: ' . implode(', ', self::VALID_MATCH_MODES)
             );
         }
+        if (!in_array($rank, self::VALID_RANK_MODES, true)) {
+            throw new ValidationException(
+                'Invalid rank mode: ' . $rank . '. Valid modes are: ' . implode(', ', self::VALID_RANK_MODES)
+            );
+        }
 
-        return [$keyword, $version, $match];
+        return [$keyword, $version, $match, $rank];
     }
 
     private function validateVersion(\PDO $pdo, string $version): string
@@ -187,7 +198,8 @@ class KeywordSearchHandler extends AbstractHandler
         string $version,
         string $keyword,
         string $matchMode,
-        string $tsLanguage
+        string $tsLanguage,
+        string $rankMode = 'canonical'
     ): \PDOStatement {
         $this->assertValidVersionFormat($version);
 
@@ -198,7 +210,9 @@ class KeywordSearchHandler extends AbstractHandler
 
         switch ($matchMode) {
             case 'exact':
-                // Escape PostgreSQL regex metacharacters so the keyword is matched literally
+                // Regex match has no native relevance signal, so rank=relevance silently
+                // falls back to canonical order here (match=exact + rank=relevance is accepted
+                // for client convenience but produces the same ordering as rank=canonical).
                 $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $keyword) ?? $keyword;
                 try {
                     $stmt = $pdo->prepare(
@@ -219,11 +233,15 @@ class KeywordSearchHandler extends AbstractHandler
                         'Search keyword must be at least 4 characters long (use match=exact for shorter keywords).'
                     );
                 }
+                $orderBy = $rankMode === 'relevance'
+                    ? 'ORDER BY ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), to_tsquery(\'' . $tsLanguage . '\', ?)) DESC, book, chapter, verse'
+                    : 'ORDER BY book, chapter, verse';
                 try {
                     $stmt = $pdo->prepare(
-                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
+                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) ' . $orderBy
                     );
-                    $stmt->execute([$keyword]);
+                    $bindings = $rankMode === 'relevance' ? [$keyword, $keyword] : [$keyword];
+                    $stmt->execute($bindings);
                 } catch (\PDOException) {
                     throw new ValidationException(
                         'Invalid boolean search expression. Use operators like & (AND), | (OR), ! (NOT).'
@@ -238,11 +256,15 @@ class KeywordSearchHandler extends AbstractHandler
                         'Search keyword must be at least 4 characters long (use match=exact for shorter keywords).'
                     );
                 }
+                $orderBy = $rankMode === 'relevance'
+                    ? 'ORDER BY ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), websearch_to_tsquery(\'' . $tsLanguage . '\', ?)) DESC, book, chapter, verse'
+                    : 'ORDER BY book, chapter, verse';
                 try {
                     $stmt = $pdo->prepare(
-                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
+                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) ' . $orderBy
                     );
-                    $stmt->execute([$sanitizedKeyword]);
+                    $bindings = $rankMode === 'relevance' ? [$sanitizedKeyword, $sanitizedKeyword] : [$sanitizedKeyword];
+                    $stmt->execute($bindings);
                 } catch (\PDOException) {
                     throw new ValidationException(
                         'Full-text search failed. Please try a different keyword.'

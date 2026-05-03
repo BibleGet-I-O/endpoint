@@ -475,6 +475,20 @@
                         }
                     },
                     {
+                        "name": "rank",
+                        "in": "query",
+                        "description": "Result ordering strategy. `canonical` (default) returns results in book/chapter/verse order, preserving legacy behavior. `relevance` orders by PostgreSQL `ts_rank_cd` cover-density score (highest first), tie-broken by canonical order. With `exactmatch=true` the parameter is accepted but ordering remains canonical.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "canonical",
+                                "relevance"
+                            ],
+                            "default": "canonical"
+                        }
+                    },
+                    {
                         "name": "return",
                         "in": "query",
                         "description": "Type of data that should be returned in the response",
@@ -661,6 +675,20 @@
                                 "boolean"
                             ],
                             "default": "fulltext"
+                        }
+                    },
+                    {
+                        "name": "rank",
+                        "in": "query",
+                        "description": "Result ordering strategy. `canonical` (default) returns results in book/chapter/verse order, preserving legacy behavior. `relevance` orders by PostgreSQL `ts_rank_cd` cover-density score (highest first), tie-broken by canonical order. Only `match=fulltext` and `match=boolean` produce a relevance score; with `match=exact` the parameter is accepted but ordering remains canonical.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "canonical",
+                                "relevance"
+                            ],
+                            "default": "canonical"
                         }
                     },
                     {
