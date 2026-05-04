@@ -57,6 +57,11 @@ CLAUDE.md
 README.md
 
 # --- SERVER-MANAGED FILES (never overwrite, never --delete) ---
+# Exception: ship .env.example so server admins can diff it against the
+# live .env to spot new or deprecated environment variables. The `+ `
+# prefix makes this an include override; it must appear BEFORE the
+# matching `.env.*` exclude below since rsync uses first-match-wins.
++ .env.example
 .env
 .env.*
 dbcredentials.php
