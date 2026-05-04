@@ -15,24 +15,29 @@ on:
         description: 'Release tag (production only, e.g. v5.0 or v5.1.2). Ignored for staging.'
         required: false
         type: string
+  release:
+    types: [published]
 
 concurrency:
-  group: deploy-${{ inputs.target }}
+  group: deploy-${{ github.event_name == 'release' && 'production' || inputs.target }}
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy ${{ inputs.target }}
+    name: Deploy ${{ github.event_name == 'release' && 'production' || inputs.target }}
+    if: github.event_name != 'release' || github.event.release.prerelease == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: ${{ inputs.target }}
+    environment: ${{ github.event_name == 'release' && 'production' || inputs.target }}
 
     steps:
       - name: Resolve ref and deploy path
         id: params
         env:
-          TARGET: ${{ inputs.target }}
-          TAG: ${{ inputs.tag }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
           APP_DIR: ${{ vars.VPS_APP_DIR }}
         run: |
           set -euo pipefail
@@ -40,9 +45,23 @@ jobs:
             echo "::error::Repository variable VPS_APP_DIR is not set." >&2
             exit 1
           fi
+          case "${EVENT_NAME}" in
+            release)
+              TARGET="production"
+              TAG="${RELEASE_TAG}"
+              ;;
+            workflow_dispatch)
+              TARGET="${INPUT_TARGET}"
+              TAG="${INPUT_TAG}"
+              ;;
+            *)
+              echo "::error::Unsupported event: ${EVENT_NAME}" >&2
+              exit 1
+              ;;
+          esac
           if [ "${TARGET}" = "production" ]; then
             if [ -z "${TAG}" ]; then
-              echo "::error::tag input is required for production deploys (e.g. v5.0)." >&2
+              echo "::error::tag is required for production deploys (e.g. v5.0)." >&2
               exit 1
             fi
             if ! printf '%s' "${TAG}" | grep -qE '^v[0-9]+\.[0-9]+(\.[0-9]+)?(-[A-Za-z0-9.-]+)?$'; then
