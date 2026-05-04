@@ -1,0 +1,128 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deployment target'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      tag:
+        description: 'Release tag (production only, e.g. v5.0 or v5.1.2). Ignored for staging.'
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.target }}
+
+    steps:
+      - name: Resolve ref and deploy path
+        id: params
+        env:
+          TARGET: ${{ inputs.target }}
+          TAG: ${{ inputs.tag }}
+          APP_DIR: ${{ vars.VPS_APP_DIR }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_DIR}" ]; then
+            echo "::error::Repository variable VPS_APP_DIR is not set." >&2
+            exit 1
+          fi
+          if [ "${TARGET}" = "production" ]; then
+            if [ -z "${TAG}" ]; then
+              echo "::error::tag input is required for production deploys (e.g. v5.0)." >&2
+              exit 1
+            fi
+            if ! printf '%s' "${TAG}" | grep -qE '^v[0-9]+\.[0-9]+(\.[0-9]+)?(-[A-Za-z0-9.-]+)?$'; then
+              echo "::error::tag must match v<MAJOR>.<MINOR>(.<PATCH>)?(-prerelease)? - got: ${TAG}" >&2
+              exit 1
+            fi
+            MAJOR=$(printf '%s' "${TAG}" | sed -E 's/^v([0-9]+)\..*/\1/')
+            REF="${TAG}"
+            SUBDIR="v${MAJOR}"
+          else
+            REF="development"
+            SUBDIR="dev"
+          fi
+          DEPLOY_PATH="${APP_DIR%/}/${SUBDIR}"
+          {
+            echo "ref=${REF}"
+            echo "deploy_subdir=${SUBDIR}"
+            echo "deploy_path=${DEPLOY_PATH}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "::notice::Deploying ${TARGET}: ref=${REF} -> ${DEPLOY_PATH}"
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.params.outputs.ref }}
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, json, simplexml, dom
+          tools: composer:v2
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ vars.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${SSH_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Ensure deploy directory exists
+        env:
+          VPS_USER: ${{ secrets.VPS_USERNAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ vars.VPS_SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ steps.params.outputs.deploy_path }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT}" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${VPS_USER}@${VPS_HOST}" \
+            "mkdir -p \"${DEPLOY_PATH}\""
+
+      - name: Deploy via rsync
+        env:
+          VPS_USER: ${{ secrets.VPS_USERNAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ vars.VPS_SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ steps.params.outputs.deploy_path }}
+        run: |
+          set -euo pipefail
+          rsync \
+            --archive --no-owner --no-group \
+            --compress --human-readable --verbose \
+            --delete \
+            --exclude-from=.github/deploy/rsync-exclude.txt \
+            -e "ssh -i ~/.ssh/deploy_key -p ${VPS_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
+            ./ "${VPS_USER}@${VPS_HOST}:${DEPLOY_PATH%/}/"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

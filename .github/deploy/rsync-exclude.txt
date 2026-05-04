@@ -1,0 +1,59 @@
+# Patterns excluded from `rsync --delete` deploys.
+#
+# These patterns serve two purposes:
+#   1. Files matched here are NOT transferred from the runner.
+#   2. Files matched here are NOT removed on the destination by --delete.
+#
+# Anything that should live only on the server (env files, runtime logs,
+# server-managed state) MUST be listed here so it isn't wiped on deploy.
+
+# --- VCS / CI / agent metadata ---
+.git/
+.github/
+.gitignore
+.gitattributes
+.serena/
+.worktrees/
+.claude/
+
+# --- IDE / local tooling ---
+.vscode/
+.idea/
+.phpunit.cache/
+.phpcs.cache
+
+# --- Tests, coverage, dev-only sources ---
+tests/
+coverage/
+docs/
+
+# --- Build / dev configuration that has no runtime role ---
+phpcs.xml
+phpcs.xml.dist
+phpstan.neon
+phpstan.neon.dist
+phpunit.xml
+phpunit.xml.dist
+captainhook.json
+redocly.yaml
+docker-compose.yml
+docker-compose.yaml
+Dockerfile
+docker-entrypoint.sh
+.dockerignore
+
+# --- Local dev scripts (not used in production) ---
+start-server.sh
+stop-server.sh
+restart-server.sh
+server.pid
+server.vscode.pid
+
+# --- Project meta files (optional; comment out to deploy them) ---
+CLAUDE.md
+
+# --- SERVER-MANAGED FILES (never overwrite, never --delete) ---
+.env
+.env.*
+dbcredentials.php
+logs/
