@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ github.event_name == 'release' && 'production' || inputs.target }}
+    permissions:
+      contents: read
 
     steps:
       - name: Resolve ref and deploy path
@@ -119,12 +121,13 @@ jobs:
           DEPLOY_PATH: ${{ steps.params.outputs.deploy_path }}
         run: |
           set -euo pipefail
+          remote_cmd="mkdir -p $(printf '%q' "${DEPLOY_PATH}")"
           ssh -i ~/.ssh/deploy_key -p "${VPS_PORT}" \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${VPS_USER}@${VPS_HOST}" \
-            "mkdir -p \"${DEPLOY_PATH}\""
+            "${remote_cmd}"
 
       - name: Deploy via rsync
         env:
@@ -137,7 +140,7 @@ jobs:
           rsync \
             --archive --no-owner --no-group \
             --compress --human-readable --verbose \
-            --delete \
+            --delete --protect-args \
             --exclude-from=.github/deploy/rsync-exclude.txt \
             -e "ssh -i ~/.ssh/deploy_key -p ${VPS_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
             ./ "${VPS_USER}@${VPS_HOST}:${DEPLOY_PATH%/}/"
