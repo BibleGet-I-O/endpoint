@@ -27,6 +27,14 @@ tests/
 coverage/
 docs/
 
+# --- Sibling deploy lanes (managed by their own pipelines, not this rsync) ---
+# services/embedding is a long-running FastAPI service; it has its own
+# lifecycle (Python venv, model download, systemd restart) and is deployed
+# under a dedicated non-chrooted user. scripts/compute_embeddings.py is an
+# offline batch job run on demand from a local checkout.
+services/
+scripts/
+
 # --- Build / dev configuration that has no runtime role ---
 phpcs.xml
 phpcs.xml.dist
