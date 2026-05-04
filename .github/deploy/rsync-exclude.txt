@@ -48,9 +48,13 @@ stop-server.sh
 restart-server.sh
 server.pid
 server.vscode.pid
+# Router script for PHP's built-in dev server (`php -S`); Apache routes
+# through index.php directly, so this file is never loaded in production.
+/public/router.php
 
 # --- Project meta files (optional; comment out to deploy them) ---
 CLAUDE.md
+README.md
 
 # --- SERVER-MANAGED FILES (never overwrite, never --delete) ---
 .env
