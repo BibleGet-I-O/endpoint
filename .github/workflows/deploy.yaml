@@ -105,13 +105,63 @@ jobs:
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ vars.VPS_SSH_KNOWN_HOSTS }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          if [ -z "${SSH_KNOWN_HOSTS}" ]; then
+            echo "::error::Secret VPS_SSH_KNOWN_HOSTS is empty. Refusing to deploy without a pinned host key." >&2
+            exit 1
+          fi
           install -d -m 700 ~/.ssh
           printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "${SSH_KNOWN_HOSTS}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+      - name: Sanity-check pinned host key against DNS SSHFP records
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+          SSHFP_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          if ! command -v dig >/dev/null; then
+            echo "::warning::dig not available; skipping SSHFP drift check."
+            exit 0
+          fi
+          PIN_FPS=$(printf '%s\n' "${SSH_KNOWN_HOSTS}" \
+            | awk '$2 ~ /^(ssh-|ecdsa-)/' \
+            | while read -r _host _alg keyb64 _; do
+                printf '%s' "$keyb64" | base64 -d 2>/dev/null | sha256sum | awk '{print toupper($1)}'
+              done \
+            | sort -u)
+          DNS_FPS=$(dig +short SSHFP "${SSHFP_HOST}" \
+            | awk '$2 == "2" {for (i=3; i<=NF; i++) printf "%s", $i; print ""}' \
+            | tr -d ' ' \
+            | tr 'a-f' 'A-F' \
+            | sort -u)
+          if [ -z "${DNS_FPS}" ]; then
+            echo "::warning::No SHA-256 SSHFP records found for ${SSHFP_HOST}; skipping drift check."
+            exit 0
+          fi
+          if [ -z "${PIN_FPS}" ]; then
+            echo "::warning::Could not derive any fingerprints from VPS_SSH_KNOWN_HOSTS; skipping drift check."
+            exit 0
+          fi
+          PIN_NOT_IN_DNS=$(comm -23 <(echo "${PIN_FPS}") <(echo "${DNS_FPS}"))
+          DNS_NOT_IN_PIN=$(comm -13 <(echo "${PIN_FPS}") <(echo "${DNS_FPS}"))
+          if [ -n "${PIN_NOT_IN_DNS}" ]; then
+            while IFS= read -r fp; do
+              echo "::warning::Pinned key SHA256:${fp} not in DNS SSHFP for ${SSHFP_HOST}. DNS may lag reality, or VPS_SSH_KNOWN_HOSTS is stale."
+            done <<< "${PIN_NOT_IN_DNS}"
+          fi
+          if [ -n "${DNS_NOT_IN_PIN}" ]; then
+            while IFS= read -r fp; do
+              echo "::warning::DNS SSHFP advertises SHA256:${fp} not present in VPS_SSH_KNOWN_HOSTS. Server may have rotated; consider re-pinning."
+            done <<< "${DNS_NOT_IN_PIN}"
+          fi
+          if [ -z "${PIN_NOT_IN_DNS}" ] && [ -z "${DNS_NOT_IN_PIN}" ]; then
+            echo "Pin matches DNS SSHFP records."
+          fi
 
       - name: Ensure deploy directory exists
         env:
@@ -126,6 +176,9 @@ jobs:
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o ConnectTimeout=10 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=2 \
             "${VPS_USER}@${VPS_HOST}" \
             "${remote_cmd}"
 
@@ -142,7 +195,7 @@ jobs:
             --compress --human-readable --verbose \
             --delete --protect-args \
             --exclude-from=.github/deploy/rsync-exclude.txt \
-            -e "ssh -i ~/.ssh/deploy_key -p ${VPS_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
+            -e "ssh -i ~/.ssh/deploy_key -p ${VPS_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=2" \
             ./ "${VPS_USER}@${VPS_HOST}:${DEPLOY_PATH%/}/"
 
       - name: Clean up SSH key
