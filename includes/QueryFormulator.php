@@ -136,21 +136,22 @@ class QUERY_FORMULATOR {
     }
 
     private function bestGuessBookIdx( array $matchedBook ) : int {
+
         $key1 = $this->currentVariant != "" ? array_search( $matchedBook[0], $this->BBQUOTE->INDEXES[$this->currentVariant]["biblebooks"] ) : false;
         $key2 = $this->currentVariant != "" ? array_search( $matchedBook[0], $this->BBQUOTE->INDEXES[$this->currentVariant]["abbreviations"] ) : false;
         $key3 = $this->BBQUOTE::idxOf( $matchedBook[0], $this->BBQUOTE->BIBLEBOOKS );
-        if ( $key1 ) {
+
+        if ( $key1 !== false ) {
             return $this->BBQUOTE->INDEXES[$this->currentVariant]["book_num"][$key1];
-        } else if ( $key2 ) {
+        } else if ( $key2 !== false ) {
             return $this->BBQUOTE->INDEXES[$this->currentVariant]["book_num"][$key2];
-        } else if ( $key3 ) {
+        } else if ( $key3 !== false ) {
             return $key3 + 1;
         }
     }
 
-    private function setBookAndVariant( array|bool $matchedBook ) {
+    private function setBook( array|bool $matchedBook ) {
         if ( $matchedBook ) {
-            $this->currentVariant = $this->BBQUOTE->validatedVariants[ $this->i ];
             $this->currentBook = $this->bestGuessBookIdx( $matchedBook );
             $this->previousBook = $this->currentBook;
         } else {
@@ -233,11 +234,14 @@ class QUERY_FORMULATOR {
                 $this->currentQuery = $query;
                 $this->currentFullQuery = $query;
                 $this->currentChapter = "";
+                if( !in_array( $version, $this->BBQUOTE->validatedVariants[ $this->i ] ) ) {
+                    continue;
+                } else {
+                    $this->currentVariant = $version;
+                }
 
-                // Retrieve and store the book in the query string,if applicable
                 $matchedBook = $this->captureBookIndicator();
-
-                $this->setBookAndVariant( $matchedBook );
+                $this->setBook( $matchedBook );
 
                 $this->initSQLStatement();
 

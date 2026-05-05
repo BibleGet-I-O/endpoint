@@ -468,7 +468,7 @@ class BIBLEGET_QUOTE {
             $indexes[$variant]["biblebooks"]      = $bbbooks;
             $indexes[$variant]["chapter_limit"]   = $chapter_limit;
             $indexes[$variant]["verse_limit"]     = $verse_limit;
-            $indexes[$variant]["book_num"]        = $book_num;  
+            $indexes[$variant]["book_num"]        = $book_num;
 
         }
 
