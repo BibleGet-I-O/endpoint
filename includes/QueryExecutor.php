@@ -367,7 +367,7 @@ class QUERY_EXECUTOR {
                 $this->BBQUOTE->div->appendChild( $this->versesParagraph );
                 $metainfo = $this->BBQUOTE->bibleQuote->createElement( "input" );
                 $metainfo->setAttribute( "type", "hidden" );
-                $metainfo->setAttribute( "class", "originalQueries" );
+                $metainfo->setAttribute( "class", "originalQuery" );
                 $metainfo->setAttribute( "value", $response["originalquery"] );
                 $this->BBQUOTE->div->appendChild( $metainfo );
                 $metainfo1 = $this->BBQUOTE->bibleQuote->createElement( "input" );

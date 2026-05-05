@@ -7,10 +7,9 @@
  * accepts all cross-domain requests
  * is CORS enabled (as far as I understand it)
  * 
- * ENDPOINT URL:    https://query.bibleget.io/v3/metadata.php
+ * @link:           https://query.bibleget.io/v3/metadata.php
  * 
- * AUTHOR:          John Romano D'Orazio
- * AUTHOR EMAIL:    priest@johnromanodorazio.com
+ * @author:         John Romano D'Orazio <priest@johnromanodorazio.com>
  * AUTHOR WEBSITE:  https://www.johnromanodorazio.com
  * PROJECT WEBSITE: https://www.bibleget.io
  * PROJECT EMAIL:   admin@bibleget.io | bibleget.io@gmail.com
@@ -28,9 +27,10 @@
  * that would facilitate the usage of the Biblical texts
  * in the modern digital era.
  * 
- * My hope and desire is to be able to add 
- * as many different versions of the Bible in different languages
- * as possible, so that all men may have facilitated access to these texts
+ * My hope and desire is to be able to add as many different versions of the Bible
+ * in different languages as possible, so that all men may have facilitated access to these texts
+ * above all those editions curated by Bible societies and Episcopal Conferences
+ * with an imprimatur and guarantee of quality in the translations.
  * This project will always only utilize original source texts,
  * untouched by any third parties, so as to guarantee the authenticity of said texts.
  *    Deuteronomy 4:2
@@ -39,15 +39,15 @@
  *    of the Lord your God which I command you."
  * 
  * I have no desire for any kind of economical advantage
- * over this project, nobody should speculate eonomically
+ * over this project, nobody should speculate economically
  * over the wisdom of humanity or over the Word of God.
- * May it be of service to mankind. 
+ * May it be of service to mankind.
  * While I wish this endpoint engine to be open source,
  * available to men of good will who might desire to continue this project,
  * especially Biblical societies around the world,
  * and I hope the Pontifical Biblical Commission,
  * I cannot however offer the source texts and the databases they are held in
- * for public access, they are not all open source, 
+ * for public access, they are not all open source,
  * they are often covered by copyright by Episcopal Conferences or by Biblical societies.
  * 
  * I wish for the code of this engine to be open source,
@@ -97,6 +97,7 @@ class BIBLEGET_METADATA {
   private array $requestHeaders;
   private string $returntype;
   private string $acceptHeader;
+  //private ?string $contenttype;
   private mysqli $mysqli;
   private array $validversions;
   //private bool $is_ajax;
@@ -108,7 +109,7 @@ class BIBLEGET_METADATA {
   function __construct($DATA) {
     $this->requestHeaders = getallheaders();
     $this->DATA = $DATA;
-    $this->contenttype = isset($_SERVER['CONTENT_TYPE']) && in_array($_SERVER['CONTENT_TYPE'], self::$allowed_content_types) ? $_SERVER['CONTENT_TYPE'] : NULL;
+    //$this->contenttype = isset($_SERVER['CONTENT_TYPE']) && in_array($_SERVER['CONTENT_TYPE'], self::$allowed_content_types) ? $_SERVER['CONTENT_TYPE'] : NULL;
     $this->acceptHeader = isset($this->requestHeaders["Accept"]) && in_array($this->requestHeaders["Accept"], self::$allowed_accept_headers) ? self::$returntypes[array_search($this->requestHeaders["Accept"], self::$allowed_accept_headers)] : "";
     $this->returntype = (isset($DATA["return"]) && in_array(strtolower($DATA["return"]), self::$returntypes)) ? strtolower($DATA["return"]) : ($this->acceptHeader !== "" ? $this->acceptHeader : self::$returntypes[0]);
     //$this->isAjax = ( isset( $_SERVER['HTTP_X_REQUESTED_WITH'] ) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest' );
