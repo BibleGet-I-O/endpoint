@@ -1,8 +1,17 @@
 # Plan: Semantic Search, Stemming, and Similar Passages
 
-**Status**: Proposed
-**Date**: 2026-03-23
-**Related Issue**: https://github.com/BibleGet-I-O/endpoint/issues/62
+**Status**: Shipped — all four phases merged via [#67](https://github.com/BibleGet-I-O/endpoint/pull/67) on 2026-03-30
+**Date**: 2026-03-23 (drafted) · 2026-03-30 (shipped)
+**Related Issue**: [#62](https://github.com/BibleGet-I-O/endpoint/issues/62) (closed by #67)
+
+## Implementation Status
+
+All four phases shipped in a single PR (#67) against `development`. Notable deltas from the plan:
+
+- **Embedding storage** chose the per-table `vector(384)` column approach over a separate table.
+- **Model-version tracking** was implemented (`embedding_metadata` table + `verse_text_hash` for invalidation), resolving the related Open Question.
+- **Beyond the plan**: circuit breaker on `EmbeddingClient` (5-failure threshold, 30 s cooldown), graceful 503 fallback when the embedding service is unavailable, latency logging, and incidental security/defensive-coding fixes elsewhere in the codebase.
+- **Still deferred**: hybrid keyword+semantic search via reciprocal rank fusion (Open Question, not addressed).
 
 ## Motivation
 
@@ -75,7 +84,7 @@ Given a verse reference, returns thematically related passages using pre-compute
 
 When `crossversion=true`, results are grouped by version.
 
-## Phase 1 — Language-Aware Stemming
+## Phase 1 — Language-Aware Stemming ✅ Shipped
 
 **Goal**: Replace the `simple` text search dictionary with language-specific PostgreSQL dictionaries to enable concordance-style stemming in `/v3/search/keyword`.
 
@@ -118,7 +127,7 @@ When `crossversion=true`, results are grouped by version.
 - Verify backward compatibility of `/v3/search` alias
 - Performance benchmarks on GIN index rebuild
 
-## Phase 2 — Embeddings Infrastructure
+## Phase 2 — Embeddings Infrastructure ✅ Shipped
 
 **Goal**: Set up `pgvector`, a Python embedding service, and batch-compute verse embeddings.
 
@@ -168,7 +177,7 @@ When `crossversion=true`, results are grouped by version.
                           → runs pgvector similarity search in PostgreSQL
 ```
 
-## Phase 3 — Semantic Search Endpoint
+## Phase 3 — Semantic Search Endpoint ✅ Shipped
 
 **Goal**: Implement `/v3/search/semantic` using the embeddings infrastructure from Phase 2.
 
@@ -191,7 +200,7 @@ When `crossversion=true`, results are grouped by version.
    - Same structure as keyword search results
    - Adds a `similarity` field (0.0–1.0) to each result
 
-## Phase 4 — Similar Passages
+## Phase 4 — Similar Passages ✅ Shipped
 
 **Goal**: Implement `/v3/search/similar` for finding thematically related passages by verse reference.
 
@@ -222,7 +231,7 @@ When `crossversion=true`, results are grouped by version.
 
 ## Open Questions
 
-- **Embedding storage**: separate `verse_embeddings` table vs. column on each version table? A separate table allows a single HNSW index but requires joins; per-table columns are simpler but multiply the number of indexes.
-- **Model updates**: when the embedding model is updated, all embeddings need recomputation. A `model_version` column or metadata table could track this.
-- **Query result limit**: what's a sensible default and maximum for semantic search results?
-- **Hybrid search**: should a future phase support a combined mode that merges keyword and semantic results (reciprocal rank fusion)?
+- **Embedding storage** — *Resolved*: shipped with a per-version-table `embedding vector(384)` column. Simpler than a shared table; the multiplicity of HNSW indexes was acceptable.
+- **Model updates** — *Resolved*: shipped an `embedding_metadata` table with model-version tracking and a `verse_text_hash` column for selective invalidation when verse text changes (migrations 004 and 005).
+- **Query result limit** — *Resolved*: shipped with `limit` parameter defaults from this plan (semantic: 20, similar: 10). Caps live in the handlers.
+- **Hybrid search** — *Still deferred*: reciprocal rank fusion of keyword and semantic results is not implemented. Candidate for a follow-up.
