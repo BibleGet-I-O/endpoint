@@ -118,8 +118,11 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 - **Testing** — PHPUnit 11 with unit, integration (PostgreSQL), and HTTP server test suites; run via `composer test` or `composer test:quick`
 - **Code style** — PHPCS (PSR-12 base with custom rules) via `composer lint`; auto-fix with `composer lint:fix`
 - **Static analysis** — PHPStan level 10 via `composer analyse`
-- **CI/CD** — GitHub Actions (`.github/workflows/ci.yaml`) runs PHPCS + PHPStan + tests on PRs; `readme.yaml` syncs `openapi.json` to ReadMe.io on push to `master`
-- **Branches** — `master` is stable/production, `development` is active dev
+- **CI/CD** — GitHub Actions (`.github/workflows/ci.yaml`) runs PHPCS + PHPStan + tests on PRs. (`readme.yaml` was meant to sync `openapi.json` to ReadMe.io on push to `master`, but the action is broken — see #100.)
+- **Branches** — Two distinct codebases live in this repo:
+  - `master` — the **legacy include-based codebase** that's currently serving production at `https://query.bibleget.io/v3/`. Tagged [v3.0.0](https://github.com/BibleGet-I-O/endpoint/releases/tag/v3.0.0) at commit `9cbf764` (PR #99 brought master into sync with that deployed snapshot — previously master had drifted ~16 months behind the deployed lineage). No `composer.json`, no `vendor/`, just `index.php` + `search.php` + `metadata.php` + `includes/`. Treat as frozen; bug fixes only.
+  - `development` — the **modern PSR-based rewrite** described above. Active development happens here; will ship as `v4.x` when ready for production.
+  - The deploy workflow's `Verify modern codebase shape` step (in `.github/workflows/deploy.yaml`) skips deploys for any tag that lacks `composer.json`, so future legacy hotfix tags won't accidentally trigger production deploys.
 - **API spec** — `openapi.json` (OpenAPI 3.0.3) documents all endpoints
 - **Logs** — written to `logs/` directory by Monolog (rotating file handler)
 
