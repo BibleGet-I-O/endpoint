@@ -91,7 +91,24 @@ jobs:
           ref: ${{ steps.params.outputs.ref }}
           persist-credentials: false
 
+      - name: Verify modern codebase shape
+        # The legacy /v3 codebase on master predates the PSR-based rewrite
+        # and has no composer.json. Tagging it for the historical record
+        # should not trigger a deploy that expects `composer install`,
+        # `vendor/`, etc. Bail out gracefully here so subsequent steps
+        # become no-ops and the run shows as a clean success with a notice.
+        id: shape
+        run: |
+          set -euo pipefail
+          if [ ! -f composer.json ]; then
+            echo "::notice::Tag does not contain composer.json; treating as legacy snapshot and skipping the rest of the deploy. Deploy the legacy codebase manually if needed."
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Set up PHP
+        if: steps.shape.outputs.skip != 'true'
         uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2
         with:
           php-version: '8.4'
@@ -100,9 +117,11 @@ jobs:
           coverage: none
 
       - name: Install production dependencies
+        if: steps.shape.outputs.skip != 'true'
         run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
 
       - name: Configure SSH
+        if: steps.shape.outputs.skip != 'true'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
@@ -119,6 +138,7 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
 
       - name: Sanity-check pinned host key against DNS SSHFP records
+        if: steps.shape.outputs.skip != 'true'
         env:
           SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
           SSHFP_HOST: ${{ secrets.VPS_HOST }}
@@ -164,6 +184,7 @@ jobs:
           fi
 
       - name: Ensure deploy directory exists
+        if: steps.shape.outputs.skip != 'true'
         env:
           VPS_USER: ${{ secrets.VPS_USERNAME }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -183,6 +204,7 @@ jobs:
             "${remote_cmd}"
 
       - name: Deploy via rsync
+        if: steps.shape.outputs.skip != 'true'
         env:
           VPS_USER: ${{ secrets.VPS_USERNAME }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -199,5 +221,5 @@ jobs:
             ./ "${VPS_USER}@${VPS_HOST}:${DEPLOY_PATH%/}/"
 
       - name: Clean up SSH key
-        if: always()
+        if: always() && steps.shape.outputs.skip != 'true'
         run: rm -f ~/.ssh/deploy_key
