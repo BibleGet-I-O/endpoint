@@ -19,7 +19,7 @@ Both other constraints (the existing IP-based rate limiter in `QueryExecutor`, t
 
 The sister project's middleware pipeline runs:
 
-```
+```text
 HttpsEnforcement → OidcAuth (with JWT fallback) → ApiKey → Authorization (role) → OpenFgaAuthorization (FGA tuple) → Handler
 ```
 
@@ -47,6 +47,7 @@ We adopt the same PSR-15 request attribute names (`oidc_user`, `oidc_token`, `ap
 | `POST/PUT/PATCH/DELETE /v3/admin/versions/{sigla}/...` *(new)* | OIDC user with `bibleget_curator` role **and** FGA `editor` (or `admin`/`deleter`) on `bible_version:{SIGLA}`. |
 | `POST/PUT/PATCH/DELETE /v3/admin/versions` *(new — version lifecycle)* | OIDC user with `bibleget_admin` role. No per-version FGA needed (operating on the collection). |
 | `POST /v3/admin/embeddings/recompute` *(new)* | OIDC user with `bibleget_admin` role. Or a service-account API key with `write` scope. |
+| `GET/POST /v3/admin/applications` *(new — self-service portal)* | OIDC user. Operates on applications owned by the authenticated user only. |
 | `GET/POST /v3/admin/api-keys` *(new — self-service portal)* | OIDC user. Operates on keys owned by the authenticated user only. |
 
 Everything currently in `src/Handlers/` stays open — adding auth must not break the WordPress plugin, the Apps Script add-on, or the MediaWiki extension. New surface goes under `/v3/admin/`.
@@ -55,7 +56,7 @@ Everything currently in `src/Handlers/` stays open — adding auth must not brea
 
 `Router.php` already builds a `MiddlewarePipeline` per request. We add new middleware layers that mirror LCA's order:
 
-```
+```text
 ErrorHandlingMiddleware  ← outermost (existing)
 LoggingMiddleware        ← existing
 HttpsEnforcementMiddleware  ← new, only on /v3/admin/* in production
@@ -66,7 +67,15 @@ OpenFgaAuthorizationMiddleware  ← new (per-route, e.g. ::forBibleVersion())
 Handler                  ← existing
 ```
 
-Both `OidcAuthMiddleware` and `ApiKeyMiddleware` should be **conditionally enabled** by env vars (`ZITADEL_ISSUER`, `OPENFGA_API_URL`). When unset, those middleware become no-ops — making local dev viable without spinning up the full stack and giving us a clean rollback story.
+Each new middleware is **conditionally enabled** by its own env-var toggle, so any one of the three layers can be rolled out (or rolled back) independently:
+
+| Middleware | Enabled when… |
+|---|---|
+| `OidcAuthMiddleware` | `ZITADEL_ISSUER` is set |
+| `ApiKeyMiddleware` | `ENABLE_API_KEY_AUTH=true` (dedicated toggle — API keys don't depend on Zitadel or OpenFGA being deployed) |
+| `OpenFgaAuthorizationMiddleware` | `OPENFGA_API_URL` is set |
+
+When a toggle is unset/false, the corresponding middleware becomes a no-op — making local dev viable without spinning up the full stack and giving us a clean per-layer rollback story.
 
 ## Phase 1 — Zitadel OIDC Authentication
 
