@@ -167,7 +167,17 @@ pg_sql_file() {
 pg_copy_from_stdin() {
     local table="$1"
     local columns="$2"
-    pg_exec_stdin -c "\\copy $table ($columns) FROM STDIN WITH (FORMAT text, NULL '\\N')"
+    # NULL marker is the literal four-letter string "NULL" because MariaDB's
+    # batch mode (-B -N, with or without --raw) emits NULL values as exactly
+    # that string. The default Postgres COPY-text NULL marker (\N) does NOT
+    # match what MariaDB actually outputs, so any nullable column from MariaDB
+    # was previously round-tripping as the literal text "NULL" — silent data
+    # corruption for nullable text columns, and a loud `invalid input syntax
+    # for type inet: "NULL"` for the requests_log* WHO_IP column.
+    # Trade-off: a legitimate text value of literally "NULL" would now be
+    # imported as SQL NULL. Acceptable for this dataset (Bible texts and
+    # request logs don't contain that string).
+    pg_exec_stdin -c "\\copy $table ($columns) FROM STDIN WITH (FORMAT text, NULL 'NULL')"
 }
 
 log() {
@@ -272,8 +282,9 @@ migrate_bible_version() {
     pg_sql "SELECT setval(pg_get_serial_sequence('\"$version\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"$version\"), 1));" > /dev/null
 }
 
-# MariaDB -B -N mode outputs \N for NULL, which is PostgreSQL COPY's NULL marker.
-# Do NOT use IFNULL - let NULLs pass through as \N.
+# MariaDB -B -N mode outputs the literal string "NULL" for NULL values.
+# Our pg_copy_from_stdin sets the COPY NULL marker to match (see comment
+# in that helper). So passing NULLs through unchanged is correct.
 FULL_MARIA_SELECT="testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,verseID"
 FULL_PG_COLS='testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,"verseID"'
 STD_IDX_MARIA="book,chapters,verses_count,verses_last,fullname,abbrev"
