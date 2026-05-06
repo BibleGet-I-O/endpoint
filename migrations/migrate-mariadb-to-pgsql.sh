@@ -53,7 +53,14 @@ while [ $# -gt 0 ]; do
         --native) NATIVE_MODE=1; shift ;;
         --docker) NATIVE_MODE=0; shift ;;
         -h|--help)
-            sed -n '2,50p' "$0" | sed -e 's/^# \?//'
+            # Print only the commented header at the top of this file.
+            # Stops at the first non-comment, non-blank line (e.g. `set -euo
+            # pipefail`) so the help output stays in sync with the docstring
+            # regardless of how the script grows below.
+            awk 'NR==1 {next}
+                 /^#/ {sub(/^# ?/, ""); print; next}
+                 /^[[:space:]]*$/ {print; next}
+                 {exit}' "$0"
             exit 0
             ;;
         *)
@@ -204,8 +211,13 @@ pg_copy_from_stdin testament '"IDX","NAME_EN","NAME_IT","NAME_ES","NAME_FR","NAM
 
 log "Migrating versions_available..."
 # notes field may contain tabs/newlines, so use CSV format for this table.
+# --raw disables MariaDB's batch-mode escaping of \n / \t / \\, so real
+# newlines in `notes` reach the file as actual newlines (inside quoted CSV
+# fields, which Postgres \copy FORMAT csv handles correctly). Without --raw
+# they would arrive as the two-character literal "\n", which Postgres CSV
+# format does NOT interpret, corrupting the imported text.
 # Preserve NULLs and original whitespace; only escape double-quotes for CSV.
-maria_exec -N -B -e "SELECT CONCAT_WS(',',
+maria_exec -N -B --raw -e "SELECT CONCAT_WS(',',
         CONCAT('\"', REPLACE(sigla,'\"','\"\"'), '\"'),
         CONCAT('\"', REPLACE(fullname,'\"','\"\"'), '\"'),
         year,
