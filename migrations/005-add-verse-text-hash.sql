@@ -54,10 +54,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
-CREATE AGGREGATE IF NOT EXISTS bytea_xor_agg(BYTEA) (
-    SFUNC = bytea_xor,
-    STYPE = BYTEA
-);
+-- CREATE AGGREGATE has no IF NOT EXISTS clause in any released PostgreSQL.
+-- Wrap in a DO block that looks up pg_aggregate by name + signature to make
+-- the migration idempotent (safe to re-run on a database that already has it).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_aggregate a
+        JOIN pg_proc p ON p.oid = a.aggfnoid
+        WHERE p.proname = 'bytea_xor_agg'
+          AND pg_get_function_identity_arguments(p.oid) = 'bytea'
+    ) THEN
+        CREATE AGGREGATE bytea_xor_agg(BYTEA) (
+            SFUNC = bytea_xor,
+            STYPE = BYTEA
+        );
+    END IF;
+END;
+$$;
 
 -- ── 3. Add columns and triggers to each version table ───────────────────────
 DO $$
