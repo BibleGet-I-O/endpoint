@@ -1,80 +1,191 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Migrate BibleGet data from MariaDB container to PostgreSQL container
+# Migrate BibleGet data from MariaDB to PostgreSQL
 # =============================================================================
 #
-# Usage:
-#   MARIA_PASS=secret PG_PASS=secret ./migrations/migrate-mariadb-to-pgsql.sh
+# Two modes:
 #
-# Environment variables (required):
-#   MARIA_PASS  — MariaDB password
-#   PG_PASS     — PostgreSQL password
+#   docker (default)  - both DBs are Docker containers on this host. Used by
+#                       the local docker-compose dev stack.
+#   --native          - both DBs are reachable as native services via TCP.
+#                       Used on the production VPS where MariaDB and Postgres
+#                       run as system services on 127.0.0.1.
 #
-# Environment variables (optional):
-#   MARIA_CONTAINER, MARIA_USER, MARIA_DB
-#   PG_CONTAINER, PG_USER, PG_DB
-#   KEEP_TMPDIR=1  — preserve temp files after migration
+# Usage (docker mode, default):
+#   MARIA_PASS=secret PG_PASS=secret \
+#     ./migrations/migrate-mariadb-to-pgsql.sh
+#
+# Usage (native mode):
+#   MARIA_PASS=secret PG_PASS=secret \
+#     ./migrations/migrate-mariadb-to-pgsql.sh --native
+#
+# Required env vars (both modes):
+#   MARIA_PASS        - MariaDB password
+#   PG_PASS           - PostgreSQL password
+#
+# Optional env vars (both modes):
+#   MARIA_USER (default: bibleget)
+#   MARIA_DB   (default: bibleget)
+#   PG_USER    (default: bibleget)
+#   PG_DB      (default: bibleget)
+#   KEEP_TMPDIR=1     - preserve temp files after migration
+#
+# Optional env vars (docker mode):
+#   MARIA_CONTAINER (default: mariadb-virx-mariadb-1)
+#   PG_CONTAINER    (default: endpoint-postgres-1)
+#
+# Optional env vars (native mode):
+#   MARIA_HOST (default: 127.0.0.1)
+#   MARIA_PORT (default: 3306)
+#   PG_HOST    (default: 127.0.0.1)
+#   PG_PORT    (default: 5432)
+#
+# Native mode requires the `mariadb` and `psql` CLI clients in PATH.
 #
 # =============================================================================
 set -euo pipefail
 
+# ── Argument parsing ─────────────────────────────────────────────────────────
+
+NATIVE_MODE=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --native) NATIVE_MODE=1; shift ;;
+        --docker) NATIVE_MODE=0; shift ;;
+        -h|--help)
+            # Print only the commented header at the top of this file.
+            # Stops at the first non-comment, non-blank line (e.g. `set -euo
+            # pipefail`) so the help output stays in sync with the docstring
+            # regardless of how the script grows below.
+            awk 'NR==1 {next}
+                 /^#/ {sub(/^# ?/, ""); print; next}
+                 /^[[:space:]]*$/ {print; next}
+                 {exit}' "$0"
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            echo "Usage: $0 [--native|--docker]  (run with --help for details)" >&2
+            exit 2
+            ;;
+    esac
+done
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-MARIA_CONTAINER="${MARIA_CONTAINER:-mariadb-virx-mariadb-1}"
 MARIA_USER="${MARIA_USER:-bibleget}"
 MARIA_PASS="${MARIA_PASS:?Set MARIA_PASS in the environment}"
 MARIA_DB="${MARIA_DB:-bibleget}"
 
-PG_CONTAINER="${PG_CONTAINER:-endpoint-postgres-1}"
 PG_USER="${PG_USER:-bibleget}"
 PG_PASS="${PG_PASS:?Set PG_PASS in the environment}"
 PG_DB="${PG_DB:-bibleget}"
+
+# Mode-specific defaults (all are read regardless of mode; only the relevant
+# ones are actually used in the helper invocations below).
+MARIA_CONTAINER="${MARIA_CONTAINER:-mariadb-virx-mariadb-1}"
+PG_CONTAINER="${PG_CONTAINER:-endpoint-postgres-1}"
+MARIA_HOST="${MARIA_HOST:-127.0.0.1}"
+MARIA_PORT="${MARIA_PORT:-3306}"
+PG_HOST="${PG_HOST:-127.0.0.1}"
+PG_PORT="${PG_PORT:-5432}"
 
 KEEP_TMPDIR="${KEEP_TMPDIR:-0}"
 umask 077
 MIGRATION_TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/bibleget-migration.XXXXXX")"
 trap '[[ "$KEEP_TMPDIR" == "1" ]] || rm -rf "$MIGRATION_TMPDIR"' EXIT
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Preflight ────────────────────────────────────────────────────────────────
+
+if [ "$NATIVE_MODE" = "1" ]; then
+    command -v mariadb >/dev/null || { echo "Native mode requires 'mariadb' in PATH" >&2; exit 1; }
+    command -v psql    >/dev/null || { echo "Native mode requires 'psql' in PATH"    >&2; exit 1; }
+    MODE_LABEL="native (mariadb on ${MARIA_HOST}:${MARIA_PORT}, postgres on ${PG_HOST}:${PG_PORT})"
+else
+    command -v docker >/dev/null || { echo "Docker mode requires 'docker' in PATH (or use --native)" >&2; exit 1; }
+    MODE_LABEL="docker (containers ${MARIA_CONTAINER}, ${PG_CONTAINER})"
+fi
+
+# ── Backend invocation helpers ───────────────────────────────────────────────
+# These thin wrappers are the only place that knows about docker vs native.
+# Existing call sites (maria_sql, maria_dump_csv, pg_sql, ...) compose them.
+
+maria_exec() {
+    if [ "$NATIVE_MODE" = "1" ]; then
+        mariadb -h "$MARIA_HOST" -P "$MARIA_PORT" \
+            -u "$MARIA_USER" -p"$MARIA_PASS" "$MARIA_DB" "$@"
+    else
+        docker exec "$MARIA_CONTAINER" \
+            mariadb -u"$MARIA_USER" -p"$MARIA_PASS" "$MARIA_DB" "$@"
+    fi
+}
+
+# Plain psql (no stdin redirection from the caller).
+pg_exec() {
+    if [ "$NATIVE_MODE" = "1" ]; then
+        PGPASSWORD="$PG_PASS" psql -h "$PG_HOST" -p "$PG_PORT" \
+            -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" "$@"
+    else
+        docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
+            psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" "$@"
+    fi
+}
+
+# psql for COPY commands that read from the script's stdin.
+# In docker mode we need `-i` so docker forwards stdin to the container.
+pg_exec_stdin() {
+    if [ "$NATIVE_MODE" = "1" ]; then
+        PGPASSWORD="$PG_PASS" psql -h "$PG_HOST" -p "$PG_PORT" \
+            -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" "$@"
+    else
+        docker exec -i -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
+            psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" "$@"
+    fi
+}
+
+# ── High-level helpers ───────────────────────────────────────────────────────
 
 maria_sql() {
-    docker exec "$MARIA_CONTAINER" mariadb -u"$MARIA_USER" -p"$MARIA_PASS" "$MARIA_DB" -N -B -e "$1" 2>/dev/null
+    maria_exec -N -B -e "$1" 2>/dev/null
 }
 
 maria_dump_csv() {
     local table="$1"
     local query="$2"
-    docker exec "$MARIA_CONTAINER" mariadb -u"$MARIA_USER" -p"$MARIA_PASS" "$MARIA_DB" \
-        -N -B -e "$query" 2>/dev/null | tr -d '\r' > "$MIGRATION_TMPDIR/${table}.tsv"
+    maria_exec -N -B -e "$query" 2>/dev/null \
+        | tr -d '\r' > "$MIGRATION_TMPDIR/${table}.tsv"
 }
 
 pg_sql() {
-    docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
-        psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" -c "$1"
+    pg_exec -c "$1"
 }
 
 pg_sql_file() {
-    docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
-        psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" -f "$1"
+    pg_exec -f "$1"
 }
 
 pg_copy_from_stdin() {
     local table="$1"
     local columns="$2"
-    docker exec -i -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
-        psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" \
-        -c "\\copy $table ($columns) FROM STDIN WITH (FORMAT text, NULL '\\N')"
+    pg_exec_stdin -c "\\copy $table ($columns) FROM STDIN WITH (FORMAT text, NULL '\\N')"
 }
 
 log() {
     echo "$(date '+%H:%M:%S') [migrate] $*"
 }
 
+log "Mode: ${MODE_LABEL}"
+
 # ── Step 1: Apply production schema ──────────────────────────────────────────
 
 log "Applying production schema..."
-docker cp "$(dirname "$0")/production-schema.sql" "$PG_CONTAINER":/tmp/production-schema.sql
-pg_sql_file /tmp/production-schema.sql
+SCHEMA_FILE="$(dirname "$0")/production-schema.sql"
+if [ "$NATIVE_MODE" = "1" ]; then
+    pg_sql_file "$SCHEMA_FILE"
+else
+    docker cp "$SCHEMA_FILE" "$PG_CONTAINER":/tmp/production-schema.sql
+    pg_sql_file /tmp/production-schema.sql
+fi
 log "Schema applied."
 
 # ── Step 2: Migrate simple reference tables ──────────────────────────────────
@@ -83,8 +194,7 @@ log "Migrating counter..."
 COUNTER_DATA=$(maria_sql "SELECT good, bad FROM counter LIMIT 1")
 GOOD=$(echo "$COUNTER_DATA" | cut -f1)
 BAD=$(echo "$COUNTER_DATA" | cut -f2)
-EXISTING=$(docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
-    psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" -t -A -c "SELECT COUNT(*) FROM counter;")
+EXISTING=$(pg_exec -t -A -c "SELECT COUNT(*) FROM counter;")
 if [ "$EXISTING" = "0" ]; then
     pg_sql "INSERT INTO counter (good, bad) VALUES ($GOOD, $BAD);"
 else
@@ -100,10 +210,14 @@ maria_dump_csv testament "SELECT * FROM testament ORDER BY IDX"
 pg_copy_from_stdin testament '"IDX","NAME_EN","NAME_IT","NAME_ES","NAME_FR","NAME_DE","NAME_PT"' < "$MIGRATION_TMPDIR/testament.tsv"
 
 log "Migrating versions_available..."
-# notes field may contain tabs/newlines, so use CSV format for this table
-# Preserve NULLs and original whitespace; only escape double-quotes for CSV
-docker exec "$MARIA_CONTAINER" mariadb -u"$MARIA_USER" -p"$MARIA_PASS" "$MARIA_DB" \
-    -N -B -e "SELECT CONCAT_WS(',',
+# notes field may contain tabs/newlines, so use CSV format for this table.
+# --raw disables MariaDB's batch-mode escaping of \n / \t / \\, so real
+# newlines in `notes` reach the file as actual newlines (inside quoted CSV
+# fields, which Postgres \copy FORMAT csv handles correctly). Without --raw
+# they would arrive as the two-character literal "\n", which Postgres CSV
+# format does NOT interpret, corrupting the imported text.
+# Preserve NULLs and original whitespace; only escape double-quotes for CSV.
+maria_exec -N -B --raw -e "SELECT CONCAT_WS(',',
         CONCAT('\"', REPLACE(sigla,'\"','\"\"'), '\"'),
         CONCAT('\"', REPLACE(fullname,'\"','\"\"'), '\"'),
         year,
@@ -116,9 +230,7 @@ docker exec "$MARIA_CONTAINER" mariadb -u"$MARIA_USER" -p"$MARIA_PASS" "$MARIA_D
         CONCAT('\"', REPLACE(type,'\"','\"\"'), '\"')
     ) FROM versions_available ORDER BY sigla" \
     2>/dev/null | tr -d '\r' > "$MIGRATION_TMPDIR/versions_available.csv"
-docker exec -i -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" \
-    psql -v ON_ERROR_STOP=1 -X -U "$PG_USER" -d "$PG_DB" \
-    -c "\copy versions_available (sigla,fullname,year,language,copyright,copyright_holder,imprimatur,canon,notes,type) FROM STDIN WITH (FORMAT csv, NULL '\\N')" \
+pg_exec_stdin -c "\copy versions_available (sigla,fullname,year,language,copyright,copyright_holder,imprimatur,canon,notes,type) FROM STDIN WITH (FORMAT csv, NULL '\\N')" \
     < "$MIGRATION_TMPDIR/versions_available.csv"
 
 log "Migrating usage_counter..."
@@ -161,7 +273,7 @@ migrate_bible_version() {
 }
 
 # MariaDB -B -N mode outputs \N for NULL, which is PostgreSQL COPY's NULL marker.
-# Do NOT use IFNULL — let NULLs pass through as \N.
+# Do NOT use IFNULL - let NULLs pass through as \N.
 FULL_MARIA_SELECT="testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,verseID"
 FULL_PG_COLS='testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,"verseID"'
 STD_IDX_MARIA="book,chapters,verses_count,verses_last,fullname,abbrev"
@@ -242,9 +354,9 @@ pg_sql "SELECT setval(pg_get_serial_sequence('curl_error', 'COUNTER'), COALESCE(
 
 # ── Step 7: Migrate request log tables ───────────────────────────────────────
 # This is the largest migration (~1.3M rows, ~800MB).
-# - Legacy `requests_log`: int unsigned IP → inet via INET_NTOA()
-# - 2014-2019: int unsigned IP → inet via INET_NTOA()
-# - 2020+: varbinary(16) IP → inet via INET6_NTOA()
+# - Legacy `requests_log`: int unsigned IP -> inet via INET_NTOA()
+# - 2014-2019: int unsigned IP -> inet via INET_NTOA()
+# - 2020+: varbinary(16) IP -> inet via INET6_NTOA()
 # NULL IPs are preserved as NULL (not replaced with 0.0.0.0).
 
 log "Migrating requests_log (legacy, 570K rows)..."
@@ -307,7 +419,7 @@ printf "%-30s %10s %10s %s\n" "-----" "-------" "--------" "------"
 
 for T in $TABLES; do
     M_COUNT=$(maria_sql "SELECT COUNT(*) FROM \`$T\`" 2>/dev/null || echo "N/A")
-    P_COUNT=$(docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -t -A -c "SELECT COUNT(*) FROM \"$T\"" 2>/dev/null || echo "N/A")
+    P_COUNT=$(pg_exec -t -A -c "SELECT COUNT(*) FROM \"$T\"" 2>/dev/null || echo "N/A")
     if [ "$M_COUNT" = "$P_COUNT" ]; then
         STATUS="✓"
     else
@@ -319,7 +431,7 @@ done
 # Yearly log tables (discovered dynamically)
 for T in $YEARLY_TABLES; do
     M_COUNT=$(maria_sql "SELECT COUNT(*) FROM \`$T\`" 2>/dev/null || echo "N/A")
-    P_COUNT=$(docker exec -e PGPASSWORD="$PG_PASS" "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -t -A -c "SELECT COUNT(*) FROM \"$T\"" 2>/dev/null || echo "N/A")
+    P_COUNT=$(pg_exec -t -A -c "SELECT COUNT(*) FROM \"$T\"" 2>/dev/null || echo "N/A")
     if [ "$M_COUNT" = "$P_COUNT" ]; then
         STATUS="✓"
     else
