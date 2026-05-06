@@ -1,0 +1,42 @@
+# Systemd user unit for the BibleGet embedding service.
+#
+# Install location: ~/.config/systemd/user/bibleget-embedding.service
+# (the deploy workflow rsyncs this file into ~/embedding/ and copies it
+# into ~/.config/systemd/user/ when it changes.)
+#
+# Operational notes:
+#   - Runs as the unprivileged `bibleget-embed` user, started by user-level
+#     systemd. Requires `loginctl enable-linger bibleget-embed` so the
+#     service runs without an active login session.
+#   - Binds 127.0.0.1:8000 only — never reachable from outside the VPS.
+#   - Loads the sentence-transformers model at startup (~30-60s on cold
+#     start), so TimeoutStartSec is generous.
+#   - Logs go to the user journal: `journalctl --user -u bibleget-embedding`
+
+[Unit]
+Description=BibleGet Embedding Service (FastAPI + sentence-transformers)
+Documentation=https://github.com/BibleGet-I-O/endpoint/tree/development/services/embedding
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/embedding
+
+# Model cached under the user's HuggingFace cache; pre-warmed during one-time
+# bootstrap so cold starts don't pay the ~470 MB download cost.
+Environment=EMBEDDING_MODEL=paraphrase-multilingual-MiniLM-L12-v2
+Environment=HF_HOME=%h/.cache/huggingface
+
+ExecStart=%h/embedding/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+
+LimitNOFILE=4096
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

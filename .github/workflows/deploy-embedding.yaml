@@ -1,0 +1,183 @@
+name: Deploy Embedding Service
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-embedding
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy embedding service
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout development
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: development
+          persist-credentials: false
+
+      - name: Verify expected files exist
+        run: |
+          set -euo pipefail
+          for f in services/embedding/main.py \
+                   services/embedding/requirements.txt \
+                   services/embedding/bibleget-embedding.service; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Required file missing: $f" >&2
+              exit 1
+            fi
+          done
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_EMBED_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SSH_KNOWN_HOSTS}" ]; then
+            echo "::error::Secret VPS_SSH_KNOWN_HOSTS is empty. Refusing to deploy without a pinned host key." >&2
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${SSH_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sanity-check pinned host key against DNS SSHFP records
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+          SSHFP_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          if ! command -v dig >/dev/null; then
+            echo "::warning::dig not available; skipping SSHFP drift check."
+            exit 0
+          fi
+          PIN_FPS=$(printf '%s\n' "${SSH_KNOWN_HOSTS}" \
+            | awk '$2 ~ /^(ssh-|ecdsa-)/' \
+            | while read -r _host _alg keyb64 _; do
+                printf '%s' "$keyb64" | base64 -d 2>/dev/null | sha256sum | awk '{print toupper($1)}'
+              done \
+            | sort -u)
+          DNS_FPS=$(dig +short SSHFP "${SSHFP_HOST}" \
+            | awk '$2 == "2" {for (i=3; i<=NF; i++) printf "%s", $i; print ""}' \
+            | tr -d ' ' \
+            | tr 'a-f' 'A-F' \
+            | sort -u)
+          if [ -z "${DNS_FPS}" ]; then
+            echo "::warning::No SHA-256 SSHFP records found for the configured host; skipping drift check."
+            exit 0
+          fi
+          if [ -z "${PIN_FPS}" ]; then
+            echo "::warning::Could not derive any fingerprints from VPS_SSH_KNOWN_HOSTS; skipping drift check."
+            exit 0
+          fi
+          PIN_NOT_IN_DNS=$(comm -23 <(echo "${PIN_FPS}") <(echo "${DNS_FPS}"))
+          DNS_NOT_IN_PIN=$(comm -13 <(echo "${PIN_FPS}") <(echo "${DNS_FPS}"))
+          if [ -n "${PIN_NOT_IN_DNS}" ]; then
+            while IFS= read -r fp; do
+              echo "::warning::Pinned key SHA256:${fp} not in DNS SSHFP. DNS may lag reality, or VPS_SSH_KNOWN_HOSTS is stale."
+            done <<< "${PIN_NOT_IN_DNS}"
+          fi
+          if [ -n "${DNS_NOT_IN_PIN}" ]; then
+            while IFS= read -r fp; do
+              echo "::warning::DNS SSHFP advertises SHA256:${fp} not present in VPS_SSH_KNOWN_HOSTS. Server may have rotated; consider re-pinning."
+            done <<< "${DNS_NOT_IN_PIN}"
+          fi
+          if [ -z "${PIN_NOT_IN_DNS}" ] && [ -z "${DNS_NOT_IN_PIN}" ]; then
+            echo "Pin matches DNS SSHFP records."
+          fi
+
+      - name: Ensure remote directories exist
+        env:
+          VPS_USER: ${{ secrets.VPS_EMBED_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ vars.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT}" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o ConnectTimeout=10 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=2 \
+            "${VPS_USER}@${VPS_HOST}" \
+            'mkdir -p ~/embedding ~/.config/systemd/user'
+
+      - name: Rsync embedding sources
+        env:
+          VPS_USER: ${{ secrets.VPS_EMBED_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ vars.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          # --delete keeps the remote dir mirrored to source.
+          # Excludes protect server-only state (venv, model cache) and dev-only
+          # files (Dockerfile, README, __pycache__) from being shipped or wiped.
+          rsync \
+            --archive --no-owner --no-group \
+            --compress --human-readable --verbose \
+            --delete --protect-args \
+            --exclude=Dockerfile \
+            --exclude=README.md \
+            --exclude=__pycache__ \
+            --exclude=.cache \
+            --exclude=venv \
+            -e "ssh -i ~/.ssh/deploy_key -p ${VPS_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=2" \
+            services/embedding/ "${VPS_USER}@${VPS_HOST}:embedding/"
+
+      - name: Sync systemd unit, refresh venv, restart, health check
+        env:
+          VPS_USER: ${{ secrets.VPS_EMBED_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ vars.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT}" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o ConnectTimeout=10 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=2 \
+            "${VPS_USER}@${VPS_HOST}" \
+            'set -euo pipefail
+             if [ ! -x ~/embedding/venv/bin/pip ]; then
+               echo "::error::Python venv not found at ~/embedding/venv/. Run the one-time bootstrap from services/embedding/README.md first." >&2
+               exit 1
+             fi
+             SRC=~/embedding/bibleget-embedding.service
+             DST=~/.config/systemd/user/bibleget-embedding.service
+             if ! cmp -s "$SRC" "$DST" 2>/dev/null; then
+               echo "== installing/updating systemd user unit =="
+               cp "$SRC" "$DST"
+               systemctl --user daemon-reload
+               systemctl --user enable bibleget-embedding >/dev/null
+             fi
+             echo "== refreshing venv deps (idempotent) =="
+             ~/embedding/venv/bin/pip install --quiet --upgrade --upgrade-strategy only-if-needed -r ~/embedding/requirements.txt
+             echo "== restarting bibleget-embedding =="
+             systemctl --user restart bibleget-embedding
+             for i in 1 2 3 4 5 6 7 8 9 10; do
+               if curl -sS --max-time 3 http://127.0.0.1:8000/health 2>/dev/null | grep -q "\"ready\":true"; then
+                 echo "== health OK =="
+                 exit 0
+               fi
+               sleep 3
+             done
+             echo "::error::Service failed to become healthy within 30s" >&2
+             systemctl --user status bibleget-embedding --no-pager | head -40
+             journalctl --user -u bibleget-embedding -n 40 --no-pager
+             exit 1'
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
