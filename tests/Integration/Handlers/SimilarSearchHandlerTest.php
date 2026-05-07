@@ -139,7 +139,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         }
     }
 
-    public function testSimilarSearchResultHasSimilarityField(): void
+    public function testSimilarSearchResultHasScoreField(): void
     {
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
@@ -151,8 +151,13 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         self::assertNotEmpty($body['results']);
 
         $first = $body['results'][0];
-        self::assertArrayHasKey('similarity', $first);
-        self::assertIsNumeric($first['similarity']);
+        self::assertArrayHasKey('score', $first);
+        self::assertArrayNotHasKey('similarity', $first, 'similarity field renamed to score (issue #110)');
+        self::assertIsNumeric($first['score']);
+        self::assertArrayHasKey('canonical_order', $first);
+        self::assertIsInt($first['canonical_order']);
+        self::assertGreaterThanOrEqual(1, $first['canonical_order']);
+        self::assertArrayNotHasKey('verseID', $first, 'verseID must never cross the API boundary');
     }
 
     public function testInfoContainsEndpointVersion(): void
@@ -165,5 +170,63 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         $body     = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
         self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
+    }
+
+    // ── Multi-version `version=A,B` (issue #110) ────────────
+
+    public function testMultiVersionSearchesAllListedVersions(): void
+    {
+        // Seed a couple of TEST2 verses with embeddings so the query can
+        // return non-empty results across both versions.
+        $pdo = $this->getConnection();
+        $v1  = '[' . implode(',', array_fill(0, 384, 0.15)) . ']';
+        $v2  = '[' . implode(',', array_fill(0, 384, -0.05)) . ']';
+        $pdo->exec('UPDATE "TEST2" SET embedding = \'' . $v1 . '\' WHERE book = 1 AND chapter = 1 AND verse = 2');
+        $pdo->exec('UPDATE "TEST2" SET embedding = \'' . $v2 . '\' WHERE book = 1 AND chapter = 1 AND verse = 3');
+
+        $handler = $this->createHandler();
+        $request = ( new ServerRequest('GET', '/v3/search/similar') )
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1,TEST2', 'limit' => '20']);
+
+        $response = $handler->handle($request);
+        self::assertSame(200, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+
+        $versionsSeen = array_unique(array_column($body['results'], 'version'));
+        sort($versionsSeen);
+        self::assertSame(['TEST1', 'TEST2'], $versionsSeen);
+
+        // Per-version partition: each version's first row gets canonical_order=1
+        foreach (['TEST1', 'TEST2'] as $v) {
+            $perVersion = array_values(array_filter(
+                $body['results'],
+                static fn(array $r): bool => $r['version'] === $v
+            ));
+            self::assertNotEmpty($perVersion);
+            $orders = array_column($perVersion, 'canonical_order');
+            self::assertSame(1, min($orders), "First canonical_order for {$v} should be 1");
+        }
+    }
+
+    public function testCrossversionParamHasNoEffect(): void
+    {
+        // crossversion=true was removed (issue #110). Passing it should not
+        // expand the search beyond the explicitly-listed version.
+        $handler = $this->createHandler();
+        $request = ( new ServerRequest('GET', '/v3/search/similar') )
+            ->withQueryParams([
+                'reference'    => 'Gen1:1',
+                'version'      => 'TEST1',
+                'crossversion' => 'true',
+                'limit'        => '20',
+            ]);
+
+        $response = $handler->handle($request);
+        $body     = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        $versionsSeen = array_unique(array_column($body['results'], 'version'));
+        self::assertSame(['TEST1'], array_values($versionsSeen));
     }
 }
