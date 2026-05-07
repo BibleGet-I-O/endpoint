@@ -135,8 +135,10 @@ class QueryExecutorIntegrationTest extends DatabaseTestCase
         self::assertArrayHasKey('booknum', $verse);
         self::assertArrayHasKey('univbooknum', $verse);
         self::assertArrayHasKey('originalquery', $verse);
-        // verseID should be removed
-        self::assertArrayNotHasKey('verseID', $verse);
+        // verseID is retained at the executor level so QuoteHandler can use
+        // it to derive canonical_order; SearchUtils::assignCanonicalOrder
+        // strips it before the handler emits the response (issue #110).
+        self::assertArrayHasKey('verseID', $verse);
     }
 
     public function testResultBookNameResolved(): void
