@@ -147,4 +147,26 @@ final class SearchUtilsTest extends TestCase
         SearchUtils::assignCanonicalOrder($rows);
         $this->assertSame([], $rows);
     }
+
+    public function testAssignCanonicalOrderTiedVerseIDsAreDeterministic(): void
+    {
+        // Two rows in the same version with identical verseIDs (a degenerate
+        // case in production, but worth pinning down). PHP's asort is stable
+        // since 8.0, so the row that appeared first in $rows must end up
+        // ranked first; the second tied row gets the next rank.
+        $rows = [
+            ['version' => 'NABRE', 'verseID' => 100, 'text' => 'first'],
+            ['version' => 'NABRE', 'verseID' => 100, 'text' => 'second'],
+            ['version' => 'NABRE', 'verseID' => 200, 'text' => 'third'],
+        ];
+        SearchUtils::assignCanonicalOrder($rows);
+
+        // Both 100s rank ahead of 200 (correct), and the input order between
+        // the two 100s is preserved → ranks 1 and 2 respectively.
+        $this->assertSame(1, $rows[0]['canonical_order']);
+        $this->assertSame(2, $rows[1]['canonical_order']);
+        $this->assertSame(3, $rows[2]['canonical_order']);
+        $this->assertSame('first', $rows[0]['text']);
+        $this->assertSame('second', $rows[1]['text']);
+    }
 }

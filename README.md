@@ -39,7 +39,10 @@ Response emission is handled by [laminas/laminas-httphandlerrunner](https://gith
 | `/v3/metadata/biblebooks` | `MetadataHandler` | Book names in 25+ languages |
 | `/v3/metadata/bibleversions` | `MetadataHandler` | Available Bible versions |
 | `/v3/metadata/versionindex` | `MetadataHandler` | Chapter/verse indexes |
-| `/v3/search` | `SearchHandler` | Keyword search |
+| `/v3/search` | `KeywordSearchHandler` | Keyword search (legacy alias for `/v3/search/keyword`) |
+| `/v3/search/keyword` | `KeywordSearchHandler` | Full-text keyword search with stemming |
+| `/v3/search/semantic` | `SemanticSearchHandler` | Natural-language semantic search via verse embeddings |
+| `/v3/search/similar` | `SimilarSearchHandler` | Find verses similar to a given reference |
 
 ### Testing & CI
 

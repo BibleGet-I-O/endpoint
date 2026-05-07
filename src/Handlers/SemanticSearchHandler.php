@@ -95,14 +95,40 @@ class SemanticSearchHandler extends AbstractHandler
             }
         }
 
-        // Run pgvector cosine similarity per version, then merge globally by score.
-        $dbStart    = microtime(true);
-        $allResults = [];
+        // Run pgvector cosine similarity per version, then merge globally by
+        // score. Cache loadVersionIndex results so each version's *_idx table
+        // is queried at most once per request even when version=A,B,C.
+        $dbStart        = microtime(true);
+        $allResults     = [];
+        $versionIndexes = [];
         foreach ($validatedVersions as $v) {
-            array_push($allResults, ...$this->executeSimilaritySearch($pdo, $v, $queryVector, $limit, $threshold));
+            $versionIndexes[$v] = $this->loadVersionIndex($pdo, $v);
+            array_push($allResults, ...$this->executeSimilaritySearch(
+                $pdo,
+                $v,
+                $queryVector,
+                $versionIndexes[$v],
+                $limit,
+                $threshold
+            ));
         }
         // Global ordering by score DESC across versions, then trim to limit.
-        usort($allResults, static fn(array $a, array $b): int => ( $b['score'] ?? 0 ) <=> ( $a['score'] ?? 0 ));
+        // Null scores (computation failures) sort to the bottom so a genuine
+        // 0.0 still outranks them.
+        usort($allResults, static function (array $a, array $b): int {
+            $sa = $a['score'] ?? null;
+            $sb = $b['score'] ?? null;
+            if ($sa === null && $sb === null) {
+                return 0;
+            }
+            if ($sa === null) {
+                return 1;
+            }
+            if ($sb === null) {
+                return -1;
+            }
+            return $sb <=> $sa;
+        });
         $allResults = array_slice($allResults, 0, $limit);
 
         // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
@@ -176,14 +202,12 @@ class SemanticSearchHandler extends AbstractHandler
 
     /**
      * @param float[] $queryVector
+     * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
      * @return array<int, array<string, mixed>>
      */
-    private function executeSimilaritySearch(\PDO $pdo, string $version, array $queryVector, int $limit, float $threshold): array
+    private function executeSimilaritySearch(\PDO $pdo, string $version, array $queryVector, array $versionIndex, int $limit, float $threshold): array
     {
         $vectorStr = '[' . implode(',', $queryVector) . ']';
-
-        // Load version index for book name mapping
-        $versionIndex = $this->loadVersionIndex($pdo, $version);
 
         $sql = 'SELECT *, 1 - (embedding <=> ?::vector) AS score '
              . 'FROM "' . $version . '" '
@@ -199,9 +223,13 @@ class SemanticSearchHandler extends AbstractHandler
         while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
             $bookidx = array_search($row['book'], $versionIndex['book_num']);
 
+            // null (rather than 0.0) when the score can't be computed, so a
+            // genuine score of 0.0 — orthogonal verses — is distinguishable
+            // from "no score". Comparators that order results must treat
+            // null as worse than any numeric score.
             $score = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
                 ? round((float) $row['score'], 4)
-                : 0.0;
+                : null;
 
             $entry     = [
                 'version'     => $version,

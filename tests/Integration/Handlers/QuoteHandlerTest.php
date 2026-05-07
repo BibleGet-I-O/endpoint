@@ -292,16 +292,23 @@ class QuoteHandlerTest extends DatabaseTestCase
         self::assertIsArray($body);
         self::assertCount(6, $body['results']);
 
-        // Per-version partition: each version restarts at canonical_order=1
+        // Per-version partition: each version restarts at canonical_order=1.
+        // The handler returns rows in canonical-key order per version, so the
+        // i-th row of each per-version subset must carry canonical_order=i+1
+        // — a tighter check than just "the set of values is {1,2,3}".
         foreach (['TEST1', 'TEST2'] as $v) {
             $perVersion = array_values(array_filter(
                 $body['results'],
                 static fn(array $r): bool => $r['version'] === $v
             ));
             self::assertCount(3, $perVersion);
-            $orders = array_column($perVersion, 'canonical_order');
-            sort($orders, SORT_NUMERIC);
-            self::assertSame([1, 2, 3], $orders, "canonical_order for {$v} should be 1..3");
+            foreach ($perVersion as $i => $row) {
+                self::assertSame(
+                    $i + 1,
+                    $row['canonical_order'],
+                    "canonical_order for {$v} row {$i} should equal " . ( $i + 1 )
+                );
+            }
         }
 
         foreach ($body['results'] as $row) {

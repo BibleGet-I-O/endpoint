@@ -14706,8 +14706,9 @@
                     "score": {
                         "type": "number",
                         "format": "float",
-                        "description": "Cosine similarity score (1 - cosine_distance), in [0,1]. Higher means more similar. Raw values, query-relative — not portable across queries.",
-                        "minimum": 0.0,
+                        "nullable": true,
+                        "description": "Cosine similarity score (1 - cosine_distance), in [-1, 1]. Higher means more similar. For normalized text-embedding vectors the score is typically in [0, 1], but the schema admits negative values for orthogonal-leaning matches. `null` when the score could not be computed (e.g. degenerate zero-vector inputs producing NaN). Raw values, query-relative — not portable across queries.",
+                        "minimum": -1.0,
                         "maximum": 1.0
                     },
                     "canonical_order": {
@@ -14716,7 +14717,7 @@
                         "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Independent of array position: the array is in similarity-desc order, but sorting by `canonical_order` recovers canonical order without a second request."
                     }
                 },
-                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "score", "canonical_order"]
+                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "canonical_order"]
             },
             "SemanticSearchResponseJSON": {
                 "type": "object",

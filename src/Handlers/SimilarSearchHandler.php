@@ -112,9 +112,24 @@ class SimilarSearchHandler extends AbstractHandler
             ));
         }
 
-        // Multi-version: sort globally by score DESC and trim to the user's limit.
+        // Multi-version: sort globally by score DESC and trim to the user's
+        // limit. Null scores (computation failures) sort to the bottom so a
+        // genuine 0.0 still outranks them.
         if (count($validatedVersions) > 1) {
-            usort($allResults, static fn(array $a, array $b): int => ( $b['score'] ?? 0 ) <=> ( $a['score'] ?? 0 ));
+            usort($allResults, static function (array $a, array $b): int {
+                $sa = $a['score'] ?? null;
+                $sb = $b['score'] ?? null;
+                if ($sa === null && $sb === null) {
+                    return 0;
+                }
+                if ($sa === null) {
+                    return 1;
+                }
+                if ($sb === null) {
+                    return -1;
+                }
+                return $sb <=> $sa;
+            });
             $allResults = array_slice($allResults, 0, $limit);
         }
 
@@ -268,9 +283,13 @@ class SimilarSearchHandler extends AbstractHandler
         while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
             $bookidx = array_search($row['book'], $versionIndex['book_num']);
 
+            // null (rather than 0.0) when the score can't be computed, so a
+            // genuine score of 0.0 — orthogonal verses — is distinguishable
+            // from "no score". Comparators that order results must treat
+            // null as worse than any numeric score.
             $score = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
                 ? round((float) $row['score'], 4)
-                : 0.0;
+                : null;
 
             $entry     = [
                 'version'     => $version,
