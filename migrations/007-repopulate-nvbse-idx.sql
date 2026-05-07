@@ -6,22 +6,50 @@
 --          the index is empty, even though the underlying NVBSE table has all
 --          35,855 verses correctly embedded.
 --
--- Strategy: Reconstruct the index by aggregating the NVBSE verse table:
---   - book              ← distinct book numbers in NVBSE
---   - book_consecutive  ← 1..N over books in canonical order
---   - chapters          ← MAX(chapter)
---   - verses_count      ← per-chapter COUNT(DISTINCT verse), comma-separated
---   - verses_last       ← per-chapter MAX(verse), comma-separated
---   - fullname/abbrev   ← biblebooks_fullname.LATIN / biblebooks_abbr.LATIN,
---                         taking the first alias before any " | " separator
---                         (matches the canonical short form used in other
---                         Latin-language _idx tables)
+-- This migration is a faithful PostgreSQL port of the canonical MariaDB
+-- stored procedure `generate_bible_idx(source_table, idx_table, language)`.
+-- For each book, it:
 --
--- Idempotent: skips entirely when "NVBSE_idx" already has rows.
+--   1. Excludes `verseequiv`-tagged rows (subverse markers like 18a, 18b)
+--      from the verse counts — they are pointers, not new verses.
+--
+--   2. Detects which of three origin patterns the book follows:
+--
+--      Case A: book has zero rows with verseorigin set
+--              → simple per-chapter aggregation
+--      Case B: at least one chapter with origin info has only one origin
+--              → same as Case A
+--      Case C: every chapter with origin info has multiple origins
+--              (NABRE-style Esther: GREEK and HEBREW everywhere)
+--              → aggregate per (chapter, verseorigin) and emit ordered by
+--                verseorigin DESC, chapter — so `chapters` becomes the count
+--                of (chapter × origin) pairs and `verses_last` lists each
+--                origin's chapters back-to-back
+--
+--   3. Looks up the Latin name and abbreviation, taking the first alias
+--      before any " | " separator.
+--
+-- For NVBSE specifically, only book 19 (Esther) lands in Case C; the other
+-- 72 books are Case A. The output for Esther matches NABRE_idx Esther.
+--
+-- `book_consecutive` is set to 1..N over the books in canonical order. NVBSE
+-- has all 73 Catholic-canon books contiguously, so book_consecutive == book.
+--
+-- Idempotent: skips entirely when "NVBSE_idx" already has rows or when NVBSE
+-- itself is empty.
 
 DO $$
 DECLARE
-    inserted_rows INT;
+    bk            INT;
+    has_origin    INT;
+    has_excl_orig INT;
+    n_chapters    INT;
+    v_count       TEXT;
+    v_last        TEXT;
+    fname         TEXT;
+    abbr          TEXT;
+    bcons         INT := 0;
+    n_inserted    INT := 0;
 BEGIN
     IF EXISTS (SELECT 1 FROM "NVBSE_idx" LIMIT 1) THEN
         RAISE NOTICE 'NVBSE_idx already populated — skipping.';
@@ -33,49 +61,82 @@ BEGIN
         RETURN;
     END IF;
 
-    WITH per_chapter AS (
-        SELECT
-            book,
-            chapter,
-            COUNT(DISTINCT verse) AS verse_count_in_chap,
-            MAX(verse)            AS max_verse_in_chap
-        FROM "NVBSE"
-        GROUP BY book, chapter
-    ),
-    per_book AS (
-        SELECT
-            book,
-            MAX(chapter) AS chapters,
-            string_agg(verse_count_in_chap::text, ',' ORDER BY chapter) AS verses_count,
-            string_agg(max_verse_in_chap::text,   ',' ORDER BY chapter) AS verses_last
-        FROM per_chapter
-        GROUP BY book
-    ),
-    numbered AS (
-        SELECT
-            book,
-            ROW_NUMBER() OVER (ORDER BY book)::int AS book_consecutive,
-            chapters,
-            verses_count,
-            verses_last
-        FROM per_book
-    )
-    INSERT INTO "NVBSE_idx" (
-        book, book_consecutive, chapters, verses_count, verses_last, fullname, abbrev
-    )
-    SELECT
-        n.book,
-        n.book_consecutive,
-        n.chapters,
-        n.verses_count,
-        n.verses_last,
-        LEFT(TRIM(SPLIT_PART(COALESCE(NULLIF(bf."LATIN", ''), bf."ENGLISH"), '|', 1)), 30),
-        LEFT(TRIM(SPLIT_PART(COALESCE(NULLIF(ba."LATIN", ''), ba."ENGLISH"), '|', 1)), 10)
-    FROM numbered n
-    JOIN biblebooks_fullname bf ON bf."BOOK" = n.book
-    JOIN biblebooks_abbr     ba ON ba."BOOK" = n.book
-    ORDER BY n.book;
+    FOR bk IN SELECT DISTINCT book FROM "NVBSE" ORDER BY book LOOP
+        bcons := bcons + 1;
 
-    GET DIAGNOSTICS inserted_rows = ROW_COUNT;
-    RAISE NOTICE 'NVBSE_idx repopulated with % rows.', inserted_rows;
+        -- Does this book have any rows with verseorigin set?
+        SELECT COUNT(*) INTO has_origin
+        FROM (
+            SELECT 1 FROM "NVBSE"
+            WHERE book = bk AND verseorigin IS NOT NULL AND verseorigin <> ''
+            GROUP BY chapter, verseorigin
+        ) o;
+
+        IF has_origin = 0 THEN
+            -- Case A: force the simple-aggregation branch below
+            has_excl_orig := 1;
+        ELSE
+            -- Case B vs C: any chapter with only one distinct origin → B
+            SELECT COUNT(*) INTO has_excl_orig
+            FROM (
+                SELECT chapter
+                FROM "NVBSE"
+                WHERE book = bk AND verseorigin IS NOT NULL AND verseorigin <> ''
+                GROUP BY chapter
+                HAVING COUNT(DISTINCT verseorigin) = 1
+            ) e;
+        END IF;
+
+        IF has_excl_orig > 0 THEN
+            -- Case A or B: simple per-chapter aggregation, verseequiv filtered out
+            SELECT COUNT(*),
+                   string_agg(vc::text, ',' ORDER BY chapter),
+                   string_agg(vl::text, ',' ORDER BY chapter)
+              INTO n_chapters, v_count, v_last
+            FROM (
+                SELECT chapter,
+                       COUNT(DISTINCT CASE WHEN verseequiv IS NULL OR verseequiv = '' THEN verse END) AS vc,
+                       MAX(           CASE WHEN verseequiv IS NULL OR verseequiv = '' THEN verse END) AS vl
+                FROM "NVBSE"
+                WHERE book = bk
+                GROUP BY chapter
+            ) g;
+        ELSE
+            -- Case C: per (chapter, verseorigin), ordered verseorigin DESC, chapter
+            SELECT COUNT(*),
+                   string_agg(vc::text, ',' ORDER BY verseorigin DESC, chapter),
+                   string_agg(vl::text, ',' ORDER BY verseorigin DESC, chapter)
+              INTO n_chapters, v_count, v_last
+            FROM (
+                SELECT chapter, verseorigin,
+                       COUNT(DISTINCT CASE WHEN verseequiv IS NULL OR verseequiv = '' THEN verse END) AS vc,
+                       MAX(           CASE WHEN verseequiv IS NULL OR verseequiv = '' THEN verse END) AS vl
+                FROM "NVBSE"
+                WHERE book = bk AND verseorigin IS NOT NULL AND verseorigin <> ''
+                GROUP BY chapter, verseorigin
+            ) g;
+        END IF;
+
+        -- Latin name; mirror SUBSTRING_INDEX(@fn, ' | ', 1)
+        SELECT COALESCE(SPLIT_PART(bf."LATIN", ' | ', 1), '')
+          INTO fname
+        FROM biblebooks_fullname bf WHERE bf."BOOK" = bk;
+
+        SELECT COALESCE(SPLIT_PART(ba."LATIN", ' | ', 1), '')
+          INTO abbr
+        FROM biblebooks_abbr ba WHERE ba."BOOK" = bk;
+
+        INSERT INTO "NVBSE_idx" (
+            book, book_consecutive, chapters, verses_count, verses_last, fullname, abbrev
+        )
+        VALUES (
+            bk, bcons, n_chapters, v_count, v_last,
+            LEFT(COALESCE(fname, ''), 30),
+            LEFT(COALESCE(abbr,  ''), 10)
+        );
+
+        n_inserted := n_inserted + 1;
+    END LOOP;
+
+    RAISE NOTICE 'NVBSE_idx repopulated with % rows.', n_inserted;
 END $$;
