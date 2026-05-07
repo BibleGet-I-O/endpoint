@@ -40,25 +40,39 @@
 
 DO $$
 DECLARE
-    bk            INT;
-    has_origin    INT;
-    has_excl_orig INT;
-    n_chapters    INT;
-    v_count       TEXT;
-    v_last        TEXT;
-    fname         TEXT;
-    abbr          TEXT;
-    bcons         INT := 0;
-    n_inserted    INT := 0;
+    bk             INT;
+    has_origin     INT;
+    has_excl_orig  INT;
+    n_chapters     INT;
+    v_count        TEXT;
+    v_last         TEXT;
+    fname          TEXT;
+    abbr           TEXT;
+    bcons          INT := 0;
+    n_inserted     INT := 0;
+    expected_books INT;
+    current_rows   INT;
 BEGIN
-    IF EXISTS (SELECT 1 FROM "NVBSE_idx" LIMIT 1) THEN
-        RAISE NOTICE 'NVBSE_idx already populated — skipping.';
+    SELECT COUNT(*)               INTO expected_books FROM (SELECT DISTINCT book FROM "NVBSE") b;
+    SELECT COUNT(*)               INTO current_rows   FROM "NVBSE_idx";
+
+    IF expected_books = 0 THEN
+        RAISE NOTICE 'NVBSE is empty — nothing to derive from. Skipping.';
         RETURN;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM "NVBSE" LIMIT 1) THEN
-        RAISE NOTICE 'NVBSE is empty — nothing to derive from. Skipping.';
+    IF current_rows = expected_books THEN
+        RAISE NOTICE 'NVBSE_idx already fully populated (% rows) — skipping.', current_rows;
         RETURN;
+    END IF;
+
+    -- Partial / inconsistent state: clear before rebuilding so the loop's
+    -- INSERTs don't collide with stale rows on the (book) UNIQUE or the
+    -- book_consecutive PRIMARY KEY.
+    IF current_rows > 0 THEN
+        RAISE NOTICE 'NVBSE_idx has % of % rows — clearing for full rebuild.',
+                     current_rows, expected_books;
+        TRUNCATE TABLE "NVBSE_idx";
     END IF;
 
     FOR bk IN SELECT DISTINCT book FROM "NVBSE" ORDER BY book LOOP
