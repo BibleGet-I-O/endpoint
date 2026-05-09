@@ -207,14 +207,13 @@ CREATE TABLE IF NOT EXISTS "NVBSE_idx" (
     abbrev       VARCHAR(10) NOT NULL DEFAULT ''
 );
 
--- NABRE: verse is VARCHAR(5) not INT
 CREATE TABLE IF NOT EXISTS "NABRE" (
     testament   SMALLINT NOT NULL,
     section     INT NOT NULL,
     book        INT NOT NULL,
     chapter     INT NOT NULL,
     versedescr  VARCHAR(10) DEFAULT NULL,
-    verse       VARCHAR(5) NOT NULL,
+    verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
