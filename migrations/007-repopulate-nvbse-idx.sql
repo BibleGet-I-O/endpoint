@@ -32,9 +32,6 @@
 -- For NVBSE specifically, only book 19 (Esther) lands in Case C; the other
 -- 72 books are Case A. The output for Esther matches NABRE_idx Esther.
 --
--- `book_consecutive` is set to 1..N over the books in canonical order. NVBSE
--- has all 73 Catholic-canon books contiguously, so book_consecutive == book.
---
 -- Idempotent: skips entirely when "NVBSE_idx" already has rows or when NVBSE
 -- itself is empty.
 
@@ -48,7 +45,6 @@ DECLARE
     v_last         TEXT;
     fname          TEXT;
     abbr           TEXT;
-    bcons          INT := 0;
     n_inserted     INT := 0;
     expected_books INT;
     current_rows   INT;
@@ -67,8 +63,7 @@ BEGIN
     END IF;
 
     -- Partial / inconsistent state: clear before rebuilding so the loop's
-    -- INSERTs don't collide with stale rows on the (book) UNIQUE or the
-    -- book_consecutive PRIMARY KEY.
+    -- INSERTs don't collide with stale rows on the (book) PRIMARY KEY.
     IF current_rows > 0 THEN
         RAISE NOTICE 'NVBSE_idx has % of % rows — clearing for full rebuild.',
                      current_rows, expected_books;
@@ -76,8 +71,6 @@ BEGIN
     END IF;
 
     FOR bk IN SELECT DISTINCT book FROM "NVBSE" ORDER BY book LOOP
-        bcons := bcons + 1;
-
         -- Does this book have any rows with verseorigin set?
         SELECT COUNT(*) INTO has_origin
         FROM (
@@ -141,10 +134,10 @@ BEGIN
         FROM biblebooks_abbr ba WHERE ba."BOOK" = bk;
 
         INSERT INTO "NVBSE_idx" (
-            book, book_consecutive, chapters, verses_count, verses_last, fullname, abbrev
+            book, chapters, verses_count, verses_last, fullname, abbrev
         )
         VALUES (
-            bk, bcons, n_chapters, v_count, v_last,
+            bk, n_chapters, v_count, v_last,
             LEFT(COALESCE(fname, ''), 30),
             LEFT(COALESCE(abbr,  ''), 10)
         );

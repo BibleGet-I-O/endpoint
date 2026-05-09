@@ -297,13 +297,13 @@ for V in CEI2008 BLPD; do
         "$STD_IDX_MARIA" "$STD_IDX_PG"
 done
 
-# NVBSE: same as CEI2008 but with book_consecutive in idx
+# NVBSE: same shape as CEI2008/BLPD
 log "Migrating NVBSE..."
 maria_dump_csv NVBSE "SELECT testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,verseID FROM NVBSE ORDER BY verseID"
 pg_copy_from_stdin '"NVBSE"' 'testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,"verseID"' < "$MIGRATION_TMPDIR/NVBSE.tsv"
 log "Migrating NVBSE_idx..."
-maria_dump_csv NVBSE_idx "SELECT book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev FROM NVBSE_idx ORDER BY book_consecutive"
-pg_copy_from_stdin '"NVBSE_idx"' 'book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/NVBSE_idx.tsv"
+maria_dump_csv NVBSE_idx "SELECT book,chapters,verses_count,verses_last,fullname,abbrev FROM NVBSE_idx ORDER BY book"
+pg_copy_from_stdin '"NVBSE_idx"' 'book,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/NVBSE_idx.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('\"NVBSE\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"NVBSE\"), 1));" > /dev/null
 
 # NABRE, NABRE_old: verse is VARCHAR, no verseorigin in unique key
@@ -317,15 +317,14 @@ log "Migrating NABRE_idx..."
 maria_dump_csv NABRE_idx "SELECT book,chapters,verses_count,verses_last,fullname,abbrev FROM NABRE_idx ORDER BY book"
 pg_copy_from_stdin '"NABRE_idx"' 'book,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/NABRE_idx.tsv"
 
-# LUZZI: no verseorigin, book_consecutive in idx
+# LUZZI: no verseorigin column
 log "Migrating LUZZI..."
 maria_dump_csv LUZZI "SELECT testament,section,book,chapter,versedescr,verse,verseequiv,text,title1,title2,title3,verseID FROM LUZZI ORDER BY verseID"
 pg_copy_from_stdin '"LUZZI"' 'testament,section,book,chapter,versedescr,verse,verseequiv,text,title1,title2,title3,"verseID"' < "$MIGRATION_TMPDIR/LUZZI.tsv"
 log "Migrating LUZZI_idx..."
-maria_dump_csv LUZZI_idx "SELECT book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev FROM LUZZI_idx ORDER BY book_consecutive"
-pg_copy_from_stdin '"LUZZI_idx"' 'book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/LUZZI_idx.tsv"
+maria_dump_csv LUZZI_idx "SELECT book,chapters,verses_count,verses_last,fullname,abbrev FROM LUZZI_idx ORDER BY book"
+pg_copy_from_stdin '"LUZZI_idx"' 'book,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/LUZZI_idx.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('\"LUZZI\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"LUZZI\"), 1));" > /dev/null
-pg_sql "SELECT setval(pg_get_serial_sequence('\"LUZZI_idx\"', 'book_consecutive'), COALESCE((SELECT MAX(book_consecutive) FROM \"LUZZI_idx\"), 1));" > /dev/null
 
 # DIVCOM: no testament/section/verseorigin
 log "Migrating DIVCOM..."
