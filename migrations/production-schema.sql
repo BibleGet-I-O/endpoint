@@ -237,7 +237,10 @@ CREATE TABLE IF NOT EXISTS "NABRE_idx" (
     abbrev      VARCHAR(10) NOT NULL DEFAULT ''
 );
 
--- NABRE_old: same as NABRE (archived version)
+-- NABRE_old: same as NABRE (archived version). Intentionally left without a
+-- CHECK on verseorigin so legacy backup data with values outside
+-- {GREEK, HEBREW} can still be loaded; matches the skip in
+-- migrations/008-add-verseorigin-check.sql.
 CREATE TABLE IF NOT EXISTS "NABRE_old" (
     testament   SMALLINT NOT NULL,
     section     INT NOT NULL,
@@ -246,7 +249,7 @@ CREATE TABLE IF NOT EXISTS "NABRE_old" (
     versedescr  VARCHAR(10) DEFAULT NULL,
     verse       VARCHAR(5) NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
-    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
+    verseorigin VARCHAR(10) DEFAULT NULL,
     text        VARCHAR(900) NOT NULL DEFAULT '',
     title1      VARCHAR(100) NOT NULL DEFAULT '',
     title2      VARCHAR(100) NOT NULL DEFAULT '',

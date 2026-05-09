@@ -25,10 +25,17 @@ DECLARE
     tbl TEXT;
 BEGIN
     FOREACH tbl IN ARRAY ARRAY['BLPD', 'CEI2008', 'DRB', 'NABRE', 'NVBSE', 'VGCL'] LOOP
+        -- to_regclass() returns NULL (instead of raising) when the table
+        -- doesn't exist, so a partially-applied schema is skipped cleanly.
+        IF to_regclass(format('%I', tbl)) IS NULL THEN
+            RAISE NOTICE '% does not exist — skipping.', tbl;
+            CONTINUE;
+        END IF;
+
         IF NOT EXISTS (
             SELECT 1 FROM pg_constraint
              WHERE conname  = tbl || '_verseorigin_check'
-               AND conrelid = format('%I', tbl)::regclass
+               AND conrelid = to_regclass(format('%I', tbl))
         ) THEN
             EXECUTE format(
                 'ALTER TABLE %I ADD CONSTRAINT %I CHECK (verseorigin IN (''GREEK'', ''HEBREW''))',
