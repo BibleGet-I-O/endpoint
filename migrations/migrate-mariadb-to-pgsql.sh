@@ -336,16 +336,18 @@ maria_dump_csv DIVCOM_idx "SELECT book,fullname,abbrev,chapters,verses_count,ver
 pg_copy_from_stdin '"DIVCOM_idx"' 'book,fullname,abbrev,chapters,verses_count,verses_last' < "$MIGRATION_TMPDIR/DIVCOM_idx.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('\"DIVCOM\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"DIVCOM\"), 1));" > /dev/null
 
-# VGCL, DRB: simpler schema (from test data, fewer columns)
-SIMPLE_MARIA_SELECT="testament,section,book,chapter,verse,verseorigin,text,verseID"
-SIMPLE_PG_COLS='testament,section,book,chapter,verse,verseorigin,text,"verseID"'
-# VGCL_idx/DRB_idx have different column order and no verses_count
+# VGCL, DRB: full data schema (same as CEI2008/BLPD), but the idx tables
+# have a simpler column set — they lack `verses_count`. Earlier versions
+# of this script used a "simple" SELECT for the data tables that dropped
+# `versedescr`, `verseequiv` and the title columns; that silently lost the
+# 94 sub-verse identifiers (`1a`, `1b`, …) in DRB and VGCL Esther 1:1, so
+# rows became indistinguishable by primary key. Migrate the full schema.
 SIMPLE_IDX_MARIA="book,chapters,verses_last,fullname,abbrev"
 SIMPLE_IDX_PG='book,chapters,verses_last,fullname,abbrev'
 
 for V in VGCL DRB; do
     migrate_bible_version "$V" \
-        "$SIMPLE_MARIA_SELECT" "$SIMPLE_PG_COLS" \
+        "$FULL_MARIA_SELECT" "$FULL_PG_COLS" \
         "$SIMPLE_IDX_MARIA" "$SIMPLE_IDX_PG"
 done
 
