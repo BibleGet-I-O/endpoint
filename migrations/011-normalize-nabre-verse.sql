@@ -51,8 +51,19 @@ BEGIN
            verse      = regexp_replace(verse, '[a-z]+$', '')
      WHERE verse ~ '^[0-9]+[a-z]+$';
 
-    -- 1 bridge row: Wisdom 11 v'12:1' → Wisdom 12:1.
-    UPDATE "NABRE" SET chapter = 12, verse = '1'
+    -- 1 bridge row: Wisdom 11 v'12:1'. NABRE editorially places the text
+    -- "for your imperishable spirit is in all things!" at the end of
+    -- chapter 11 (canonically Wis 12:1 in the Vulgate / Bible Gateway
+    -- NABRE rendering). We follow the same convention NABRE itself uses
+    -- for Job 9:35-vs-10:1a: keep `verse` at the previous numeric value
+    -- (here, 26 — the last canonical verse of Wis 11) and record the
+    -- canonical citation in versedescr + verseequiv. This produces a
+    -- second row at Wis 11:26, distinguished by versedescr/verseequiv.
+    UPDATE "NABRE"
+       SET chapter    = 11,
+           verse      = '26',
+           versedescr = '12:1',
+           verseequiv = '12:1'
      WHERE book = 27 AND chapter = 11 AND verse = '12:1';
 
     -- Post-flight: every NABRE.verse must now be purely numeric.
