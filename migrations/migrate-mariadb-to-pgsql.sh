@@ -297,16 +297,19 @@ for V in CEI2008 BLPD; do
         "$STD_IDX_MARIA" "$STD_IDX_PG"
 done
 
-# NVBSE: same as CEI2008 but with book_consecutive in idx
+# NVBSE: same shape as CEI2008/BLPD
 log "Migrating NVBSE..."
 maria_dump_csv NVBSE "SELECT testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,verseID FROM NVBSE ORDER BY verseID"
 pg_copy_from_stdin '"NVBSE"' 'testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,"verseID"' < "$MIGRATION_TMPDIR/NVBSE.tsv"
 log "Migrating NVBSE_idx..."
-maria_dump_csv NVBSE_idx "SELECT book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev FROM NVBSE_idx ORDER BY book_consecutive"
-pg_copy_from_stdin '"NVBSE_idx"' 'book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/NVBSE_idx.tsv"
+maria_dump_csv NVBSE_idx "SELECT book,chapters,verses_count,verses_last,fullname,abbrev FROM NVBSE_idx ORDER BY book"
+pg_copy_from_stdin '"NVBSE_idx"' 'book,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/NVBSE_idx.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('\"NVBSE\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"NVBSE\"), 1));" > /dev/null
 
-# NABRE, NABRE_old: verse is VARCHAR, no verseorigin in unique key
+# NABRE, NABRE_old: no verseorigin in the unique key. NABRE.verse is INT
+# in the target schema (and in MariaDB after the one-time NABRE anomaly
+# normalization — 7 sub-verse rows split into verse + verseequiv, 1 bridge
+# row relocated). NABRE_old keeps verse VARCHAR as a frozen legacy backup.
 for V in NABRE NABRE_old; do
     log "Migrating ${V}..."
     maria_dump_csv "$V" "SELECT testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,verseID FROM \`$V\` ORDER BY verseID"
@@ -317,15 +320,14 @@ log "Migrating NABRE_idx..."
 maria_dump_csv NABRE_idx "SELECT book,chapters,verses_count,verses_last,fullname,abbrev FROM NABRE_idx ORDER BY book"
 pg_copy_from_stdin '"NABRE_idx"' 'book,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/NABRE_idx.tsv"
 
-# LUZZI: no verseorigin, book_consecutive in idx
+# LUZZI: no verseorigin column
 log "Migrating LUZZI..."
 maria_dump_csv LUZZI "SELECT testament,section,book,chapter,versedescr,verse,verseequiv,text,title1,title2,title3,verseID FROM LUZZI ORDER BY verseID"
 pg_copy_from_stdin '"LUZZI"' 'testament,section,book,chapter,versedescr,verse,verseequiv,text,title1,title2,title3,"verseID"' < "$MIGRATION_TMPDIR/LUZZI.tsv"
 log "Migrating LUZZI_idx..."
-maria_dump_csv LUZZI_idx "SELECT book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev FROM LUZZI_idx ORDER BY book_consecutive"
-pg_copy_from_stdin '"LUZZI_idx"' 'book,book_consecutive,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/LUZZI_idx.tsv"
+maria_dump_csv LUZZI_idx "SELECT book,chapters,verses_count,verses_last,fullname,abbrev FROM LUZZI_idx ORDER BY book"
+pg_copy_from_stdin '"LUZZI_idx"' 'book,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/LUZZI_idx.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('\"LUZZI\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"LUZZI\"), 1));" > /dev/null
-pg_sql "SELECT setval(pg_get_serial_sequence('\"LUZZI_idx\"', 'book_consecutive'), COALESCE((SELECT MAX(book_consecutive) FROM \"LUZZI_idx\"), 1));" > /dev/null
 
 # DIVCOM: no testament/section/verseorigin
 log "Migrating DIVCOM..."
@@ -336,16 +338,18 @@ maria_dump_csv DIVCOM_idx "SELECT book,fullname,abbrev,chapters,verses_count,ver
 pg_copy_from_stdin '"DIVCOM_idx"' 'book,fullname,abbrev,chapters,verses_count,verses_last' < "$MIGRATION_TMPDIR/DIVCOM_idx.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('\"DIVCOM\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"DIVCOM\"), 1));" > /dev/null
 
-# VGCL, DRB: simpler schema (from test data, fewer columns)
-SIMPLE_MARIA_SELECT="testament,section,book,chapter,verse,verseorigin,text,verseID"
-SIMPLE_PG_COLS='testament,section,book,chapter,verse,verseorigin,text,"verseID"'
-# VGCL_idx/DRB_idx have different column order and no verses_count
+# VGCL, DRB: full data schema (same as CEI2008/BLPD), but the idx tables
+# have a simpler column set — they lack `verses_count`. Earlier versions
+# of this script used a "simple" SELECT for the data tables that dropped
+# `versedescr`, `verseequiv` and the title columns; that silently lost the
+# 94 sub-verse identifiers (`1a`, `1b`, …) in DRB and VGCL Esther 1:1, so
+# rows became indistinguishable by primary key. Migrate the full schema.
 SIMPLE_IDX_MARIA="book,chapters,verses_last,fullname,abbrev"
 SIMPLE_IDX_PG='book,chapters,verses_last,fullname,abbrev'
 
 for V in VGCL DRB; do
     migrate_bible_version "$V" \
-        "$SIMPLE_MARIA_SELECT" "$SIMPLE_PG_COLS" \
+        "$FULL_MARIA_SELECT" "$FULL_PG_COLS" \
         "$SIMPLE_IDX_MARIA" "$SIMPLE_IDX_PG"
 done
 

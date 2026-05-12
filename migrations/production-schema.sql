@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS "CEI2008" (
     versedescr  VARCHAR(10) DEFAULT NULL,
     verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
-    verseorigin VARCHAR(10) DEFAULT NULL,
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
     title1      VARCHAR(100) DEFAULT NULL,
     title2      VARCHAR(100) DEFAULT NULL,
@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS "BLPD" (
     versedescr  VARCHAR(10) DEFAULT NULL,
     verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
-    verseorigin VARCHAR(10) DEFAULT NULL,
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
     title1      VARCHAR(100) DEFAULT NULL,
     title2      VARCHAR(100) DEFAULT NULL,
@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS "NVBSE" (
     versedescr  VARCHAR(10) DEFAULT NULL,
     verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
-    verseorigin VARCHAR(10) DEFAULT NULL,
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
     title1      VARCHAR(100) NOT NULL DEFAULT '',
     title2      VARCHAR(100) NOT NULL DEFAULT '',
@@ -199,26 +199,23 @@ CREATE INDEX IF NOT EXISTS "NVBSE_bcv" ON "NVBSE" (book, chapter, verse, verseeq
 CREATE INDEX IF NOT EXISTS "NVBSE_text_fts" ON "NVBSE" USING gin(to_tsvector('simple', text));
 
 CREATE TABLE IF NOT EXISTS "NVBSE_idx" (
-    book             INT NOT NULL,
-    book_consecutive INT NOT NULL PRIMARY KEY,
-    chapters         INT NOT NULL DEFAULT 0,
-    verses_count     TEXT NOT NULL DEFAULT '',
-    verses_last      TEXT NOT NULL DEFAULT '',
-    fullname         VARCHAR(30) NOT NULL DEFAULT '',
-    abbrev           VARCHAR(10) NOT NULL DEFAULT '',
-    UNIQUE (book)
+    book         INT NOT NULL PRIMARY KEY,
+    chapters     INT NOT NULL DEFAULT 0,
+    verses_count TEXT NOT NULL DEFAULT '',
+    verses_last  TEXT NOT NULL DEFAULT '',
+    fullname     VARCHAR(30) NOT NULL DEFAULT '',
+    abbrev       VARCHAR(10) NOT NULL DEFAULT ''
 );
 
--- NABRE: verse is VARCHAR(5) not INT
 CREATE TABLE IF NOT EXISTS "NABRE" (
     testament   SMALLINT NOT NULL,
     section     INT NOT NULL,
     book        INT NOT NULL,
     chapter     INT NOT NULL,
     versedescr  VARCHAR(10) DEFAULT NULL,
-    verse       VARCHAR(5) NOT NULL,
+    verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
-    verseorigin VARCHAR(10) DEFAULT NULL,
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
     title1      VARCHAR(100) NOT NULL DEFAULT '',
     title2      VARCHAR(100) NOT NULL DEFAULT '',
@@ -237,7 +234,10 @@ CREATE TABLE IF NOT EXISTS "NABRE_idx" (
     abbrev      VARCHAR(10) NOT NULL DEFAULT ''
 );
 
--- NABRE_old: same as NABRE (archived version)
+-- NABRE_old: same as NABRE (archived version). Intentionally left without a
+-- CHECK on verseorigin so legacy backup data with values outside
+-- {GREEK, HEBREW} can still be loaded; matches the skip in
+-- migrations/008-add-verseorigin-check.sql.
 CREATE TABLE IF NOT EXISTS "NABRE_old" (
     testament   SMALLINT NOT NULL,
     section     INT NOT NULL,
@@ -274,14 +274,12 @@ CREATE INDEX IF NOT EXISTS "LUZZI_bcv" ON "LUZZI" (book, chapter, verse);
 CREATE INDEX IF NOT EXISTS "LUZZI_text_fts" ON "LUZZI" USING gin(to_tsvector('simple', text));
 
 CREATE TABLE IF NOT EXISTS "LUZZI_idx" (
-    book             INT NOT NULL,
-    book_consecutive SERIAL PRIMARY KEY,
-    chapters         INT NOT NULL DEFAULT 0,
-    verses_count     TEXT NOT NULL DEFAULT '',
-    verses_last      TEXT NOT NULL DEFAULT '',
-    fullname         VARCHAR(30) NOT NULL DEFAULT '',
-    abbrev           VARCHAR(10) NOT NULL DEFAULT '',
-    UNIQUE (book)
+    book         INT NOT NULL PRIMARY KEY,
+    chapters     INT NOT NULL DEFAULT 0,
+    verses_count TEXT NOT NULL DEFAULT '',
+    verses_last  TEXT NOT NULL DEFAULT '',
+    fullname     VARCHAR(30) NOT NULL DEFAULT '',
+    abbrev       VARCHAR(10) NOT NULL DEFAULT ''
 );
 
 -- DIVCOM: no testament/section columns, no verseorigin
@@ -319,7 +317,7 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     versedescr  VARCHAR(10) DEFAULT NULL,
     verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
-    verseorigin VARCHAR(10) DEFAULT NULL,
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
     title1      VARCHAR(100) DEFAULT NULL,
     title2      VARCHAR(100) DEFAULT NULL,
@@ -346,7 +344,7 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     versedescr  VARCHAR(10) DEFAULT NULL,
     verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
-    verseorigin VARCHAR(10) DEFAULT NULL,
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
     title1      VARCHAR(100) DEFAULT NULL,
     title2      VARCHAR(100) DEFAULT NULL,
