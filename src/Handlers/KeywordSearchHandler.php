@@ -8,6 +8,7 @@ use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
+use BibleGet\Api\Util\SearchUtils;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -51,35 +52,64 @@ class KeywordSearchHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
-        [$keyword, $version, $matchMode] = $this->extractSearchParams($params);
+        [$keyword, $versions, $matchMode] = $this->extractSearchParams($params);
 
-        $pdo          = Connection::getConnection();
-        $version      = $this->validateVersion($pdo, $version);
-        $tsLanguage   = $this->getVersionLanguage($pdo, $version);
-        $versionIndex = $this->loadVersionIndex($pdo, $version);
+        $pdo = Connection::getConnection();
 
-        $searchResult = $this->executeSearch($pdo, $version, $keyword, $matchMode, $tsLanguage);
-        $results      = $this->mapSearchResults($searchResult, $version, $versionIndex);
+        // Validate every requested version up front.
+        $validatedVersions = [];
+        foreach ($versions as $v) {
+            $validated = $this->validateVersion($pdo, $v);
+            $this->assertValidVersionFormat($validated);
+            $validatedVersions[] = $validated;
+        }
+
+        // Keyword search is language-bound: querying English text against an
+        // Italian dictionary returns nothing of value. Reject mixed-language
+        // requests so the failure mode is a clear 400 rather than silent zero
+        // results. Semantic / similar search have no such constraint.
+        $tsLanguagesByVersion = [];
+        foreach ($validatedVersions as $v) {
+            $tsLanguagesByVersion[$v] = $this->getVersionLanguage($pdo, $v);
+        }
+        $distinctLanguages = array_values(array_unique(array_values($tsLanguagesByVersion)));
+        if (count($distinctLanguages) > 1) {
+            throw new ValidationException(
+                'Cannot mix versions with different ts_language on /search/keyword: '
+                . implode(', ', array_map(
+                    static fn(string $v): string => $v . ' (' . $tsLanguagesByVersion[$v] . ')',
+                    $validatedVersions
+                ))
+            );
+        }
+        $tsLanguage = $distinctLanguages[0] ?? 'simple';
+
+        $allResults = [];
+        foreach ($validatedVersions as $v) {
+            $versionIndex = $this->loadVersionIndex($pdo, $v);
+            $searchResult = $this->executeSearch($pdo, $v, $keyword, $matchMode, $tsLanguage);
+            array_push($allResults, ...$this->mapSearchResults($searchResult, $v, $versionIndex));
+        }
+
+        SearchUtils::assignCanonicalOrder($allResults);
 
         $body          = new \stdClass();
-        $body->results = $results;
+        $body->results = $allResults;
         $body->errors  = [];
         $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
 
-        $response = $this->buildSearchResponse($response, $contentType, $body, $results);
+        $response = $this->buildSearchResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
     }
 
     /**
      * @param array<string, mixed> $params
-     * @return array{string, string, string}
+     * @return array{string, list<string>, string}
      */
     private function extractSearchParams(array $params): array
     {
         $keywordRaw = $params['keyword'] ?? '';
         $keyword    = is_string($keywordRaw) ? $keywordRaw : '';
-        $versionRaw = $params['version'] ?? '';
-        $version    = is_string($versionRaw) ? $versionRaw : '';
 
         // Resolve match mode: explicit `match` param takes precedence over legacy `exactmatch`
         $matchRaw = $params['match'] ?? '';
@@ -99,16 +129,16 @@ class KeywordSearchHandler extends AbstractHandler
         if ($keyword === '') {
             throw new ValidationException('The keyword parameter is required.');
         }
-        if ($version === '') {
-            throw new ValidationException('The version parameter is required.');
-        }
         if (!in_array($match, self::VALID_MATCH_MODES, true)) {
             throw new ValidationException(
                 'Invalid match mode: ' . $match . '. Valid modes are: ' . implode(', ', self::VALID_MATCH_MODES)
             );
         }
 
-        return [$keyword, $version, $match];
+        // Comma-separated `version=A,B,C` (single value still accepted).
+        $versions = SearchUtils::parseVersionsParam($params['version'] ?? '');
+
+        return [$keyword, $versions, $match];
     }
 
     private function validateVersion(\PDO $pdo, string $version): string
@@ -198,11 +228,13 @@ class KeywordSearchHandler extends AbstractHandler
 
         switch ($matchMode) {
             case 'exact':
-                // Escape PostgreSQL regex metacharacters so the keyword is matched literally
+                // Escape PostgreSQL regex metacharacters so the keyword is matched literally.
+                // No relevance signal in regex matches → score is null per row.
                 $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $keyword) ?? $keyword;
                 try {
                     $stmt = $pdo->prepare(
-                        'SELECT * FROM "' . $version . '" WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY book, chapter, verse'
+                        'SELECT *, NULL::float8 AS score FROM "' . $version . '" '
+                        . 'WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY "verseID"'
                     );
                     $stmt->execute([$escapedKeyword]);
                 } catch (\PDOException) {
@@ -221,9 +253,13 @@ class KeywordSearchHandler extends AbstractHandler
                 }
                 try {
                     $stmt = $pdo->prepare(
-                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
+                        'SELECT *, '
+                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
+                        . 'FROM "' . $version . '" '
+                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) '
+                        . 'ORDER BY "verseID"'
                     );
-                    $stmt->execute([$keyword]);
+                    $stmt->execute([$keyword, $keyword]);
                 } catch (\PDOException) {
                     throw new ValidationException(
                         'Invalid boolean search expression. Use operators like & (AND), | (OR), ! (NOT).'
@@ -240,9 +276,13 @@ class KeywordSearchHandler extends AbstractHandler
                 }
                 try {
                     $stmt = $pdo->prepare(
-                        'SELECT * FROM "' . $version . '" WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) ORDER BY book, chapter, verse'
+                        'SELECT *, '
+                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), websearch_to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
+                        . 'FROM "' . $version . '" '
+                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) '
+                        . 'ORDER BY "verseID"'
                     );
-                    $stmt->execute([$sanitizedKeyword]);
+                    $stmt->execute([$sanitizedKeyword, $sanitizedKeyword]);
                 } catch (\PDOException) {
                     throw new ValidationException(
                         'Full-text search failed. Please try a different keyword.'
@@ -268,6 +308,9 @@ class KeywordSearchHandler extends AbstractHandler
                 $this->logger->error('Unmapped book number ' . ( is_scalar($row['book']) ? (string) $row['book'] : 'unknown' ) . ' in version index for search result');
                 continue;
             }
+            $score     = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
+                ? round((float) $row['score'], 4)
+                : null;
             $entry     = [
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
@@ -279,6 +322,10 @@ class KeywordSearchHandler extends AbstractHandler
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
                 'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
                 'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
+                'score'       => $score,
+                // Carried forward solely so SearchUtils::assignCanonicalOrder
+                // can rank rows; unset before the row leaves the handler.
+                'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,
             ];
             $results[] = $entry;
         }

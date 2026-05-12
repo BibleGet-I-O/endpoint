@@ -9,6 +9,7 @@ use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
+use BibleGet\Api\Util\SearchUtils;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -48,74 +49,126 @@ class SimilarSearchHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
-        [$reference, $version, $limit, $crossversion] = $this->extractParams($params);
+        [$reference, $versions, $limit] = $this->extractParams($params);
 
-        $pdo     = Connection::getConnection();
-        $version = $this->validateVersion($pdo, $version);
-        $this->assertValidVersionFormat($version);
+        $pdo = Connection::getConnection();
 
-        // Enforce copyright restriction: limit to 30 results for copyrighted versions
-        if ($this->isVersionCopyrighted($pdo, $version)) {
-            $limit = min($limit, 30);
+        $validatedVersions = [];
+        foreach ($versions as $v) {
+            $validated = $this->validateVersion($pdo, $v);
+            $this->assertValidVersionFormat($validated);
+            $validatedVersions[] = $validated;
         }
+
+        // The first version supplies the source verse's embedding; all listed
+        // versions are then searched. The source verse is excluded from results
+        // across every target version (verses share book/chapter/verse across
+        // the canonical books).
+        $sourceVersion = $validatedVersions[0];
 
         // Parse the reference into book abbreviation, chapter, and verse
         [$bookAbbrev, $chapter, $verse] = $this->parseReference($reference);
 
-        // Resolve book number from version index
-        $versionIndex = $this->loadVersionIndex($pdo, $version);
-        $bookNum      = $this->resolveBookNumber($bookAbbrev, $versionIndex);
+        // Resolve book number from the source version's index
+        $sourceVersionIndex = $this->loadVersionIndex($pdo, $sourceVersion);
+        $bookNum            = $this->resolveBookNumber($bookAbbrev, $sourceVersionIndex);
 
-        // Look up the source verse's embedding
-        $sourceEmbedding = $this->getVerseEmbedding($pdo, $version, $bookNum, $chapter, $verse);
+        // Look up the source verse's embedding (from the source version only)
+        $sourceEmbedding = $this->getVerseEmbedding($pdo, $sourceVersion, $bookNum, $chapter, $verse);
 
-        if ($crossversion) {
-            $allVersions = $this->getAllVersions($pdo);
-            $results     = $this->searchAcrossVersions($pdo, $allVersions, $sourceEmbedding, $limit, $version, $bookNum, $chapter, $verse);
-        } else {
-            $results = $this->searchSimilar($pdo, $version, $versionIndex, $sourceEmbedding, $limit, $bookNum, $chapter, $verse);
+        // Reject mixed-model embeddings: skip target versions whose embeddings
+        // were computed with a different model than the source's.
+        $sourceModel = $this->getEmbeddingModel($pdo, $sourceVersion);
+
+        $allResults = [];
+        foreach ($validatedVersions as $v) {
+            if ($v !== $sourceVersion && $sourceModel !== '') {
+                $vModel = $this->getEmbeddingModel($pdo, $v);
+                if ($vModel !== '' && $vModel !== $sourceModel) {
+                    $this->logger->info(
+                        'Skipping version ' . $v . ' in similar search: embedding model mismatch ('
+                        . $vModel . ' vs ' . $sourceModel . ')'
+                    );
+                    continue;
+                }
+            }
+
+            $versionIndex = ( $v === $sourceVersion )
+                ? $sourceVersionIndex
+                : $this->loadVersionIndex($pdo, $v);
+
+            // Per-target copyright restriction: cap to 30 for copyrighted versions.
+            $versionLimit = $this->isVersionCopyrighted($pdo, $v) ? min($limit, 30) : $limit;
+
+            array_push($allResults, ...$this->searchSimilar(
+                $pdo,
+                $v,
+                $versionIndex,
+                $sourceEmbedding,
+                $versionLimit,
+                $bookNum,
+                $chapter,
+                $verse
+            ));
         }
 
+        // Multi-version: sort globally by score DESC and trim to the user's
+        // limit. Null scores (computation failures) sort to the bottom so a
+        // genuine 0.0 still outranks them.
+        if (count($validatedVersions) > 1) {
+            usort($allResults, static function (array $a, array $b): int {
+                $sa = $a['score'] ?? null;
+                $sb = $b['score'] ?? null;
+                if ($sa === null && $sb === null) {
+                    return 0;
+                }
+                if ($sa === null) {
+                    return 1;
+                }
+                if ($sb === null) {
+                    return -1;
+                }
+                return $sb <=> $sa;
+            });
+            $allResults = array_slice($allResults, 0, $limit);
+        }
+
+        // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
+        SearchUtils::assignCanonicalOrder($allResults);
+
         $body          = new \stdClass();
-        $body->results = $results;
+        $body->results = $allResults;
         $body->errors  = [];
         $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
 
-        $response = $this->buildResponse($response, $contentType, $body, $results);
+        $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
     }
 
     /**
      * @param array<string, mixed> $params
-     * @return array{string, string, int, bool}
+     * @return array{string, list<string>, int}
      */
     private function extractParams(array $params): array
     {
         $referenceRaw = $params['reference'] ?? '';
         $reference    = is_string($referenceRaw) ? trim($referenceRaw) : '';
 
-        $versionRaw = $params['version'] ?? '';
-        $version    = is_string($versionRaw) ? $versionRaw : '';
-
         $limitRaw = $params['limit'] ?? self::DEFAULT_LIMIT;
         $limit    = is_numeric($limitRaw) ? (int) $limitRaw : self::DEFAULT_LIMIT;
         $limit    = max(1, min($limit, self::MAX_LIMIT));
 
-        $crossversionRaw = $params['crossversion'] ?? false;
-        $crossversion    = match (true) {
-            is_bool($crossversionRaw)   => $crossversionRaw,
-            is_string($crossversionRaw) => filter_var($crossversionRaw, FILTER_VALIDATE_BOOLEAN),
-            default                     => false,
-        };
-
         if ($reference === '') {
             throw new ValidationException('The reference parameter is required.');
         }
-        if ($version === '') {
-            throw new ValidationException('The version parameter is required.');
-        }
 
-        return [$reference, $version, $limit, $crossversion];
+        // Comma-separated `version=A,B,C` (single value still accepted). The
+        // first version supplies the source verse's embedding; all listed
+        // versions are then searched. Replaces the earlier `crossversion=true`
+        // boolean (issue #110).
+        $versions = SearchUtils::parseVersionsParam($params['version'] ?? '');
+
+        return [$reference, $versions, $limit];
     }
 
     /**
@@ -205,7 +258,7 @@ class SimilarSearchHandler extends AbstractHandler
         int $excludeChapter,
         int $excludeVerse
     ): array {
-        $sql = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
+        $sql = 'SELECT *, 1 - (embedding <=> ?::vector) AS score '
              . 'FROM "' . $version . '" '
              . 'WHERE embedding IS NOT NULL '
              . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
@@ -218,60 +271,7 @@ class SimilarSearchHandler extends AbstractHandler
         return $this->mapResults($stmt, $version, $versionIndex);
     }
 
-    /**
-     * @param list<string> $versions
-     * @return array<int, array<string, mixed>>
-     */
-    private function searchAcrossVersions(
-        \PDO $pdo,
-        array $versions,
-        string $sourceEmbedding,
-        int $limit,
-        string $sourceVersion,
-        int $excludeBook,
-        int $excludeChapter,
-        int $excludeVerse
-    ): array {
-        $allResults = [];
 
-        // Only include versions whose embeddings were computed with the same model
-        $sourceModel = $this->getEmbeddingModel($pdo, $sourceVersion);
-
-        foreach ($versions as $v) {
-            if (!preg_match('/^[A-Za-z0-9_]+$/', $v)) {
-                continue;
-            }
-
-            if ($v !== $sourceVersion && $sourceModel !== '') {
-                $vModel = $this->getEmbeddingModel($pdo, $v);
-                if ($vModel !== '' && $vModel !== $sourceModel) {
-                    $this->logger->info('Skipping version ' . $v . ' in cross-version search: embedding model mismatch (' . $vModel . ' vs ' . $sourceModel . ')');
-                    continue;
-                }
-            }
-
-            $versionIndex = $this->loadVersionIndex($pdo, $v);
-
-            // Enforce copyright restriction per target version
-            $versionLimit = $this->isVersionCopyrighted($pdo, $v) ? min($limit, 30) : $limit;
-
-            $sql  = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
-                 . 'FROM "' . $v . '" '
-                 . 'WHERE embedding IS NOT NULL '
-                 . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
-                 . 'ORDER BY embedding <=> ?::vector '
-                 . 'LIMIT ?';
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$sourceEmbedding, $excludeBook, $excludeChapter, $excludeVerse, $sourceEmbedding, $versionLimit]);
-
-            $versionResults = $this->mapResults($stmt, $v, $versionIndex);
-            array_push($allResults, ...$versionResults);
-        }
-
-        // Sort all results by similarity descending and take top $limit
-        usort($allResults, fn($a, $b) => ( $b['similarity'] ?? 0 ) <=> ( $a['similarity'] ?? 0 ));
-        return array_slice($allResults, 0, $limit);
-    }
 
     /**
      * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
@@ -283,10 +283,13 @@ class SimilarSearchHandler extends AbstractHandler
         while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
             $bookidx = array_search($row['book'], $versionIndex['book_num']);
 
-            $similarity = 0.0;
-            if (isset($row['similarity']) && is_numeric($row['similarity']) && is_finite((float) $row['similarity'])) {
-                $similarity = round((float) $row['similarity'], 4);
-            }
+            // null (rather than 0.0) when the score can't be computed, so a
+            // genuine score of 0.0 — orthogonal verses — is distinguishable
+            // from "no score". Comparators that order results must treat
+            // null as worse than any numeric score.
+            $score = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
+                ? round((float) $row['score'], 4)
+                : null;
 
             $entry     = [
                 'version'     => $version,
@@ -299,7 +302,10 @@ class SimilarSearchHandler extends AbstractHandler
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
                 'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
                 'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
-                'similarity'  => $similarity,
+                'score'       => $score,
+                // Carried forward solely so SearchUtils::assignCanonicalOrder
+                // can rank rows; unset before the row leaves the handler.
+                'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,
             ];
             $results[] = $entry;
         }
@@ -363,21 +369,7 @@ class SimilarSearchHandler extends AbstractHandler
         return is_numeric($copyright) && ( (int) $copyright ) === 1;
     }
 
-    /**
-     * @return list<string>
-     */
-    private function getAllVersions(\PDO $pdo): array
-    {
-        $result = $pdo->query('SELECT sigla FROM versions_available');
-        if ($result === false) {
-            throw new InternalServerErrorException('An internal database error occurred.');
-        }
-        $versions = [];
-        while (is_array($row = $result->fetch(\PDO::FETCH_ASSOC))) {
-            $versions[] = StringUtils::asString($row['sigla']);
-        }
-        return $versions;
-    }
+
 
     /**
      * @return array{abbreviations: list<string>, books: list<string>, book_num: list<string>}

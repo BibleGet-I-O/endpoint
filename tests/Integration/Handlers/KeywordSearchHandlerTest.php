@@ -290,4 +290,157 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
 
         self::assertSame(200, $response->getStatusCode());
     }
+
+    // ── score field (issue #110) ────────────────────────────
+
+    public function testFulltextScoreIsFloat(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'match' => 'fulltext']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+        foreach ($body['results'] as $verse) {
+            self::assertArrayHasKey('score', $verse);
+            self::assertIsFloat($verse['score']);
+            self::assertGreaterThanOrEqual(0.0, $verse['score']);
+        }
+    }
+
+    public function testBooleanScoreIsFloat(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light & good', 'version' => 'TEST1', 'match' => 'boolean']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        if ($body['results'] === []) {
+            self::markTestSkipped('No boolean matches in seed; field shape covered by fulltext test.');
+        }
+        foreach ($body['results'] as $verse) {
+            self::assertArrayHasKey('score', $verse);
+            self::assertIsFloat($verse['score']);
+        }
+    }
+
+    public function testExactScoreIsNull(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'God', 'version' => 'TEST1', 'match' => 'exact']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+        foreach ($body['results'] as $verse) {
+            self::assertArrayHasKey('score', $verse);
+            self::assertNull($verse['score'], 'match=exact has no relevance signal → score must be null');
+        }
+    }
+
+    // ── canonical_order field (issue #110) ──────────────────
+
+    public function testCanonicalOrderPresentAndMonotonic(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+
+        $orders = [];
+        foreach ($body['results'] as $verse) {
+            self::assertArrayHasKey('canonical_order', $verse);
+            self::assertIsInt($verse['canonical_order']);
+            self::assertGreaterThanOrEqual(1, $verse['canonical_order']);
+            $orders[] = $verse['canonical_order'];
+        }
+
+        $sorted = $orders;
+        sort($sorted, SORT_NUMERIC);
+        self::assertSame($sorted, $orders, 'canonical_order is monotonically increasing under default ORDER BY verseID');
+
+        // Single version → first row's canonical_order must be 1.
+        self::assertSame(1, $body['results'][0]['canonical_order']);
+    }
+
+    public function testNoVerseIDLeak(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        foreach ($body['results'] as $verse) {
+            self::assertArrayNotHasKey('verseID', $verse, 'verseID must never cross the API boundary');
+        }
+    }
+
+    // ── Multi-version `version=A,B` (issue #110) ────────────
+
+    public function testMultiVersionInterleaved(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1,TEST2']);
+        $response = $handler->handle($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results']);
+
+        $versionsSeen = array_unique(array_column($body['results'], 'version'));
+        sort($versionsSeen);
+        self::assertSame(['TEST1', 'TEST2'], $versionsSeen);
+
+        // Per-version partition: first row of each version must be canonical_order=1
+        foreach (['TEST1', 'TEST2'] as $v) {
+            $perVersion = array_values(array_filter(
+                $body['results'],
+                static fn(array $r): bool => $r['version'] === $v
+            ));
+            self::assertNotEmpty($perVersion);
+            $orders = array_column($perVersion, 'canonical_order');
+            self::assertSame(1, min($orders), "First canonical_order for {$v} should be 1");
+        }
+    }
+
+    public function testMultiVersionDeduplicatesAndUppercases(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'test1, TEST2 ,test1']);
+        $response = $handler->handle($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        $versionsSeen = array_unique(array_column($body['results'], 'version'));
+        sort($versionsSeen);
+        self::assertSame(['TEST1', 'TEST2'], $versionsSeen);
+    }
+
+    public function testMixedTsLanguageRejected(): void
+    {
+        $handler = $this->createHandler();
+        // TEST1 ts_language=english, VGCL ts_language=simple → must be rejected
+        $request = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1,VGCL']);
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessageMatches('/ts_language/i');
+        $handler->handle($request);
+    }
 }

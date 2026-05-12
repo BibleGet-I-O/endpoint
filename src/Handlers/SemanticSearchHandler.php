@@ -11,6 +11,7 @@ use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Services\EmbeddingClient;
 use BibleGet\Api\Services\EmbeddingModelValidator;
+use BibleGet\Api\Util\SearchUtils;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -62,13 +63,18 @@ class SemanticSearchHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
-        [$query, $version, $limit, $threshold] = $this->extractParams($params);
+        [$query, $versions, $limit, $threshold] = $this->extractParams($params);
 
-        $pdo     = Connection::getConnection();
-        $version = $this->validateVersion($pdo, $version);
-        $this->assertValidVersionFormat($version);
+        $pdo = Connection::getConnection();
 
-        // Embed the user's query via the Python microservice
+        $validatedVersions = [];
+        foreach ($versions as $v) {
+            $validated = $this->validateVersion($pdo, $v);
+            $this->assertValidVersionFormat($validated);
+            $validatedVersions[] = $validated;
+        }
+
+        // Embed the user's query via the Python microservice (once, reused per version)
         $embedStart = microtime(true);
         try {
             $queryVector = $this->embeddingClient->embed($query);
@@ -81,38 +87,73 @@ class SemanticSearchHandler extends AbstractHandler
         $embedMs = round(( microtime(true) - $embedStart ) * 1000, 1);
         $this->logger->info('Embedding latency: ' . $embedMs . 'ms for query: ' . substr($query, 0, 100));
 
-        // Warn if stored embeddings were computed with a different model
+        // Warn if stored embeddings were computed with a different model (per version)
         $serviceModel = $this->embeddingClient->getLastModel();
         if ($serviceModel !== '') {
-            EmbeddingModelValidator::validate($pdo, $version, $serviceModel, $this->logger);
+            foreach ($validatedVersions as $v) {
+                EmbeddingModelValidator::validate($pdo, $v, $serviceModel, $this->logger);
+            }
         }
 
-        // Run pgvector cosine similarity search
-        $dbStart = microtime(true);
-        $results = $this->executeSimilaritySearch($pdo, $version, $queryVector, $limit, $threshold);
-        $dbMs    = round(( microtime(true) - $dbStart ) * 1000, 1);
-        $this->logger->info('Similarity search latency: ' . $dbMs . 'ms (' . count($results) . ' results)');
+        // Run pgvector cosine similarity per version, then merge globally by
+        // score. Cache loadVersionIndex results so each version's *_idx table
+        // is queried at most once per request even when version=A,B,C.
+        $dbStart        = microtime(true);
+        $allResults     = [];
+        $versionIndexes = [];
+        foreach ($validatedVersions as $v) {
+            $versionIndexes[$v] = $this->loadVersionIndex($pdo, $v);
+            array_push($allResults, ...$this->executeSimilaritySearch(
+                $pdo,
+                $v,
+                $queryVector,
+                $versionIndexes[$v],
+                $limit,
+                $threshold
+            ));
+        }
+        // Global ordering by score DESC across versions, then trim to limit.
+        // Null scores (computation failures) sort to the bottom so a genuine
+        // 0.0 still outranks them.
+        usort($allResults, static function (array $a, array $b): int {
+            $sa = $a['score'] ?? null;
+            $sb = $b['score'] ?? null;
+            if ($sa === null && $sb === null) {
+                return 0;
+            }
+            if ($sa === null) {
+                return 1;
+            }
+            if ($sb === null) {
+                return -1;
+            }
+            return $sb <=> $sa;
+        });
+        $allResults = array_slice($allResults, 0, $limit);
+
+        // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
+        SearchUtils::assignCanonicalOrder($allResults);
+
+        $dbMs = round(( microtime(true) - $dbStart ) * 1000, 1);
+        $this->logger->info('Similarity search latency: ' . $dbMs . 'ms (' . count($allResults) . ' results)');
 
         $body          = new \stdClass();
-        $body->results = $results;
+        $body->results = $allResults;
         $body->errors  = [];
         $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
 
-        $response = $this->buildResponse($response, $contentType, $body, $results);
+        $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
     }
 
     /**
      * @param array<string, mixed> $params
-     * @return array{string, string, int, float}
+     * @return array{string, list<string>, int, float}
      */
     private function extractParams(array $params): array
     {
         $queryRaw = $params['query'] ?? '';
         $query    = is_string($queryRaw) ? trim($queryRaw) : '';
-
-        $versionRaw = $params['version'] ?? '';
-        $version    = is_string($versionRaw) ? $versionRaw : '';
 
         $limitRaw = $params['limit'] ?? self::DEFAULT_LIMIT;
         $limit    = is_numeric($limitRaw) ? (int) $limitRaw : self::DEFAULT_LIMIT;
@@ -125,11 +166,11 @@ class SemanticSearchHandler extends AbstractHandler
         if ($query === '') {
             throw new ValidationException('The query parameter is required.');
         }
-        if ($version === '') {
-            throw new ValidationException('The version parameter is required.');
-        }
 
-        return [$query, $version, $limit, $threshold];
+        // Comma-separated `version=A,B,C` (single value still accepted).
+        $versions = SearchUtils::parseVersionsParam($params['version'] ?? '');
+
+        return [$query, $versions, $limit, $threshold];
     }
 
     private function validateVersion(\PDO $pdo, string $version): string
@@ -161,16 +202,14 @@ class SemanticSearchHandler extends AbstractHandler
 
     /**
      * @param float[] $queryVector
+     * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
      * @return array<int, array<string, mixed>>
      */
-    private function executeSimilaritySearch(\PDO $pdo, string $version, array $queryVector, int $limit, float $threshold): array
+    private function executeSimilaritySearch(\PDO $pdo, string $version, array $queryVector, array $versionIndex, int $limit, float $threshold): array
     {
         $vectorStr = '[' . implode(',', $queryVector) . ']';
 
-        // Load version index for book name mapping
-        $versionIndex = $this->loadVersionIndex($pdo, $version);
-
-        $sql = 'SELECT *, 1 - (embedding <=> ?::vector) AS similarity '
+        $sql = 'SELECT *, 1 - (embedding <=> ?::vector) AS score '
              . 'FROM "' . $version . '" '
              . 'WHERE embedding IS NOT NULL '
              . 'AND 1 - (embedding <=> ?::vector) >= ? '
@@ -184,6 +223,14 @@ class SemanticSearchHandler extends AbstractHandler
         while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
             $bookidx = array_search($row['book'], $versionIndex['book_num']);
 
+            // null (rather than 0.0) when the score can't be computed, so a
+            // genuine score of 0.0 — orthogonal verses — is distinguishable
+            // from "no score". Comparators that order results must treat
+            // null as worse than any numeric score.
+            $score = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
+                ? round((float) $row['score'], 4)
+                : null;
+
             $entry     = [
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
@@ -195,9 +242,10 @@ class SemanticSearchHandler extends AbstractHandler
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
                 'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
                 'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
-                'similarity'  => isset($row['similarity']) && is_numeric($row['similarity']) && is_finite((float) $row['similarity'])
-                    ? round((float) $row['similarity'], 4)
-                    : 0.0,
+                'score'       => $score,
+                // Carried forward solely so SearchUtils::assignCanonicalOrder
+                // can rank rows; unset before the row leaves the handler.
+                'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,
             ];
             $results[] = $entry;
         }

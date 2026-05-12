@@ -11,6 +11,7 @@ use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\QueryValidator;
 use BibleGet\Api\Pipeline\QueryFormulator;
 use BibleGet\Api\Pipeline\QueryExecutor;
+use BibleGet\Api\Util\SearchUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -71,6 +72,9 @@ class QuoteHandler extends AbstractHandler
             $executor = new QueryExecutor($ctx);
             $executor->executeSQLQueries();
         }
+
+        // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
+        SearchUtils::assignCanonicalOrder($ctx->results);
 
         // Build response body
         $response = $this->buildResponse($response, $contentType, $ctx);

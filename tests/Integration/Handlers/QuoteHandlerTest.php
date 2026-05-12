@@ -256,4 +256,63 @@ class QuoteHandlerTest extends DatabaseTestCase
         $this->expectExceptionMessage('bot access');
         $handler->handle($request);
     }
+
+    // ── canonical_order field (issue #110) ──────────────────
+
+    public function testCanonicalOrderPresentSingleVersion(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/v3/quote?query=Genesis1,1-5&version=TEST1');
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertCount(5, $body['results']);
+
+        $orders = [];
+        foreach ($body['results'] as $row) {
+            self::assertArrayHasKey('canonical_order', $row);
+            self::assertIsInt($row['canonical_order']);
+            self::assertGreaterThanOrEqual(1, $row['canonical_order']);
+            self::assertArrayNotHasKey('verseID', $row, 'verseID must never cross the API boundary');
+            $orders[] = $row['canonical_order'];
+        }
+
+        // Single version → 1..5 in canonical order, monotonic with array order
+        self::assertSame([1, 2, 3, 4, 5], $orders);
+    }
+
+    public function testCanonicalOrderPerVersionPartition(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/v3/quote?query=Genesis1,1-3&version=TEST1,TEST2');
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertCount(6, $body['results']);
+
+        // Per-version partition: each version restarts at canonical_order=1.
+        // The handler returns rows in canonical-key order per version, so the
+        // i-th row of each per-version subset must carry canonical_order=i+1
+        // — a tighter check than just "the set of values is {1,2,3}".
+        foreach (['TEST1', 'TEST2'] as $v) {
+            $perVersion = array_values(array_filter(
+                $body['results'],
+                static fn(array $r): bool => $r['version'] === $v
+            ));
+            self::assertCount(3, $perVersion);
+            foreach ($perVersion as $i => $row) {
+                self::assertSame(
+                    $i + 1,
+                    $row['canonical_order'],
+                    "canonical_order for {$v} row {$i} should equal " . ( $i + 1 )
+                );
+            }
+        }
+
+        foreach ($body['results'] as $row) {
+            self::assertArrayNotHasKey('verseID', $row);
+        }
+    }
 }

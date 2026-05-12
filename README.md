@@ -39,7 +39,10 @@ Response emission is handled by [laminas/laminas-httphandlerrunner](https://gith
 | `/v3/metadata/biblebooks` | `MetadataHandler` | Book names in 25+ languages |
 | `/v3/metadata/bibleversions` | `MetadataHandler` | Available Bible versions |
 | `/v3/metadata/versionindex` | `MetadataHandler` | Chapter/verse indexes |
-| `/v3/search` | `SearchHandler` | Keyword search |
+| `/v3/search` | `KeywordSearchHandler` | Keyword search (legacy alias for `/v3/search/keyword`) |
+| `/v3/search/keyword` | `KeywordSearchHandler` | Full-text keyword search with stemming |
+| `/v3/search/semantic` | `SemanticSearchHandler` | Natural-language semantic search via verse embeddings |
+| `/v3/search/similar` | `SimilarSearchHandler` | Find verses similar to a given reference |
 
 ### Testing & CI
 
@@ -104,6 +107,7 @@ An example of data returned from the query `https://query.bibleget.io/v3/quote?q
   * **`title2`**: not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.
   * **`title3`**: not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.
   * **`originalquery`**: the original query (Bible reference indicated in the `query` parameter of the sent request) that the endpoint received, which produced this result.
+  * **`canonical_order`**: a per-response 1-based integer rank, partitioned per `version`, derived from the server's internal subverse-aware canonical-order key. When `version` is comma-separated, each version's results restart at `1`. Sort by this field client-side to recover canonical order — useful when results from a parallel `/v3/search/*` call have been re-sorted by relevance and you want to fold them back into a canonical-ordered display without a second request.
 * **`errors`**: an array which may contain strings with any error messages that may have been produced, for example for badly formed Bible quotes or for unrecognized Bible versions. An application should always check if the array is not empty, and in that case have a way of displaying the errors to the end user so the end user can understand what is happening. In any case, if the application does a good job of filtering requests in order to send only valid requests to the server, the `errors` array should be empty.
 * **`info`**: an object containing information not directly associated with the Bible verses returned, but rather with the endpoint itself. Three *key:value* pairs are currently returnd: 
   * **`ENDPOINT_VERSION`**: the version of the Endpoint against which the request was made. This can turn out to be useful information, since the data produced by the endpoint may change over time. It is useful to know which data is associated with which version of the endpoint. For example, if an application caches data returned by the endpoint, but there has been a change to the structure of the data in a new version of the API, the application would know how to deal with emptying the cache and requesting new data from the updated endpoint.
@@ -227,13 +231,17 @@ Both `GET` and `POST` requests are supported. The endpoint is [CORS enabled](htt
 
 ### PARAMETERS
 * **`keyword`**: *(required)* indicates the keyword that will be searched in the text of the Bible verses
-* **`exactmatch`**: *(optional)* since the default behaviour for a keyword search is to find any word of 4 or more letters which matches or contains the keyword, this option will try to find only exact matches and will also allow to search for words of even only 3 letters (parts of speech excluded). Accepts both string values (`"true"`, `"false"`) and native booleans in JSON request bodies.
-* **`version`**: *(required)* indicates the Bible version to search in. Cannot be a comma separated list, can only be one version, indicated using the acronym for the Bible version among the versions available on the BibleGet server (which are discoverable from the `/v3/metadata/bibleversions` endpoint)
+* **`match`**: *(optional)* matching strategy.
+  * `fulltext` (default): language-aware full-text search with stemming, accepting `websearch_to_tsquery` syntax (quoted phrases, `OR`, `-`).
+  * `boolean`: full-text search with native PostgreSQL operators (`&`, `|`, `!`, `<->`, `:*`).
+  * `exact`: regex word-boundary match (no stemming, no minimum length).
+* **`exactmatch`**: *(legacy, optional)* `exactmatch=true` is preserved as an alias for `match=exact`. Accepts both string values (`"true"`, `"false"`) and native booleans in JSON request bodies. New code should use `match` directly.
+* **`version`**: *(required)* the Bible version to search in. Comma-separated values (e.g. `NABRE,CEI2008`) search across multiple versions; results from each share a per-version `canonical_order` partition. All listed versions must share the same `ts_language` — mixed-language requests return a `400` because querying English text against an Italian dictionary returns silent zero results otherwise.
 * **`return`**: *(optional)* indicates the format in which the structured data should be returned. This parameter takes one of three values: `json`, `xml`, or `html`. If left out, this parameter will default to `json`. Rather than using this parameter, it is recommended to set the **`Accept`** header to the desired type for the response data. The **Accept** header can be set to **`application/json`**, **`application/xml`**, or **`text/html`**.
 
 
 ### STRUCTURE OF THE RETURNED DATA
-The data is structured in a similar manner to the main API endpoint (`/v3/quote`).
+The data is structured in a similar manner to the main API endpoint (`/v3/quote`), with two additional per-row fields: `score` and `canonical_order`.
 
 * **`results`**: an array containing the data associated with the single verses that contain the keyword that was searched for within the requested Bible version, whether as a full match or as a match within a word (e.g. a search for the keyword `light` will first return Bible verses that contain exactly the word `light`, then verses that contain the word `lights` seeing that *light* can be found in *lights*). The objects contained in this array are exactly the same as those returned by the main API endpoint, for example a request to https://query.bibleget.io/v3/search?keyword=light&version=NABRE will give as first result in the `results` array:
 
@@ -242,7 +250,12 @@ The data is structured in a similar manner to the main API endpoint (`/v3/quote`
     ```
     
     The `originalquery` key in this case will simply be a reference to the single verse for that search result.
-    
+
+    Each row also carries:
+
+    * **`score`** *(`float | null`)*: PostgreSQL `ts_rank_cd` cover-density score. Populated for `match=fulltext` and `match=boolean`; `null` for `match=exact` (regex word-boundary match has no relevance signal). Raw values, query-relative — they are not portable across queries. Higher = more relevant. Sort by `score DESC` client-side to recover relevance ordering.
+    * **`canonical_order`** *(`int`)*: per-response 1-based rank, partitioned per `version`, derived from the server's internal subverse-aware canonical-order key. When you sort by `score`, this lets you flip back to canonical order without a second request.
+
 * **`errors`**: an array that will contains strings of errors that may have been generated from improper usage of the endpoint, unrecognized requests (or possibly even server / database errors if any). When the API endpoint is used correctly this should generally be an empty array, developers should always check against this array to display any relevant error messages to end users so they understand what might be happening when something doesn't seem to be working correctly, and they can contact the developer with the relevant error messages produced.
 
 * **`info`**: an object containing a kind of metadata information about the search that was performed.
@@ -256,3 +269,16 @@ The data is structured in a similar manner to the main API endpoint (`/v3/quote`
     * **`keyword`**: just echoes back the keyword that was used to perform the search
     
     * **`version`**: just echoes back the acronym of the Bible version that the search was performed against
+
+
+## /v3/search/keyword, /v3/search/semantic, /v3/search/similar
+
+Three sibling search endpoints share a coherent response shape (`score`, `canonical_order`, comma-separated `version`):
+
+| Endpoint | Source | Score |
+|---|---|---|
+| `/v3/search/keyword` | full-text + stemming via PostgreSQL `to_tsvector` | `ts_rank_cd` cover-density (raw, query-relative; `null` for `match=exact`) |
+| `/v3/search/semantic` | natural-language query embedded into a vector via the embedding microservice | `1 - cosine_distance` against pre-computed verse embeddings (in `[0,1]`, query-relative) |
+| `/v3/search/similar` | a verse reference's pre-computed embedding | `1 - cosine_distance` against the rest of the version (or any additional listed versions) |
+
+`/v3/search` is preserved as a backward-compat alias for `/v3/search/keyword` (with `exactmatch=true` mapping to `match=exact`). The full per-endpoint parameter and response schema is in [`openapi.json`](./openapi.json).

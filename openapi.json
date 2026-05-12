@@ -439,7 +439,7 @@
                     {
                         "name": "version",
                         "in": "query",
-                        "description": "The acronym of the Bible version within which to perform the search by keyword. Can only be a single value, not a comma delimited list of values.",
+                        "description": "Bible version sigla. Comma-separated values (e.g. `NABRE,CEI2008`) search across multiple versions; results from each share a per-version `canonical_order` partition. All listed versions must share the same `ts_language` — mixed-language requests return 400.",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -641,7 +641,7 @@
                     {
                         "name": "version",
                         "in": "query",
-                        "description": "The sigla of the Bible version to search within",
+                        "description": "Bible version sigla. Comma-separated values (e.g. `NABRE,CEI2008`) search across multiple versions; results from each version share a per-version `canonical_order` partition. All listed versions must share the same `ts_language` (English text against an Italian dictionary returns silent zero results otherwise) — mixed-language requests return 400.",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -730,7 +730,7 @@
                     {
                         "name": "version",
                         "in": "query",
-                        "description": "The sigla of the Bible version to search within",
+                        "description": "Bible version sigla. Comma-separated values (e.g. `NABRE,CEI2008`) search across multiple versions; results from each version share a per-version `canonical_order` partition. The multilingual embedding model handles cross-language similarity natively, so mixed-language version lists are accepted.",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -817,7 +817,7 @@
                     {
                         "name": "version",
                         "in": "query",
-                        "description": "The sigla of the Bible version to search within",
+                        "description": "Bible version sigla. The first listed version supplies the source verse's embedding (resolved against its book index). Comma-separated values (e.g. `NABRE,CEI2008,VGCL`) extend the search to additional target versions; results from each share a per-version `canonical_order` partition. Replaces the earlier `crossversion=true` boolean.",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -834,16 +834,6 @@
                             "default": 10,
                             "minimum": 1,
                             "maximum": 100
-                        }
-                    },
-                    {
-                        "name": "crossversion",
-                        "in": "query",
-                        "description": "When true, search for similar passages across all available Bible versions, not just the specified one",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
                         }
                     },
                     {
@@ -1508,6 +1498,14 @@
                             "attribute": true
                         },
                         "example": "1John4,7-8"
+                    },
+                    "canonical_order": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Sort by this field to recover canonical order client-side. Lets a client that re-sorts results (e.g. by relevance from a parallel `/search/*` call) recover canonical order without a second request.",
+                        "xml": {
+                            "attribute": true
+                        }
                     }
                 },
                 "xml": {
@@ -14358,6 +14356,23 @@
                                     "xml": {
                                         "attribute": true
                                     }
+                                },
+                                "score": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "nullable": true,
+                                    "description": "PostgreSQL `ts_rank_cd` cover-density score. Populated when the match mode produces a relevance signal (`fulltext`, `boolean`); `null` for `match=exact` (regex word-boundary match has no relevance signal). Raw values, query-relative — not portable across queries. Higher = more relevant.",
+                                    "xml": {
+                                        "attribute": true
+                                    }
+                                },
+                                "canonical_order": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Sort by this field to recover canonical order client-side; sort by `score` for relevance. Independent of array position — the array is in canonical order by default, but a client that re-sorts by `score` can recover canonical order via this field without a second request.",
+                                    "xml": {
+                                        "attribute": true
+                                    }
                                 }
                             }
                         },
@@ -14411,7 +14426,9 @@
                             "bookabbrev": "1Mc",
                             "booknum": 19,
                             "univbooknum": "20",
-                            "originalquery": "1Mc9:7"
+                            "originalquery": "1Mc9:7",
+                            "score": 0.0607,
+                            "canonical_order": 1
                         },
                         {
                             "testament": 1,
@@ -14430,7 +14447,9 @@
                             "bookabbrev": "Ps",
                             "booknum": 22,
                             "univbooknum": "23",
-                            "originalquery": "Ps34:19"
+                            "originalquery": "Ps34:19",
+                            "score": 0.0552,
+                            "canonical_order": 2
                         },
                         {
                             "testament": 1,
@@ -14449,7 +14468,9 @@
                             "bookabbrev": "Ps",
                             "booknum": 22,
                             "univbooknum": "23",
-                            "originalquery": "Ps109:16"
+                            "originalquery": "Ps109:16",
+                            "score": 0.0488,
+                            "canonical_order": 3
                         },
                         {
                             "testament": 1,
@@ -14468,7 +14489,9 @@
                             "bookabbrev": "Ps",
                             "booknum": 22,
                             "univbooknum": "23",
-                            "originalquery": "Ps147:3"
+                            "originalquery": "Ps147:3",
+                            "score": 0.0461,
+                            "canonical_order": 4
                         },
                         {
                             "testament": 1,
@@ -14487,7 +14510,9 @@
                             "bookabbrev": "Is",
                             "booknum": 28,
                             "univbooknum": "29",
-                            "originalquery": "Is61:1"
+                            "originalquery": "Is61:1",
+                            "score": 0.0413,
+                            "canonical_order": 5
                         }
                     ],
                     "errors": [],
@@ -14648,7 +14673,7 @@
             },
             "SemanticSearchResultItem": {
                 "type": "object",
-                "description": "A verse result from semantic or similar search, including a similarity score",
+                "description": "A verse result from semantic or similar search, including a relevance score and a per-response canonical_order rank.",
                 "properties": {
                     "version": {
                         "type": "string",
@@ -14688,15 +14713,21 @@
                         "type": "string",
                         "description": "The verse text"
                     },
-                    "similarity": {
+                    "score": {
                         "type": "number",
                         "format": "float",
-                        "description": "Cosine similarity score (0.0–1.0). Higher means more similar.",
-                        "minimum": 0.0,
+                        "nullable": true,
+                        "description": "Cosine similarity score (1 - cosine_distance), in [-1, 1]. Higher means more similar. For normalized text-embedding vectors the score is typically in [0, 1], but the schema admits negative values for orthogonal-leaning matches. `null` when the score could not be computed (e.g. degenerate zero-vector inputs producing NaN). Raw values, query-relative — not portable across queries.",
+                        "minimum": -1.0,
                         "maximum": 1.0
+                    },
+                    "canonical_order": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Independent of array position: the array is in similarity-desc order, but sorting by `canonical_order` recovers canonical order without a second request."
                     }
                 },
-                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "similarity"]
+                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "score", "canonical_order"]
             },
             "SemanticSearchResponseJSON": {
                 "type": "object",
