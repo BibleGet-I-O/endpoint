@@ -59,7 +59,9 @@ class KeywordSearchHandler extends AbstractHandler
         // Validate every requested version up front.
         $validatedVersions = [];
         foreach ($versions as $v) {
-            $validatedVersions[] = $this->validateVersion($pdo, $v);
+            $validated = $this->validateVersion($pdo, $v);
+            $this->assertValidVersionFormat($validated);
+            $validatedVersions[] = $validated;
         }
 
         // Keyword search is language-bound: querying English text against an
@@ -307,7 +309,7 @@ class KeywordSearchHandler extends AbstractHandler
                 continue;
             }
             $score     = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
-                ? (float) $row['score']
+                ? round((float) $row['score'], 4)
                 : null;
             $entry     = [
                 'version'     => $version,

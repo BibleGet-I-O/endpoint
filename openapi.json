@@ -14426,7 +14426,9 @@
                             "bookabbrev": "1Mc",
                             "booknum": 19,
                             "univbooknum": "20",
-                            "originalquery": "1Mc9:7"
+                            "originalquery": "1Mc9:7",
+                            "score": 0.0607,
+                            "canonical_order": 1
                         },
                         {
                             "testament": 1,
@@ -14445,7 +14447,9 @@
                             "bookabbrev": "Ps",
                             "booknum": 22,
                             "univbooknum": "23",
-                            "originalquery": "Ps34:19"
+                            "originalquery": "Ps34:19",
+                            "score": 0.0552,
+                            "canonical_order": 2
                         },
                         {
                             "testament": 1,
@@ -14464,7 +14468,9 @@
                             "bookabbrev": "Ps",
                             "booknum": 22,
                             "univbooknum": "23",
-                            "originalquery": "Ps109:16"
+                            "originalquery": "Ps109:16",
+                            "score": 0.0488,
+                            "canonical_order": 3
                         },
                         {
                             "testament": 1,
@@ -14483,7 +14489,9 @@
                             "bookabbrev": "Ps",
                             "booknum": 22,
                             "univbooknum": "23",
-                            "originalquery": "Ps147:3"
+                            "originalquery": "Ps147:3",
+                            "score": 0.0461,
+                            "canonical_order": 4
                         },
                         {
                             "testament": 1,
@@ -14502,7 +14510,9 @@
                             "bookabbrev": "Is",
                             "booknum": 28,
                             "univbooknum": "29",
-                            "originalquery": "Is61:1"
+                            "originalquery": "Is61:1",
+                            "score": 0.0413,
+                            "canonical_order": 5
                         }
                     ],
                     "errors": [],
@@ -14717,7 +14727,7 @@
                         "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Independent of array position: the array is in similarity-desc order, but sorting by `canonical_order` recovers canonical order without a second request."
                     }
                 },
-                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "canonical_order"]
+                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "score", "canonical_order"]
             },
             "SemanticSearchResponseJSON": {
                 "type": "object",
