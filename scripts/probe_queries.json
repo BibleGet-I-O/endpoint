@@ -1,0 +1,162 @@
+[
+  {
+    "concept": "Genesis creation",
+    "queries": {
+      "NABRE":   "In the beginning, God created the heavens and the earth",
+      "CEI2008": "In principio Dio creò il cielo e la terra",
+      "NVBSE":   "In principio creavit Deus caelum et terram"
+    }
+  },
+  {
+    "concept": "Love your neighbor",
+    "queries": {
+      "NABRE":   "Love your neighbor as yourself",
+      "CEI2008": "Ama il tuo prossimo come te stesso",
+      "NVBSE":   "Diliges proximum tuum sicut te ipsum"
+    }
+  },
+  {
+    "concept": "Sermon on the mount — poor in spirit",
+    "queries": {
+      "NABRE":   "Blessed are the poor in spirit, for theirs is the kingdom of heaven",
+      "CEI2008": "Beati i poveri in spirito, perché di essi è il regno dei cieli",
+      "NVBSE":   "Beati pauperes spiritu, quoniam ipsorum est regnum caelorum"
+    }
+  },
+  {
+    "concept": "Last Supper — institution of the Eucharist",
+    "queries": {
+      "NABRE":   "This is my body, which will be given for you; do this in memory of me",
+      "CEI2008": "Questo è il mio corpo, che è dato per voi; fate questo in memoria di me",
+      "NVBSE":   "Hoc est corpus meum, quod pro vobis datur; hoc facite in meam commemorationem"
+    }
+  },
+  {
+    "concept": "Resurrection — empty tomb",
+    "queries": {
+      "NABRE":   "He is not here, for he has been raised just as he said",
+      "CEI2008": "Non è qui, è risorto, come aveva detto",
+      "NVBSE":   "Non est hic, surrexit enim sicut dixit"
+    }
+  },
+  {
+    "concept": "Shepherd Psalm",
+    "queries": {
+      "NABRE":   "The Lord is my shepherd, I shall not want",
+      "CEI2008": "Il Signore è il mio pastore, non manco di nulla",
+      "NVBSE":   "Dominus pascit me, et nihil mihi deerit"
+    }
+  },
+  {
+    "concept": "Word made flesh",
+    "queries": {
+      "NABRE":   "And the Word became flesh and dwelt among us",
+      "CEI2008": "E il Verbo si fece carne e venne ad abitare in mezzo a noi",
+      "NVBSE":   "Et Verbum caro factum est et habitavit in nobis"
+    }
+  },
+  {
+    "concept": "Bread of life",
+    "queries": {
+      "NABRE":   "I am the bread of life; whoever comes to me will never hunger",
+      "CEI2008": "Io sono il pane della vita; chi viene a me non avrà fame",
+      "NVBSE":   "Ego sum panis vitae; qui veniet ad me non esuriet"
+    }
+  },
+  {
+    "concept": "Way, truth, life",
+    "queries": {
+      "NABRE":   "I am the way and the truth and the life; no one comes to the Father except through me",
+      "CEI2008": "Io sono la via, la verità e la vita; nessuno viene al Padre se non per mezzo di me",
+      "NVBSE":   "Ego sum via et veritas et vita; nemo venit ad Patrem nisi per me"
+    }
+  },
+  {
+    "concept": "True vine",
+    "queries": {
+      "NABRE":   "I am the vine, you are the branches",
+      "CEI2008": "Io sono la vite, voi i tralci",
+      "NVBSE":   "Ego sum vitis, vos palmites"
+    }
+  },
+  {
+    "concept": "Light of the world",
+    "queries": {
+      "NABRE":   "I am the light of the world; whoever follows me will not walk in darkness",
+      "CEI2008": "Io sono la luce del mondo; chi segue me non camminerà nelle tenebre",
+      "NVBSE":   "Ego sum lux mundi; qui sequitur me non ambulabit in tenebris"
+    }
+  },
+  {
+    "concept": "Lamb of God",
+    "queries": {
+      "NABRE":   "Behold, the Lamb of God, who takes away the sin of the world",
+      "CEI2008": "Ecco l'agnello di Dio, colui che toglie il peccato del mondo",
+      "NVBSE":   "Ecce agnus Dei, qui tollit peccatum mundi"
+    }
+  },
+  {
+    "concept": "Fear of the Lord",
+    "queries": {
+      "NABRE":   "The fear of the Lord is the beginning of wisdom",
+      "CEI2008": "Principio della sapienza è il timore del Signore",
+      "NVBSE":   "Principium sapientiae timor Domini"
+    }
+  },
+  {
+    "concept": "Vanity of vanities",
+    "queries": {
+      "NABRE":   "Vanity of vanities, all things are vanity",
+      "CEI2008": "Vanità delle vanità, tutto è vanità",
+      "NVBSE":   "Vanitas vanitatum, omnia vanitas"
+    }
+  },
+  {
+    "concept": "Our Father",
+    "queries": {
+      "NABRE":   "Our Father in heaven, hallowed be your name; your kingdom come, your will be done",
+      "CEI2008": "Padre nostro che sei nei cieli, sia santificato il tuo nome; venga il tuo regno, sia fatta la tua volontà",
+      "NVBSE":   "Pater noster, qui es in caelis, sanctificetur nomen tuum; adveniat regnum tuum, fiat voluntas tua"
+    }
+  },
+  {
+    "concept": "Magnificat",
+    "queries": {
+      "NABRE":   "My soul proclaims the greatness of the Lord; my spirit rejoices in God my Savior",
+      "CEI2008": "L'anima mia magnifica il Signore e il mio spirito esulta in Dio, mio salvatore",
+      "NVBSE":   "Magnificat anima mea Dominum, et exsultavit spiritus meus in Deo salvatore meo"
+    }
+  },
+  {
+    "concept": "Faith, hope, love",
+    "queries": {
+      "NABRE":   "So faith, hope, love remain, these three; but the greatest of these is love",
+      "CEI2008": "Ora dunque rimangono queste tre cose: la fede, la speranza e la carità; ma la più grande di tutte è la carità",
+      "NVBSE":   "Nunc autem manet fides, spes, caritas, tria haec; maior autem ex his est caritas"
+    }
+  },
+  {
+    "concept": "All things work for good",
+    "queries": {
+      "NABRE":   "We know that all things work for good for those who love God",
+      "CEI2008": "Tutto concorre al bene, per quelli che amano Dio",
+      "NVBSE":   "Diligentibus Deum omnia cooperantur in bonum"
+    }
+  },
+  {
+    "concept": "A time for everything",
+    "queries": {
+      "NABRE":   "There is a time for everything, a season for every activity under heaven",
+      "CEI2008": "Per ogni cosa c'è il suo momento, il suo tempo per ogni faccenda sotto il cielo",
+      "NVBSE":   "Omnia tempus habent, et suis spatiis transeunt universa sub caelo"
+    }
+  },
+  {
+    "concept": "Damascus road — Saul, why do you persecute me?",
+    "queries": {
+      "NABRE":   "Saul, Saul, why are you persecuting me?",
+      "CEI2008": "Saulo, Saulo, perché mi perseguiti?",
+      "NVBSE":   "Saule, Saule, quid me persequeris?"
+    }
+  }
+]

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg18
     environment:
       POSTGRES_DB: bibleget
       POSTGRES_USER: bibleget
@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
       - ./tests/fixtures/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./tests/fixtures/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
@@ -26,6 +26,17 @@ services:
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
     ports:
       - "8001:8000"
+    # GPU passthrough: requires the host to have NVIDIA drivers + the NVIDIA
+    # Container Toolkit. On a CPU-only host this reservation will prevent the
+    # service from starting; override by removing the deploy block locally or
+    # running with `docker compose up -d postgres app` (skipping embedding).
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()\""]
       interval: 10s
