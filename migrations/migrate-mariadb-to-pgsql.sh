@@ -306,7 +306,10 @@ maria_dump_csv NVBSE_idx "SELECT book,chapters,verses_count,verses_last,fullname
 pg_copy_from_stdin '"NVBSE_idx"' 'book,chapters,verses_count,verses_last,fullname,abbrev' < "$MIGRATION_TMPDIR/NVBSE_idx.tsv"
 pg_sql "SELECT setval(pg_get_serial_sequence('\"NVBSE\"', 'verseID'), COALESCE((SELECT MAX(\"verseID\") FROM \"NVBSE\"), 1));" > /dev/null
 
-# NABRE, NABRE_old: verse is VARCHAR, no verseorigin in unique key
+# NABRE, NABRE_old: no verseorigin in the unique key. NABRE.verse is INT
+# in the target schema (and in MariaDB after the one-time NABRE anomaly
+# normalization — 7 sub-verse rows split into verse + verseequiv, 1 bridge
+# row relocated). NABRE_old keeps verse VARCHAR as a frozen legacy backup.
 for V in NABRE NABRE_old; do
     log "Migrating ${V}..."
     maria_dump_csv "$V" "SELECT testament,section,book,chapter,versedescr,verse,verseequiv,verseorigin,text,title1,title2,title3,verseID FROM \`$V\` ORDER BY verseID"
