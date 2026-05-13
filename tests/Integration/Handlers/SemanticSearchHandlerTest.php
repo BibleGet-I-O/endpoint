@@ -87,7 +87,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
 
         $handler = $this->createHandler($mockClient);
         $request = ( new ServerRequest('GET', '/v3/search/semantic') )
-            ->withQueryParams(['query' => 'passages about creation', 'version' => 'TEST1']);
+            ->withQueryParams(['query' => 'passages about creation', 'version' => 'TEST1', 'model' => 'minilm']);
 
         $this->expectException(ServiceUnavailableException::class);
         $this->expectExceptionMessage('/v3/search/keyword');
@@ -104,7 +104,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
 
         $handler = $this->createHandler($mockClient);
         $request = ( new ServerRequest('GET', '/v3/search/semantic') )
-            ->withQueryParams(['query' => 'passages about creation', 'version' => 'TEST1']);
+            ->withQueryParams(['query' => 'passages about creation', 'version' => 'TEST1', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         self::assertSame(200, $response->getStatusCode());
@@ -132,7 +132,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
 
         $handler = $this->createHandler($mockClient);
         $request = ( new ServerRequest('GET', '/v3/search/semantic') )
-            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'limit' => '5']);
+            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'limit' => '5', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         $body     = json_decode((string) $response->getBody(), true);
@@ -166,7 +166,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         // With threshold=0.999, the identical vector should still match (similarity ≈ 1.0)
         $handler  = $this->createHandler($mockClient);
         $request  = ( new ServerRequest('GET', '/v3/search/semantic') )
-            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'threshold' => '0.999']);
+            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'threshold' => '0.999', 'model' => 'minilm']);
         $response = $handler->handle($request);
 
         $body = json_decode((string) $response->getBody(), true);
@@ -191,7 +191,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
 
         $handler  = $this->createHandler($mockClient);
         $request  = ( new ServerRequest('GET', '/v3/search/semantic') )
-            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1,TEST2', 'limit' => '10']);
+            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1,TEST2', 'limit' => '10', 'model' => 'minilm']);
         $response = $handler->handle($request);
 
         self::assertSame(200, $response->getStatusCode());
@@ -242,7 +242,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
 
         $handler = $this->createHandler($mockClient);
         $request = ( new ServerRequest('GET', '/v3/search/semantic') )
-            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'limit' => '10']);
+            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'limit' => '10', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         $body     = json_decode((string) $response->getBody(), true);
@@ -260,5 +260,49 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
             $body['results'][0]['score'],
             'Array ordering remains similarity-desc'
         );
+    }
+
+
+    // ── Model parameter ─────────────────────────────────────
+
+    public function testInvalidModelRejected(): void
+    {
+        $handler = $this->createHandler($this->createMock(EmbeddingClient::class));
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('Invalid model');
+        $request = ( new ServerRequest('GET', '/v3/search/semantic') )
+            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'model' => 'gpt-x']);
+        $handler->handle($request);
+    }
+
+    public function testDefaultModelIsLabseAndReadsLabseColumn(): void
+    {
+        $pdo = $this->getConnection();
+        // Seed *both* columns so we can prove the handler reads from the LaBSE
+        // one by default: MiniLM column gets a vector orthogonal to the query,
+        // LaBSE column gets the matching vector. If routing were wrong, the
+        // MiniLM seed would surface as the top result.
+        $matchLabse  = array_fill(0, 768, 0.1);
+        $matchLabseS = '[' . implode(',', $matchLabse) . ']';
+        $orth384     = array_fill(0, 384, 0.0);
+        $orth384[0]  = 1.0;
+        $orth384S    = '[' . implode(',', $orth384) . ']';
+        $pdo->exec('UPDATE "TEST1" SET embedding = NULL, embedding_labse = NULL');
+        $pdo->exec('UPDATE "TEST1" SET embedding_labse = \'' . $matchLabseS . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
+        $pdo->exec('UPDATE "TEST1" SET embedding         = \'' . $orth384S    . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
+
+        $mock = $this->createMock(EmbeddingClient::class);
+        $mock->method('embed')->willReturn($matchLabse);
+
+        $handler  = $this->createHandler($mock);
+        $request  = ( new ServerRequest('GET', '/v3/search/semantic') )
+            ->withQueryParams(['query' => 'creation', 'version' => 'TEST1', 'limit' => '5']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertSame('labse', $body['info']['model']);
+        self::assertNotEmpty($body['results']);
+        self::assertGreaterThan(0.99, $body['results'][0]['score']);
     }
 }

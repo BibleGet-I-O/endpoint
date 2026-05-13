@@ -1,9 +1,19 @@
 # BibleGet Embedding Service
 
-Long-running FastAPI app that vectorises text via the
-`paraphrase-multilingual-MiniLM-L12-v2` sentence-transformers model. The PHP
-endpoint calls it at request time (via `EMBEDDING_SERVICE_URL`) for semantic
-and similar-verse search.
+Long-running FastAPI app that vectorises text via a sentence-transformers
+model. Two instances run in parallel in production, selected per request by
+the `model=labse|minilm` query parameter on
+`/v3/search/{semantic,similar}`:
+
+| Service unit                          | Port  | Model                                   | env var                        | pgvector column   |
+|---------------------------------------|-------|-----------------------------------------|--------------------------------|-------------------|
+| `bibleget-embedding-labse.service`    | 8002  | `sentence-transformers/LaBSE` (default) | `EMBEDDING_SERVICE_URL_LABSE`  | `embedding_labse` |
+| `bibleget-embedding.service`          | 8000  | `paraphrase-multilingual-MiniLM-L12-v2` | `EMBEDDING_SERVICE_URL_MINILM` | `embedding`       |
+
+The legacy `EMBEDDING_SERVICE_URL` is honoured as a fallback for the MiniLM
+slug only, so older deployments keep working without a config change.
+Both services share one venv at `~bibleget-embed/embedding/venv/` —
+requirements.txt is identical, only `EMBEDDING_MODEL` differs.
 
 ## How it's deployed
 

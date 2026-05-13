@@ -1,0 +1,49 @@
+# Systemd user unit for the LaBSE flavour of the BibleGet embedding service.
+#
+# Install location: ~/.config/systemd/user/bibleget-embedding-labse.service
+# (the deploy workflow rsyncs this file into ~/embedding/ and copies it
+# into ~/.config/systemd/user/ when it changes.)
+#
+# Operational notes:
+#   - Runs alongside bibleget-embedding.service (MiniLM, port 8000).
+#     The API picks between the two via the `model=` query param on
+#     /v3/search/semantic and /v3/search/similar, routing each call to the
+#     matching EMBEDDING_SERVICE_URL_{MINILM,LABSE} env var.
+#   - Both services share the same venv at ~bibleget-embed/embedding/venv/
+#     because requirements.txt is identical; only EMBEDDING_MODEL differs.
+#   - Binds 127.0.0.1:8002 only — never reachable from outside the VPS.
+#   - Loads sentence-transformers/LaBSE at startup (~30-60s on cold start,
+#     ~1.8 GB on first download), so TimeoutStartSec is generous.
+#   - Model files persist across deploys under HF_HOME (shared with the
+#     MiniLM service, also living under the same user's HF cache).
+#   - Logs go to the user journal: `journalctl --user -u bibleget-embedding-labse`
+
+[Unit]
+Description=BibleGet Embedding Service — LaBSE (FastAPI + sentence-transformers)
+Documentation=https://github.com/BibleGet-I-O/endpoint/tree/development/services/embedding
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/embedding
+
+# Pinned LaBSE revision — must match the value in services/embedding/main.py
+# so that the model loaded here matches what compute_embeddings.py used to
+# populate the embedding_labse column.
+Environment=EMBEDDING_MODEL=sentence-transformers/LaBSE
+Environment=EMBEDDING_MODEL_REVISION=836121a0533e5664b21c7aacc5d22951f2b8b25b
+Environment=HF_HOME=%h/.cache/huggingface
+
+ExecStart=%h/embedding/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8002
+
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+
+LimitNOFILE=4096
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

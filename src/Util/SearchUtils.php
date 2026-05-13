@@ -44,6 +44,63 @@ class SearchUtils
         return $unique;
     }
 
+
+    /**
+     * Per-model configuration for semantic / similar search. Each entry pairs
+     * a public model slug (the value the client sends as `model=`) with the
+     * pgvector column where vectors for that model are stored and the env-var
+     * used to override its FastAPI service URL.
+     *
+     * LaBSE is the default because it outperformed MiniLM on Latin (NVBSE)
+     * during the A/B experiment in discussion #107.
+     */
+    public const EMBEDDING_MODELS = [
+        'labse'  => [
+            'column'      => 'embedding_labse',
+            'service_env' => 'EMBEDDING_SERVICE_URL_LABSE',
+            'default_url' => 'http://127.0.0.1:8002',
+        ],
+        'minilm' => [
+            'column'      => 'embedding',
+            'service_env' => 'EMBEDDING_SERVICE_URL_MINILM',
+            'default_url' => 'http://127.0.0.1:8000',
+        ],
+    ];
+
+    public const DEFAULT_EMBEDDING_MODEL = 'labse';
+
+    /**
+     * Parse a `model=` parameter into one of the supported slugs
+     * (`labse`, `minilm`). Case-insensitive. Empty / missing → default.
+     *
+     * @throws ValidationException when the value is not a recognised slug.
+     */
+    public static function parseModelParam(mixed $raw, string $default = self::DEFAULT_EMBEDDING_MODEL): string
+    {
+        if (!is_string($raw) || trim($raw) === '') {
+            return $default;
+        }
+        $slug = strtolower(trim($raw));
+        if (!isset(self::EMBEDDING_MODELS[$slug])) {
+            $valid = implode(', ', array_keys(self::EMBEDDING_MODELS));
+            throw new ValidationException('Invalid model: ' . $raw . '. Valid values: ' . $valid);
+        }
+        return $slug;
+    }
+
+    /**
+     * Resolve the pgvector column name for a given model slug. The slug must
+     * have been validated already (e.g. via `parseModelParam`); this method
+     * raises in that case to make misuse obvious.
+     */
+    public static function modelColumn(string $modelSlug): string
+    {
+        if (!isset(self::EMBEDDING_MODELS[$modelSlug])) {
+            throw new \InvalidArgumentException('Unknown embedding model slug: ' . $modelSlug);
+        }
+        return self::EMBEDDING_MODELS[$modelSlug]['column'];
+    }
+
     /**
      * Assign a per-version 1-based `canonical_order` to each row, derived
      * from the row's `verseID` (the subverse-aware canonical-order key the

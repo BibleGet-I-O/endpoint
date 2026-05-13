@@ -106,11 +106,13 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
     embedding           vector(384),
+    embedding_labse     vector(768),
     text_hash           BYTEA,
     embedded_text_hash  BYTEA
 );
 CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('english', text));
 CREATE INDEX IF NOT EXISTS "TEST1_embedding_hnsw" ON "TEST1" USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS "TEST1_embedding_labse_hnsw" ON "TEST1" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'TEST1_text_hash_trigger' AND tgrelid = '"TEST1"'::regclass) THEN
         CREATE TRIGGER "TEST1_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "TEST1"
@@ -160,11 +162,13 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
     embedding           vector(384),
+    embedding_labse     vector(768),
     text_hash           BYTEA,
     embedded_text_hash  BYTEA
 );
 CREATE INDEX IF NOT EXISTS "TEST2_text_fts" ON "TEST2" USING gin(to_tsvector('english', text));
 CREATE INDEX IF NOT EXISTS "TEST2_embedding_hnsw" ON "TEST2" USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS "TEST2_embedding_labse_hnsw" ON "TEST2" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'TEST2_text_hash_trigger' AND tgrelid = '"TEST2"'::regclass) THEN
         CREATE TRIGGER "TEST2_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "TEST2"
@@ -209,11 +213,13 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
     embedding           vector(384),
+    embedding_labse     vector(768),
     text_hash           BYTEA,
     embedded_text_hash  BYTEA
 );
 CREATE INDEX IF NOT EXISTS "VGCL_text_fts" ON "VGCL" USING gin(to_tsvector('simple', text));
 CREATE INDEX IF NOT EXISTS "VGCL_embedding_hnsw" ON "VGCL" USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS "VGCL_embedding_labse_hnsw" ON "VGCL" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'VGCL_text_hash_trigger' AND tgrelid = '"VGCL"'::regclass) THEN
         CREATE TRIGGER "VGCL_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "VGCL"
@@ -262,11 +268,13 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
     embedding           vector(384),
+    embedding_labse     vector(768),
     text_hash           BYTEA,
     embedded_text_hash  BYTEA
 );
 CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('english', text));
 CREATE INDEX IF NOT EXISTS "DRB_embedding_hnsw" ON "DRB" USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS "DRB_embedding_labse_hnsw" ON "DRB" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'DRB_text_hash_trigger' AND tgrelid = '"DRB"'::regclass) THEN
         CREATE TRIGGER "DRB_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "DRB"

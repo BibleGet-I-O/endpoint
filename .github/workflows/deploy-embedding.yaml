@@ -27,7 +27,8 @@ jobs:
           set -euo pipefail
           for f in services/embedding/main.py \
                    services/embedding/requirements.txt \
-                   services/embedding/bibleget-embedding.service; do
+                   services/embedding/bibleget-embedding.service \
+                   services/embedding/bibleget-embedding-labse.service; do
             if [ ! -f "$f" ]; then
               echo "::error::Required file missing: $f" >&2
               exit 1
@@ -154,29 +155,43 @@ jobs:
                echo "::error::Python venv not found at ~/embedding/venv/. Run the one-time bootstrap from services/embedding/README.md first." >&2
                exit 1
              fi
-             SRC=~/embedding/bibleget-embedding.service
-             DST=~/.config/systemd/user/bibleget-embedding.service
-             if ! cmp -s "$SRC" "$DST" 2>/dev/null; then
-               echo "== installing/updating systemd user unit =="
-               cp "$SRC" "$DST"
-               systemctl --user daemon-reload
-               systemctl --user enable bibleget-embedding >/dev/null
-             fi
-             echo "== refreshing venv deps (idempotent) =="
-             ~/embedding/venv/bin/pip install --quiet --upgrade --upgrade-strategy only-if-needed -r ~/embedding/requirements.txt
-             echo "== restarting bibleget-embedding =="
-             systemctl --user restart bibleget-embedding
-             for i in 1 2 3 4 5 6 7 8 9 10; do
-               if curl -sS --max-time 3 http://127.0.0.1:8000/health 2>/dev/null | grep -q "\"ready\":true"; then
-                 echo "== health OK =="
-                 exit 0
+             daemon_reload_needed=0
+             for unit in bibleget-embedding bibleget-embedding-labse; do
+               SRC=~/embedding/${unit}.service
+               DST=~/.config/systemd/user/${unit}.service
+               if ! cmp -s "$SRC" "$DST" 2>/dev/null; then
+                 echo "== installing/updating systemd user unit: ${unit} =="
+                 cp "$SRC" "$DST"
+                 daemon_reload_needed=1
                fi
-               sleep 3
              done
-             echo "::error::Service failed to become healthy within 30s" >&2
-             systemctl --user status bibleget-embedding --no-pager | head -40
-             journalctl --user -u bibleget-embedding -n 40 --no-pager
-             exit 1'
+             if [ "$daemon_reload_needed" -eq 1 ]; then
+               systemctl --user daemon-reload
+             fi
+             # Enable both (idempotent — no-op if already enabled).
+             systemctl --user enable bibleget-embedding bibleget-embedding-labse >/dev/null
+             echo "== refreshing venv deps (idempotent, shared by both services) =="
+             ~/embedding/venv/bin/pip install --quiet --upgrade --upgrade-strategy only-if-needed -r ~/embedding/requirements.txt
+             echo "== restarting embedding services =="
+             systemctl --user restart bibleget-embedding bibleget-embedding-labse
+             # Health-poll both ports. LaBSE cold-loads a ~1.8 GB model the
+             # first time so we allow more attempts on 8002.
+             check_health() {
+               local name=$1 port=$2 attempts=$3
+               for i in $(seq 1 "$attempts"); do
+                 if curl -sS --max-time 3 "http://127.0.0.1:${port}/health" 2>/dev/null | grep -q "\"ready\":true"; then
+                   echo "== ${name} health OK (port ${port}) =="
+                   return 0
+                 fi
+                 sleep 3
+               done
+               echo "::error::${name} failed to become healthy on port ${port}" >&2
+               systemctl --user status "${name}" --no-pager | head -40
+               journalctl --user -u "${name}" -n 40 --no-pager
+               return 1
+             }
+             check_health bibleget-embedding 8000 10
+             check_health bibleget-embedding-labse 8002 30'
 
       - name: Clean up SSH key
         if: always()

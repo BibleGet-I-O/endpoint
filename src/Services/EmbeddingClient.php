@@ -6,6 +6,7 @@ namespace BibleGet\Api\Services;
 
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
+use BibleGet\Api\Util\SearchUtils;
 
 /**
  * Client for the Python embedding microservice.
@@ -13,6 +14,11 @@ use BibleGet\Api\Http\Exception\ServiceUnavailableException;
  * Calls the FastAPI service to vectorize text for pgvector similarity search.
  * Includes a circuit breaker that trips open after repeated failures and
  * short-circuits to a 503 for a cooldown period, avoiding unnecessary load.
+ *
+ * Per `SearchUtils::EMBEDDING_MODELS`, the client is bound to a specific model
+ * slug at construction (`labse` by default). Each model has its own FastAPI
+ * service (different port, different sentence-transformers model) so the URL
+ * is resolved from a per-model env var.
  */
 class EmbeddingClient
 {
@@ -23,6 +29,7 @@ class EmbeddingClient
     private const APCU_KEY_OPEN_SINCE = 'bibleget:embedding_cb:open_since';
 
     private string $baseUrl;
+    private string $modelSlug;
 
     /** Fallback failure count when APCu is unavailable. */
     private static int $failures = 0;
@@ -33,9 +40,26 @@ class EmbeddingClient
     /** Model name from the last successful embed() response. */
     private string $lastModel = '';
 
-    public function __construct(?string $baseUrl = null)
+    /**
+     * @param string $modelSlug `labse` or `minilm` (see SearchUtils::EMBEDDING_MODELS).
+     * @param string|null $baseUrl Override the resolved URL (testing only).
+     */
+    public function __construct(string $modelSlug = SearchUtils::DEFAULT_EMBEDDING_MODEL, ?string $baseUrl = null)
     {
-        $this->baseUrl = $baseUrl ?? self::resolveBaseUrl();
+        if (!isset(SearchUtils::EMBEDDING_MODELS[$modelSlug])) {
+            throw new \InvalidArgumentException('Unknown embedding model slug: ' . $modelSlug);
+        }
+        $this->modelSlug = $modelSlug;
+        $this->baseUrl   = $baseUrl ?? self::resolveBaseUrl($modelSlug);
+    }
+
+    /**
+     * Public accessor for the model slug this client is bound to.
+     * Used by handlers to look up the matching pgvector column / metadata row.
+     */
+    public function getModelSlug(): string
+    {
+        return $this->modelSlug;
     }
 
     /**
@@ -223,6 +247,9 @@ class EmbeddingClient
             throw new InternalServerErrorException('Failed to encode embedding request.');
         }
 
+        // Since PHP 8.0 cURL handles are objects, freed automatically when $ch
+        // falls out of scope; curl_close() is a no-op and deprecated as of PHP
+        // 8.4 (slated for removal).
         $ch = curl_init($url);
         if ($ch === false) {
             throw new InternalServerErrorException('Failed to initialize cURL for embedding service.');
@@ -237,13 +264,10 @@ class EmbeddingClient
 
         $raw = curl_exec($ch);
         if ($raw === false) {
-            $error = curl_error($ch);
-            curl_close($ch);
-            throw new ServiceUnavailableException('Embedding service unavailable: ' . $error);
+            throw new ServiceUnavailableException('Embedding service unavailable: ' . curl_error($ch));
         }
 
         $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($statusCode === 503) {
             throw new ServiceUnavailableException(
@@ -273,6 +297,7 @@ class EmbeddingClient
     {
         $url = rtrim($this->baseUrl, '/') . $path;
 
+        // See post() for the rationale on dropping curl_close().
         $ch = curl_init($url);
         if ($ch === false) {
             throw new InternalServerErrorException('Failed to initialize cURL for embedding service.');
@@ -284,13 +309,10 @@ class EmbeddingClient
 
         $raw = curl_exec($ch);
         if ($raw === false) {
-            $error = curl_error($ch);
-            curl_close($ch);
-            throw new ServiceUnavailableException('Embedding service unavailable: ' . $error);
+            throw new ServiceUnavailableException('Embedding service unavailable: ' . curl_error($ch));
         }
 
         $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($statusCode === 503) {
             throw new ServiceUnavailableException(
@@ -313,26 +335,54 @@ class EmbeddingClient
         return $decoded;
     }
 
-    private static function resolveBaseUrl(): string
+    /**
+     * Resolve the FastAPI service URL for a given model slug.
+     *
+     * Lookup order:
+     *   1. Per-model env var (`EMBEDDING_SERVICE_URL_LABSE` / `..._MINILM`)
+     *   2. Legacy `EMBEDDING_SERVICE_URL` — only honoured for the `minilm`
+     *      slug, since live deployments that predate the LaBSE split point
+     *      that variable at the MiniLM service. Honouring it for `labse`
+     *      would silently route LaBSE queries to MiniLM vectors.
+     *   3. Per-model dev default (port 8000 for MiniLM, 8002 for LaBSE).
+     */
+    private static function resolveBaseUrl(string $modelSlug): string
     {
-        foreach (['$_ENV', '$_SERVER', 'getenv'] as $source) {
-            if ($source === 'getenv') {
-                $val = getenv('EMBEDDING_SERVICE_URL');
-                if ($val !== false && $val !== '') {
-                    return $val;
-                }
-            } elseif ($source === '$_ENV') {
-                if (isset($_ENV['EMBEDDING_SERVICE_URL']) && is_string($_ENV['EMBEDDING_SERVICE_URL']) && $_ENV['EMBEDDING_SERVICE_URL'] !== '') {
-                    return $_ENV['EMBEDDING_SERVICE_URL'];
-                }
-            } else {
-                if (isset($_SERVER['EMBEDDING_SERVICE_URL']) && is_string($_SERVER['EMBEDDING_SERVICE_URL']) && $_SERVER['EMBEDDING_SERVICE_URL'] !== '') {
-                    return $_SERVER['EMBEDDING_SERVICE_URL'];
-                }
+        $modelConfig = SearchUtils::EMBEDDING_MODELS[$modelSlug];
+        $envName     = $modelConfig['service_env'];
+
+        $primary = self::readEnv($envName);
+        if ($primary !== null) {
+            return $primary;
+        }
+
+        if ($modelSlug === 'minilm') {
+            $legacy = self::readEnv('EMBEDDING_SERVICE_URL');
+            if ($legacy !== null) {
+                return $legacy;
             }
         }
 
-        // Default for local development
-        return 'http://localhost:8001';
+        return $modelConfig['default_url'];
+    }
+
+    /**
+     * Read an env var across the three PHP-SAPI surfaces, returning the first
+     * non-empty value or null. Centralised so resolveBaseUrl reads each
+     * variable consistently.
+     */
+    private static function readEnv(string $name): ?string
+    {
+        if (isset($_ENV[$name]) && is_string($_ENV[$name]) && $_ENV[$name] !== '') {
+            return $_ENV[$name];
+        }
+        if (isset($_SERVER[$name]) && is_string($_SERVER[$name]) && $_SERVER[$name] !== '') {
+            return $_SERVER[$name];
+        }
+        $val = getenv($name);
+        if (is_string($val) && $val !== '') {
+            return $val;
+        }
+        return null;
     }
 }
