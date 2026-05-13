@@ -49,7 +49,8 @@ class SimilarSearchHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
-        [$reference, $versions, $limit] = $this->extractParams($params);
+        [$reference, $versions, $limit, $model] = $this->extractParams($params);
+        $column                                 = SearchUtils::modelColumn($model);
 
         $pdo = Connection::getConnection();
 
@@ -73,21 +74,22 @@ class SimilarSearchHandler extends AbstractHandler
         $sourceVersionIndex = $this->loadVersionIndex($pdo, $sourceVersion);
         $bookNum            = $this->resolveBookNumber($bookAbbrev, $sourceVersionIndex);
 
-        // Look up the source verse's embedding (from the source version only)
-        $sourceEmbedding = $this->getVerseEmbedding($pdo, $sourceVersion, $bookNum, $chapter, $verse);
+        // Look up the source verse's embedding (from the source version's
+        // model-specific column).
+        $sourceEmbedding = $this->getVerseEmbedding($pdo, $sourceVersion, $bookNum, $chapter, $verse, $column);
 
         // Reject mixed-model embeddings: skip target versions whose embeddings
         // were computed with a different model than the source's.
-        $sourceModel = $this->getEmbeddingModel($pdo, $sourceVersion);
+        $sourceModel = $this->getEmbeddingModel($pdo, $sourceVersion, $column);
 
         $allResults = [];
         foreach ($validatedVersions as $v) {
             if ($v !== $sourceVersion && $sourceModel !== '') {
-                $vModel = $this->getEmbeddingModel($pdo, $v);
+                $vModel = $this->getEmbeddingModel($pdo, $v, $column);
                 if ($vModel !== '' && $vModel !== $sourceModel) {
                     $this->logger->info(
                         'Skipping version ' . $v . ' in similar search: embedding model mismatch ('
-                        . $vModel . ' vs ' . $sourceModel . ')'
+                        . $vModel . ' vs ' . $sourceModel . ', column=' . $column . ')'
                     );
                     continue;
                 }
@@ -108,7 +110,8 @@ class SimilarSearchHandler extends AbstractHandler
                 $versionLimit,
                 $bookNum,
                 $chapter,
-                $verse
+                $verse,
+                $column
             ));
         }
 
@@ -139,7 +142,7 @@ class SimilarSearchHandler extends AbstractHandler
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
+        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION, 'model' => $model];
 
         $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -147,7 +150,7 @@ class SimilarSearchHandler extends AbstractHandler
 
     /**
      * @param array<string, mixed> $params
-     * @return array{string, list<string>, int}
+     * @return array{string, list<string>, int, string}
      */
     private function extractParams(array $params): array
     {
@@ -168,7 +171,12 @@ class SimilarSearchHandler extends AbstractHandler
         // boolean (issue #110).
         $versions = SearchUtils::parseVersionsParam($params['version'] ?? '');
 
-        return [$reference, $versions, $limit];
+        // `model=labse|minilm` — default labse. The selected column must be
+        // populated for the source verse, otherwise getVerseEmbedding throws
+        // NotFound.
+        $model = SearchUtils::parseModelParam($params['model'] ?? null);
+
+        return [$reference, $versions, $limit, $model];
     }
 
     /**
@@ -222,21 +230,26 @@ class SimilarSearchHandler extends AbstractHandler
     }
 
     /**
-     * Get the embedding vector for a specific verse.
+     * Get the embedding vector for a specific verse from a specific column.
      *
+     * @param string $column pgvector column to read (one of SearchUtils::EMBEDDING_MODELS).
      * @return string The embedding as a pgvector string
      */
-    private function getVerseEmbedding(\PDO $pdo, string $version, int $bookNum, int $chapter, int $verse): string
+    private function getVerseEmbedding(\PDO $pdo, string $version, int $bookNum, int $chapter, int $verse, string $column): string
     {
+        $this->assertValidColumn($column);
+
         $stmt = $pdo->prepare(
-            'SELECT embedding::text FROM "' . $version . '" WHERE book = ? AND chapter = ? AND verse = ?'
+            'SELECT ' . $column . '::text AS embedding FROM "' . $version . '" '
+            . 'WHERE book = ? AND chapter = ? AND verse = ?'
         );
         $stmt->execute([$bookNum, $chapter, $verse]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!is_array($row) || !isset($row['embedding'])) {
             throw new NotFoundException(
-                'Verse not found or has no embedding: ' . $version . ' book=' . $bookNum
+                'Verse not found or has no embedding (' . $column . '): '
+                . $version . ' book=' . $bookNum
                 . ' chapter=' . $chapter . ' verse=' . $verse
             );
         }
@@ -246,6 +259,7 @@ class SimilarSearchHandler extends AbstractHandler
 
     /**
      * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
+     * @param string $column pgvector column to query (one of SearchUtils::EMBEDDING_MODELS).
      * @return array<int, array<string, mixed>>
      */
     private function searchSimilar(
@@ -256,13 +270,16 @@ class SimilarSearchHandler extends AbstractHandler
         int $limit,
         int $excludeBook,
         int $excludeChapter,
-        int $excludeVerse
+        int $excludeVerse,
+        string $column
     ): array {
-        $sql = 'SELECT *, 1 - (embedding <=> ?::vector) AS score '
+        $this->assertValidColumn($column);
+
+        $sql = 'SELECT *, 1 - (' . $column . ' <=> ?::vector) AS score '
              . 'FROM "' . $version . '" '
-             . 'WHERE embedding IS NOT NULL '
+             . 'WHERE ' . $column . ' IS NOT NULL '
              . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
-             . 'ORDER BY embedding <=> ?::vector '
+             . 'ORDER BY ' . $column . ' <=> ?::vector '
              . 'LIMIT ?';
 
         $stmt = $pdo->prepare($sql);
@@ -340,15 +357,32 @@ class SimilarSearchHandler extends AbstractHandler
         }
     }
 
+
     /**
-     * Get the embedding model name for a version from embedding_metadata.
-     * Returns empty string if no metadata exists.
+     * Defence-in-depth: the column name comes from a closed allowlist
+     * (SearchUtils::EMBEDDING_MODELS) but we still verify the identifier
+     * shape before concatenating it into raw SQL.
      */
-    private function getEmbeddingModel(\PDO $pdo, string $version): string
+    private function assertValidColumn(string $column): void
+    {
+        if (!preg_match('/^[a-z_]+$/', $column)) {
+            throw new InternalServerErrorException('Invalid embedding column identifier.');
+        }
+    }
+
+    /**
+     * Get the embedding model name for a (version, column) pair from
+     * embedding_metadata. Returns empty string if no metadata exists or the
+     * table doesn't exist yet (e.g. migration 004 not applied).
+     */
+    private function getEmbeddingModel(\PDO $pdo, string $version, string $columnName): string
     {
         try {
-            $stmt = $pdo->prepare('SELECT model_name FROM embedding_metadata WHERE version_sigla = ?');
-            $stmt->execute([$version]);
+            $stmt = $pdo->prepare(
+                'SELECT model_name FROM embedding_metadata '
+                . 'WHERE version_sigla = ? AND column_name = ?'
+            );
+            $stmt->execute([$version, $columnName]);
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
             return is_array($row) ? StringUtils::asString($row['model_name'] ?? '') : '';
         } catch (\PDOException) {

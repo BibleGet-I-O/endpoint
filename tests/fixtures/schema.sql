@@ -72,13 +72,20 @@ BEGIN
 END $$;
 
 -- Tracks which embedding model was used for each version's stored embeddings
+-- Per-(version, column) row: migration 012 widened the PK so a single
+-- version can carry metadata for both the legacy `embedding` (MiniLM) and
+-- the newer `embedding_labse` (LaBSE) columns. The default on column_name
+-- preserves source-compat with pre-migration callers that INSERT without
+-- naming it.
 CREATE TABLE IF NOT EXISTS embedding_metadata (
-    version_sigla VARCHAR(20) NOT NULL PRIMARY KEY REFERENCES versions_available(sigla) ON DELETE CASCADE,
+    version_sigla VARCHAR(20) NOT NULL REFERENCES versions_available(sigla) ON DELETE CASCADE,
+    column_name   VARCHAR(50) NOT NULL DEFAULT 'embedding',
     model_name    VARCHAR(100) NOT NULL,
     model_version VARCHAR(50) NOT NULL DEFAULT '',
     dimensions    INT NOT NULL CHECK (dimensions > 0),
     computed_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    content_xor   BYTEA
+    content_xor   BYTEA,
+    PRIMARY KEY (version_sigla, column_name)
 );
 
 -- Trigger function to auto-maintain text_hash on verse tables

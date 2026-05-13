@@ -29,15 +29,19 @@ class SemanticSearchHandler extends AbstractHandler
     private static ?array $cachedValidVersions = null;
 
     private LoggerInterface $logger;
-    private EmbeddingClient $embeddingClient;
+    private ?EmbeddingClient $embeddingClient;
 
     /**
      * @param string[] $requestPathParams
+     * @param EmbeddingClient|null $embeddingClient When non-null, used verbatim
+     *        (e.g. tests injecting a mock service URL); the `model=` param is
+     *        not honoured in that case. When null (production), a model-bound
+     *        client is constructed per request from the validated `model=` slug.
      */
     public function __construct(ResponseFactoryInterface $responseFactory, array $requestPathParams = [], ?EmbeddingClient $embeddingClient = null)
     {
         parent::__construct($responseFactory, $requestPathParams);
-        $this->embeddingClient = $embeddingClient ?? new EmbeddingClient();
+        $this->embeddingClient = $embeddingClient;
     }
 
     /**
@@ -63,7 +67,8 @@ class SemanticSearchHandler extends AbstractHandler
         $contentType = $this->resolveResponseContentType($request, $params);
         $response    = $this->initResponse($request, $contentType);
 
-        [$query, $versions, $limit, $threshold] = $this->extractParams($params);
+        [$query, $versions, $limit, $threshold, $model] = $this->extractParams($params);
+        $column                                         = SearchUtils::modelColumn($model);
 
         $pdo = Connection::getConnection();
 
@@ -74,10 +79,16 @@ class SemanticSearchHandler extends AbstractHandler
             $validatedVersions[] = $validated;
         }
 
+        // Construct a model-specific client unless one was injected (tests).
+        // The injected-client path is the only way to point this handler at a
+        // mock service URL, so we honour it as-is and don't second-guess the
+        // model it was built for.
+        $client = $this->embeddingClient ?? new EmbeddingClient($model);
+
         // Embed the user's query via the Python microservice (once, reused per version)
         $embedStart = microtime(true);
         try {
-            $queryVector = $this->embeddingClient->embed($query);
+            $queryVector = $client->embed($query);
         } catch (ServiceUnavailableException $e) {
             $this->logger->warning('Embedding service unavailable: ' . $e->getMessage());
             throw new ServiceUnavailableException(
@@ -85,13 +96,13 @@ class SemanticSearchHandler extends AbstractHandler
             );
         }
         $embedMs = round(( microtime(true) - $embedStart ) * 1000, 1);
-        $this->logger->info('Embedding latency: ' . $embedMs . 'ms for query: ' . substr($query, 0, 100));
+        $this->logger->info('Embedding latency: ' . $embedMs . 'ms for query: ' . substr($query, 0, 100) . ' (model=' . $model . ')');
 
-        // Warn if stored embeddings were computed with a different model (per version)
-        $serviceModel = $this->embeddingClient->getLastModel();
+        // Warn if stored embeddings were computed with a different model (per version + column)
+        $serviceModel = $client->getLastModel();
         if ($serviceModel !== '') {
             foreach ($validatedVersions as $v) {
-                EmbeddingModelValidator::validate($pdo, $v, $serviceModel, $this->logger);
+                EmbeddingModelValidator::validate($pdo, $v, $serviceModel, $this->logger, $column);
             }
         }
 
@@ -109,7 +120,8 @@ class SemanticSearchHandler extends AbstractHandler
                 $queryVector,
                 $versionIndexes[$v],
                 $limit,
-                $threshold
+                $threshold,
+                $column
             ));
         }
         // Global ordering by score DESC across versions, then trim to limit.
@@ -135,12 +147,12 @@ class SemanticSearchHandler extends AbstractHandler
         SearchUtils::assignCanonicalOrder($allResults);
 
         $dbMs = round(( microtime(true) - $dbStart ) * 1000, 1);
-        $this->logger->info('Similarity search latency: ' . $dbMs . 'ms (' . count($allResults) . ' results)');
+        $this->logger->info('Similarity search latency: ' . $dbMs . 'ms (' . count($allResults) . ' results, column=' . $column . ')');
 
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
+        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION, 'model' => $model];
 
         $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -148,7 +160,7 @@ class SemanticSearchHandler extends AbstractHandler
 
     /**
      * @param array<string, mixed> $params
-     * @return array{string, list<string>, int, float}
+     * @return array{string, list<string>, int, float, string}
      */
     private function extractParams(array $params): array
     {
@@ -170,7 +182,13 @@ class SemanticSearchHandler extends AbstractHandler
         // Comma-separated `version=A,B,C` (single value still accepted).
         $versions = SearchUtils::parseVersionsParam($params['version'] ?? '');
 
-        return [$query, $versions, $limit, $threshold];
+        // `model=labse|minilm` — default labse (better cross-lingual results,
+        // adopted after the A/B experiment in discussion #107). Clients that
+        // hardcoded a MiniLM-calibrated threshold should pass `model=minilm`
+        // explicitly until they re-tune.
+        $model = SearchUtils::parseModelParam($params['model'] ?? null);
+
+        return [$query, $versions, $limit, $threshold, $model];
     }
 
     private function validateVersion(\PDO $pdo, string $version): string
@@ -203,17 +221,25 @@ class SemanticSearchHandler extends AbstractHandler
     /**
      * @param float[] $queryVector
      * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
+     * @param string $column pgvector column to query (one of SearchUtils::EMBEDDING_MODELS values).
      * @return array<int, array<string, mixed>>
      */
-    private function executeSimilaritySearch(\PDO $pdo, string $version, array $queryVector, array $versionIndex, int $limit, float $threshold): array
+    private function executeSimilaritySearch(\PDO $pdo, string $version, array $queryVector, array $versionIndex, int $limit, float $threshold, string $column): array
     {
+        // Column name comes from SearchUtils::EMBEDDING_MODELS via modelColumn(),
+        // a closed allowlist — but assert format here too so a future map entry
+        // can't smuggle SQL through this concatenation.
+        if (!preg_match('/^[a-z_]+$/', $column)) {
+            throw new InternalServerErrorException('Invalid embedding column identifier.');
+        }
+
         $vectorStr = '[' . implode(',', $queryVector) . ']';
 
-        $sql = 'SELECT *, 1 - (embedding <=> ?::vector) AS score '
+        $sql = 'SELECT *, 1 - (' . $column . ' <=> ?::vector) AS score '
              . 'FROM "' . $version . '" '
-             . 'WHERE embedding IS NOT NULL '
-             . 'AND 1 - (embedding <=> ?::vector) >= ? '
-             . 'ORDER BY embedding <=> ?::vector '
+             . 'WHERE ' . $column . ' IS NOT NULL '
+             . 'AND 1 - (' . $column . ' <=> ?::vector) >= ? '
+             . 'ORDER BY ' . $column . ' <=> ?::vector '
              . 'LIMIT ?';
 
         $stmt = $pdo->prepare($sql);

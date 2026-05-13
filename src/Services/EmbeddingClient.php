@@ -6,6 +6,7 @@ namespace BibleGet\Api\Services;
 
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
+use BibleGet\Api\Util\SearchUtils;
 
 /**
  * Client for the Python embedding microservice.
@@ -13,41 +14,82 @@ use BibleGet\Api\Http\Exception\ServiceUnavailableException;
  * Calls the FastAPI service to vectorize text for pgvector similarity search.
  * Includes a circuit breaker that trips open after repeated failures and
  * short-circuits to a 503 for a cooldown period, avoiding unnecessary load.
+ *
+ * Per `SearchUtils::EMBEDDING_MODELS`, the client is bound to a specific model
+ * slug at construction (`labse` by default). Each model has its own FastAPI
+ * service (different port, different sentence-transformers model) so the URL
+ * is resolved from a per-model env var.
  */
 class EmbeddingClient
 {
     private const FAILURE_THRESHOLD = 5;
     private const COOLDOWN_SECONDS  = 30;
 
-    private const APCU_KEY_FAILURES   = 'bibleget:embedding_cb:failures';
-    private const APCU_KEY_OPEN_SINCE = 'bibleget:embedding_cb:open_since';
+    // Per-model APCu key prefixes — the model slug is appended at use-time so
+    // a failing LaBSE service can't trip the breaker for MiniLM (and vice
+    // versa). Each model talks to a different FastAPI process on a different
+    // port; their availability is independent.
+    private const APCU_KEY_FAILURES_PREFIX   = 'bibleget:embedding_cb:failures:';
+    private const APCU_KEY_OPEN_SINCE_PREFIX = 'bibleget:embedding_cb:open_since:';
 
     private string $baseUrl;
+    private string $modelSlug;
 
-    /** Fallback failure count when APCu is unavailable. */
-    private static int $failures = 0;
+    /**
+     * Fallback failure counts when APCu is unavailable. Keyed by model slug
+     * to keep per-model breaker state isolated.
+     *
+     * @var array<string, int>
+     */
+    private static array $failures = [];
 
-    /** Fallback open-since timestamp when APCu is unavailable. */
-    private static float $openSince = 0.0;
+    /**
+     * Fallback open-since timestamps when APCu is unavailable, keyed by slug.
+     *
+     * @var array<string, float>
+     */
+    private static array $openSince = [];
 
     /** Model name from the last successful embed() response. */
     private string $lastModel = '';
 
-    public function __construct(?string $baseUrl = null)
+    /**
+     * @param string $modelSlug `labse` or `minilm` (see SearchUtils::EMBEDDING_MODELS).
+     * @param string|null $baseUrl Override the resolved URL (testing only).
+     */
+    public function __construct(string $modelSlug = SearchUtils::DEFAULT_EMBEDDING_MODEL, ?string $baseUrl = null)
     {
-        $this->baseUrl = $baseUrl ?? self::resolveBaseUrl();
+        if (!isset(SearchUtils::EMBEDDING_MODELS[$modelSlug])) {
+            throw new \InvalidArgumentException('Unknown embedding model slug: ' . $modelSlug);
+        }
+        $this->modelSlug = $modelSlug;
+        $this->baseUrl   = $baseUrl ?? self::resolveBaseUrl($modelSlug);
     }
 
     /**
-     * Reset the circuit breaker state (for testing only).
+     * Public accessor for the model slug this client is bound to.
+     * Used by handlers to look up the matching pgvector column / metadata row.
+     */
+    public function getModelSlug(): string
+    {
+        return $this->modelSlug;
+    }
+
+    /**
+     * Reset circuit-breaker state for every model (for testing only). Clears
+     * both APCu entries and the in-process fallback maps for all slugs
+     * declared in `SearchUtils::EMBEDDING_MODELS` so a single call wipes
+     * the breaker regardless of which models the test exercised.
      */
     public static function resetCircuitBreaker(): void
     {
-        self::$failures  = 0;
-        self::$openSince = 0.0;
+        self::$failures  = [];
+        self::$openSince = [];
         if (self::hasApcu()) {
-            apcu_delete(self::APCU_KEY_FAILURES);
-            apcu_delete(self::APCU_KEY_OPEN_SINCE);
+            foreach (array_keys(SearchUtils::EMBEDDING_MODELS) as $slug) {
+                apcu_delete(self::APCU_KEY_FAILURES_PREFIX . $slug);
+                apcu_delete(self::APCU_KEY_OPEN_SINCE_PREFIX . $slug);
+            }
         }
     }
 
@@ -56,46 +98,58 @@ class EmbeddingClient
         return function_exists('apcu_store') && apcu_enabled();
     }
 
-    private static function getFailures(): int
+    private function apcuFailuresKey(): string
+    {
+        return self::APCU_KEY_FAILURES_PREFIX . $this->modelSlug;
+    }
+
+    private function apcuOpenSinceKey(): string
+    {
+        return self::APCU_KEY_OPEN_SINCE_PREFIX . $this->modelSlug;
+    }
+
+    private function getFailures(): int
     {
         if (self::hasApcu()) {
-            $val = apcu_fetch(self::APCU_KEY_FAILURES);
+            $val = apcu_fetch($this->apcuFailuresKey());
             return is_int($val) ? $val : 0;
         }
-        return self::$failures;
+        return self::$failures[$this->modelSlug] ?? 0;
     }
 
-    private static function setFailures(int $count): void
+    private function setFailures(int $count): void
     {
         if (self::hasApcu()) {
-            apcu_store(self::APCU_KEY_FAILURES, $count, self::COOLDOWN_SECONDS * 2);
+            apcu_store($this->apcuFailuresKey(), $count, self::COOLDOWN_SECONDS * 2);
         }
-        self::$failures = $count;
+        self::$failures[$this->modelSlug] = $count;
     }
 
-    private static function getOpenSince(): float
+    private function getOpenSince(): float
     {
         if (self::hasApcu()) {
-            $val = apcu_fetch(self::APCU_KEY_OPEN_SINCE);
+            $val = apcu_fetch($this->apcuOpenSinceKey());
             return is_float($val) ? $val : 0.0;
         }
-        return self::$openSince;
+        return self::$openSince[$this->modelSlug] ?? 0.0;
     }
 
-    private static function setOpenSince(float $timestamp): void
+    private function setOpenSince(float $timestamp): void
     {
         if (self::hasApcu()) {
             if ($timestamp === 0.0) {
-                apcu_delete(self::APCU_KEY_OPEN_SINCE);
+                apcu_delete($this->apcuOpenSinceKey());
             } else {
-                apcu_store(self::APCU_KEY_OPEN_SINCE, $timestamp, self::COOLDOWN_SECONDS * 2);
+                apcu_store($this->apcuOpenSinceKey(), $timestamp, self::COOLDOWN_SECONDS * 2);
             }
         }
-        self::$openSince = $timestamp;
+        self::$openSince[$this->modelSlug] = $timestamp;
     }
 
     /**
-     * Embed a single text string into a 384-dimensional vector.
+     * Embed a single text string into a vector. The returned array's length
+     * depends on the model this client is bound to (`$this->modelSlug`):
+     * 384 for `minilm`, 768 for `labse`.
      *
      * @return float[]
      */
@@ -179,7 +233,7 @@ class EmbeddingClient
      */
     private function checkCircuit(): void
     {
-        $openSince = self::getOpenSince();
+        $openSince = $this->getOpenSince();
         if ($openSince === 0.0) {
             return; // Circuit is closed
         }
@@ -194,22 +248,22 @@ class EmbeddingClient
 
         // Cooldown elapsed — transition to half-open (allow one probe request)
         // Reset openSince so only one request goes through; if it fails, recordFailure re-trips
-        self::setOpenSince(0.0);
+        $this->setOpenSince(0.0);
     }
 
     private function recordFailure(): void
     {
-        $failures = self::getFailures() + 1;
-        self::setFailures($failures);
+        $failures = $this->getFailures() + 1;
+        $this->setFailures($failures);
         if ($failures >= self::FAILURE_THRESHOLD) {
-            self::setOpenSince(microtime(true));
+            $this->setOpenSince(microtime(true));
         }
     }
 
     private function recordSuccess(): void
     {
-        self::setFailures(0);
-        self::setOpenSince(0.0);
+        $this->setFailures(0);
+        $this->setOpenSince(0.0);
     }
 
     /**
@@ -223,6 +277,9 @@ class EmbeddingClient
             throw new InternalServerErrorException('Failed to encode embedding request.');
         }
 
+        // Since PHP 8.0 cURL handles are objects, freed automatically when $ch
+        // falls out of scope; curl_close() is a no-op and deprecated as of PHP
+        // 8.4 (slated for removal).
         $ch = curl_init($url);
         if ($ch === false) {
             throw new InternalServerErrorException('Failed to initialize cURL for embedding service.');
@@ -237,13 +294,10 @@ class EmbeddingClient
 
         $raw = curl_exec($ch);
         if ($raw === false) {
-            $error = curl_error($ch);
-            curl_close($ch);
-            throw new ServiceUnavailableException('Embedding service unavailable: ' . $error);
+            throw new ServiceUnavailableException('Embedding service unavailable: ' . curl_error($ch));
         }
 
         $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($statusCode === 503) {
             throw new ServiceUnavailableException(
@@ -273,6 +327,7 @@ class EmbeddingClient
     {
         $url = rtrim($this->baseUrl, '/') . $path;
 
+        // See post() for the rationale on dropping curl_close().
         $ch = curl_init($url);
         if ($ch === false) {
             throw new InternalServerErrorException('Failed to initialize cURL for embedding service.');
@@ -284,13 +339,10 @@ class EmbeddingClient
 
         $raw = curl_exec($ch);
         if ($raw === false) {
-            $error = curl_error($ch);
-            curl_close($ch);
-            throw new ServiceUnavailableException('Embedding service unavailable: ' . $error);
+            throw new ServiceUnavailableException('Embedding service unavailable: ' . curl_error($ch));
         }
 
         $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($statusCode === 503) {
             throw new ServiceUnavailableException(
@@ -313,26 +365,54 @@ class EmbeddingClient
         return $decoded;
     }
 
-    private static function resolveBaseUrl(): string
+    /**
+     * Resolve the FastAPI service URL for a given model slug.
+     *
+     * Lookup order:
+     *   1. Per-model env var (`EMBEDDING_SERVICE_URL_LABSE` / `..._MINILM`)
+     *   2. Legacy `EMBEDDING_SERVICE_URL` — only honoured for the `minilm`
+     *      slug, since live deployments that predate the LaBSE split point
+     *      that variable at the MiniLM service. Honouring it for `labse`
+     *      would silently route LaBSE queries to MiniLM vectors.
+     *   3. Per-model dev default (port 8000 for MiniLM, 8002 for LaBSE).
+     */
+    private static function resolveBaseUrl(string $modelSlug): string
     {
-        foreach (['$_ENV', '$_SERVER', 'getenv'] as $source) {
-            if ($source === 'getenv') {
-                $val = getenv('EMBEDDING_SERVICE_URL');
-                if ($val !== false && $val !== '') {
-                    return $val;
-                }
-            } elseif ($source === '$_ENV') {
-                if (isset($_ENV['EMBEDDING_SERVICE_URL']) && is_string($_ENV['EMBEDDING_SERVICE_URL']) && $_ENV['EMBEDDING_SERVICE_URL'] !== '') {
-                    return $_ENV['EMBEDDING_SERVICE_URL'];
-                }
-            } else {
-                if (isset($_SERVER['EMBEDDING_SERVICE_URL']) && is_string($_SERVER['EMBEDDING_SERVICE_URL']) && $_SERVER['EMBEDDING_SERVICE_URL'] !== '') {
-                    return $_SERVER['EMBEDDING_SERVICE_URL'];
-                }
+        $modelConfig = SearchUtils::EMBEDDING_MODELS[$modelSlug];
+        $envName     = $modelConfig['service_env'];
+
+        $primary = self::readEnv($envName);
+        if ($primary !== null) {
+            return $primary;
+        }
+
+        if ($modelSlug === 'minilm') {
+            $legacy = self::readEnv('EMBEDDING_SERVICE_URL');
+            if ($legacy !== null) {
+                return $legacy;
             }
         }
 
-        // Default for local development
-        return 'http://localhost:8001';
+        return $modelConfig['default_url'];
+    }
+
+    /**
+     * Read an env var across the three PHP-SAPI surfaces, returning the first
+     * non-empty value or null. Centralised so resolveBaseUrl reads each
+     * variable consistently.
+     */
+    private static function readEnv(string $name): ?string
+    {
+        if (isset($_ENV[$name]) && is_string($_ENV[$name]) && $_ENV[$name] !== '') {
+            return $_ENV[$name];
+        }
+        if (isset($_SERVER[$name]) && is_string($_SERVER[$name]) && $_SERVER[$name] !== '') {
+            return $_SERVER[$name];
+        }
+        $val = getenv($name);
+        if (is_string($val) && $val !== '') {
+            return $val;
+        }
+        return null;
     }
 }

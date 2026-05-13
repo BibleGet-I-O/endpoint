@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Services;
 
+use BibleGet\Api\Util\SearchUtils;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -13,29 +14,53 @@ use Psr\Log\LoggerInterface;
 class EmbeddingModelValidator
 {
     /**
-     * Check that the embedding model used for the given version matches the
-     * model reported by the embedding service, and that verse content has not
-     * changed since embeddings were computed. Logs warnings on mismatches
-     * but does not throw — results may be degraded but are still usable.
+     * Check that the embedding model used for the given (version, column) pair
+     * matches the model reported by the embedding service, and that verse
+     * content has not changed since embeddings were computed. Logs warnings on
+     * mismatches but does not throw — results may be degraded but are still
+     * usable.
+     *
+     * Migration 012 widened the embedding_metadata primary key to
+     * (version_sigla, column_name) so that the `embedding` (MiniLM) and
+     * `embedding_labse` (LaBSE) columns can each carry their own metadata
+     * row per version. Callers must pass the column name they actually
+     * queried so the right row is checked.
      *
      * @param string $serviceModel Model name from the embedding service response
+     * @param string $columnName   pgvector column queried; must be one of the
+     *                             columns declared in
+     *                             `SearchUtils::EMBEDDING_MODELS`. Defaults to
+     *                             `embedding` for callers that pre-date the
+     *                             LaBSE split.
+     * @throws \InvalidArgumentException when $columnName is not whitelisted.
      */
     public static function validate(
         \PDO $pdo,
         string $version,
         string $serviceModel,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        string $columnName = 'embedding'
     ): void {
+        $allowedColumns = array_column(SearchUtils::EMBEDDING_MODELS, 'column');
+        if (!in_array($columnName, $allowedColumns, true)) {
+            throw new \InvalidArgumentException(
+                'Unsupported embedding column: ' . $columnName
+                . '. Allowed: ' . implode(', ', $allowedColumns)
+            );
+        }
+
         $stmt = $pdo->prepare(
-            'SELECT model_name, content_xor FROM embedding_metadata WHERE version_sigla = ?'
+            'SELECT model_name, content_xor FROM embedding_metadata '
+            . 'WHERE version_sigla = ? AND column_name = ?'
         );
-        $stmt->execute([$version]);
+        $stmt->execute([$version, $columnName]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!is_array($row)) {
             $logger->warning(
                 'No embedding metadata found for version ' . $version
-                . '. Embeddings may not have been computed yet.'
+                . ' (column ' . $columnName . '). '
+                . 'Embeddings may not have been computed yet.'
             );
             return;
         }
@@ -43,14 +68,14 @@ class EmbeddingModelValidator
         $storedModel = $row['model_name'] ?? '';
         if (is_string($storedModel) && $storedModel !== '' && $storedModel !== $serviceModel) {
             $logger->warning(
-                'Embedding model mismatch for version ' . $version . ': '
+                'Embedding model mismatch for version ' . $version
+                . ' (column ' . $columnName . '): '
                 . 'stored embeddings use "' . $storedModel . '", '
                 . 'but the embedding service uses "' . $serviceModel . '". '
                 . 'Results may be degraded. Re-run compute_embeddings.py to reindex.'
             );
         }
 
-        // Check content staleness via XOR fingerprint
         /** @var array<string, mixed> $row */
         self::checkContentStaleness($pdo, $version, $row, $logger);
     }

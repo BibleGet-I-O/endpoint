@@ -74,7 +74,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         $this->expectExceptionMessage('Invalid reference format');
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'invalid', 'version' => 'TEST1']);
+            ->withQueryParams(['reference' => 'invalid', 'version' => 'TEST1', 'model' => 'minilm']);
         $handler->handle($request);
     }
 
@@ -84,7 +84,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         $this->expectExceptionMessage('Unknown book');
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'Xyz1:1', 'version' => 'TEST1']);
+            ->withQueryParams(['reference' => 'Xyz1:1', 'version' => 'TEST1', 'model' => 'minilm']);
         $handler->handle($request);
     }
 
@@ -94,7 +94,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         $this->expectException(NotFoundException::class);
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'Gen1:10', 'version' => 'TEST1']);
+            ->withQueryParams(['reference' => 'Gen1:10', 'version' => 'TEST1', 'model' => 'minilm']);
         $handler->handle($request);
     }
 
@@ -111,7 +111,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
     {
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1', 'limit' => '5']);
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1', 'limit' => '5', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         self::assertSame(200, $response->getStatusCode());
@@ -126,7 +126,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
     {
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1']);
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         $body     = json_decode((string) $response->getBody(), true);
@@ -143,7 +143,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
     {
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1']);
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         $body     = json_decode((string) $response->getBody(), true);
@@ -164,7 +164,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
     {
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1']);
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         $body     = json_decode((string) $response->getBody(), true);
@@ -186,7 +186,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
 
         $handler = $this->createHandler();
         $request = ( new ServerRequest('GET', '/v3/search/similar') )
-            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1,TEST2', 'limit' => '20']);
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1,TEST2', 'limit' => '20', 'model' => 'minilm']);
 
         $response = $handler->handle($request);
         self::assertSame(200, $response->getStatusCode());
@@ -221,6 +221,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
                 'version'      => 'TEST1',
                 'crossversion' => 'true',
                 'limit'        => '20',
+                'model'        => 'minilm',
             ]);
 
         $response = $handler->handle($request);
@@ -228,5 +229,64 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         self::assertIsArray($body);
         $versionsSeen = array_unique(array_column($body['results'], 'version'));
         self::assertSame(['TEST1'], array_values($versionsSeen));
+    }
+
+
+    // ── Model parameter ─────────────────────────────────────
+
+    public function testInvalidModelRejected(): void
+    {
+        $handler = $this->createHandler();
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('Invalid model');
+        $request = ( new ServerRequest('GET', '/v3/search/similar') )
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1', 'model' => 'gpt-x']);
+        $handler->handle($request);
+    }
+
+    public function testDefaultModelIsLabseAndReadsLabseColumn(): void
+    {
+        $pdo = $this->getConnection();
+        // Isolate the fixture so the test fails if routing reads `embedding`
+        // instead of `embedding_labse`: setUp() seeds the MiniLM column on
+        // the same verses 1/2/3, so without this clear, a misrouted read
+        // would silently return rows and the test would pass.
+        $pdo->exec('UPDATE "TEST1" SET embedding = NULL');
+
+        // Seed embedding_labse on three verses so the source-verse lookup
+        // succeeds, the target column has rows to compare, and exclusion of
+        // the source row can be observed.
+        $v1 = '[' . implode(',', array_fill(0, 768, 0.1)) . ']';
+        $v2 = '[' . implode(',', array_fill(0, 768, 0.2)) . ']';
+        $v3 = '[' . implode(',', array_fill(0, 768, -0.1)) . ']';
+        $pdo->exec('UPDATE "TEST1" SET embedding_labse = \'' . $v1 . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
+        $pdo->exec('UPDATE "TEST1" SET embedding_labse = \'' . $v2 . '\' WHERE book = 1 AND chapter = 1 AND verse = 2');
+        $pdo->exec('UPDATE "TEST1" SET embedding_labse = \'' . $v3 . '\' WHERE book = 1 AND chapter = 1 AND verse = 3');
+
+        $handler = $this->createHandler();
+        // No model param → default labse → reads embedding_labse column.
+        $request = ( new ServerRequest('GET', '/v3/search/similar') )
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1', 'limit' => '5']);
+
+        $response = $handler->handle($request);
+        $body     = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertSame('labse', $body['info']['model']);
+        self::assertNotEmpty($body['results']);
+    }
+
+    public function testLabseDefaultThrowsNotFoundWhenSourceColumnEmpty(): void
+    {
+        // setUp() only seeds the `embedding` (MiniLM) column. With the
+        // default model=labse, the source verse's embedding_labse is NULL,
+        // so getVerseEmbedding should yield a 404.
+        $pdo = $this->getConnection();
+        $pdo->exec('UPDATE "TEST1" SET embedding_labse = NULL');
+
+        $this->expectException(NotFoundException::class);
+        $handler = $this->createHandler();
+        $request = ( new ServerRequest('GET', '/v3/search/similar') )
+            ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1']);
+        $handler->handle($request);
     }
 }

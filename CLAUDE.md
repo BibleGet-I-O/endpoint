@@ -171,44 +171,59 @@ Runs as user-level systemd under a dedicated unprivileged user — **no Docker**
   (`sudo loginctl enable-linger bibleget-embed`) so user-systemd persists
   without an active login.
 - **Code:** `~bibleget-embed/embedding/` — `main.py`, `requirements.txt`,
-  `bibleget-embedding.service`, plus `venv/` (excluded from rsync deploy).
-  Directory is mode 700, not readable by `ubuntu` without sudo.
+  both `bibleget-embedding{,-labse}.service` files, plus `venv/` (excluded
+  from rsync deploy). Directory is mode 700, not readable by `ubuntu`
+  without sudo.
 - **Venv:** `~bibleget-embed/embedding/venv/`. Refreshed by the deploy
   workflow via `pip install --upgrade --upgrade-strategy only-if-needed`.
-- **Model cache:** `~bibleget-embed/.cache/huggingface/` (`HF_HOME`).
-  Model files persist across deploys; first-startup download is ~470 MB
-  for MiniLM, ~1.8 GB for LaBSE.
-- **Unit file:** `~bibleget-embed/.config/systemd/user/bibleget-embedding.service`
-  (sourced from `services/embedding/bibleget-embedding.service` in this repo).
-- **Listen:** `127.0.0.1:8000` — never reachable from outside the VPS. The
-  PHP API on the same host hits it via `EMBEDDING_SERVICE_URL`.
-- **Current model:** whatever `Environment=EMBEDDING_MODEL=…` is set to in
-  the unit file. As of 2026-05, that's `paraphrase-multilingual-MiniLM-L12-v2`.
+  Shared by both services — requirements.txt is identical; only
+  `EMBEDDING_MODEL` differs between the two unit files.
+- **Model cache:** `~bibleget-embed/.cache/huggingface/` (`HF_HOME`),
+  shared by both services. Files persist across deploys; first-startup
+  download is ~470 MB for MiniLM, ~1.8 GB for LaBSE.
+- **Two parallel services** (one venv, one model cache, distinct ports):
+  - `bibleget-embedding.service` — MiniLM
+    (`paraphrase-multilingual-MiniLM-L12-v2`) on `127.0.0.1:8000`. PHP
+    API reads via `EMBEDDING_SERVICE_URL_MINILM` (legacy
+    `EMBEDDING_SERVICE_URL` is honoured as a fallback for MiniLM only).
+    Backs the `embedding` column.
+  - `bibleget-embedding-labse.service` — LaBSE
+    (`sentence-transformers/LaBSE` @ pinned revision in `main.py`) on
+    `127.0.0.1:8002`. PHP API reads via `EMBEDDING_SERVICE_URL_LABSE`.
+    Backs the `embedding_labse` column. **Default model** for
+    `/v3/search/{semantic,similar}` requests that omit `model=`.
+- **Unit files:**
+  `~bibleget-embed/.config/systemd/user/bibleget-embedding{,-labse}.service`
+  (sourced from the matching files under `services/embedding/` in this
+  repo).
 
-**Manage the service from `ubuntu`:**
+**Manage the services from `ubuntu`:**
 
 ```bash
 # Status / logs / restart — user-systemd via sudo
+# (substitute bibleget-embedding-labse for the LaBSE service)
 sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
-    systemctl --user status bibleget-embedding
+    systemctl --user status bibleget-embedding bibleget-embedding-labse
 sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
     journalctl --user -u bibleget-embedding -n 50
 sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
-    systemctl --user restart bibleget-embedding
+    systemctl --user restart bibleget-embedding bibleget-embedding-labse
 ```
 
 ### Deploy workflows (manual, `workflow_dispatch`)
 
 - **`.github/workflows/deploy.yaml`** — deploys the PHP API. Skips any tag
   lacking `composer.json` so legacy hotfix tags don't accidentally ship.
-- **`.github/workflows/deploy-embedding.yaml`** — deploys the embedding
-  microservice:
-  1. Checks out `development`, verifies `services/embedding/{main.py,requirements.txt,bibleget-embedding.service}` exist.
+- **`.github/workflows/deploy-embedding.yaml`** — deploys **both** embedding
+  microservices (MiniLM + LaBSE) in a single run, sharing one venv:
+  1. Checks out `development`, verifies
+     `services/embedding/{main.py,requirements.txt,bibleget-embedding.service,bibleget-embedding-labse.service}` exist.
   2. `rsync --delete services/embedding/ → bibleget-embed@VPS:embedding/`,
      excluding `Dockerfile`, `README.md`, `venv/`, `.cache/`, `__pycache__`.
-  3. If the unit file changed: copy to `~/.config/systemd/user/`,
-     `daemon-reload`, `enable`.
+  3. For each of the two unit files: if it changed, copy to
+     `~/.config/systemd/user/`. Then `daemon-reload` and `enable` both.
   4. `pip install --upgrade-strategy only-if-needed -r requirements.txt`
-     inside the venv.
-  5. `systemctl --user restart bibleget-embedding`, then 10×3s health-poll
-     against `http://127.0.0.1:8000/health` looking for `"ready":true`.
+     inside the shared venv.
+  5. `systemctl --user restart` both services, then health-poll:
+     10×3s on `:8000/health` (MiniLM), 30×3s on `:8002/health` (LaBSE —
+     longer because cold-loading LaBSE takes longer than MiniLM).
