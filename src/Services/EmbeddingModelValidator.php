@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Services;
 
+use BibleGet\Api\Util\SearchUtils;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,9 +27,12 @@ class EmbeddingModelValidator
      * queried so the right row is checked.
      *
      * @param string $serviceModel Model name from the embedding service response
-     * @param string $columnName   pgvector column queried (e.g. `embedding`,
-     *                             `embedding_labse`); selects which metadata
-     *                             row is validated.
+     * @param string $columnName   pgvector column queried; must be one of the
+     *                             columns declared in
+     *                             `SearchUtils::EMBEDDING_MODELS`. Defaults to
+     *                             `embedding` for callers that pre-date the
+     *                             LaBSE split.
+     * @throws \InvalidArgumentException when $columnName is not whitelisted.
      */
     public static function validate(
         \PDO $pdo,
@@ -37,6 +41,14 @@ class EmbeddingModelValidator
         LoggerInterface $logger,
         string $columnName = 'embedding'
     ): void {
+        $allowedColumns = array_column(SearchUtils::EMBEDDING_MODELS, 'column');
+        if (!in_array($columnName, $allowedColumns, true)) {
+            throw new \InvalidArgumentException(
+                'Unsupported embedding column: ' . $columnName
+                . '. Allowed: ' . implode(', ', $allowedColumns)
+            );
+        }
+
         $stmt = $pdo->prepare(
             'SELECT model_name, content_xor FROM embedding_metadata '
             . 'WHERE version_sigla = ? AND column_name = ?'

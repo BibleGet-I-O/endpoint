@@ -768,9 +768,7 @@
                         "description": "Embedding model to use. `labse` (default, sentence-transformers/LaBSE — best cross-lingual results) reads from the `embedding_labse` column. `minilm` (legacy paraphrase-multilingual-MiniLM-L12-v2, kept available as a secondary model) reads from the `embedding` column. The two models have different similarity-score distributions — see the `threshold` parameter.",
                         "required": false,
                         "schema": {
-                            "type": "string",
-                            "default": "labse",
-                            "enum": ["labse", "minilm"]
+                            "$ref": "#/components/schemas/EmbeddingModel"
                         }
                     },
                     {
@@ -853,9 +851,7 @@
                         "description": "Embedding column to read. `labse` (default) reads from `embedding_labse` — sentence-transformers/LaBSE, better cross-lingual results. `minilm` reads from `embedding` — legacy paraphrase-multilingual-MiniLM-L12-v2. The source verse's vector and all target rows are read from the same column, so both must be populated for the (version, model) pair; versions whose chosen column is empty are skipped silently, and a missing source-verse vector yields a 404.",
                         "required": false,
                         "schema": {
-                            "type": "string",
-                            "default": "labse",
-                            "enum": ["labse", "minilm"]
+                            "$ref": "#/components/schemas/EmbeddingModel"
                         }
                     },
                     {
@@ -885,6 +881,12 @@
     },
     "components": {
         "schemas": {
+            "EmbeddingModel": {
+                "type": "string",
+                "default": "labse",
+                "enum": ["labse", "minilm"],
+                "description": "Selects which sentence-transformers model (and matching pgvector column) backs a semantic / similar search request. `labse` (default) — sentence-transformers/LaBSE, reads `embedding_labse`. `minilm` — paraphrase-multilingual-MiniLM-L12-v2, reads `embedding`."
+            },
             "BibleQuotePOST": {
                 "type": "object",
                 "properties": {

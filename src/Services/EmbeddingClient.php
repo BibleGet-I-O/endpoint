@@ -25,17 +25,30 @@ class EmbeddingClient
     private const FAILURE_THRESHOLD = 5;
     private const COOLDOWN_SECONDS  = 30;
 
-    private const APCU_KEY_FAILURES   = 'bibleget:embedding_cb:failures';
-    private const APCU_KEY_OPEN_SINCE = 'bibleget:embedding_cb:open_since';
+    // Per-model APCu key prefixes — the model slug is appended at use-time so
+    // a failing LaBSE service can't trip the breaker for MiniLM (and vice
+    // versa). Each model talks to a different FastAPI process on a different
+    // port; their availability is independent.
+    private const APCU_KEY_FAILURES_PREFIX   = 'bibleget:embedding_cb:failures:';
+    private const APCU_KEY_OPEN_SINCE_PREFIX = 'bibleget:embedding_cb:open_since:';
 
     private string $baseUrl;
     private string $modelSlug;
 
-    /** Fallback failure count when APCu is unavailable. */
-    private static int $failures = 0;
+    /**
+     * Fallback failure counts when APCu is unavailable. Keyed by model slug
+     * to keep per-model breaker state isolated.
+     *
+     * @var array<string, int>
+     */
+    private static array $failures = [];
 
-    /** Fallback open-since timestamp when APCu is unavailable. */
-    private static float $openSince = 0.0;
+    /**
+     * Fallback open-since timestamps when APCu is unavailable, keyed by slug.
+     *
+     * @var array<string, float>
+     */
+    private static array $openSince = [];
 
     /** Model name from the last successful embed() response. */
     private string $lastModel = '';
@@ -63,15 +76,20 @@ class EmbeddingClient
     }
 
     /**
-     * Reset the circuit breaker state (for testing only).
+     * Reset circuit-breaker state for every model (for testing only). Clears
+     * both APCu entries and the in-process fallback maps for all slugs
+     * declared in `SearchUtils::EMBEDDING_MODELS` so a single call wipes
+     * the breaker regardless of which models the test exercised.
      */
     public static function resetCircuitBreaker(): void
     {
-        self::$failures  = 0;
-        self::$openSince = 0.0;
+        self::$failures  = [];
+        self::$openSince = [];
         if (self::hasApcu()) {
-            apcu_delete(self::APCU_KEY_FAILURES);
-            apcu_delete(self::APCU_KEY_OPEN_SINCE);
+            foreach (array_keys(SearchUtils::EMBEDDING_MODELS) as $slug) {
+                apcu_delete(self::APCU_KEY_FAILURES_PREFIX . $slug);
+                apcu_delete(self::APCU_KEY_OPEN_SINCE_PREFIX . $slug);
+            }
         }
     }
 
@@ -80,46 +98,58 @@ class EmbeddingClient
         return function_exists('apcu_store') && apcu_enabled();
     }
 
-    private static function getFailures(): int
+    private function apcuFailuresKey(): string
+    {
+        return self::APCU_KEY_FAILURES_PREFIX . $this->modelSlug;
+    }
+
+    private function apcuOpenSinceKey(): string
+    {
+        return self::APCU_KEY_OPEN_SINCE_PREFIX . $this->modelSlug;
+    }
+
+    private function getFailures(): int
     {
         if (self::hasApcu()) {
-            $val = apcu_fetch(self::APCU_KEY_FAILURES);
+            $val = apcu_fetch($this->apcuFailuresKey());
             return is_int($val) ? $val : 0;
         }
-        return self::$failures;
+        return self::$failures[$this->modelSlug] ?? 0;
     }
 
-    private static function setFailures(int $count): void
+    private function setFailures(int $count): void
     {
         if (self::hasApcu()) {
-            apcu_store(self::APCU_KEY_FAILURES, $count, self::COOLDOWN_SECONDS * 2);
+            apcu_store($this->apcuFailuresKey(), $count, self::COOLDOWN_SECONDS * 2);
         }
-        self::$failures = $count;
+        self::$failures[$this->modelSlug] = $count;
     }
 
-    private static function getOpenSince(): float
+    private function getOpenSince(): float
     {
         if (self::hasApcu()) {
-            $val = apcu_fetch(self::APCU_KEY_OPEN_SINCE);
+            $val = apcu_fetch($this->apcuOpenSinceKey());
             return is_float($val) ? $val : 0.0;
         }
-        return self::$openSince;
+        return self::$openSince[$this->modelSlug] ?? 0.0;
     }
 
-    private static function setOpenSince(float $timestamp): void
+    private function setOpenSince(float $timestamp): void
     {
         if (self::hasApcu()) {
             if ($timestamp === 0.0) {
-                apcu_delete(self::APCU_KEY_OPEN_SINCE);
+                apcu_delete($this->apcuOpenSinceKey());
             } else {
-                apcu_store(self::APCU_KEY_OPEN_SINCE, $timestamp, self::COOLDOWN_SECONDS * 2);
+                apcu_store($this->apcuOpenSinceKey(), $timestamp, self::COOLDOWN_SECONDS * 2);
             }
         }
-        self::$openSince = $timestamp;
+        self::$openSince[$this->modelSlug] = $timestamp;
     }
 
     /**
-     * Embed a single text string into a 384-dimensional vector.
+     * Embed a single text string into a vector. The returned array's length
+     * depends on the model this client is bound to (`$this->modelSlug`):
+     * 384 for `minilm`, 768 for `labse`.
      *
      * @return float[]
      */
@@ -203,7 +233,7 @@ class EmbeddingClient
      */
     private function checkCircuit(): void
     {
-        $openSince = self::getOpenSince();
+        $openSince = $this->getOpenSince();
         if ($openSince === 0.0) {
             return; // Circuit is closed
         }
@@ -218,22 +248,22 @@ class EmbeddingClient
 
         // Cooldown elapsed — transition to half-open (allow one probe request)
         // Reset openSince so only one request goes through; if it fails, recordFailure re-trips
-        self::setOpenSince(0.0);
+        $this->setOpenSince(0.0);
     }
 
     private function recordFailure(): void
     {
-        $failures = self::getFailures() + 1;
-        self::setFailures($failures);
+        $failures = $this->getFailures() + 1;
+        $this->setFailures($failures);
         if ($failures >= self::FAILURE_THRESHOLD) {
-            self::setOpenSince(microtime(true));
+            $this->setOpenSince(microtime(true));
         }
     }
 
     private function recordSuccess(): void
     {
-        self::setFailures(0);
-        self::setOpenSince(0.0);
+        $this->setFailures(0);
+        $this->setOpenSince(0.0);
     }
 
     /**

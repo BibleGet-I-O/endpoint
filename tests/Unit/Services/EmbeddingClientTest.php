@@ -92,19 +92,40 @@ class EmbeddingClientTest extends TestCase
         self::assertSame('labse', ( new EmbeddingClient('labse', 'http://x') )->getModelSlug());
     }
 
+    /**
+     * Read the private `$baseUrl` set by resolveBaseUrl(). Reflection is the
+     * only way to observe it without making a network call or widening the
+     * public API just for tests.
+     */
+    private static function resolvedBaseUrl(EmbeddingClient $client): string
+    {
+        $prop = new \ReflectionProperty(EmbeddingClient::class, 'baseUrl');
+        $val  = $prop->getValue($client);
+        self::assertIsString($val);
+        return $val;
+    }
+
     public function testPerModelEnvVarPrecedence(): void
     {
-        // Per-model env wins over both legacy and default.
-        $_ENV['EMBEDDING_SERVICE_URL_LABSE'] = 'http://per-model:1';
-        $_ENV['EMBEDDING_SERVICE_URL']       = 'http://legacy:2';
+        // Per-model env wins over both legacy and default for both slugs.
+        $_ENV['EMBEDDING_SERVICE_URL_LABSE']  = 'http://labse-host:1';
+        $_ENV['EMBEDDING_SERVICE_URL_MINILM'] = 'http://minilm-host:2';
+        $_ENV['EMBEDDING_SERVICE_URL']        = 'http://legacy:3';
         try {
-            $client = new EmbeddingClient('labse');
-            // No direct getter for the resolved URL; isHealthy() will attempt a
-            // GET so we settle for asserting the slug binding and rely on the
-            // resolveBaseUrl unit test below.
-            self::assertSame('labse', $client->getModelSlug());
+            self::assertSame(
+                'http://labse-host:1',
+                self::resolvedBaseUrl(new EmbeddingClient('labse'))
+            );
+            self::assertSame(
+                'http://minilm-host:2',
+                self::resolvedBaseUrl(new EmbeddingClient('minilm'))
+            );
         } finally {
-            unset($_ENV['EMBEDDING_SERVICE_URL_LABSE'], $_ENV['EMBEDDING_SERVICE_URL']);
+            unset(
+                $_ENV['EMBEDDING_SERVICE_URL_LABSE'],
+                $_ENV['EMBEDDING_SERVICE_URL_MINILM'],
+                $_ENV['EMBEDDING_SERVICE_URL']
+            );
         }
     }
 
@@ -113,18 +134,51 @@ class EmbeddingClientTest extends TestCase
         // The legacy EMBEDDING_SERVICE_URL points at the MiniLM service on the
         // live VPS. Honouring it for LaBSE would silently route LaBSE queries
         // to MiniLM vectors — assert that the LaBSE client falls through to
-        // its per-model default rather than reading the legacy var.
-        $_ENV['EMBEDDING_SERVICE_URL'] = 'http://legacy:2';
+        // its per-model default (port 8002) rather than reading the legacy var.
+        $_ENV['EMBEDDING_SERVICE_URL'] = 'http://legacy-minilm:9000';
         try {
-            // No assertion on the resolved URL (it's private); this test mainly
-            // documents the contract enforced in resolveBaseUrl.
-            $client = new EmbeddingClient('labse');
-            self::assertSame('labse', $client->getModelSlug());
-
-            $client = new EmbeddingClient('minilm');
-            self::assertSame('minilm', $client->getModelSlug());
+            self::assertSame(
+                'http://legacy-minilm:9000',
+                self::resolvedBaseUrl(new EmbeddingClient('minilm')),
+                'minilm should honour the legacy env var for back-compat'
+            );
+            self::assertSame(
+                'http://127.0.0.1:8002',
+                self::resolvedBaseUrl(new EmbeddingClient('labse')),
+                'labse must fall through to its dev default, NOT the legacy var'
+            );
         } finally {
             unset($_ENV['EMBEDDING_SERVICE_URL']);
+        }
+    }
+
+    public function testDefaultUrlsWhenNoEnvVarsSet(): void
+    {
+        // Belt-and-braces: clear every env-var surface (resolveBaseUrl also
+        // reads $_SERVER and getenv()) before asserting the per-model defaults.
+        $vars  = ['EMBEDDING_SERVICE_URL', 'EMBEDDING_SERVICE_URL_LABSE', 'EMBEDDING_SERVICE_URL_MINILM'];
+        $saved = [];
+        foreach ($vars as $name) {
+            $saved[$name] = [$_ENV[$name] ?? null, $_SERVER[$name] ?? null, getenv($name)];
+            unset($_ENV[$name], $_SERVER[$name]);
+            putenv($name);
+        }
+        try {
+            self::assertSame('http://127.0.0.1:8002', self::resolvedBaseUrl(new EmbeddingClient('labse')));
+            self::assertSame('http://127.0.0.1:8000', self::resolvedBaseUrl(new EmbeddingClient('minilm')));
+        } finally {
+            foreach ($vars as $name) {
+                [$env, $server, $process] = $saved[$name];
+                if ($env !== null) {
+                    $_ENV[$name] = $env;
+                }
+                if ($server !== null) {
+                    $_SERVER[$name] = $server;
+                }
+                if ($process !== false) {
+                    putenv($name . '=' . $process);
+                }
+            }
         }
     }
 

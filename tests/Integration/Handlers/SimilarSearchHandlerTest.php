@@ -247,6 +247,12 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
     public function testDefaultModelIsLabseAndReadsLabseColumn(): void
     {
         $pdo = $this->getConnection();
+        // Isolate the fixture so the test fails if routing reads `embedding`
+        // instead of `embedding_labse`: setUp() seeds the MiniLM column on
+        // the same verses 1/2/3, so without this clear, a misrouted read
+        // would silently return rows and the test would pass.
+        $pdo->exec('UPDATE "TEST1" SET embedding = NULL');
+
         // Seed embedding_labse on three verses so the source-verse lookup
         // succeeds, the target column has rows to compare, and exclusion of
         // the source row can be observed.
