@@ -109,23 +109,81 @@ out-performs MiniLM on that probe set 4–1.
 
 ### Migration sequence for production cutover
 
+The live server is CPU-only and LaBSE re-embedding ~250k verses on CPU
+would take many hours. The supported flow precomputes embeddings on a
+GPU host and syncs them back. Two boxes are involved:
+
+- **Local GPU box** — runs the compute against a local Docker postgres
+  that has been populated by `dump_versions_to_local.sh`.
+- **Live server** — receives only the resulting vectors (via
+  `sync_labse_to_live.sh`); the bulk inference never runs here.
+
 ```sh
-# 1. Schema: add embedding_labse on every version table.
+# ── LOCAL GPU BOX ────────────────────────────────────────────────────
+# 1. Local schema in pre-cutover shape (production-schema + migrations
+#    003, 004, 005, 012, 013 — NOT 014). docker-compose's postgres
+#    service is already PG 18 + pgvector.
+docker compose up -d postgres
+docker compose exec -T postgres psql ... -f migrations/production-schema.sql
+docker compose exec -T postgres psql ... \
+    -c "INSERT INTO versions_available (sigla) VALUES \
+        ('BLPD'),('CEI2008'),('DIVCOM'),('DRB'), \
+        ('LUZZI'),('NABRE'),('NVBSE'),('VGCL');"
+for m in 003 004 005 012 013; do
+    docker compose exec -T postgres psql ... -f migrations/${m}-*.sql
+done
+
+# 2. Pull verse text from live → local for all 8 versions.
+LIVE_DB_HOST=... LIVE_DB_NAME=... LIVE_DB_USER=... LIVE_DB_PASS=... \
+    VERSIONS="NABRE CEI2008 NVBSE BLPD DIVCOM DRB LUZZI VGCL" \
+    ./scripts/dump_versions_to_local.sh
+
+# 3. Build the LaBSE-pinned embedding image. The defaults in
+#    docker-compose.yml + the Dockerfile already pin LaBSE @
+#    836121a0533e5664b21c7aacc5d22951f2b8b25b, so a bare `build` works.
+docker compose build embedding
+
+# 4. Compute LaBSE for all 8 versions on the local GPU. Expect ~25 min
+#    wall time on a 4070-class GPU at batch size 128.
+docker run --rm --gpus all --network endpoint_default --user root \
+    -e DB_HOST=postgres -e DB_NAME=bibleget \
+    -e DB_USER=bibleget -e DB_PASS=bibleget \
+    -e EMBEDDING_MODEL=sentence-transformers/LaBSE \
+    -v "$(pwd)/scripts:/app/scripts:ro" \
+    endpoint-embedding \
+    bash -c "pip install --quiet --break-system-packages psycopg2-binary python-dotenv \
+        && python /app/scripts/compute_embeddings.py --column embedding_labse --batch-size 128"
+
+# ── LIVE SERVER ──────────────────────────────────────────────────────
+# 5. Live PG: add the staging column on all 8 version tables. Empty
+#    column — nothing destructive yet.
 psql ... -f migrations/012-add-embedding-labse-columns.sql
 psql ... -f migrations/013-add-embedding-labse-remaining-versions.sql
 
-# 2. Rebuild the embedding service image with LaBSE pinned.
-EMBEDDING_MODEL=sentence-transformers/LaBSE \
-EMBEDDING_MODEL_REVISION=836121a0533e5664b21c7aacc5d22951f2b8b25b \
-    docker compose build embedding
+# ── BACK ON THE GPU BOX ──────────────────────────────────────────────
+# 6. Push the locally-computed vectors up to live, table by table.
+#    Each version's transaction is independent and the script is
+#    idempotent — safe to retry on a network blip.
+LIVE_SSH_HOST=ubuntu@catholicdigitalcommons.org \
+    ./scripts/sync_labse_to_live.sh
 
-# 3. Populate embedding_labse for every version table. GPU recommended;
-#    on CPU each version takes ~20 minutes, on a 4070-class GPU ~2 minutes.
-EMBEDDING_MODEL=sentence-transformers/LaBSE \
-    python scripts/compute_embeddings.py --column embedding_labse
-
-# 4. Schema: swap. Fails with a clear error if any embedding_labse is NULL.
+# ── LIVE SERVER ──────────────────────────────────────────────────────
+# 7. Cutover: drop the legacy MiniLM column, rename embedding_labse →
+#    embedding, rebuild HNSW indexes, reconcile embedding_metadata.
+#    Aborts loudly if any embedding_labse row is still NULL.
 psql ... -f migrations/014-cutover-embedding-to-labse.sql
 
-# 5. Restart the API; it queries `embedding` as before, now LaBSE-backed.
+# 8. Rebuild and redeploy the embedding service image with LaBSE pinned
+#    (build args + env match the defaults, so a bare rebuild suffices).
+#    Query-time inference is single-vector and runs in ~50–200ms on CPU,
+#    so the live host does NOT need a GPU for serving — only for bulk
+#    re-embedding, which is why step 4 happened on the GPU box.
+EMBEDDING_MODEL=sentence-transformers/LaBSE docker compose build embedding
+docker compose up -d embedding   # (or whatever the live deploy harness is)
+
+# 9. (Optional housekeeping) Reclaim ~480MB by removing the now-unused
+#    MiniLM model files from the Hugging Face cache:
+#    rm -rf ~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2
+#    The new Docker image already excludes this from its preload, so a
+#    clean rebuild evicts it inside the container automatically.
 ```
