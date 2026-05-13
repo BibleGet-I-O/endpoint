@@ -9,9 +9,9 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Changed
 
-- **Semantic search now uses Google's LaBSE embedding model** instead of
-  `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`. The change
-  is driven by discussion #107: the previous model produced surface-token
+- **LaBSE embedding infrastructure added alongside MiniLM** (cutover
+  deferred). Driven by discussion #107: the existing
+  `paraphrase-multilingual-MiniLM-L12-v2` model produced surface-token
   matches on Latin (NVBSE) — e.g. *"Ego sum panis vitae"* would return
   *"Respice in me et miserere mei"* because both share the token `me`.
   Across a 20-concept × 3-language probe set:
@@ -22,11 +22,17 @@ Deprecated / Fixed / Removed / Security where applicable.
   - **English:** roughly neutral (LaBSE recovers MiniLM's token-noise
     misses; loses a small number of highly-compressed metaphorical verses).
 
-  The pgvector column on each version table is now `vector(768)`; the old
-  `vector(384)` MiniLM data is removed by migration 014. Existing API
-  consumers see no surface-level change — the column is still named
-  `embedding` and the request/response shape of `/v3/search/semantic` and
-  `/v3/search/similar` is unchanged.
+  The evaluation is convincing but not yet enacted as a cutover. This PR
+  adds a parallel `embedding_labse vector(768)` column to every version
+  table and ships the tooling to populate it (`compute_embeddings.py
+  --column embedding_labse`, `sync_labse_to_live.sh`). The original
+  `embedding vector(384)` MiniLM column stays untouched, fully populated,
+  and queryable. The destructive cutover that would drop the MiniLM
+  column lives as a *future* migration at
+  `docs/future-migrations/014-cutover-embedding-to-labse.sql`; promoting
+  it back into `migrations/` is an explicit decision deferred until the
+  comparison UI ([BibleGet-I-O/bibleget-search-ui](https://github.com/BibleGet-I-O/bibleget-search-ui))
+  validates LaBSE in the wild and the API gains a `model=` parameter.
 
 - **Score distribution under LaBSE is wider.** MiniLM concentrated top-1
   hits in `[0.85, 0.97]`; LaBSE uses `[0.45, 0.98]` with median ~0.72.
@@ -78,12 +84,18 @@ Deprecated / Fixed / Removed / Security where applicable.
   `embedding_labse vector(768)` to NABRE, CEI2008, NVBSE for the A/B
   evaluation; widens `embedding_metadata` PK to `(version_sigla, column_name)`.
 - `migrations/013-add-embedding-labse-remaining-versions.sql` — extends
-  the column to BLPD, DIVCOM, DRB, LUZZI, VGCL in preparation for cutover.
-- `migrations/014-cutover-embedding-to-labse.sql` — drops the legacy
-  MiniLM column, renames `embedding_labse` → `embedding` across all 8
-  versions, rebuilds HNSW indexes, reconciles metadata. Asserts full
-  coverage before mutating anything, so partial state aborts the
-  migration rather than corrupting data.
+  the column to BLPD, DIVCOM, DRB, LUZZI, VGCL so every version table
+  has a LaBSE column available alongside MiniLM.
+- `scripts/sync_labse_to_live.sh` — pushes locally-computed LaBSE
+  vectors up to the live PG via SSH+psql. Per-table transaction with
+  COPY into a temp table then UPDATE, SSH keepalives + compression so
+  long-running remote UPDATEs don't get TCP-dropped, idempotent across
+  retries.
+- `docs/future-migrations/014-cutover-embedding-to-labse.sql` —
+  drafted-but-deferred destructive cutover that drops the MiniLM
+  column. Kept outside the active migration chain so applying
+  migrations doesn't accidentally retire MiniLM. See
+  `docs/future-migrations/README.md` for the promotion-back procedure.
 
 ### Known edge cases under LaBSE
 
@@ -107,22 +119,18 @@ work; an investigation of 10 additional English Christological / liturgical
 probes found *no* systematic class-level weakness — LaBSE actually
 out-performs MiniLM on that probe set 4–1.
 
-### Migration sequence for production cutover
+### Operator procedure: populate `embedding_labse` on live (side-by-side state)
 
 The live server is CPU-only and LaBSE re-embedding ~250k verses on CPU
 would take many hours. The supported flow precomputes embeddings on a
-GPU host and syncs them back. Two boxes are involved:
-
-- **Local GPU box** — runs the compute against a local Docker postgres
-  that has been populated by `dump_versions_to_local.sh`.
-- **Live server** — receives only the resulting vectors (via
-  `sync_labse_to_live.sh`); the bulk inference never runs here.
+GPU-equipped local box and syncs them back. After this procedure runs,
+live has both `embedding` (vector(384) MiniLM, untouched) and
+`embedding_labse` (vector(768) LaBSE, freshly populated) on every
+version table — comparison-ready, no cutover yet.
 
 ```sh
 # ── LOCAL GPU BOX ────────────────────────────────────────────────────
-# 1. Local schema in pre-cutover shape (production-schema + migrations
-#    003, 004, 005, 012, 013 — NOT 014). docker-compose's postgres
-#    service is already PG 18 + pgvector.
+# 1. Local schema mirrors live's pre-LaBSE state plus migrations 012+013.
 docker compose up -d postgres
 docker compose exec -T postgres psql ... -f migrations/production-schema.sql
 docker compose exec -T postgres psql ... \
@@ -140,7 +148,7 @@ LIVE_DB_HOST=... LIVE_DB_NAME=... LIVE_DB_USER=... LIVE_DB_PASS=... \
 
 # 3. Build the LaBSE-pinned embedding image. The defaults in
 #    docker-compose.yml + the Dockerfile already pin LaBSE @
-#    836121a0533e5664b21c7aacc5d22951f2b8b25b, so a bare `build` works.
+#    836121a0533e5664b21c7aacc5d22951f2b8b25b, so a bare build works.
 docker compose build embedding
 
 # 4. Compute LaBSE for all 8 versions on the local GPU. Expect ~25 min
@@ -155,35 +163,28 @@ docker run --rm --gpus all --network endpoint_default --user root \
         && python /app/scripts/compute_embeddings.py --column embedding_labse --batch-size 128"
 
 # ── LIVE SERVER ──────────────────────────────────────────────────────
-# 5. Live PG: add the staging column on all 8 version tables. Empty
-#    column — nothing destructive yet.
+# 5. Live PG: add the LaBSE column on all 8 version tables. Empty
+#    column — purely additive, nothing destructive.
 psql ... -f migrations/012-add-embedding-labse-columns.sql
 psql ... -f migrations/013-add-embedding-labse-remaining-versions.sql
 
 # ── BACK ON THE GPU BOX ──────────────────────────────────────────────
 # 6. Push the locally-computed vectors up to live, table by table.
-#    Each version's transaction is independent and the script is
-#    idempotent — safe to retry on a network blip.
+#    SSH keepalives + compression keep the long-running remote UPDATEs
+#    from dropping. Per-table transaction; safe to retry.
 LIVE_SSH_HOST=ubuntu@catholicdigitalcommons.org \
     ./scripts/sync_labse_to_live.sh
-
-# ── LIVE SERVER ──────────────────────────────────────────────────────
-# 7. Cutover: drop the legacy MiniLM column, rename embedding_labse →
-#    embedding, rebuild HNSW indexes, reconcile embedding_metadata.
-#    Aborts loudly if any embedding_labse row is still NULL.
-psql ... -f migrations/014-cutover-embedding-to-labse.sql
-
-# 8. Rebuild and redeploy the embedding service image with LaBSE pinned
-#    (build args + env match the defaults, so a bare rebuild suffices).
-#    Query-time inference is single-vector and runs in ~50–200ms on CPU,
-#    so the live host does NOT need a GPU for serving — only for bulk
-#    re-embedding, which is why step 4 happened on the GPU box.
-EMBEDDING_MODEL=sentence-transformers/LaBSE docker compose build embedding
-docker compose up -d embedding   # (or whatever the live deploy harness is)
-
-# 9. (Optional housekeeping) Reclaim ~480MB by removing the now-unused
-#    MiniLM model files from the Hugging Face cache:
-#    rm -rf ~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2
-#    The new Docker image already excludes this from its preload, so a
-#    clean rebuild evicts it inside the container automatically.
 ```
+
+After step 6, live carries both embedding columns on every verse table
+and `embedding_metadata` records both `(version_sigla, 'embedding')` and
+`(version_sigla, 'embedding_labse')` rows. The API still queries the
+`embedding` column (MiniLM); LaBSE waits for a follow-up that wires a
+`model=` parameter into `/v3/search/semantic` and
+`/v3/search/similar` plus a parallel embedding service on live.
+
+The eventual cutover step — drop the MiniLM column, rename
+`embedding_labse → embedding` — is drafted at
+`docs/future-migrations/014-cutover-embedding-to-labse.sql`. Apply only
+when there's an explicit decision to retire MiniLM (the comparison UI
+results from search.bibleget.io are likely the deciding signal).
