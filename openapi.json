@@ -752,7 +752,7 @@
                     {
                         "name": "threshold",
                         "in": "query",
-                        "description": "Minimum similarity score (0.0–1.0) to include in results. Higher values return fewer but more relevant results.",
+                        "description": "Minimum cosine-similarity score (0.0–1.0) to include in results. Higher values return fewer but more relevant results. The default 0.0 is a no-op filter — every match is returned, sorted by similarity descending. The score distribution depends on the embedding model. The live API currently uses the legacy paraphrase-multilingual-MiniLM-L12-v2 model, whose top-1 hits cluster in [0.85, 0.97] (median ~0.88), so threshold values in the 0.6–0.8 range work well as a quality filter. An upcoming planned switch to sentence-transformers/LaBSE will widen this to [0.45, 0.98] (median ~0.72) — clients that hardcode a MiniLM-calibrated threshold should plan to re-tune (a 0.3–0.5 cutoff is the LaBSE-equivalent) when that change ships.",
                         "required": false,
                         "schema": {
                             "type": "number",

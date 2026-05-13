@@ -134,3 +134,81 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 - Copyright-restricted versions enforce a 30-verse-per-request limit
 - Verse ordering uses `verseID` field to handle Greek subverses correctly
 - Rate limiting: IP-based, 2-day windows, thresholds at 10/30/100 requests → `TooManyRequestsException`
+
+## Live infrastructure (catholicdigitalcommons.org)
+
+Bare-metal VPS, **not Docker** in production. `docker-compose.yml` is dev-only.
+
+- **SSH:** `ssh ubuntu@catholicdigitalcommons.org`. The `ubuntu` user is in
+  the `psacln` group, which grants group-read on the Plesk vhost trees
+  below — most credential files can be sourced without sudo.
+- **PostgreSQL 18 + pgvector 0.8.2** — native apt install
+  (`postgresql-18`, `postgresql-18-pgvector`), single cluster `main`,
+  listens on `127.0.0.1:5432` only. Database: `bibleget_dev`. Credentials
+  live in `/var/www/vhosts/bibleget.io/httpdocs/query/dev/.env.staging`
+  (DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASS — `set -a; source .env.staging;
+  set +a` to use them).
+- **MariaDB** — also runs on `127.0.0.1:3306`, serves the legacy v3 API.
+  Credentials in the legacy codebase's `dbcredentials.php`.
+
+### Codebases on the server
+
+| Path | Purpose |
+|---|---|
+| `/var/www/vhosts/bibleget.io/httpdocs/query/` | **Legacy** include-based PHP, MariaDB-backed. Mapped to `https://query.bibleget.io/v3/`. Frozen. |
+| `/var/www/vhosts/bibleget.io/httpdocs/query/dev/` | **Modern** PSR-based PHP (this `development` branch), PostgreSQL-backed. Active dev/staging. |
+| `/home/bibleget-embed/embedding/` | **Embedding microservice**, see below. |
+
+Reference artifacts at the legacy root (`bibleget-io.chm`, `NABRE.sql`)
+are intentional — see auto-memory `feedback_dont_delete_reference_artifacts`.
+
+### Embedding microservice
+
+Runs as user-level systemd under a dedicated unprivileged user — **no Docker**.
+
+- **User:** `bibleget-embed` (uid 10004, primary group `bibleget-embed`).
+  Home `/home/bibleget-embed`. Linger is enabled
+  (`sudo loginctl enable-linger bibleget-embed`) so user-systemd persists
+  without an active login.
+- **Code:** `~bibleget-embed/embedding/` — `main.py`, `requirements.txt`,
+  `bibleget-embedding.service`, plus `venv/` (excluded from rsync deploy).
+  Directory is mode 700, not readable by `ubuntu` without sudo.
+- **Venv:** `~bibleget-embed/embedding/venv/`. Refreshed by the deploy
+  workflow via `pip install --upgrade --upgrade-strategy only-if-needed`.
+- **Model cache:** `~bibleget-embed/.cache/huggingface/` (`HF_HOME`).
+  Model files persist across deploys; first-startup download is ~470 MB
+  for MiniLM, ~1.8 GB for LaBSE.
+- **Unit file:** `~bibleget-embed/.config/systemd/user/bibleget-embedding.service`
+  (sourced from `services/embedding/bibleget-embedding.service` in this repo).
+- **Listen:** `127.0.0.1:8000` — never reachable from outside the VPS. The
+  PHP API on the same host hits it via `EMBEDDING_SERVICE_URL`.
+- **Current model:** whatever `Environment=EMBEDDING_MODEL=…` is set to in
+  the unit file. As of 2026-05, that's `paraphrase-multilingual-MiniLM-L12-v2`.
+
+**Manage the service from `ubuntu`:**
+
+```bash
+# Status / logs / restart — user-systemd via sudo
+sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
+    systemctl --user status bibleget-embedding
+sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
+    journalctl --user -u bibleget-embedding -n 50
+sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
+    systemctl --user restart bibleget-embedding
+```
+
+### Deploy workflows (manual, `workflow_dispatch`)
+
+- **`.github/workflows/deploy.yaml`** — deploys the PHP API. Skips any tag
+  lacking `composer.json` so legacy hotfix tags don't accidentally ship.
+- **`.github/workflows/deploy-embedding.yaml`** — deploys the embedding
+  microservice:
+  1. Checks out `development`, verifies `services/embedding/{main.py,requirements.txt,bibleget-embedding.service}` exist.
+  2. `rsync --delete services/embedding/ → bibleget-embed@VPS:embedding/`,
+     excluding `Dockerfile`, `README.md`, `venv/`, `.cache/`, `__pycache__`.
+  3. If the unit file changed: copy to `~/.config/systemd/user/`,
+     `daemon-reload`, `enable`.
+  4. `pip install --upgrade-strategy only-if-needed -r requirements.txt`
+     inside the venv.
+  5. `systemctl --user restart bibleget-embedding`, then 10×3s health-poll
+     against `http://127.0.0.1:8000/health` looking for `"ready":true`.

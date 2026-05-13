@@ -1,7 +1,13 @@
 """Embedding microservice for BibleGet semantic search.
 
-Lightweight FastAPI app that accepts text and returns a 384-dimensional
-embedding vector using the paraphrase-multilingual-MiniLM-L12-v2 model.
+Lightweight FastAPI app that accepts text and returns a 768-dimensional
+embedding vector using the sentence-transformers/LaBSE model. LaBSE was
+adopted after the A/B experiment documented in discussion #107
+demonstrably outperformed paraphrase-multilingual-MiniLM-L12-v2 on Latin
+(NVBSE) — the original failure mode that drove the rebuild.
+
+Pinned revision: MODEL_REVISION below. Issue #71 requires a deterministic
+model version for reproducible builds and embeddings.
 
 The PHP endpoint calls this service at query time to vectorize user queries
 for pgvector similarity search.
@@ -14,7 +20,11 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sentence_transformers import SentenceTransformer
 
-MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/LaBSE")
+MODEL_REVISION = os.environ.get(
+    "EMBEDDING_MODEL_REVISION",
+    "836121a0533e5664b21c7aacc5d22951f2b8b25b",
+)
 
 MAX_TEXT_LENGTH = 10000
 MAX_BATCH_SIZE = 128
@@ -57,9 +67,9 @@ class BatchEmbedResponse(BaseModel):
 def load_model():
     global model
     start = time.time()
-    model = SentenceTransformer(MODEL_NAME)
+    model = SentenceTransformer(MODEL_NAME, revision=MODEL_REVISION)
     elapsed = time.time() - start
-    print(f"Model '{MODEL_NAME}' loaded in {elapsed:.1f}s")
+    print(f"Model '{MODEL_NAME}' @ {MODEL_REVISION[:8]} loaded in {elapsed:.1f}s")
 
 
 @app.get("/health")
