@@ -60,6 +60,15 @@ except ImportError:
 
 BASELINE_MODEL = os.environ.get("BASELINE_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 CANDIDATE_MODEL = os.environ.get("CANDIDATE_MODEL", "sentence-transformers/LaBSE")
+# Pin both Hugging Face revisions so re-runs of the eval are deterministic
+# (same intent as EMBEDDING_MODEL_REVISION on compute_embeddings.py, #71).
+# An empty string means "Hugging Face default branch" — set explicitly to
+# avoid drift if you intend to lock the eval to a known revision pair.
+BASELINE_MODEL_REVISION = os.environ.get("BASELINE_MODEL_REVISION", "")
+CANDIDATE_MODEL_REVISION = os.environ.get(
+    "CANDIDATE_MODEL_REVISION",
+    "836121a0533e5664b21c7aacc5d22951f2b8b25b",
+)
 BASELINE_COLUMN = os.environ.get("BASELINE_COLUMN", "embedding")
 CANDIDATE_COLUMN = os.environ.get("CANDIDATE_COLUMN", "embedding_labse")
 DEFAULT_TOP_K = 5
@@ -153,10 +162,20 @@ def main():
     print(f"Top-K:     {args.top_k}")
     print()
 
-    print("Loading baseline model…")
-    baseline = SentenceTransformer(BASELINE_MODEL)
-    print("Loading candidate model…")
-    candidate = SentenceTransformer(CANDIDATE_MODEL)
+    baseline_rev_label = BASELINE_MODEL_REVISION[:8] if BASELINE_MODEL_REVISION else "(unpinned)"
+    candidate_rev_label = CANDIDATE_MODEL_REVISION[:8] if CANDIDATE_MODEL_REVISION else "(unpinned)"
+    print(f"Loading baseline model… {BASELINE_MODEL} @ {baseline_rev_label}")
+    # `revision=None` (i.e. omit) is the only way to ask SentenceTransformer
+    # to follow the default branch; an empty string would be sent literally.
+    baseline = SentenceTransformer(
+        BASELINE_MODEL,
+        revision=BASELINE_MODEL_REVISION or None,
+    )
+    print(f"Loading candidate model… {CANDIDATE_MODEL} @ {candidate_rev_label}")
+    candidate = SentenceTransformer(
+        CANDIDATE_MODEL,
+        revision=CANDIDATE_MODEL_REVISION or None,
+    )
 
     conn = get_connection()
     try:

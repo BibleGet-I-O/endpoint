@@ -100,6 +100,18 @@ BEGIN
             WHERE schemaname = 'public' AND indexname = labse_idx_name
         ) THEN
             EXECUTE format('ALTER INDEX %I RENAME TO %I', labse_idx_name, new_idx_name);
+        ELSIF NOT EXISTS (
+            SELECT 1 FROM pg_indexes
+            WHERE schemaname = 'public' AND indexname = new_idx_name
+        ) THEN
+            -- Defensive fallback: if for any reason migrations 012/013 didn't
+            -- leave behind a labse-named HNSW index, build one from scratch
+            -- on the now-renamed `embedding` column so semantic search keeps
+            -- the ANN fast path.
+            EXECUTE format(
+                'CREATE INDEX %I ON %I USING hnsw (embedding vector_cosine_ops)',
+                new_idx_name, v_sigla
+            );
         END IF;
 
         RAISE NOTICE '%: cutover complete (embedding is now vector(768), LaBSE)', v_sigla;

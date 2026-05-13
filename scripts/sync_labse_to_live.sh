@@ -102,6 +102,8 @@ fi
 #   observed: connection dies between tables when an UPDATE takes minutes).
 # - TCPKeepAlive=yes: redundant belt-and-suspenders at the kernel level.
 remote_psql_stdin() {
+    # POSIX `.` rather than bash-only `source` so the remote login shell can
+    # be `/bin/sh` without breaking.
     ssh \
         -o Compression=yes \
         -o ServerAliveInterval=30 \
@@ -109,7 +111,7 @@ remote_psql_stdin() {
         -o TCPKeepAlive=yes \
         "$LIVE_SSH_HOST" '
         set -e
-        set -a; source '"$LIVE_ENV_PATH"'; set +a
+        set -a; . "'"$LIVE_ENV_PATH"'"; set +a
         PGPASSWORD="$DB_PASS" psql \
             -h "$DB_HOST" -p "$DB_PORT" \
             -U "$DB_USER" -d "$DB_NAME" \
@@ -134,17 +136,38 @@ for V in $VERSIONS; do
     # Build the SQL bundle: BEGIN → temp table → COPY data → UPDATE → COMMIT.
     # The COPY data section sits between the COPY ... FROM STDIN line and a
     # `\.` terminator, exactly as in a pg_dump file.
+    #
+    # The UPDATE is wrapped in a DO block so we can compare ROW_COUNT against
+    # the input count and abort the transaction on a mismatch. If verseIDs
+    # exist locally but not on live (or vice versa), the UPDATE would silently
+    # touch fewer rows than expected — the assertion turns that into a loud
+    # rollback rather than a half-applied sync.
     {
         echo 'BEGIN;'
         echo "CREATE TEMP TABLE _labse_in (\"verseID\" INT PRIMARY KEY, embedding_labse vector(768));"
         echo 'COPY _labse_in FROM STDIN;'
         local_psql -tAc "COPY (SELECT \"verseID\", embedding_labse FROM \"$V\" WHERE embedding_labse IS NOT NULL) TO STDOUT"
         echo '\.'
-        echo "UPDATE \"$V\" SET embedding_labse = _labse_in.embedding_labse FROM _labse_in WHERE \"$V\".\"verseID\" = _labse_in.\"verseID\";"
+        echo "DO \$sync\$"
+        echo "DECLARE"
+        echo "    expected_count INT;"
+        echo "    updated_count INT;"
+        echo "BEGIN"
+        echo "    SELECT COUNT(*) INTO expected_count FROM _labse_in;"
+        echo "    UPDATE \"$V\" SET embedding_labse = _labse_in.embedding_labse"
+        echo "      FROM _labse_in WHERE \"$V\".\"verseID\" = _labse_in.\"verseID\";"
+        echo "    GET DIAGNOSTICS updated_count = ROW_COUNT;"
+        echo "    IF updated_count <> expected_count THEN"
+        echo "        RAISE EXCEPTION 'sync mismatch for $V: expected %, updated %', expected_count, updated_count;"
+        echo "    END IF;"
+        echo "END"
+        echo "\$sync\$;"
         echo 'COMMIT;'
     } | remote_psql_stdin | sed "s/^/    /"
 done
 
 log ""
-log "Done. Next step on live: apply migrations/014-cutover-embedding-to-labse.sql"
-log "to drop the legacy MiniLM column and rename embedding_labse → embedding."
+log "Done. The cutover SQL (drop the legacy MiniLM column + rename"
+log "embedding_labse → embedding) lives at docs/future-migrations/014-"
+log "cutover-embedding-to-labse.sql — held back deliberately; promote it"
+log "into migrations/ only after an explicit decision to retire MiniLM."

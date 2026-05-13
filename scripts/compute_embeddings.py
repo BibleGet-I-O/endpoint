@@ -62,7 +62,12 @@ MODEL_VERSION = os.environ.get("EMBEDDING_MODEL_VERSION", "1.0")
 _EMBEDDING_DIM_ENV = os.environ.get("EMBEDDING_DIM")
 EMBEDDING_DIM_OVERRIDE = int(_EMBEDDING_DIM_ENV) if _EMBEDDING_DIM_ENV else None
 DEFAULT_BATCH_SIZE = 128
-DEFAULT_COLUMN = "embedding"
+# Aligned with the LaBSE default in MODEL_NAME above: the LaBSE-pinned vector
+# lives in the `embedding_labse vector(768)` column. The legacy MiniLM column
+# `embedding vector(384)` is targetable explicitly via --column embedding once
+# the cutover migration in docs/future-migrations/ promotes embedding_labse
+# back to `embedding`.
+DEFAULT_COLUMN = "embedding_labse"
 
 
 def get_connection():
@@ -245,6 +250,17 @@ def check_staleness(conn, versions, column):
             elif xor_match is False:
                 stale.append(version)
                 print(f"  {version}: STALE — content_xor mismatch (of {total} total)")
+                # Known asymmetry: for non-primary columns (e.g. embedding_labse)
+                # the loader at load_verses() only selects rows where the column
+                # is NULL, because `embedded_text_hash` is the snapshot at the
+                # time the PRIMARY column was last written — using it as the
+                # staleness predicate for a secondary column would conflate
+                # state. So an xor mismatch on a non-primary column is detected
+                # here but the default mode won't remediate. Re-run with
+                # --force to recompute the whole table for that column. Fixing
+                # this cleanly needs a per-column hash (e.g.
+                # embedded_text_hash_labse) — TODO when there's a third
+                # embedding column or more.
             else:
                 print(f"  {version}: up to date ({total} verses)")
 
