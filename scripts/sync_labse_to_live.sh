@@ -94,8 +94,20 @@ fi
 # command line. The outer single quotes prevent local expansion of $DB_HOST
 # etc.; the LIVE_ENV_PATH break-out interpolates the path locally so the
 # remote shell sees a literal absolute path.
+#
+# SSH flags:
+# - Compression=yes: vector text data compresses ~50-70%, large speedup.
+# - ServerAliveInterval/CountMax: send keepalive probes during long-running
+#   remote UPDATEs so a middle box doesn't drop the TCP session (previously
+#   observed: connection dies between tables when an UPDATE takes minutes).
+# - TCPKeepAlive=yes: redundant belt-and-suspenders at the kernel level.
 remote_psql_stdin() {
-    ssh "$LIVE_SSH_HOST" '
+    ssh \
+        -o Compression=yes \
+        -o ServerAliveInterval=30 \
+        -o ServerAliveCountMax=20 \
+        -o TCPKeepAlive=yes \
+        "$LIVE_SSH_HOST" '
         set -e
         set -a; source '"$LIVE_ENV_PATH"'; set +a
         PGPASSWORD="$DB_PASS" psql \
