@@ -21,9 +21,11 @@ services:
     build:
       context: ./services/embedding
       args:
-        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/LaBSE}
+        EMBEDDING_MODEL_REVISION: ${EMBEDDING_MODEL_REVISION:-836121a0533e5664b21c7aacc5d22951f2b8b25b}
     environment:
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/LaBSE}
+      EMBEDDING_MODEL_REVISION: ${EMBEDDING_MODEL_REVISION:-836121a0533e5664b21c7aacc5d22951f2b8b25b}
     ports:
       - "8001:8000"
     # GPU passthrough: requires the host to have NVIDIA drivers + the NVIDIA

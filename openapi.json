@@ -752,7 +752,7 @@
                     {
                         "name": "threshold",
                         "in": "query",
-                        "description": "Minimum similarity score (0.0–1.0) to include in results. Higher values return fewer but more relevant results.",
+                        "description": "Minimum cosine-similarity score (0.0–1.0) to include in results. Higher values return fewer but more relevant results. The default 0.0 is a no-op filter — every match is returned, sorted by similarity descending. The score distribution depends on the embedding model: with the current LaBSE model the median top-1 hit is ~0.72 and confident hits start around 0.45, so a useful quality cutoff is in the 0.3–0.5 range. The previous MiniLM model produced higher scores (median top-1 ~0.88) — clients carrying threshold values calibrated for MiniLM (e.g. 0.6+) will see fewer results under LaBSE and should re-tune.",
                         "required": false,
                         "schema": {
                             "type": "number",

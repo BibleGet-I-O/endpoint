@@ -15,3 +15,8 @@ dbcredentials.php
 
 # Local git worktrees
 .worktrees/
+
+# Python bytecode (scripts/compute_embeddings.py, services/embedding/main.py)
+__pycache__/
+*.pyc
+*.pyo

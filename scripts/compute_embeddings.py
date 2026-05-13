@@ -22,13 +22,15 @@ Modes:
 
 Environment variables:
     DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
-    EMBEDDING_MODEL    - sentence-transformers model name
-                         (default: paraphrase-multilingual-MiniLM-L12-v2)
-    EMBEDDING_MODEL_VERSION - free-form version tag stored in metadata
-                              (default: 1.0)
-    EMBEDDING_DIM      - vector dimensionality; if unset, derived from the
-                         loaded model. Set this only to assert a specific
-                         dimension at startup.
+    EMBEDDING_MODEL          - sentence-transformers model name
+                               (default: sentence-transformers/LaBSE)
+    EMBEDDING_MODEL_REVISION - pinned Hugging Face commit for reproducibility
+                               (default: see MODEL_REVISION constant — see #71)
+    EMBEDDING_MODEL_VERSION  - free-form version tag stored in metadata
+                               (default: 1.0)
+    EMBEDDING_DIM            - vector dimensionality; if unset, derived from
+                               the loaded model. Set this only to assert a
+                               specific dimension at startup.
 
 A `.env` file at the project root is loaded automatically if python-dotenv
 is installed, so the same configuration drives both this script and the
@@ -51,7 +53,11 @@ try:
 except ImportError:
     pass
 
-MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/LaBSE")
+MODEL_REVISION = os.environ.get(
+    "EMBEDDING_MODEL_REVISION",
+    "836121a0533e5664b21c7aacc5d22951f2b8b25b",
+)
 MODEL_VERSION = os.environ.get("EMBEDDING_MODEL_VERSION", "1.0")
 _EMBEDDING_DIM_ENV = os.environ.get("EMBEDDING_DIM")
 EMBEDDING_DIM_OVERRIDE = int(_EMBEDDING_DIM_ENV) if _EMBEDDING_DIM_ENV else None
@@ -346,9 +352,9 @@ def main():
                 print("\nAll versions are up to date.")
             return
 
-        print(f"Loading model: {MODEL_NAME}")
+        print(f"Loading model: {MODEL_NAME} @ {MODEL_REVISION[:8]}")
         start = time.time()
-        model = SentenceTransformer(MODEL_NAME)
+        model = SentenceTransformer(MODEL_NAME, revision=MODEL_REVISION)
         load_secs = time.time() - start
         print(f"Model loaded in {load_secs:.1f}s")
 
