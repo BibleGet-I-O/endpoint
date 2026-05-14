@@ -25,7 +25,14 @@ WorkingDirectory=%h/embedding
 
 # Model cached under the user's HuggingFace cache; pre-warmed during one-time
 # bootstrap so cold starts don't pay the ~470 MB download cost.
+#
+# Pinned MiniLM revision — must be set explicitly. main.py defaults the
+# revision to None (no pin) when EMBEDDING_MODEL_REVISION is unset, so
+# omitting this line would silently drop the deterministic pin required by
+# issue #71. Bump in lockstep with the SHA used to populate the
+# `embedding` column via compute_embeddings.py.
 Environment=EMBEDDING_MODEL=paraphrase-multilingual-MiniLM-L12-v2
+Environment=EMBEDDING_MODEL_REVISION=e8f8c211226b894fcb81acc59f3b34ba3efd5f42
 Environment=HF_HOME=%h/.cache/huggingface
 
 ExecStart=%h/embedding/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
