@@ -21,10 +21,14 @@ from pydantic import BaseModel, Field, field_validator
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/LaBSE")
-MODEL_REVISION = os.environ.get(
-    "EMBEDDING_MODEL_REVISION",
-    "836121a0533e5664b21c7aacc5d22951f2b8b25b",
-)
+# Revision pin is per-model and must be supplied via EMBEDDING_MODEL_REVISION
+# (set in the systemd unit alongside EMBEDDING_MODEL). Defaulting to a
+# specific SHA here is unsafe because the same default would be applied to
+# every model name, silently poisoning any model whose unit forgot to
+# override it (e.g. trying to load MiniLM at LaBSE's SHA fails with an
+# "Unrecognized model" error). Treat empty/unset as "no pin".
+_revision_env = os.environ.get("EMBEDDING_MODEL_REVISION", "").strip()
+MODEL_REVISION: str | None = _revision_env or None
 
 MAX_TEXT_LENGTH = 10000
 MAX_BATCH_SIZE = 128
@@ -69,7 +73,8 @@ def load_model():
     start = time.time()
     model = SentenceTransformer(MODEL_NAME, revision=MODEL_REVISION)
     elapsed = time.time() - start
-    print(f"Model '{MODEL_NAME}' @ {MODEL_REVISION[:8]} loaded in {elapsed:.1f}s")
+    rev_label = MODEL_REVISION[:8] if MODEL_REVISION else "unpinned"
+    print(f"Model '{MODEL_NAME}' @ {rev_label} loaded in {elapsed:.1f}s")
 
 
 @app.get("/health")
