@@ -94,6 +94,52 @@ class QueryValidatorIntegrationTest extends DatabaseTestCase
         self::assertNotEmpty($ctx->validatedQueries);
     }
 
+    // -- Book-name resolution against the real 25-language tables --
+
+    public function testGreekTypedInCapitalsResolvesViaDiacriticFold(): void
+    {
+        // Uppercase Greek conventionally drops accents; stored name is Γένεση (#147)
+        $ctx       = $this->makeContext('ΓΕΝΕΣΗ1,1');
+        $validator = new QueryValidator($ctx);
+
+        self::assertTrue($validator->validateQueries());
+        self::assertSame([], $ctx->errors);
+        self::assertNotEmpty($ctx->validatedQueries);
+    }
+
+    public function testSingleSpacedAbbreviationResolves(): void
+    {
+        // Latin 'I Sam' is the only Latin abbreviation for 1 Samuel (#142);
+        // TEST1 lacks the book, so resolution shows as "not available", not "invalid book".
+        $ctx       = $this->makeContext('ISam1,1');
+        $validator = new QueryValidator($ctx);
+        $validator->validateQueries();
+
+        self::assertNotEmpty($ctx->errors);
+        self::assertStringContainsString('(index 9) is not available', $ctx->errors[0]['errMessage']);
+    }
+
+    public function testGermanFifthBookOfMosesResolvesToDeuteronomy(): void
+    {
+        // German "5 Mose" needs a leading 5 (#145); TEST1 lacks Deuteronomy.
+        $ctx       = $this->makeContext('5Mose1,1');
+        $validator = new QueryValidator($ctx);
+        $validator->validateQueries();
+
+        self::assertNotEmpty($ctx->errors);
+        self::assertStringContainsString('(index 5) is not available', $ctx->errors[0]['errMessage']);
+    }
+
+    public function testHyphenatedFilipinoNameResolvesToRomans(): void
+    {
+        $ctx       = $this->makeContext('Taga-Roma1,1');
+        $validator = new QueryValidator($ctx);
+        $validator->validateQueries();
+
+        self::assertNotEmpty($ctx->errors);
+        self::assertStringContainsString('(index 52) is not available', $ctx->errors[0]['errMessage']);
+    }
+
     // -- Invalid queries --
 
     public function testInvalidBookName(): void
