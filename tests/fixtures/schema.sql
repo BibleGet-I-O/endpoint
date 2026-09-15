@@ -27,19 +27,65 @@ CREATE TABLE IF NOT EXISTS versions_available (
     ts_language      VARCHAR(30) NOT NULL DEFAULT 'simple'
 );
 
--- Bible book full names (73 rows = 73 books, columns = languages)
--- Simplified: just two language columns for testing
+-- Bible book full names (73 rows = 73 books, one column per language).
+-- Mirrors the live table; data lives in biblebooks.sql.
 CREATE TABLE IF NOT EXISTS biblebooks_fullname (
-    "BOOK"    INT NOT NULL PRIMARY KEY,
-    "ENGLISH" VARCHAR(255) NOT NULL DEFAULT '',
-    "ITALIAN" VARCHAR(255) NOT NULL DEFAULT ''
+    "BOOK" integer NOT NULL PRIMARY KEY,
+    "ENGLISH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "AFRIKAANS" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ALBANIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "AMHARIC" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ARABIC" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "CHINESE" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "CROATIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "CZECH" character varying(150) DEFAULT ''::character varying NOT NULL,
+    "FILIPINO" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "FRENCH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "GERMAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "GREEK" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "HUNGARIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ITALIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "JAPANESE" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "KOREAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "LATIN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "POLISH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "PORTUGUESE" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ROMANIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "RUSSIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "SPANISH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "TAMIL" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "THAI" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "VIETNAMESE" character varying(255) DEFAULT ''::character varying NOT NULL
 );
 
--- Bible book abbreviations (same structure)
+-- Bible book abbreviations (same shape; note ENGLISH is not the first language column here)
 CREATE TABLE IF NOT EXISTS biblebooks_abbr (
-    "BOOK"    INT NOT NULL PRIMARY KEY,
-    "ENGLISH" VARCHAR(255) NOT NULL DEFAULT '',
-    "ITALIAN" VARCHAR(255) NOT NULL DEFAULT ''
+    "BOOK" integer NOT NULL PRIMARY KEY,
+    "AFRIKAANS" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ALBANIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "AMHARIC" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ARABIC" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "CHINESE" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "CROATIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "CZECH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ENGLISH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "FILIPINO" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "FRENCH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "GERMAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "GREEK" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "HUNGARIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ITALIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "JAPANESE" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "KOREAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "LATIN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "POLISH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "PORTUGUESE" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "ROMANIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "RUSSIAN" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "SPANISH" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "TAMIL" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "THAI" character varying(255) DEFAULT ''::character varying NOT NULL,
+    "VIETNAMESE" character varying(255) DEFAULT ''::character varying NOT NULL
 );
 
 -- Request logging (yearly table, dynamically named for current year)

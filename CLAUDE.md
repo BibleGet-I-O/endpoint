@@ -139,6 +139,10 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 
 Bare-metal VPS, **not Docker** in production. `docker-compose.yml` is dev-only.
 
+- **PHP runtime is Plesk-managed**, not provisioned by the deploy workflow.
+  The app needs `pdo_pgsql`, `json`, `simplexml`, `dom`, `intl` (see
+  `composer.json`); Plesk PHP 8.3/8.4/8.5 (`/opt/plesk/php/*/bin/php`) all
+  ship them. Check with `php -m` before switching the vhost's PHP version.
 - **SSH:** `ssh ubuntu@catholicdigitalcommons.org`. The `ubuntu` user is in
   the `psacln` group, which grants group-read on the Plesk vhost trees
   below — most credential files can be sourced without sudo.

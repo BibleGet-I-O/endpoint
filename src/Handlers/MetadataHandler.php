@@ -121,12 +121,7 @@ class MetadataHandler extends AbstractHandler
             for ($x = 0; $x < $cols - 1; $x++) {
                 $val1               = StringUtils::asString($row1[$names[$x + 1]] ?? '');
                 $val2               = StringUtils::asString($row2[$names[$x + 1]] ?? '');
-                $temparray          = [$val1, $val2];
-                $arr1               = explode(' | ', $val1);
-                $booknames          = array_map(fn($s) => StringUtils::toProperCase(trim($s)), $arr1);
-                $arr2               = explode(' | ', $val2);
-                $abbrevs            = count($arr2) > 1 ? array_map(fn($s) => StringUtils::toProperCase(trim($s)), $arr2) : [];
-                $biblebooks[$n][$x] = array_merge($temparray, $booknames, $abbrevs);
+                $biblebooks[$n][$x] = StringUtils::bibleBookVariants($val1, $val2);
             }
             $n++;
         }

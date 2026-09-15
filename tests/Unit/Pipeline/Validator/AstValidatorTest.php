@@ -153,6 +153,95 @@ final class AstValidatorTest extends TestCase
         $this->assertStringContainsString('not a valid Bible book', $validator->getErrors()[0]->message);
     }
 
+    // ── Diacritic-folded fallback (#147) ──────────────────────────
+    //
+    // Inputs below are what the pipeline hands the validator *after*
+    // queryStrClean() has proper-cased them (so "ΓΕΝΕΣΗ" arrives as "Γενεση").
+
+    public function testUndiacriticizedGreekResolvesViaFallback(): void
+    {
+        $this->bibleBooks[0] = [1 => ['Γένεση', 'Γεν', 'Γένεση', 'Γεν']];
+        $validator           = $this->createValidator();
+        [$query, $tokens]    = $this->tokenizeAndParse('Γενεση1,1');
+        $result              = $validator->validate($query, $tokens);
+
+        $this->assertNotNull($result);
+        $this->assertSame(1, $result->book);
+        $this->assertEmpty($validator->getErrors());
+    }
+
+    public function testCyrillicStressMarkIsIgnoredViaFallback(): void
+    {
+        $this->bibleBooks[0] = [1 => ['Тови́та', 'Тов', 'Тови́та', 'Тов']];
+        $validator           = $this->createValidator();
+        [$query, $tokens]    = $this->tokenizeAndParse('Товита1,1');
+        $result              = $validator->validate($query, $tokens);
+
+        $this->assertNotNull($result);
+        $this->assertSame(1, $result->book);
+    }
+
+    public function testExactMatchWinsOverFoldedMatch(): void
+    {
+        // Arabic: رو (Romans) vs رؤ (Revelation) differ only by a hamza mark.
+        $this->bibleBooks[0]  = [1 => ['روما', 'رو', 'روما', 'رو']];
+        $this->bibleBooks[18] = [1 => ['رؤيا', 'رؤ', 'رؤيا', 'رؤ']];
+        $validator            = $this->createValidator();
+
+        [$query, $tokens] = $this->tokenizeAndParse('رؤ1,1');
+        $result           = $validator->validate($query, $tokens);
+        $this->assertNotNull($result);
+        $this->assertSame(19, $result->book);
+
+        [$query, $tokens] = $this->tokenizeAndParse('رو1,1');
+        $result           = $validator->validate($query, $tokens);
+        $this->assertNotNull($result);
+        $this->assertSame(1, $result->book);
+    }
+
+    public function testExactMatchOnLaterBookBeatsFoldedMatchOnEarlierBook(): void
+    {
+        // 'Ésa' folds to 'Esa', which an earlier book claims exactly; the exact
+        // hit on the later book must still win, so the fold is never consulted.
+        $this->bibleBooks[0]  = [1 => ['Esa', 'Esa', 'Esa', 'Esa']];
+        $this->bibleBooks[18] = [1 => ['Ésa', 'Ésa', 'Ésa', 'Ésa']];
+        $validator            = $this->createValidator();
+
+        [$query, $tokens] = $this->tokenizeAndParse('Ésa1,1');
+        $result           = $validator->validate($query, $tokens);
+        $this->assertNotNull($result);
+        $this->assertSame(19, $result->book);
+
+        [$query, $tokens] = $this->tokenizeAndParse('Esa1,1');
+        $result           = $validator->validate($query, $tokens);
+        $this->assertNotNull($result);
+        $this->assertSame(1, $result->book);
+    }
+
+    public function testFallbackDoesNotFoldPhonemicMarksOutsideLatinGreekCyrillic(): void
+    {
+        // Japanese ズ = ス + dakuten; folding it would merge Ezra and Esther.
+        $this->bibleBooks[0] = [1 => ['エズラ', 'エズ', 'エズラ', 'エズ']];
+        $validator           = $this->createValidator();
+        [$query, $tokens]    = $this->tokenizeAndParse('エス1,1');
+        $result              = $validator->validate($query, $tokens);
+
+        $this->assertNull($result);
+        $this->assertNotEmpty($validator->getErrors());
+    }
+
+    public function testFoldedFallbackPrefersLowestBookNumber(): void
+    {
+        $this->bibleBooks[0]  = [1 => ['Ésa', 'Ésa', 'Ésa', 'Ésa']];
+        $this->bibleBooks[18] = [1 => ['Esá', 'Esá', 'Esá', 'Esá']];
+        $validator            = $this->createValidator();
+        [$query, $tokens]     = $this->tokenizeAndParse('Esa1,1');
+        $result               = $validator->validate($query, $tokens);
+
+        $this->assertNotNull($result);
+        $this->assertSame(1, $result->book);
+    }
+
     // ── Chapter out of bounds ─────────────────────────────────────
 
     public function testChapterOutOfBounds(): void

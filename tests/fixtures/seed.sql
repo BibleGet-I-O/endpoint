@@ -8,58 +8,7 @@ INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, can
 ('DRB', 'Douay-Rheims Bible', '1752', 'English', 'Yes', 'CATHOLIC', '', 'Test subset', 0, 'BIBLE', 'english')
 ON CONFLICT DO NOTHING;
 
--- Bible book names: books 1-3 (Genesis, Exodus, Leviticus) + 4-22 (fillers) + 23 (Psalms)
-INSERT INTO biblebooks_fullname ("BOOK", "ENGLISH", "ITALIAN") VALUES
-(1, 'Genesis', 'Genesi'),
-(2, 'Exodus', 'Esodo'),
-(3, 'Leviticus', 'Levitico'),
-(4, 'Numbers', 'Numeri'),
-(5, 'Deuteronomy', 'Deuteronomio'),
-(6, 'Joshua', 'Giosue'),
-(7, 'Judges', 'Giudici'),
-(8, 'Ruth', 'Rut'),
-(9, '1 Samuel', '1Samuele'),
-(10, '2 Samuel', '2Samuele'),
-(11, '1 Kings', '1Re'),
-(12, '2 Kings', '2Re'),
-(13, '1 Chronicles', '1Cronache'),
-(14, '2 Chronicles', '2Cronache'),
-(15, 'Ezra', 'Esdra'),
-(16, 'Nehemiah', 'Neemia'),
-(17, 'Tobit | Tobias', 'Tobia'),
-(18, 'Judith', 'Giuditta'),
-(19, 'Esther', 'Ester'),
-(20, '1 Maccabees', '1Maccabei'),
-(21, '2 Maccabees', '2Maccabei'),
-(22, 'Job', 'Giobbe'),
-(23, 'Psalms | Psalm', 'Salmi | Salmo')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO biblebooks_abbr ("BOOK", "ENGLISH", "ITALIAN") VALUES
-(1, 'Gen | Gn', 'Gen | Gn'),
-(2, 'Exod | Ex', 'Es | Esod'),
-(3, 'Lev | Lv', 'Lv | Lev'),
-(4, 'Num | Nm', 'Nm'),
-(5, 'Deut | Dt', 'Dt'),
-(6, 'Josh', 'Gs'),
-(7, 'Jdg | Jgs', 'Gdc'),
-(8, 'Ru', 'Rt'),
-(9, '1Sam', '1Sam'),
-(10, '2Sam', '2Sam'),
-(11, '1Kgs', '1Re'),
-(12, '2Kgs', '2Re'),
-(13, '1Chron | 1Chr', '1Cr'),
-(14, '2Chron | 2Chr', '2Cr'),
-(15, 'Ezr', 'Esd'),
-(16, 'Neh', 'Ne'),
-(17, 'Tob', 'Tb'),
-(18, 'Jdt', 'Gdt'),
-(19, 'Est', 'Est'),
-(20, '1Macc | 1Mc', '1Mac'),
-(21, '2Macc | 2Mc', '2Mac'),
-(22, 'Jb', 'Gb'),
-(23, 'Ps | Pss', 'Sal | Salm')
-ON CONFLICT DO NOTHING;
+-- Bible book names/abbreviations live in biblebooks.sql (real 25-language data)
 
 -- Index tables for TEST1 (3 books)
 CREATE TABLE IF NOT EXISTS "TEST1_idx" (

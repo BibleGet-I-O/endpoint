@@ -7,8 +7,10 @@ namespace BibleGet\Api\Pipeline\Validator;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
+use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\Tokenizer\Token;
 use BibleGet\Api\Pipeline\Tokenizer\TokenType;
+use BibleGet\Api\Util\StringUtils;
 
 /**
  * Validates a parsed BibleQuery AST against database metadata.
@@ -24,6 +26,13 @@ final class AstValidator
 {
     /** @var array<int, array<int, array<int, string>>> */
     private array $bibleBooks;
+
+    /**
+     * $bibleBooks with diacritics folded, built lazily on the first lookup miss.
+     *
+     * @var array<int, array<int, array<int, string>>>|null
+     */
+    private ?array $foldedBibleBooks = null;
 
     /** @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> */
     private array $indexes;
@@ -170,31 +179,39 @@ final class AstValidator
 
     /**
      * Resolve a book name to its zero-based index in the BIBLEBOOKS array.
+     *
+     * Two passes: an exact match on the normalized token first, and only if
+     * that finds nothing, a retry with diacritics folded on both sides so
+     * that e.g. Greek typed in capitals (which drops accents) still resolves.
+     * Exact always wins, so scripts where a mark is phonemic (Arabic hamza,
+     * Japanese dakuten, Vietnamese tones) keep their distinctions. In either
+     * pass a token claimed by several books resolves to the lowest book
+     * number (#147).
      */
     private function resolveBookIndex(string $bookName): ?int
     {
-        $idx = $this->idxOf($bookName);
-        if ($idx !== false) {
-            return $idx;
+        $idx = QuoteContext::idxOf($bookName, $this->bibleBooks);
+        if ($idx === false) {
+            $idx = QuoteContext::idxOf(StringUtils::foldDiacritics($bookName), $this->foldedBibleBooks());
         }
-        return null;
+        return $idx === false ? null : $idx;
     }
 
     /**
-     * @return int|false
+     * @return array<int, array<int, array<int, string>>>
      */
-    private function idxOf(string $needle): int|false
+    private function foldedBibleBooks(): array
     {
-        foreach ($this->bibleBooks as $index => $value) {
-            if (is_array($value)) {
-                foreach ($value as $subValue) {
-                    if (is_array($subValue) && in_array($needle, $subValue, true)) {
-                        return $index;
-                    }
-                }
-            }
+        if ($this->foldedBibleBooks === null) {
+            $this->foldedBibleBooks = array_map(
+                static fn(array $languages): array => array_map(
+                    static fn(array $variants): array => array_map([StringUtils::class, 'foldDiacritics'], $variants),
+                    $languages
+                ),
+                $this->bibleBooks
+            );
         }
-        return false;
+        return $this->foldedBibleBooks;
     }
 
     private function validateVerseRef(VerseRef $ref, int $nonZeroBookIdx): void

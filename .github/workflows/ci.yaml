@@ -16,7 +16,7 @@ jobs:
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.2'
-          extensions: pdo_pgsql, json, simplexml, dom
+          extensions: pdo_pgsql, json, simplexml, dom, intl
           tools: composer:v2
 
       - name: Install dependencies
@@ -34,7 +34,7 @@ jobs:
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.2'
-          extensions: pdo_pgsql, json, simplexml, dom
+          extensions: pdo_pgsql, json, simplexml, dom, intl
           tools: composer:v2
 
       - name: Install dependencies
@@ -72,7 +72,7 @@ jobs:
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: pdo_pgsql, json, simplexml, dom, curl, posix
+          extensions: pdo_pgsql, json, simplexml, dom, intl, curl, posix
           coverage: ${{ matrix.php == '8.2' && 'xdebug' || 'none' }}
           tools: composer:v2
 
@@ -83,6 +83,7 @@ jobs:
         run: |
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/schema.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/seed.sql
+          PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/biblebooks.sql
 
       - name: Run unit tests
         run: vendor/bin/phpunit --testsuite Unit --testdox --display-warnings

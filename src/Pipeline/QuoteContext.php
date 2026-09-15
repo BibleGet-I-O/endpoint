@@ -173,16 +173,17 @@ class QuoteContext
     }
 
     /**
+     * Zero-based index of the first book (lowest book number) whose variant
+     * list, in any language, contains $needle exactly.
+     *
      * @param array<int, array<int, array<int, string>>> $haystack
      */
     public static function idxOf(string $needle, array $haystack): int|false
     {
         foreach ($haystack as $index => $value) {
-            if (is_array($value)) {
-                foreach ($value as $subValue) {
-                    if (is_array($subValue) && in_array($needle, $subValue)) {
-                        return $index;
-                    }
+            foreach ($value as $subValue) {
+                if (in_array($needle, $subValue, true)) {
+                    return $index;
                 }
             }
         }
@@ -203,11 +204,6 @@ class QuoteContext
         $queries       = self::removeEmptyItems($queries);
         $queries       = array_map([self::class, 'toProperCase'], $queries);
         $this->queries = $queries;
-    }
-
-    private static function normalizeBibleBook(string $str): string
-    {
-        return StringUtils::normalizeBibleBook($str);
     }
 
     private static function detectAndNormalizeNotation(string &$querystr): string
@@ -420,12 +416,7 @@ class QuoteContext
             for ($x = 1; $x < $cols; $x++) {
                 $val1                     = StringUtils::asString($row1[$names[$x]] ?? '');
                 $val2                     = StringUtils::asString($row2[$names[$x]] ?? '');
-                $temparray                = [$val1, $val2];
-                $arr1                     = explode(' | ', $val1);
-                $booknames                = array_map([self::class, 'normalizeBibleBook'], $arr1);
-                $arr2                     = explode(' | ', $val2);
-                $abbrevs                  = ( count($arr2) > 1 ) ? array_map([self::class, 'normalizeBibleBook'], $arr2) : [];
-                $this->BIBLEBOOKS[$n][$x] = array_merge($temparray, $booknames, $abbrevs);
+                $this->BIBLEBOOKS[$n][$x] = StringUtils::bibleBookVariants($val1, $val2);
             }
             $n++;
         }

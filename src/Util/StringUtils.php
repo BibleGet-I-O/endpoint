@@ -46,6 +46,52 @@ class StringUtils
     }
 
     /**
+     * Expand one book's stored full-name and abbreviation cells into the list
+     * of strings a query token may match.
+     *
+     * The raw cell values come first (they are what the metadata endpoint
+     * displays), followed by every ` | `-separated alternate in normalized
+     * form. Names and abbreviations are treated identically: a single
+     * abbreviation is normalized just like a list of them (#142).
+     *
+     * @return array<int, string>
+     */
+    public static function bibleBookVariants(string $fullnames, string $abbreviations): array
+    {
+        $names   = array_map([self::class, 'normalizeBibleBook'], explode(' | ', $fullnames));
+        $abbrevs = $abbreviations === ''
+            ? []
+            : array_map([self::class, 'normalizeBibleBook'], explode(' | ', $abbreviations));
+        return array_merge([$fullnames, $abbreviations], $names, $abbrevs);
+    }
+
+    /**
+     * Strip diacritics from Latin, Greek and Cyrillic letters only.
+     *
+     * Decomposes to NFD, drops combining marks that follow a base letter in
+     * one of those three scripts, and recomposes to NFC. Marks in other
+     * scripts are deliberately preserved: the Japanese dakuten (ス→ズ), the
+     * Arabic hamza (و→ؤ) and similar marks change the letter rather than
+     * decorating it, so folding them would merge unrelated words (#147).
+     *
+     * Atomic letters that have no decomposition (ł, đ, ø) pass through
+     * unchanged; this is a leniency pass, not a transliteration.
+     */
+    public static function foldDiacritics(string $str): string
+    {
+        $decomposed = \Normalizer::normalize($str, \Normalizer::FORM_D);
+        if ($decomposed === false) {
+            return $str;
+        }
+        $stripped = preg_replace('/(?<=[\p{Latin}\p{Greek}\p{Cyrillic}])\p{Mn}+/u', '', $decomposed);
+        if ($stripped === null) {
+            return $str;
+        }
+        $composed = \Normalizer::normalize($stripped, \Normalizer::FORM_C);
+        return $composed === false ? $str : $composed;
+    }
+
+    /**
      * Safely convert a mixed database value to string.
      * PDO returns column values as string|null; this handles the mixed type at PHPStan level 10.
      */

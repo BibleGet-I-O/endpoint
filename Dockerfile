@@ -1,8 +1,11 @@
 FROM php:8.4-apache
 
-RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql \
-    && apt-get purge -y --auto-remove libpq-dev \
+# Build pdo_pgsql and intl, then drop the -dev packages while keeping the
+# runtime libraries (libpq5, libicu*) that the compiled extensions link against.
+RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev libicu-dev \
+    && docker-php-ext-install pdo pdo_pgsql intl \
+    && apt-mark manual $(dpkg-query -W -f='${binary:Package}\n' 'libpq5' 'libicu*' | grep -v -- '-dev') \
+    && apt-get purge -y --auto-remove libpq-dev libicu-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN a2enmod rewrite
 
