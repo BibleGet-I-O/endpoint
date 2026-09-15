@@ -55,6 +55,41 @@ final class StringUtilsTest extends TestCase
         self::assertSame(['Genesis', '', 'Genesis'], $variants);
     }
 
+    // ── foldDiacritics (#147) ──────────────────────────────────────
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function foldProvider(): array
+    {
+        return [
+            'ascii untouched'         => ['Genesis', 'Genesis'],
+            'latin acute'             => ['Génesis', 'Genesis'],
+            'latin decomposed input'  => ["Ge\u{0301}nesis", 'Genesis'],
+            'greek tonos'             => ['Γένεση', 'Γενεση'],
+            'cyrillic stress mark'    => ['Тови́та', 'Товита'],
+            'vietnamese tone (latin)' => ['Truyền', 'Truyen'],
+            'polish atomic l kept'    => ['Łódź', 'Łodz'],
+            'croatian atomic d kept'  => ['Đ', 'Đ'],
+            'nordic atomic o kept'    => ['Ø', 'Ø'],
+            'japanese dakuten kept'   => ['エズ', 'エズ'],
+            'arabic hamza kept'       => ['رؤ', 'رؤ'],
+            'han untouched'           => ['創世紀', '創世紀'],
+        ];
+    }
+
+    #[DataProvider('foldProvider')]
+    public function testFoldDiacritics(string $input, string $expected): void
+    {
+        self::assertSame($expected, StringUtils::foldDiacritics($input));
+    }
+
+    public function testFoldDiacriticsReturnsComposedForm(): void
+    {
+        // A mark that survives (Arabic) must come back recomposed, not as base + combining mark
+        self::assertSame("\u{0624}", StringUtils::foldDiacritics("\u{0648}\u{0654}"));
+    }
+
     // ── normalizeBibleBook ─────────────────────────────────────────
 
     /**
