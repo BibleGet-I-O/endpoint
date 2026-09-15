@@ -92,7 +92,7 @@ class QUERY_EXECUTOR {
     }
 
     private function checkIPAddressPastTwoDaysWithSameRequest() {
-        $ipresult = $this->ipaddress != "" ? $this->BBQUOTE->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $this->ipaddress . "' ) AND QUERY = '" . $this->xquery . "'  AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
+        $ipresult = $this->ipaddress != "" ? $this->BBQUOTE->mysqli->query( "SELECT * FROM requests_log__" . $this->curYEAR . " WHERE WHO_IP = INET6_ATON( '" . $this->ipaddress . "' ) AND QUERY = '" . $this->BBQUOTE->mysqli->real_escape_string( $this->xquery ) . "'  AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY )" ) : false;
         if ( $ipresult ) {
             if ( $this->BBQUOTE->DEBUG_IPINFO === true ) {
                 file_put_contents( $this->BBQUOTE->DEBUGFILE, "We have seen the IP Address [" . $this->ipaddress . "] in the past 2 days with this same request [" . $this->xquery . "]" . PHP_EOL, FILE_APPEND | LOCK_EX );
@@ -133,7 +133,7 @@ class QUERY_EXECUTOR {
 
     //let's add another check for "referer" websites and how many similar requests have derived from the same origin in the past couple days
     private function checkRequestsFromSameOrigin() {
-        $originres = $this->BBQUOTE->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->BBQUOTE->originHeader . "' AND QUERY = '" . $this->xquery . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->BBQUOTE->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->BBQUOTE->mysqli->real_escape_string( $this->BBQUOTE->originHeader ) . "' AND QUERY = '" . $this->BBQUOTE->mysqli->real_escape_string( $this->xquery ) . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
                 $originRow = $originres->fetch_assoc();
@@ -151,7 +151,7 @@ class QUERY_EXECUTOR {
 
     //and we'll check for diverse requests from the same origin in the past couple days ( >100? )
     private function checkDiverseRequestsFromSameOrigin() {
-        $originres = $this->BBQUOTE->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->BBQUOTE->originHeader . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
+        $originres = $this->BBQUOTE->mysqli->query( "SELECT ORIGIN,COUNT( * ) AS ORIGIN_CNT FROM requests_log__" . $this->curYEAR . " WHERE ORIGIN != '' AND ORIGIN = '" . $this->BBQUOTE->mysqli->real_escape_string( $this->BBQUOTE->originHeader ) . "' AND WHO_WHEN > DATE_SUB( NOW(), INTERVAL 2 DAY ) GROUP BY ORIGIN" );
         if ( $originres ) {
             if ( $originres->num_rows > 0 ) {
                 $originRow = $originres->fetch_assoc();
