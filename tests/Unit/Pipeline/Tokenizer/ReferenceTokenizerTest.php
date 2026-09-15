@@ -164,6 +164,48 @@ final class ReferenceTokenizerTest extends TestCase
         $this->assertNotSame(TokenType::BOOK_NUMERIC_PREFIX, $result[0][0]);
     }
 
+    // ── Hyphenated book names ─────────────────────────────────────
+    //
+    // A hyphen followed by a letter can never be the range operator (which is
+    // always followed by a digit), so it belongs to the book name: Filipino
+    // "Taga-Roma", "1 Mga Taga-Corinto".
+
+    public function testHyphenInsideBookName(): void
+    {
+        $result = $this->typeValues('Taga-Roma1,1');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Taga-Roma'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $result);
+    }
+
+    public function testHyphenatedBookNameWithNumericPrefixAndRange(): void
+    {
+        $result = $this->typeValues('1MgaTaga-Corinto1,1-3');
+        $this->assertSame([
+            [TokenType::BOOK_NUMERIC_PREFIX, '1'],
+            [TokenType::BOOK_NAME, 'MgaTaga-Corinto'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::VERSE_NUMBER, '3'],
+        ], $result);
+    }
+
+    public function testHyphenBeforeDigitIsStillARange(): void
+    {
+        $result = $this->typeValues('Genesis1-2');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Genesis'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::CHAPTER_NUMBER, '2'],
+        ], $result);
+    }
+
     // ── Partial verse suffix ──────────────────────────────────────
 
     public function testPartialVerseSuffix(): void

@@ -137,8 +137,10 @@ final class ReferenceTokenizer
     private function readUnicodeWord(): string
     {
         $start = $this->pos;
-        // Match Unicode letters and combining marks: (\p{L}\p{M}*)+
-        if (preg_match('/\G(\p{L}\p{M}*)+/u', $this->input, $matches, 0, $this->pos)) {
+        // Match Unicode letters and combining marks, allowing an inner hyphen
+        // between letters ("Taga-Roma"). A hyphen followed by a letter can never
+        // be the range operator, which is always followed by a digit.
+        if (preg_match('/\G(\p{L}\p{M}*)+(?:-(\p{L}\p{M}*)+)*/u', $this->input, $matches, 0, $this->pos)) {
             $this->pos += strlen($matches[0]);
             return $matches[0];
         }
