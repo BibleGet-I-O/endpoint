@@ -18,6 +18,15 @@ use BibleGet\Api\Util\StringUtils;
  */
 final class ReferenceTokenizer
 {
+    /**
+     * Highest digit accepted as a numbered-book prefix (e.g. "1John", "5Mose").
+     *
+     * 1–3 John and 1–4 Kings (Vulgate) need 4; the Lutheran-derived
+     * Pentateuch naming (German "5 Mose", Hungarian "5 Mózes") needs 5.
+     * Shared with QueryValidator so the two grammars cannot drift.
+     */
+    public const MAX_BOOK_NUMERIC_PREFIX = 5;
+
     private string $input;
     private int $length;
     private int $pos = 0;
@@ -100,11 +109,10 @@ final class ReferenceTokenizer
     {
         $startPos = $this->pos;
 
-        // Check for numeric prefix (1-4 before a book name)
+        // Check for numeric prefix (1..MAX_BOOK_NUMERIC_PREFIX before a book name)
         if (
             $this->pos < $this->length
-            && $this->input[$this->pos] >= '1'
-            && $this->input[$this->pos] <= '4'
+            && $this->isBookPrefixDigit($this->input[$this->pos])
             && $this->pos + 1 < $this->length
             && $this->isLetterStart($this->pos + 1)
         ) {
@@ -147,7 +155,7 @@ final class ReferenceTokenizer
             $this->pos++;
         }
 
-        // Determine if this is a book numeric prefix: digit 1-4 followed by letter, no tokens yet or last was QUERY_SEPARATOR
+        // Determine if this is a book numeric prefix: prefix digit followed by letter, no tokens yet or last was QUERY_SEPARATOR
         if ($this->isBookNumericPrefix($numStr)) {
             $this->tokens[] = new Token(TokenType::BOOK_NUMERIC_PREFIX, $numStr, $startPos);
             // Now read the book name
@@ -172,8 +180,8 @@ final class ReferenceTokenizer
 
     private function isBookNumericPrefix(string $numStr): bool
     {
-        // Must be a single digit 1-4
-        if (strlen($numStr) !== 1 || $numStr < '1' || $numStr > '4') {
+        // Must be a single prefix digit
+        if (strlen($numStr) !== 1 || !$this->isBookPrefixDigit($numStr)) {
             return false;
         }
 
@@ -189,6 +197,11 @@ final class ReferenceTokenizer
 
         $lastToken = $this->tokens[count($this->tokens) - 1];
         return $lastToken->type === TokenType::QUERY_SEPARATOR;
+    }
+
+    private function isBookPrefixDigit(string $char): bool
+    {
+        return $char >= '1' && $char <= (string) self::MAX_BOOK_NUMERIC_PREFIX;
     }
 
     private function classifyNumber(): TokenType

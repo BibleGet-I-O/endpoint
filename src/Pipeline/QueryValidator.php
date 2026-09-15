@@ -47,7 +47,7 @@ class QueryValidator
         $this->previousBookName = '';
 
         // First query must start with a valid book indicator
-        if (!$this->startsWithBookIndicator($this->ctx->queries[0])) {
+        if (!self::startsWithBookIndicator($this->ctx->queries[0])) {
             $this->ctx->addErrorMessage(0);
             $this->ctx->incrementBadQueryCount();
             return false;
@@ -156,10 +156,17 @@ class QueryValidator
         return new BibleQuery($ast->book, $result->segments);
     }
 
-    private function startsWithBookIndicator(string $query): bool
+    /**
+     * Does the query open with an optional numbered-book prefix followed by a letter?
+     *
+     * The digit range is ReferenceTokenizer::MAX_BOOK_NUMERIC_PREFIX so the
+     * pre-check and the tokenizer accept the same prefixes.
+     */
+    public static function startsWithBookIndicator(string $query): bool
     {
-        return (bool) ( preg_match('/^[1-4]{0,1}\p{Lu}\p{Ll}*/u', $query)
-            || preg_match('/^[1-4]{0,1}(\p{L}\p{M}*)+/u', $query) );
+        $prefix = '[1-' . ReferenceTokenizer::MAX_BOOK_NUMERIC_PREFIX . ']{0,1}';
+        return (bool) ( preg_match('/^' . $prefix . '\p{Lu}\p{Ll}*/u', $query)
+            || preg_match('/^' . $prefix . '(\p{L}\p{M}*)+/u', $query) );
     }
 
     /**
