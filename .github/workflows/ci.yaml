@@ -83,6 +83,7 @@ jobs:
         run: |
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/schema.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/seed.sql
+          PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/biblebooks.sql
 
       - name: Run unit tests
         run: vendor/bin/phpunit --testsuite Unit --testdox --display-warnings

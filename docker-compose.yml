@@ -11,6 +11,7 @@ services:
       - pgdata:/var/lib/postgresql
       - ./tests/fixtures/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./tests/fixtures/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+      - ./tests/fixtures/biblebooks.sql:/docker-entrypoint-initdb.d/03-biblebooks.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bibleget"]
       interval: 10s
