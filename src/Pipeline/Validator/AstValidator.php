@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline\Validator;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
+use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\Tokenizer\Token;
 use BibleGet\Api\Pipeline\Tokenizer\TokenType;
 
@@ -180,21 +181,9 @@ final class AstValidator
         return null;
     }
 
-    /**
-     * @return int|false
-     */
     private function idxOf(string $needle): int|false
     {
-        foreach ($this->bibleBooks as $index => $value) {
-            if (is_array($value)) {
-                foreach ($value as $subValue) {
-                    if (is_array($subValue) && in_array($needle, $subValue, true)) {
-                        return $index;
-                    }
-                }
-            }
-        }
-        return false;
+        return QuoteContext::idxOf($needle, $this->bibleBooks);
     }
 
     private function validateVerseRef(VerseRef $ref, int $nonZeroBookIdx): void

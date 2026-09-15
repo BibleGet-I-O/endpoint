@@ -46,6 +46,26 @@ class StringUtils
     }
 
     /**
+     * Expand one book's stored full-name and abbreviation cells into the list
+     * of strings a query token may match.
+     *
+     * The raw cell values come first (they are what the metadata endpoint
+     * displays), followed by every ` | `-separated alternate in normalized
+     * form. Names and abbreviations are treated identically: a single
+     * abbreviation is normalized just like a list of them (#142).
+     *
+     * @return array<int, string>
+     */
+    public static function bibleBookVariants(string $fullnames, string $abbreviations): array
+    {
+        $names   = array_map([self::class, 'normalizeBibleBook'], explode(' | ', $fullnames));
+        $abbrevs = $abbreviations === ''
+            ? []
+            : array_map([self::class, 'normalizeBibleBook'], explode(' | ', $abbreviations));
+        return array_merge([$fullnames, $abbreviations], $names, $abbrevs);
+    }
+
+    /**
      * Safely convert a mixed database value to string.
      * PDO returns column values as string|null; this handles the mixed type at PHPStan level 10.
      */
