@@ -199,6 +199,25 @@ final class AstValidatorTest extends TestCase
         $this->assertSame(1, $result->book);
     }
 
+    public function testExactMatchOnLaterBookBeatsFoldedMatchOnEarlierBook(): void
+    {
+        // 'Ésa' folds to 'Esa', which an earlier book claims exactly; the exact
+        // hit on the later book must still win, so the fold is never consulted.
+        $this->bibleBooks[0]  = [1 => ['Esa', 'Esa', 'Esa', 'Esa']];
+        $this->bibleBooks[18] = [1 => ['Ésa', 'Ésa', 'Ésa', 'Ésa']];
+        $validator            = $this->createValidator();
+
+        [$query, $tokens] = $this->tokenizeAndParse('Ésa1,1');
+        $result           = $validator->validate($query, $tokens);
+        $this->assertNotNull($result);
+        $this->assertSame(19, $result->book);
+
+        [$query, $tokens] = $this->tokenizeAndParse('Esa1,1');
+        $result           = $validator->validate($query, $tokens);
+        $this->assertNotNull($result);
+        $this->assertSame(1, $result->book);
+    }
+
     public function testFallbackDoesNotFoldPhonemicMarksOutsideLatinGreekCyrillic(): void
     {
         // Japanese ズ = ス + dakuten; folding it would merge Ezra and Esther.

@@ -9,6 +9,9 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
+      # The fixtures below run only when the pgdata volume is first created.
+      # After any change to tests/fixtures/*.sql, reset the dev database with:
+      #   docker compose down -v && docker compose up -d
       - ./tests/fixtures/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./tests/fixtures/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
       - ./tests/fixtures/biblebooks.sql:/docker-entrypoint-initdb.d/03-biblebooks.sql
