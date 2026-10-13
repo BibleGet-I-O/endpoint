@@ -54,7 +54,9 @@ Deprecated / Fixed / Removed / Security where applicable.
   is on PG 18 and the version drift was breaking cross-version `pg_dump`
   streams. The mount changed accordingly from
   `/var/lib/postgresql/data` to `/var/lib/postgresql` for the PG 18
-  entrypoint convention.
+  entrypoint convention. The CI `test` job's Postgres service container
+  was bumped to `pgvector/pgvector:pg18` as well, so tests run against
+  the same major version as live.
 
 - **GPU passthrough on the embedding service.** `docker-compose.yml` now
   reserves an NVIDIA GPU for the embedding container (`deploy.resources.
