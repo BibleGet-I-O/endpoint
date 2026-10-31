@@ -29,7 +29,7 @@
         "phpstan/phpstan": "^2.0@stable",
         "captainhook/captainhook-phar": "^5.25",
         "captainhook/hook-installer": "^1.0",
-        "phpunit/phpunit": "^11.0",
+        "phpunit/phpunit": "^13.4",
         "squizlabs/php_codesniffer": "^4.0"
     },
     "autoload": {
