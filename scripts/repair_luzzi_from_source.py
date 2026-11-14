@@ -190,6 +190,112 @@ def is_superscription(segment):
     return re.fullmatch(r"\s*<i>[^<]*</i>[\s.,;:]*", segment) is not None
 
 
+def split_verse(raw):
+    """Split a luzzi.txt text field into (heading parts, prose prefix, line
+    segments, ends_with_break). A heading's leading prose parts are the
+    first half of a verse whose heading falls mid-verse."""
+    heading, body = raw.split("^", 1) if "^" in raw else ("", raw)
+    parts = [p.strip() for p in heading.split("<br />") if p.strip()]
+    prefix = []
+    while parts and is_prose(parts[0]):
+        prefix.append(parts.pop(0))
+    segments = body.split("<br />")
+    ends_with_break = len(segments) > 1 and segments[-1].strip() == ""
+    if ends_with_break:
+        segments.pop()
+    return parts, prefix, [s.strip() for s in segments], ends_with_break
+
+
+def classify_psalm_verse(key, parts, prefix, segments, ends_with_break, new_chapter, at_line_start):
+    """Pass-1 record for a Psalms verse (see format_edition)."""
+    new_block = new_chapter or bool(parts)
+    continues_poem = at_line_start and not new_block and key not in PSALM_PROSE_AFTER_POEM
+    v = {
+        "key": key,
+        "paragraph": False,
+        "prefix": prefix,
+        "segments": segments,
+        "ends_with_break": ends_with_break,
+        "new_block": new_block,
+        "prose": len(segments) == 1 and not ends_with_break and not continues_poem,
+        "lead_in": 0,
+    }
+    if not v["prose"]:
+        if prefix:
+            raise ValueError(f"mid-verse heading in a poetic verse: {key}")
+        first = segments[0]
+        narrative_intro = len(segments) > 1 and first.endswith(":") and segments[1].startswith("«")
+        if is_superscription(first) or narrative_intro or not (at_line_start or new_block):
+            v["lead_in"] = 1  # untagged lead-in / superscription line
+    # A poem starts in this verse unless it continues the previous one.
+    v["starts_poem"] = not v["prose"] and (new_block or v["lead_in"] == 1 or not at_line_start)
+    return v
+
+
+def classify_verses(raw_rows):
+    """Pass 1: one record per verse, in source order."""
+    verses, prev_key, at_line_start = [], None, False
+    for key, raw in raw_rows:
+        new_chapter = prev_key is None or prev_key[:2] != key[:2]
+        prev_key = key
+        parts, prefix, segments, ends_with_break = split_verse(raw)
+        if key[0] != PSALMS:
+            if prefix and len(segments) > 1:
+                raise ValueError(f"mid-verse heading in a multi-line verse: {key}")
+            verses.append({"key": key, "prefix": prefix, "segments": segments, "paragraph": True})
+            at_line_start = False
+            continue
+        verses.append(classify_psalm_verse(key, parts, prefix, segments, ends_with_break, new_chapter, at_line_start))
+        at_line_start = ends_with_break
+    return verses
+
+
+def with_prefix(prefix, text):
+    """Prepend a mid-verse heading's prose prefix; return (text, title_position)."""
+    pre = inline(" ".join(prefix))
+    return (f"{pre} {text}", len(pre) + 1) if pre else (text, None)
+
+
+def poem_ends_in(verse, nxt):
+    """Does the poem running through `verse` end with its last line?"""
+    return (
+        not verse["ends_with_break"]
+        or nxt is None
+        or nxt["paragraph"]
+        or nxt["key"][:2] != verse["key"][:2]
+        or nxt["new_block"]
+        or nxt["prose"]
+        or nxt["lead_in"] == 1
+    )
+
+
+def tag_poem_lines(verse, poem_ends):
+    """Wrap a poetic Psalms verse's lines in <pof>/<po>/<pol>; lead-in untagged."""
+    lines = balance_italics([inline(s) for s in verse["segments"]])
+    first_poem, last = verse["lead_in"], len(lines) - 1
+    tagged = []
+    for i, line in enumerate(lines):
+        if i < first_poem:
+            tagged.append(line)
+        elif i == first_poem and verse["starts_poem"]:
+            tagged.append(f"<pof>{line}</pof>")
+        elif i == last and poem_ends:
+            tagged.append(f"<pol>{line}</pol>")
+        else:
+            tagged.append(f"<po>{line}</po>")
+    return "\n".join(tagged)
+
+
+def format_verse(verse, nxt):
+    """Pass 2: (formatted text, title_position) for one pass-1 record."""
+    if verse["paragraph"]:
+        lines = balance_italics([inline(seg) for seg in verse["segments"]])
+        return with_prefix(verse["prefix"], "\n".join(lines))
+    if verse["prose"]:
+        return with_prefix(verse["prefix"], balance_italics([inline(verse["segments"][0])])[0])
+    return tag_poem_lines(verse, poem_ends_in(verse, nxt)), None
+
+
 def format_edition(raw_rows):
     """Return {key: (formatted_text, title_position)} for every source row.
 
@@ -210,98 +316,14 @@ def format_edition(raw_rows):
       inner <br /> become untagged line breaks, a trailing <br /> (paragraph
       end) is dropped -- there is no paragraph construct to store it in.
     """
-    # Pass 1: classify each verse.
-    verses, prev_key, at_line_start = [], None, False
-    for key, raw in raw_rows:
-        new_chapter = prev_key is None or prev_key[:2] != key[:2]
-        prev_key = key
-        heading, body = raw.split("^", 1) if "^" in raw else ("", raw)
-        parts = [p.strip() for p in heading.split("<br />") if p.strip()]
-        prefix = []
-        while parts and is_prose(parts[0]):
-            prefix.append(parts.pop(0))
-        segments = body.split("<br />")
-        ends_with_break = len(segments) > 1 and segments[-1].strip() == ""
-        if ends_with_break:
-            segments.pop()
-        segments = [s.strip() for s in segments]
-        if key[0] != PSALMS:
-            if prefix and len(segments) > 1:
-                raise ValueError(f"mid-verse heading in a multi-line verse: {key}")
-            verses.append({"key": key, "prefix": prefix, "segments": segments, "paragraph": True})
-            at_line_start = False
-            continue
-        continues_poem = (at_line_start and not (new_chapter or bool(parts))
-                          and key not in PSALM_PROSE_AFTER_POEM)
-        v = {
-            "key": key,
-            "paragraph": False,
-            "prefix": prefix,
-            "segments": segments,
-            "ends_with_break": ends_with_break,
-            "new_block": new_chapter or bool(parts),
-            "prose": len(segments) == 1 and not ends_with_break and not continues_poem,
-            "lead_in": 0,
-        }
-        if not v["prose"]:
-            if prefix:
-                raise ValueError(f"mid-verse heading in a poetic verse: {key}")
-            first = segments[0]
-            narrative_intro = len(segments) > 1 and first.endswith(":") and segments[1].startswith("«")
-            if is_superscription(first) or narrative_intro or not (at_line_start or v["new_block"]):
-                v["lead_in"] = 1  # untagged lead-in / superscription line
-        # A poem starts in this verse unless it continues the previous one.
-        v["starts_poem"] = not v["prose"] and (v["new_block"] or v["lead_in"] == 1 or not at_line_start)
-        verses.append(v)
-        at_line_start = ends_with_break
-
-    # Pass 2: tag lines; a poem ends at a verse without a trailing <br />, or
-    # where the next verse opens a new block, a lead-in, or prose.
+    verses = classify_verses(raw_rows)
     result = {}
-    for idx, v in enumerate(verses):
-        key, segments = v["key"], v["segments"]
-        if v["paragraph"]:
-            lines = balance_italics([inline(seg) for seg in segments])
-            pre = inline(" ".join(v["prefix"]))
-            text = "\n".join(lines)
-            text, position = (f"{pre} {text}", len(pre) + 1) if pre else (text, None)
-            if not valid_title_position(text, position):
-                raise ValueError(f"title_position guard failed for {key}: {position}")
-            result[key] = (text, position)
-            continue
-        if v["prose"]:
-            pre = inline(" ".join(v["prefix"]))
-            body_text = balance_italics([inline(segments[0])])[0]
-            text = f"{pre} {body_text}" if pre else body_text
-            position = len(pre) + 1 if pre else None
-        else:
-            nxt = verses[idx + 1] if idx + 1 < len(verses) else None
-            poem_ends = (
-                not v["ends_with_break"]
-                or nxt is None
-                or nxt["key"][:2] != key[:2]
-                or nxt["new_block"]
-                or nxt["paragraph"]
-                or nxt["prose"]
-                or nxt["lead_in"] == 1
-            )
-            lines = balance_italics([inline(s) for s in segments])
-            first_poem = v["lead_in"]
-            tagged = []
-            for i, line in enumerate(lines):
-                if i < first_poem:
-                    tagged.append(line)
-                elif i == first_poem and v["starts_poem"]:
-                    tagged.append(f"<pof>{line}</pof>")
-                elif i == len(lines) - 1 and poem_ends:
-                    tagged.append(f"<pol>{line}</pol>")
-                else:
-                    tagged.append(f"<po>{line}</po>")
-            text = "\n".join(tagged)
-            position = None
+    for idx, verse in enumerate(verses):
+        nxt = verses[idx + 1] if idx + 1 < len(verses) else None
+        text, position = format_verse(verse, nxt)
         if not valid_title_position(text, position):
-            raise ValueError(f"title_position guard failed for {key}: {position}")
-        result[key] = (text, position)
+            raise ValueError(f"title_position guard failed for {verse['key']}: {position}")
+        result[verse["key"]] = (text, position)
     return result
 
 
@@ -318,6 +340,79 @@ def sql_literal(text):
     if "\\" in text:
         raise ValueError("backslash in text; escaping would differ between engines")
     return "'" + text.replace("'", "''") + "'"
+
+
+def emit_text(args, source, db, order, table, col_id, col_text, q):
+    """UPDATEs restoring each damaged verse's text (guarded on known old texts)."""
+    updates, per_book = [], collections.Counter()
+    olds = collections.defaultdict(set)
+    for path in [args.db_tsv] + args.also_old:
+        for key, (verse_id, text) in load_dump(path).items():
+            if verse_id != db[key][0]:
+                sys.exit(f"verseID mismatch for {key} in {path}")
+            olds[key].add(text)
+    for key in order:
+        new = source[key][0]
+        stale = sorted(t for t in olds[key] if t != new)
+        if not stale:
+            continue
+        per_book[key[0]] += 1
+        guard = " OR ".join(f"{col_text} = {sql_literal(t)}" for t in stale)
+        updates.append(
+            f"UPDATE {table} SET {col_text} = {sql_literal(new)} "
+            f"WHERE {col_id} = {db[key][0]} AND ({guard}); -- {key[0]} {key[1]}:{key[2]}"
+        )
+    header = f"Restore {len(updates)} LUZZI verses from the original luzzi.txt source."
+    return updates, per_book, header
+
+
+def emit_titles(args, source, db, order, table, col_id, col_text, q):
+    """UPDATEs storing headings in title1-title3 where all three are empty."""
+    updates, per_book = [], collections.Counter()
+    t = [q(f"title{n}") for n in (1, 2, 3)]
+    empty = " AND ".join(f"COALESCE({c}, '') = ''" for c in t)
+    for key in order:
+        titles = source[key][1]
+        if not any(titles):
+            continue
+        per_book[key[0]] += 1
+        sets = ", ".join(f"{c} = {sql_literal(v)}" for c, v in zip(t, titles))
+        updates.append(
+            f"UPDATE {table} SET {sets} WHERE {col_id} = {db[key][0]} AND {empty}; -- {key[0]} {key[1]}:{key[2]}"
+        )
+    header = f"Store the {len(updates)} LUZZI section headings from luzzi.txt in title1-title3."
+    return updates, per_book, header
+
+
+def emit_formatted(args, source, db, order, table, col_id, col_text, q):
+    """UPDATEs storing the formatted text and title_position (PostgreSQL only)."""
+    updates, per_book = [], collections.Counter()
+    if args.mariadb:
+        sys.exit("--emit formatted targets PostgreSQL only (v3 MariaDB keeps plain text)")
+    formatted = format_edition(load_raw(args.source))
+    for key in order:
+        new, position = formatted[key]
+        plain = source[key][0]
+        if plain_text(new) != plain:
+            sys.exit(f"plain-text round trip failed for {key}:\n  {plain_text(new)!r}\n  {plain!r}")
+        if new == plain and position is None:
+            continue
+        per_book[key[0]] += 1
+        pos_sql = "NULL" if position is None else str(position)
+        # Guarded on the current plain text, and on the formatted text
+        # normalizing back to exactly that, so text_plain/text_hash (and
+        # with them the embeddings) cannot change.
+        updates.append(
+            f"UPDATE {table} SET text = {sql_literal(new)}, title_position = {pos_sql} "
+            f"WHERE {col_id} = {db[key][0]} AND text = {sql_literal(plain)} "
+            f"AND bibleget_plain_text({sql_literal(new)}) = text; -- {key[0]} {key[1]}:{key[2]}"
+        )
+    header = f"Store formatted text (NABRE tag set) for {len(updates)} LUZZI verses."
+
+    return updates, per_book, header
+
+
+EMITTERS = {"text": emit_text, "titles": emit_titles, "formatted": emit_formatted}
 
 
 def main():
@@ -339,62 +434,7 @@ def main():
     table, col_id = q("LUZZI"), q("verseID")
     col_text = "`text`" if args.mariadb else "text"
     order = sorted(db, key=lambda k: db[k][0])
-    updates, per_book = [], collections.Counter()
-
-    if args.emit == "text":
-        olds = collections.defaultdict(set)
-        for path in [args.db_tsv] + args.also_old:
-            for key, (verse_id, text) in load_dump(path).items():
-                if verse_id != db[key][0]:
-                    sys.exit(f"verseID mismatch for {key} in {path}")
-                olds[key].add(text)
-        for key in order:
-            new = source[key][0]
-            stale = sorted(t for t in olds[key] if t != new)
-            if not stale:
-                continue
-            per_book[key[0]] += 1
-            guard = " OR ".join(f"{col_text} = {sql_literal(t)}" for t in stale)
-            updates.append(
-                f"UPDATE {table} SET {col_text} = {sql_literal(new)} "
-                f"WHERE {col_id} = {db[key][0]} AND ({guard}); -- {key[0]} {key[1]}:{key[2]}"
-            )
-        header = f"Restore {len(updates)} LUZZI verses from the original luzzi.txt source."
-    elif args.emit == "titles":
-        t = [q(f"title{n}") for n in (1, 2, 3)]
-        empty = " AND ".join(f"COALESCE({c}, '') = ''" for c in t)
-        for key in order:
-            titles = source[key][1]
-            if not any(titles):
-                continue
-            per_book[key[0]] += 1
-            sets = ", ".join(f"{c} = {sql_literal(v)}" for c, v in zip(t, titles))
-            updates.append(
-                f"UPDATE {table} SET {sets} WHERE {col_id} = {db[key][0]} AND {empty}; -- {key[0]} {key[1]}:{key[2]}"
-            )
-        header = f"Store the {len(updates)} LUZZI section headings from luzzi.txt in title1-title3."
-    else:  # formatted
-        if args.mariadb:
-            sys.exit("--emit formatted targets PostgreSQL only (v3 MariaDB keeps plain text)")
-        formatted = format_edition(load_raw(args.source))
-        for key in order:
-            new, position = formatted[key]
-            plain = source[key][0]
-            if plain_text(new) != plain:
-                sys.exit(f"plain-text round trip failed for {key}:\n  {plain_text(new)!r}\n  {plain!r}")
-            if new == plain and position is None:
-                continue
-            per_book[key[0]] += 1
-            pos_sql = "NULL" if position is None else str(position)
-            # Guarded on the current plain text, and on the formatted text
-            # normalizing back to exactly that, so text_plain/text_hash (and
-            # with them the embeddings) cannot change.
-            updates.append(
-                f"UPDATE {table} SET text = {sql_literal(new)}, title_position = {pos_sql} "
-                f"WHERE {col_id} = {db[key][0]} AND text = {sql_literal(plain)} "
-                f"AND bibleget_plain_text({sql_literal(new)}) = text; -- {key[0]} {key[1]}:{key[2]}"
-            )
-        header = f"Store formatted text (NABRE tag set) for {len(updates)} LUZZI verses."
+    updates, per_book, header = EMITTERS[args.emit](args, source, db, order, table, col_id, col_text, q)
 
     print(f"-- {header}")
     print("-- Generated by scripts/repair_luzzi_from_source.py; see that script for details.")
