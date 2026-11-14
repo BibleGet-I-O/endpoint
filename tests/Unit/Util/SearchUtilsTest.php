@@ -169,4 +169,39 @@ final class SearchUtilsTest extends TestCase
         $this->assertSame('first', $rows[0]['text']);
         $this->assertSame('second', $rows[1]['text']);
     }
+
+    // ── parseLimitParam / parseThresholdParam ──────────────────────
+
+    public function testParseLimitParamDefaultsAndClamps(): void
+    {
+        $this->assertSame(20, SearchUtils::parseLimitParam(null, 20, 100));
+        $this->assertSame(20, SearchUtils::parseLimitParam('abc', 20, 100));
+        $this->assertSame(5, SearchUtils::parseLimitParam('5', 20, 100));
+        $this->assertSame(1, SearchUtils::parseLimitParam('0', 20, 100));
+        $this->assertSame(100, SearchUtils::parseLimitParam('1000', 20, 100));
+    }
+
+    public function testParseThresholdParamDefaultsAndClamps(): void
+    {
+        $this->assertSame(0.0, SearchUtils::parseThresholdParam(null));
+        $this->assertSame(0.25, SearchUtils::parseThresholdParam('abc', 0.25));
+        $this->assertSame(0.5, SearchUtils::parseThresholdParam('0.5'));
+        $this->assertSame(0.0, SearchUtils::parseThresholdParam('-1'));
+        $this->assertSame(1.0, SearchUtils::parseThresholdParam('2'));
+    }
+
+    // ── sortByScoreDesc ────────────────────────────────────────────
+
+    public function testSortByScoreDescPutsNullsLastAndIsStable(): void
+    {
+        $rows = [
+            ['id' => 'a', 'score' => null],
+            ['id' => 'b', 'score' => 0.5],
+            ['id' => 'c', 'score' => 0.0],
+            ['id' => 'd', 'score' => 0.5],
+            ['id' => 'e', 'score' => 0.9],
+        ];
+        SearchUtils::sortByScoreDesc($rows);
+        $this->assertSame(['e', 'b', 'd', 'c', 'a'], array_column($rows, 'id'));
+    }
 }
