@@ -4,10 +4,10 @@
 The NABRE import (2015) converted the publisher's SCML files -- a streaming,
 word-processing style markup, one file per book (nab-01-gn.scml ...
 nab-74-rev.scml) -- to structured XML and dropped footnotes and headings on
-the way. The SCML files are kept in the old server backup
-(D:\\OVH VPS BACKUP\\var_www_vhosts\\bibleget.io\\httpdocs\\biblical_texts\\nabre;
-also under "Documents\\BibleGet IO Project\\NABRE" in the HP G6 backup). They
-are copyrighted (USCCB/CCD) and are not committed here: pass their directory.
+the way. The SCML files (with the DTD, CSS, HTML and Word editions and the
+2015 conversion pipeline) are archived in the private repository
+BibleGet-I-O/NABRE-source, under scml/. They are copyrighted (USCCB/CCD) and
+are not committed here: pass that directory with --scml.
 
 Headings recovered, in document order:
     <bksect>, <bksubsect>   book divisions ("I. THE STORY OF THE NATIONS")
@@ -38,7 +38,7 @@ updates are keyed on identity, need empty titles, and are guarded on
 text_plain (idempotent; no text changes, so embeddings are unaffected).
 
 Usage:
-    python3 scripts/nabre_headings_from_scml.py --scml DIR --dump nabre.copy \\
+    python3 scripts/nabre_headings_from_scml.py --scml ../NABRE-source/scml --dump nabre.copy \\
         > migrations/029-nabre-section-headings.sql
 with nabre.copy from:
     \\copy (SELECT "verseID", book, chapter, verse, coalesce(verseequiv,''),
