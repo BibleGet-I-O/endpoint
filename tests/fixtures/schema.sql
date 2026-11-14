@@ -144,6 +144,18 @@ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
         '\s+', ' ', 'g'))
 $$;
 
+-- Embedding text (mirror of migrations/022-embedding-text-without-psalm-superscriptions.sql)
+CREATE OR REPLACE FUNCTION bibleget_embedding_text(p_book INT, src TEXT)
+RETURNS TEXT LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
+    SELECT CASE
+        WHEN p_book = 23
+             AND src !~ '^<(po|pof|pol|poi|poil|poif|pos|po3|po3l)>'
+             AND strpos(src, E'\n<po') > 0
+        THEN bibleget_plain_text(substr(src, strpos(src, E'\n<po') + 1))
+        ELSE bibleget_plain_text(src)
+    END
+$$;
+
 -- Trigger function to auto-maintain text_plain and text_hash on verse tables
 CREATE OR REPLACE FUNCTION update_text_hash()
 RETURNS TRIGGER AS $$

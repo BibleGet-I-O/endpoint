@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Batch-compute verse embeddings for BibleGet semantic search.
 
-Connects to PostgreSQL, loads verse plain texts (text_plain) per Bible version,
+Connects to PostgreSQL, loads each verse's embedding text
+(bibleget_embedding_text(book, text): text_plain, minus a leading psalm
+superscription — see migration 022) per Bible version,
 computes embeddings via sentence-transformers, and writes them
 back to the chosen embedding column.
 
@@ -118,8 +120,14 @@ def get_versions(conn, single_version=None):
 def load_verses(conn, version, column, force=False):
     """Load verses that need embeddings computed for the given column.
 
-    Embeds `text_plain` (markup stripped, see migration 019 / #123), never the
-    formatted `text`; text_hash is the hash of text_plain.
+    Embeds `bibleget_embedding_text(book, text)`: the plain text (markup
+    stripped, migration 019 / #123) without a psalm superscription that
+    precedes the poem on its own line (migration 022) — e.g. NABRE Ps 23:1
+    is embedded as "The LORD is my shepherd; ..." without "A psalm of
+    David.", which otherwise drowns the verse's own content in short
+    queries. The superscription stays in `text`/`text_plain` and in keyword
+    search. text_hash is still md5(text_plain); if the embedding rule ever
+    changes, null embedded_text_hash on the affected rows (as 022 does).
 
     Default mode (primary column only): verses with no embedding OR whose
     text changed since last embedding.
@@ -132,10 +140,10 @@ def load_verses(conn, version, column, force=False):
     col_ident = sql.Identifier(column)
 
     if force:
-        query = sql.SQL('SELECT "verseID", text_plain FROM {} ORDER BY "verseID"').format(table_ident)
+        query = sql.SQL('SELECT "verseID", bibleget_embedding_text(book, text) FROM {} ORDER BY "verseID"').format(table_ident)
     elif track_hash:
         query = sql.SQL(
-            'SELECT "verseID", text_plain FROM {table} '
+            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} '
             "WHERE {col} IS NULL "
             "OR embedded_text_hash IS NULL "
             "OR text_hash != embedded_text_hash "
@@ -143,7 +151,7 @@ def load_verses(conn, version, column, force=False):
         ).format(table=table_ident, col=col_ident)
     else:
         query = sql.SQL(
-            'SELECT "verseID", text_plain FROM {table} WHERE {col} IS NULL ORDER BY "verseID"'
+            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} WHERE {col} IS NULL ORDER BY "verseID"'
         ).format(table=table_ident, col=col_ident)
 
     with conn.cursor() as cur:
