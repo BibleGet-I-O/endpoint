@@ -51,6 +51,8 @@ import argparse
 import re
 import sys
 
+from markup import require_markup_ok
+
 OT = ("Gn Ex Lv Nm Dt Jos Jdc Rt 1Rg 2Rg 3Rg 4Rg 1Par 2Par Esr Neh Tob Jdt Est "
       "1Mcc 2Mcc Job Ps Pr Ecl Ct Sap Sir Is Jr Lam Bar Ez Dn Os Joel Am Abd Jon "
       "Mch Nah Hab Soph Agg Zach Mal").split()
@@ -196,6 +198,7 @@ class VerseLines:
         position = None
         if self.title_at:  # a heading after the first line sits mid-verse
             position = len("\n".join(rendered[:self.title_at])) + 1
+        require_markup_ok(text, f"VGCL {self.key}")
         if not valid_title_position(text, position):
             raise ValueError(f"title_position guard failed for {self.key}: {position}")
         if len(text) > TEXT_MAX or (self.title and len(self.title) > TITLE_MAX):
