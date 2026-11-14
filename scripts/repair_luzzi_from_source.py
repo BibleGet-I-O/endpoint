@@ -79,6 +79,11 @@ import re
 import sys
 
 TITLE_MAX = 255
+PSALMS = 23  # the only book LaParola lays out line by line (99.7% of its verses)
+# One-line prose verses right after a poem that the layout cannot tell apart
+# from a poem's closing line: Ps 72:20, the colophon after the doxology
+# ("Qui finiscono le preghiere di Davide"), prose in NABRE too.
+PSALM_PROSE_AFTER_POEM = {(23, 72, 20)}
 
 
 def clean(fragment):
@@ -147,14 +152,19 @@ def plain_text(formatted):
 
 
 def valid_title_position(text, pos):
-    """Python mirror of the <T>_title_position_check constraint (migration 019)."""
+    """Python mirror of bibleget_title_position_ok() (migration 019)."""
     if pos is None:
         return True
     if not 0 < pos < len(text):
         return False
-    if text[pos - 1].isalnum() and text[pos].isalnum():
-        return False  # would split a word
-    return re.search(r"<[^>]*$", text[:pos]) is None  # not inside a tag
+    if re.search(r"<[^>]*$", text[:pos]):
+        return False  # inside a tag
+
+    def visible(fragment):
+        return re.sub(r"<[^>]*>", " ", re.sub(INLINE_TAGS, "", fragment))
+
+    before, after = visible(text[:pos]), visible(text[pos:])
+    return not (before[-1:].isalnum() and after[:1].isalnum())  # would split a word
 
 
 def inline(fragment):
@@ -183,11 +193,22 @@ def is_superscription(segment):
 def format_edition(raw_rows):
     """Return {key: (formatted_text, title_position)} for every source row.
 
-    LaParola marks poetic lines with <br /> but carries no stanza or indent
-    information, so: a poem starts (<pof>) at a chapter start, after a
-    heading, or after a prose lead-in; following lines are <po>; the line
-    that ends the poem (no trailing <br />) is <pol>. Prose lead-ins and
-    psalm superscriptions stay untagged lines, as in NABRE.
+    LaParola uses <br /> in two ways. In the Psalms (laid out line by line:
+    99.7% of the verses have inner breaks) it separates poetic lines, and a
+    trailing <br /> means the poem continues into the next verse. Everywhere
+    else the text is laid out as prose paragraphs: a trailing <br /> only
+    ends a paragraph (Prov 1:1, Lk 1:55-56), and the rare inner <br /> (~40
+    verses) separates a lead-in or a quoted song from the narrative
+    (Josh 10:12-13, Judg 5:31, Lk 1:46). So:
+
+    * Psalms: a poem starts (<pof>) at a chapter start, after a heading, or
+      after a superscription / prose lead-in; following lines are <po>; the
+      line that ends the poem (no trailing <br />) is <pol> -- including a
+      one-line verse that closes a poem left open by the previous verse.
+      Superscriptions and lead-ins stay untagged lines, as in NABRE.
+    * Other books: no poetry tags (the source does not mark poetry there);
+      inner <br /> become untagged line breaks, a trailing <br /> (paragraph
+      end) is dropped -- there is no paragraph construct to store it in.
     """
     # Pass 1: classify each verse.
     verses, prev_key, at_line_start = [], None, False
@@ -204,13 +225,22 @@ def format_edition(raw_rows):
         if ends_with_break:
             segments.pop()
         segments = [s.strip() for s in segments]
+        if key[0] != PSALMS:
+            if prefix and len(segments) > 1:
+                raise ValueError(f"mid-verse heading in a multi-line verse: {key}")
+            verses.append({"key": key, "prefix": prefix, "segments": segments, "paragraph": True})
+            at_line_start = False
+            continue
+        continues_poem = (at_line_start and not (new_chapter or bool(parts))
+                          and key not in PSALM_PROSE_AFTER_POEM)
         v = {
             "key": key,
+            "paragraph": False,
             "prefix": prefix,
             "segments": segments,
             "ends_with_break": ends_with_break,
             "new_block": new_chapter or bool(parts),
-            "prose": len(segments) == 1 and not ends_with_break,
+            "prose": len(segments) == 1 and not ends_with_break and not continues_poem,
             "lead_in": 0,
         }
         if not v["prose"]:
@@ -230,6 +260,15 @@ def format_edition(raw_rows):
     result = {}
     for idx, v in enumerate(verses):
         key, segments = v["key"], v["segments"]
+        if v["paragraph"]:
+            lines = balance_italics([inline(seg) for seg in segments])
+            pre = inline(" ".join(v["prefix"]))
+            text = "\n".join(lines)
+            text, position = (f"{pre} {text}", len(pre) + 1) if pre else (text, None)
+            if not valid_title_position(text, position):
+                raise ValueError(f"title_position guard failed for {key}: {position}")
+            result[key] = (text, position)
+            continue
         if v["prose"]:
             pre = inline(" ".join(v["prefix"]))
             body_text = balance_italics([inline(segments[0])])[0]
@@ -242,6 +281,7 @@ def format_edition(raw_rows):
                 or nxt is None
                 or nxt["key"][:2] != key[:2]
                 or nxt["new_block"]
+                or nxt["paragraph"]
                 or nxt["prose"]
                 or nxt["lead_in"] == 1
             )
