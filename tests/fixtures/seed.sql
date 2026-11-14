@@ -75,10 +75,8 @@ CREATE INDEX IF NOT EXISTS "TEST1_text_plain_fts" ON "TEST1" USING gin(to_tsvect
 CREATE INDEX IF NOT EXISTS "TEST1_embedding_hnsw" ON "TEST1" USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS "TEST1_embedding_labse_hnsw" ON "TEST1" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'TEST1_text_hash_trigger' AND tgrelid = '"TEST1"'::regclass) THEN
-        CREATE TRIGGER "TEST1_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "TEST1"
-            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
-    END IF;
+    CREATE OR REPLACE TRIGGER "TEST1_text_hash_trigger" BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON "TEST1"
+        FOR EACH ROW EXECUTE FUNCTION update_text_hash();
 END $$;
 
 INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
@@ -140,10 +138,8 @@ CREATE INDEX IF NOT EXISTS "TEST2_text_fts" ON "TEST2" USING gin(to_tsvector('en
 CREATE INDEX IF NOT EXISTS "TEST2_embedding_hnsw" ON "TEST2" USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS "TEST2_embedding_labse_hnsw" ON "TEST2" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'TEST2_text_hash_trigger' AND tgrelid = '"TEST2"'::regclass) THEN
-        CREATE TRIGGER "TEST2_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "TEST2"
-            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
-    END IF;
+    CREATE OR REPLACE TRIGGER "TEST2_text_hash_trigger" BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON "TEST2"
+        FOR EACH ROW EXECUTE FUNCTION update_text_hash();
 END $$;
 
 INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
@@ -193,10 +189,8 @@ CREATE INDEX IF NOT EXISTS "VGCL_text_fts" ON "VGCL" USING gin(to_tsvector('simp
 CREATE INDEX IF NOT EXISTS "VGCL_embedding_hnsw" ON "VGCL" USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS "VGCL_embedding_labse_hnsw" ON "VGCL" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'VGCL_text_hash_trigger' AND tgrelid = '"VGCL"'::regclass) THEN
-        CREATE TRIGGER "VGCL_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "VGCL"
-            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
-    END IF;
+    CREATE OR REPLACE TRIGGER "VGCL_text_hash_trigger" BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON "VGCL"
+        FOR EACH ROW EXECUTE FUNCTION update_text_hash();
 END $$;
 
 -- VGCL Psalm 50 (= Hebrew Psalm 51, "Miserere mei")
@@ -250,10 +244,8 @@ CREATE INDEX IF NOT EXISTS "DRB_text_fts" ON "DRB" USING gin(to_tsvector('englis
 CREATE INDEX IF NOT EXISTS "DRB_embedding_hnsw" ON "DRB" USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS "DRB_embedding_labse_hnsw" ON "DRB" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'DRB_text_hash_trigger' AND tgrelid = '"DRB"'::regclass) THEN
-        CREATE TRIGGER "DRB_text_hash_trigger" BEFORE INSERT OR UPDATE OF text ON "DRB"
-            FOR EACH ROW EXECUTE FUNCTION update_text_hash();
-    END IF;
+    CREATE OR REPLACE TRIGGER "DRB_text_hash_trigger" BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON "DRB"
+        FOR EACH ROW EXECUTE FUNCTION update_text_hash();
 END $$;
 
 -- DRB Psalm 50 (= Hebrew Psalm 51, "Have mercy")

@@ -106,6 +106,40 @@ class TextPlainTest extends DatabaseTestCase
     }
 
     /**
+     * A direct write to a derived column is recomputed from `text`, so
+     * text_plain and text_hash cannot drift from it.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function derivedColumnWrites(): array
+    {
+        return [
+            'text_plain' => ['text_plain = \'Darkness\''],
+            'text_hash'  => ['text_hash = decode(md5(\'Darkness\'), \'hex\')'],
+        ];
+    }
+
+    #[DataProvider('derivedColumnWrites')]
+    public function testDirectWriteToDerivedColumnIsRecomputed(string $assignment): void
+    {
+        $pdo   = $this->getConnection();
+        $where = ' WHERE book = 1 AND chapter = 3 AND verse = 1';
+        $pdo->beginTransaction();
+        try {
+            $pdo->exec('UPDATE "TEST1" SET ' . $assignment . $where);
+            $row = $pdo->query(
+                'SELECT text_plain = bibleget_plain_text(text) AS plain_ok, '
+                . 'text_hash = decode(md5(text_plain), \'hex\') AS hash_ok FROM "TEST1"' . $where
+            )->fetch(\PDO::FETCH_ASSOC);
+            self::assertIsArray($row);
+            self::assertTrue((bool) $row['plain_ok'], 'text_plain must be re-derived from text');
+            self::assertTrue((bool) $row['hash_ok'], 'text_hash must be the md5 of text_plain');
+        } finally {
+            $pdo->rollBack();
+        }
+    }
+
+    /**
      * @return array<string, array{int}>
      */
     public static function invalidPositions(): array
