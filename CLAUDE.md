@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BibleGet I/O Endpoint (v3.0) — a REST API service for retrieving Bible quotations across multiple versions and languages. Production URL: `https://query.bibleget.io/v3/`. Written in PHP 8.2+ with a PostgreSQL backend.
+BibleGet I/O Endpoint (v3.0) — a REST API service for retrieving Bible quotations across multiple versions and languages. Production URL: `https://query.bibleget.io/v3/`. Written in PHP 8.4+ with a PostgreSQL backend.
 
 ## Architecture
 
@@ -115,7 +115,7 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 
 ## Development Notes
 
-- **Testing** — PHPUnit 11 with unit, integration (PostgreSQL), and HTTP server test suites; run via `composer test` or `composer test:quick`
+- **Testing** — PHPUnit 13 with unit, integration (PostgreSQL), and HTTP server test suites; run via `composer test` or `composer test:quick`
 - **Code style** — PHPCS (PSR-12 base with custom rules) via `composer lint`; auto-fix with `composer lint:fix`
 - **Static analysis** — PHPStan level 10 via `composer analyse`
 - **CI/CD** — GitHub Actions (`.github/workflows/ci.yaml`) runs PHPCS + PHPStan + tests on PRs. (`readme.yaml` was meant to sync `openapi.json` to ReadMe.io on push to `master`, but the action is broken — see #100.)
