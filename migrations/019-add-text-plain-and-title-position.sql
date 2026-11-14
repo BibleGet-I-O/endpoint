@@ -86,9 +86,11 @@ BEGIN
 
         -- Guard (see bibleget_title_position_ok above). Recreated on every
         -- run so databases that got an earlier version of the rule converge.
+        -- Added NOT VALID: no table scan while this block holds ACCESS
+        -- EXCLUSIVE locks; existing rows are validated in the next block.
         EXECUTE format('ALTER TABLE %I DROP CONSTRAINT IF EXISTS %I', tbl, tbl || '_title_position_check');
         EXECUTE format(
-            'ALTER TABLE %I ADD CONSTRAINT %I CHECK (bibleget_title_position_ok(text, title_position))',
+            'ALTER TABLE %I ADD CONSTRAINT %I CHECK (bibleget_title_position_ok(text, title_position)) NOT VALID',
             tbl, tbl || '_title_position_check'
         );
 
@@ -100,6 +102,22 @@ BEGIN
                 || 'FOR EACH ROW EXECUTE FUNCTION update_text_hash()',
                 tbl || '_text_hash_trigger', tbl
             );
+        END IF;
+    END LOOP;
+END
+$$;
+
+-- Validate the title_position constraints added NOT VALID above, in a block of
+-- its own: VALIDATE CONSTRAINT takes only SHARE UPDATE EXCLUSIVE, so reads and
+-- writes continue while each table is scanned (the ACCESS EXCLUSIVE locks of
+-- the previous block were released when it committed).
+DO $$
+DECLARE
+    tbl TEXT;
+BEGIN
+    FOR tbl IN SELECT sigla FROM versions_available LOOP
+        IF to_regclass(format('public.%I', tbl)) IS NOT NULL THEN
+            EXECUTE format('ALTER TABLE %I VALIDATE CONSTRAINT %I', tbl, tbl || '_title_position_check');
         END IF;
     END LOOP;
 END
