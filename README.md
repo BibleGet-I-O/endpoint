@@ -46,7 +46,7 @@ Response emission is handled by [laminas/laminas-httphandlerrunner](https://gith
 
 ### Testing & CI
 
-- **PHPUnit 11** with Unit, Integration (MySQL), and Server (HTTP) test suites
+- **PHPUnit 13** with Unit, Integration (MySQL), and Server (HTTP) test suites
 - **PHPStan** level 10 static analysis
 - **GitHub Actions** CI runs all test suites and static analysis on pull requests
 
