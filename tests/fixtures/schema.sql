@@ -134,11 +134,40 @@ CREATE TABLE IF NOT EXISTS embedding_metadata (
     PRIMARY KEY (version_sigla, column_name)
 );
 
--- Trigger function to auto-maintain text_hash on verse tables
+-- Plain-text normalizer (mirror of migrations/019-add-text-plain-and-title-position.sql)
+CREATE OR REPLACE FUNCTION bibleget_plain_text(src TEXT) RETURNS TEXT
+LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
+    SELECT btrim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(src,
+        '</?(sm|i|sup)>', '', 'g'),
+        '</?(po|pof|pol|poi|poil|poif|pos|po3|po3l|pr|bq|bqf|bql|speaker)>', ' ', 'g'),
+        '<br\s*/?>', ' ', 'gi'),
+        '\s+', ' ', 'g'))
+$$;
+
+-- Title-position guard (mirror of migrations/019). A heading may only be inserted between tokens: never splitting a word
+-- (judged on the *visible* characters either side, so an offset inside
+-- L<sm>|ORD</sm> is rejected even though the raw neighbour is '>'), never
+-- inside a tag, never at either end of the text. Inline tags (sm, i, sup)
+-- vanish in the visible text; any other tag counts as a space, as in
+-- bibleget_plain_text().
+CREATE OR REPLACE FUNCTION bibleget_title_position_ok(src TEXT, pos INT) RETURNS BOOLEAN
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+    SELECT pos IS NULL OR (
+        pos > 0 AND pos < char_length(src)
+        AND left(src, pos) !~ '<[^>]*$'
+        AND NOT (
+            right(regexp_replace(regexp_replace(left(src, pos), '</?(sm|i|sup)>', '', 'g'), '<[^>]*>', ' ', 'g'), 1) ~ '[[:alnum:]]'
+            AND left(regexp_replace(regexp_replace(substr(src, pos + 1), '</?(sm|i|sup)>', '', 'g'), '<[^>]*>', ' ', 'g'), 1) ~ '[[:alnum:]]'
+        )
+    )
+$$;
+
+-- Trigger function to auto-maintain text_plain and text_hash on verse tables
 CREATE OR REPLACE FUNCTION update_text_hash()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.text_hash := decode(md5(NEW.text), 'hex');
+    NEW.text_plain := bibleget_plain_text(NEW.text);
+    NEW.text_hash  := decode(md5(NEW.text_plain), 'hex');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

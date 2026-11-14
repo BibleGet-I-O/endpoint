@@ -154,6 +154,8 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         self::assertArrayHasKey('score', $first);
         self::assertArrayNotHasKey('similarity', $first, 'similarity field renamed to score (issue #110)');
         self::assertIsNumeric($first['score']);
+        self::assertArrayHasKey('text', $first);
+        self::assertArrayHasKey('text_plain', $first);
         self::assertArrayHasKey('canonical_order', $first);
         self::assertIsInt($first['canonical_order']);
         self::assertGreaterThanOrEqual(1, $first['canonical_order']);

@@ -261,6 +261,7 @@ class SemanticSearchHandler extends AbstractHandler
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
                 'text'        => StringUtils::asString($row['text'] ?? ''),
+                'text_plain'  => StringUtils::asString($row['text_plain'] ?? ''),
                 'bookabbrev'  => $bookidx !== false ? ( $versionIndex['abbreviations'][$bookidx] ?? '' ) : '',
                 'booknum'     => $bookidx !== false ? (int) $bookidx : 0,
                 'univbooknum' => $row['book'],

@@ -234,7 +234,7 @@ class KeywordSearchHandler extends AbstractHandler
                 try {
                     $stmt = $pdo->prepare(
                         'SELECT *, NULL::float8 AS score FROM "' . $version . '" '
-                        . 'WHERE text ~* (\'\y\' || ? || \'\y\') ORDER BY "verseID"'
+                        . 'WHERE text_plain ~* (\'\y\' || ? || \'\y\') ORDER BY "verseID"'
                     );
                     $stmt->execute([$escapedKeyword]);
                 } catch (\PDOException) {
@@ -254,9 +254,9 @@ class KeywordSearchHandler extends AbstractHandler
                 try {
                     $stmt = $pdo->prepare(
                         'SELECT *, '
-                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
+                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text_plain), to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
                         . 'FROM "' . $version . '" '
-                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ to_tsquery(\'' . $tsLanguage . '\', ?) '
+                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text_plain) @@ to_tsquery(\'' . $tsLanguage . '\', ?) '
                         . 'ORDER BY "verseID"'
                     );
                     $stmt->execute([$keyword, $keyword]);
@@ -277,9 +277,9 @@ class KeywordSearchHandler extends AbstractHandler
                 try {
                     $stmt = $pdo->prepare(
                         'SELECT *, '
-                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text), websearch_to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
+                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text_plain), websearch_to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
                         . 'FROM "' . $version . '" '
-                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) '
+                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text_plain) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) '
                         . 'ORDER BY "verseID"'
                     );
                     $stmt->execute([$sanitizedKeyword, $sanitizedKeyword]);
@@ -315,6 +315,7 @@ class KeywordSearchHandler extends AbstractHandler
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
                 'text'        => StringUtils::asString($row['text'] ?? ''),
+                'text_plain'  => StringUtils::asString($row['text_plain'] ?? ''),
                 'bookabbrev'  => $versionIndex['abbreviations'][$bookidx] ?? '',
                 'booknum'     => (int) $bookidx,
                 'univbooknum' => $universal_booknum,
