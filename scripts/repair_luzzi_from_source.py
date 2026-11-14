@@ -78,6 +78,8 @@ import html
 import re
 import sys
 
+from markup import require_markup_ok
+
 TITLE_MAX = 255
 PSALMS = 23  # the only book LaParola lays out line by line (99.7% of its verses)
 # One-line prose verses right after a poem that the layout cannot tell apart
@@ -321,6 +323,7 @@ def format_edition(raw_rows):
     for idx, verse in enumerate(verses):
         nxt = verses[idx + 1] if idx + 1 < len(verses) else None
         text, position = format_verse(verse, nxt)
+        require_markup_ok(text, f"LUZZI {verse['key']}")
         if not valid_title_position(text, position):
             raise ValueError(f"title_position guard failed for {verse['key']}: {position}")
         result[verse["key"]] = (text, position)

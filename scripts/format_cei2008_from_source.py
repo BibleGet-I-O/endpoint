@@ -68,6 +68,8 @@ import re
 import sys
 from pathlib import Path
 
+from markup import require_markup_ok
+
 SLUGS = ("Gen Es Lv Nm Dt Gs Gdc Rt 1Sam 2Sam 1Re 2Re 1Cr 2Cr Esd Ne Tb Gdt Est 1Mac 2Mac "
          "Gb Sal Pr Qo Ct Sap Sir Is Ger Lam Bar Ez Dn Os Gl Am Abd Gn Mi Na Ab Sof Ag Zc Ml "
          "Mt Mc Lc Gv At Rm 1Cor 2Cor Gal Ef Fil Col 1Ts 2Ts 1Tm 2Tm Tt Fm Eb Gc 1Pt 2Pt "
@@ -572,6 +574,7 @@ def process(archive, db, report, wording):
                 report.append((path.parent.name, key[1], label, "site", plain_text(site_text)))
                 continue
             seen.add(row["vid"])
+            require_markup_ok(text, f"{path.parent.name} {key[1]}:{label}")
             problem = check_titles(titles, position, text)
             if problem:
                 stats[problem] += 1
