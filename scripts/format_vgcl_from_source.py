@@ -117,12 +117,13 @@ def copy_unescape(s):
 class VerseLines:
     """Turns one verse's source markup into tagged lines (see the module
     docstring). `in_poem` carries the open/closed state of a [ ... ] passage
-    from verse to verse."""
+    from verse to verse, and `opens` a "[" that ended the previous verse, so
+    the next verse's first line is still the passage's `pof`."""
 
-    def __init__(self, key, in_poem):
+    def __init__(self, key, in_poem, opens=False):
         self.key, self.in_poem = key, in_poem
         self.lines = []        # [(kind, text)], kind: prose | pof | po | pol
-        self.cur, self.opens, self.speaker = "", False, None
+        self.cur, self.opens, self.speaker = "", opens, None
         self.title, self.title_at = None, None  # title_at: index into lines
 
     def flush(self, closes):
@@ -209,11 +210,11 @@ class VerseLines:
 def format_book(verses):
     """verses: [(key, raw)] for one book in order.
     Return {key: (text, title1, title_position)}."""
-    out, in_poem = {}, False
+    out, in_poem, opens = {}, False, False
     for key, raw in verses:
         # "\\" is a paragraph break: not representable, dropped.
-        parsed = VerseLines(key, in_poem).feed(raw.replace("\\", " "))
-        in_poem = parsed.in_poem
+        parsed = VerseLines(key, in_poem, opens).feed(raw.replace("\\", " "))
+        in_poem, opens = parsed.in_poem, parsed.opens
         out[key] = parsed.render()
     if in_poem:
         raise ValueError(f"unterminated [ at end of book {verses[-1][0]}")
@@ -269,6 +270,8 @@ def build_update(key, vid, old, text, title, position, stats):
     if position is not None:
         sets.append(f"title_position = {position}")
         stats["position"] += 1
+    if not sets:
+        return None  # stored text already as rendered (e.g. a re-run on a migrated dump)
     return (f'UPDATE "VGCL" SET {", ".join(sets)} WHERE "verseID" = {vid} '
             f"AND text = {sql_str(old)} AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' "
             f"AND coalesce(title3, '') = '';"
