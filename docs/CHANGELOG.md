@@ -120,6 +120,13 @@ Deprecated / Fixed / Removed / Security where applicable.
   embeddings of the changed rows were recomputed. On other databases,
   NULL `embedding_labse` where `text_hash != embedded_text_hash`, then run
   `compute_embeddings.py --version LUZZI` for both columns.
+- **LUZZI provenance recorded.** `luzzi.txt` turned out to be a dump of
+  LaParola.net's "Luzzi/Riveduta" text, which follows the Società Biblica
+  Britannica e Forestiera printing (1925) as reproduced in the Libreria Sacre
+  Scritture edition (Roma 1990, ISBN 88-237-1051-0).
+  `migrations/016-luzzi-provenance-notes.sql` fills the previously empty
+  `versions_available.notes` for LUZZI. It is applied to live PG and the v3
+  MariaDB.
 
 ### Known edge cases under LaBSE
 

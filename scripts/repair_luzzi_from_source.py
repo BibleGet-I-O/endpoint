@@ -7,7 +7,11 @@ LUZZI (Riveduta 1924) was imported from ``luzzi.txt``, a Latin-1, CRLF,
 pipe-delimited file (``4|book|chapter|verse|text|``, universal book numbers),
 kept in the old VPS backup at
 ``httpdocs/biblical_texts/luzzi.txt`` (4,875,339 bytes, dated 2015-08-27).
-Inside ``text``:
+The file is a dump of LaParola.net's "Luzzi/Riveduta" text (identical
+wording and markup), which per https://www.laparola.net/versioni.php follows
+the Società Biblica Britannica e Forestiera printing (1925) as reproduced in
+the Libreria Sacre Scritture edition, Roma 1990, ISBN 88-237-1051-0 (recorded
+in ``versions_available.notes`` by migration 016). Inside ``text``:
 
   * ``heading^verse text`` — a section heading before ``^`` (never imported:
     no LUZZI row has a ``title1``);
