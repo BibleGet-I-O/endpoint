@@ -190,6 +190,20 @@ class QuoteHandlerTest extends DatabaseTestCase
 
     // ── HTML response ──────────────────────────────────────
 
+    public function testHtmlResponseRendersFormattedText(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/v3/quote?query=Genesis3,1&version=TEST1&return=html');
+        $response = $handler->handle($request);
+
+        $html = (string) $response->getBody();
+        // Poetic lines and small caps become markup instead of escaped tags.
+        self::assertStringContainsString('<span class="pof">Now the serpent was the most cunning</span><br>', $html);
+        self::assertStringContainsString('L<span class="sm">ORD</span> God', $html);
+        self::assertStringNotContainsString('&lt;pof&gt;', $html);
+        self::assertStringNotContainsString('&lt;sm&gt;', $html);
+    }
+
     public function testHtmlResponse(): void
     {
         $handler  = $this->createHandler();

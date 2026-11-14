@@ -11,6 +11,7 @@ use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\QueryValidator;
 use BibleGet\Api\Pipeline\QueryFormulator;
 use BibleGet\Api\Pipeline\QueryExecutor;
+use BibleGet\Api\Util\FormattedText;
 use BibleGet\Api\Util\SearchUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -172,7 +173,8 @@ class QuoteHandler extends AbstractHandler
                 $paragraphOpen = true;
             }
             $html .= '<span class="sup verseNum">' . htmlspecialchars($rowVerse) . '</span>';
-            $html .= '<span class="text verseText">' . htmlspecialchars($rowText) . '</span>';
+            // Formatted text (poetic lines, small caps, italics) as HTML, escaped otherwise.
+            $html .= '<span class="text verseText">' . FormattedText::toHtml($rowText) . '</span>';
         }
         if ($paragraphOpen) {
             $html .= '</p>';
