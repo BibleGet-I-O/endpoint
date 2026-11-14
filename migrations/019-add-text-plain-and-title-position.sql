@@ -31,9 +31,11 @@
 -- differ only in whitespace, the stored vectors are still exact (MiniLM and
 -- LaBSE produce bit-identical vectors for whitespace variants; verified
 -- 2026-11-14), so embedded_text_hash is carried forward for those rows. Rows
--- whose markup changes the text become stale and need
--- `compute_embeddings.py` (for embedding_labse: NULL it where
--- text_hash != embedded_text_hash first).
+-- whose markup changes the text become stale. Only embedding_labse (the
+-- default column) tracks text_hash; MiniLM `embedding` is only filled where
+-- NULL. So first NULL `embedding` where text_hash != embedded_text_hash
+-- (before the LaBSE run resets the hash), then run compute_embeddings.py
+-- and compute_embeddings.py --column embedding.
 --
 -- Idempotent: columns, constraint, index and trigger are created only if
 -- missing; the backfill recomputes the same values. It rewrites every row,
