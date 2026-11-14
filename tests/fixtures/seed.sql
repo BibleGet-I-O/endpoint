@@ -66,10 +66,8 @@ ALTER TABLE "TEST1" ADD COLUMN IF NOT EXISTS title1 VARCHAR(255) NOT NULL DEFAUL
     ADD COLUMN IF NOT EXISTS title3 VARCHAR(255) NOT NULL DEFAULT '';
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'TEST1_title_position_check') THEN
-        ALTER TABLE "TEST1" ADD CONSTRAINT "TEST1_title_position_check" CHECK (title_position IS NULL OR (
-            title_position > 0 AND title_position < char_length(text)
-            AND NOT (substr(text, title_position, 1) ~ '[[:alnum:]]' AND substr(text, title_position + 1, 1) ~ '[[:alnum:]]')
-            AND left(text, title_position) !~ '<[^>]*$'));
+        ALTER TABLE "TEST1" ADD CONSTRAINT "TEST1_title_position_check"
+            CHECK (bibleget_title_position_ok(text, title_position));
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('english', text));

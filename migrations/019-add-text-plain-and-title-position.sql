@@ -35,11 +35,13 @@
 -- default column) tracks text_hash; MiniLM `embedding` is only filled where
 -- NULL. So first NULL `embedding` where text_hash != embedded_text_hash
 -- (before the LaBSE run resets the hash), then run compute_embeddings.py
--- and compute_embeddings.py --column embedding.
+-- and compute_embeddings.py --column embedding (the column selects its model:
+-- MiniLM at its pinned revision, unless EMBEDDING_MODEL overrides it).
 --
--- Idempotent: columns, constraint, index and trigger are created only if
--- missing; the backfill recomputes the same values. It rewrites every row,
--- so run `VACUUM ANALYZE` on the edition tables afterwards.
+-- Idempotent: columns, index and trigger are created only if missing, the
+-- title_position constraint is recreated, and the backfill recomputes the
+-- same values. It rewrites every row, so run `VACUUM ANALYZE` on the edition
+-- tables afterwards.
 
 CREATE OR REPLACE FUNCTION bibleget_plain_text(src TEXT) RETURNS TEXT
 LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
@@ -48,6 +50,24 @@ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
         '</?(po|pof|pol|poi|poil|poif|pos|po3|po3l|pr|bq|bqf|bql|speaker)>', ' ', 'g'),
         '<br\s*/?>', ' ', 'gi'),
         '\s+', ' ', 'g'))
+$$;
+
+-- A heading may only be inserted between tokens: never splitting a word
+-- (judged on the *visible* characters either side, so an offset inside
+-- L<sm>|ORD</sm> is rejected even though the raw neighbour is '>'), never
+-- inside a tag, never at either end of the text. Inline tags (sm, i, sup)
+-- vanish in the visible text; any other tag counts as a space, as in
+-- bibleget_plain_text().
+CREATE OR REPLACE FUNCTION bibleget_title_position_ok(src TEXT, pos INT) RETURNS BOOLEAN
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+    SELECT pos IS NULL OR (
+        pos > 0 AND pos < char_length(src)
+        AND left(src, pos) !~ '<[^>]*$'
+        AND NOT (
+            right(regexp_replace(regexp_replace(left(src, pos), '</?(sm|i|sup)>', '', 'g'), '<[^>]*>', ' ', 'g'), 1) ~ '[[:alnum:]]'
+            AND left(regexp_replace(regexp_replace(substr(src, pos + 1), '</?(sm|i|sup)>', '', 'g'), '<[^>]*>', ' ', 'g'), 1) ~ '[[:alnum:]]'
+        )
+    )
 $$;
 
 DO $$
@@ -64,19 +84,13 @@ BEGIN
         EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS text_plain VARCHAR(900) NOT NULL DEFAULT %L', tbl, '');
         EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS title_position SMALLINT', tbl);
 
-        -- Guard: a heading may only be inserted between tokens -- never
-        -- splitting a word, never inside a tag, never at either end.
-        IF NOT EXISTS (SELECT 1 FROM pg_constraint
-                       WHERE conname = tbl || '_title_position_check'
-                         AND conrelid = format('public.%I', tbl)::regclass) THEN
-            EXECUTE format(
-                'ALTER TABLE %I ADD CONSTRAINT %I CHECK (title_position IS NULL OR ('
-                || 'title_position > 0 AND title_position < char_length(text) '
-                || 'AND NOT (substr(text, title_position, 1) ~ %L AND substr(text, title_position + 1, 1) ~ %L) '
-                || 'AND left(text, title_position) !~ %L))',
-                tbl, tbl || '_title_position_check', '[[:alnum:]]', '[[:alnum:]]', '<[^>]*$'
-            );
-        END IF;
+        -- Guard (see bibleget_title_position_ok above). Recreated on every
+        -- run so databases that got an earlier version of the rule converge.
+        EXECUTE format('ALTER TABLE %I DROP CONSTRAINT IF EXISTS %I', tbl, tbl || '_title_position_check');
+        EXECUTE format(
+            'ALTER TABLE %I ADD CONSTRAINT %I CHECK (bibleget_title_position_ok(text, title_position))',
+            tbl, tbl || '_title_position_check'
+        );
 
         IF NOT EXISTS (SELECT 1 FROM pg_trigger
                        WHERE tgname = tbl || '_text_hash_trigger'
@@ -108,11 +122,15 @@ DO $$
 DECLARE
     rec   RECORD;
     stale BIGINT;
+    pre   BYTEA;
 BEGIN
     FOR rec IN SELECT sigla, ts_language FROM versions_available LOOP
         IF to_regclass(format('public.%I', rec.sigla)) IS NULL THEN
             CONTINUE;
         END IF;
+        -- Content fingerprint before the backfill (text_hash changes for every
+        -- row whose text_plain differs from text).
+        EXECUTE format('SELECT bytea_xor_agg(text_hash) FROM %I', rec.sigla) INTO pre;
         EXECUTE format(
             'UPDATE %I SET text = text, embedded_text_hash = CASE '
             || 'WHEN embedded_text_hash = text_hash '
@@ -128,14 +146,18 @@ BEGIN
             rec.sigla || '_text_plain_fts', rec.sigla, rec.ts_language
         );
         -- Versions left fully fresh get their content fingerprint refreshed,
-        -- so EmbeddingModelValidator does not report them stale.
+        -- so EmbeddingModelValidator does not report them stale. Every
+        -- embedding column's metadata row is refreshed (embedding_labse is
+        -- the hash-tracked one, `embedding` the MiniLM one), but only where
+        -- it was current before the backfill: a row that was already stale
+        -- must stay stale.
         EXECUTE format('SELECT count(*) FROM %I WHERE text_hash IS DISTINCT FROM embedded_text_hash', rec.sigla)
             INTO stale;
         IF stale = 0 THEN
             EXECUTE format(
                 'UPDATE embedding_metadata SET content_xor = (SELECT bytea_xor_agg(text_hash) FROM %I) '
-                || 'WHERE version_sigla = %L AND column_name = %L',
-                rec.sigla, rec.sigla, 'embedding'
+                || 'WHERE version_sigla = %L AND content_xor IS NOT DISTINCT FROM %L::bytea',
+                rec.sigla, rec.sigla, pre
             );
         END IF;
     END LOOP;
