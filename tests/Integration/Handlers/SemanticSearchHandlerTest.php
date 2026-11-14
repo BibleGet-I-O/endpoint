@@ -81,7 +81,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
 
     public function testThrows503WithHelpfulMessageWhenServiceDown(): void
     {
-        $mockClient = $this->createMock(EmbeddingClient::class);
+        $mockClient = $this->createStub(EmbeddingClient::class);
         $mockClient->method('embed')
             ->willThrowException(new ServiceUnavailableException('Embedding service unavailable: connection refused'));
 
@@ -99,7 +99,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
     public function testSemanticSearchWithMockEmbedding(): void
     {
         // Create a mock that returns a non-zero vector (zero vectors cause NaN in cosine distance)
-        $mockClient = $this->createMock(EmbeddingClient::class);
+        $mockClient = $this->createStub(EmbeddingClient::class);
         $mockClient->method('embed')->willReturn(array_fill(0, 384, 0.1));
 
         $handler = $this->createHandler($mockClient);
@@ -127,7 +127,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         $vectorStr  = '[' . implode(',', $testVector) . ']';
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $vectorStr . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
 
-        $mockClient = $this->createMock(EmbeddingClient::class);
+        $mockClient = $this->createStub(EmbeddingClient::class);
         $mockClient->method('embed')->willReturn($testVector);
 
         $handler = $this->createHandler($mockClient);
@@ -160,7 +160,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         $vectorStr  = '[' . implode(',', $testVector) . ']';
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $vectorStr . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
 
-        $mockClient = $this->createMock(EmbeddingClient::class);
+        $mockClient = $this->createStub(EmbeddingClient::class);
         $mockClient->method('embed')->willReturn($testVector);
 
         // With threshold=0.999, the identical vector should still match (similarity ≈ 1.0)
@@ -186,7 +186,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $vectorStr . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
         $pdo->exec('UPDATE "TEST2" SET embedding = \'' . $vectorStr . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
 
-        $mockClient = $this->createMock(EmbeddingClient::class);
+        $mockClient = $this->createStub(EmbeddingClient::class);
         $mockClient->method('embed')->willReturn($testVector);
 
         $handler  = $this->createHandler($mockClient);
@@ -237,7 +237,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $matchStr . '\' WHERE book = 2 AND chapter = 1 AND verse = 1');
         $pdo->exec('UPDATE "TEST1" SET embedding = \'' . $weakStr  . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
 
-        $mockClient = $this->createMock(EmbeddingClient::class);
+        $mockClient = $this->createStub(EmbeddingClient::class);
         $mockClient->method('embed')->willReturn($matchVector);
 
         $handler = $this->createHandler($mockClient);
@@ -267,7 +267,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
 
     public function testInvalidModelRejected(): void
     {
-        $handler = $this->createHandler($this->createMock(EmbeddingClient::class));
+        $handler = $this->createHandler($this->createStub(EmbeddingClient::class));
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('Invalid model');
         $request = ( new ServerRequest('GET', '/v3/search/semantic') )
@@ -291,7 +291,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         $pdo->exec('UPDATE "TEST1" SET embedding_labse = \'' . $matchLabseS . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
         $pdo->exec('UPDATE "TEST1" SET embedding         = \'' . $orth384S    . '\' WHERE book = 1 AND chapter = 1 AND verse = 1');
 
-        $mock = $this->createMock(EmbeddingClient::class);
+        $mock = $this->createStub(EmbeddingClient::class);
         $mock->method('embed')->willReturn($matchLabse);
 
         $handler  = $this->createHandler($mock);

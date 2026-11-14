@@ -9,6 +9,13 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Changed
 
+- **Minimum PHP raised to 8.4; PHPUnit 11 → 13.** Production already
+  runs Plesk PHP 8.4. PHPUnit 13 requires PHP ≥ 8.4.1, which is why
+  Dependabot's bump (#170) failed on the 8.2/8.3 CI jobs. CI now runs
+  PHPCS, PHPStan and coverage on 8.4 and tests on 8.4 and 8.5. Mocks
+  without expectations in `SemanticSearchHandlerTest` became stubs
+  (PHPUnit 13 notice).
+
 - **LaBSE embedding infrastructure added alongside MiniLM** (cutover
   deferred). Driven by discussion #107: the existing
   `paraphrase-multilingual-MiniLM-L12-v2` model produced surface-token

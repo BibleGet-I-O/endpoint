@@ -24,7 +24,7 @@ composer stop          # ./stop-server.sh
 composer restart       # ./restart-server.sh
 ```
 
-## Tests (PHPUnit 11)
+## Tests (PHPUnit 13)
 ```bash
 composer test                     # all suites: Unit + Integration (PostgreSQL) + Server (HTTP)
 composer test:quick               # excludes @group slow

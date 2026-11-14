@@ -18,7 +18,7 @@ Serves the BibleGet WordPress / Google Docs / Microsoft Word / OpenOffice / Libr
 - Bare `https://query.bibleget.io` URL is being retired so version is always explicit
 
 ## Tech Stack
-- **PHP >= 8.2**
+- **PHP >= 8.4**
 - **PostgreSQL** (via PDO `ext-pdo_pgsql`) — IPs stored as native `inet`, full-text search uses `tsvector`/`tsquery` + GIN
 - **PSR-7** HTTP messages — `nyholm/psr7`
 - **PSR-15** request handlers + middleware — `psr/http-server-handler`, `psr/http-server-middleware`
@@ -28,7 +28,7 @@ Serves the BibleGet WordPress / Google Docs / Microsoft Word / OpenOffice / Libr
 - **RFC 9457** error responses (`application/problem+json`)
 - Response emission — `laminas/laminas-httphandlerrunner` (`SapiEmitter`)
 - Env: `vlucas/phpdotenv`
-- Quality: PHPUnit 11, PHPStan **level 10**, PHP_CodeSniffer (PSR-12 + custom rules), CaptainHook for git hooks
+- Quality: PHPUnit 13, PHPStan **level 10**, PHP_CodeSniffer (PSR-12 + custom rules), CaptainHook for git hooks
 
 ## Architecture mirrors LiturgicalCalendarAPI
 The v3 codebase explicitly follows the same PSR-based architecture as `LiturgicalCalendarAPI` (Router → MiddlewarePipeline → AbstractHandler → response via Negotiator). Familiarity with that codebase carries over here.
