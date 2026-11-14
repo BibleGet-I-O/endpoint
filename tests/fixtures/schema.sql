@@ -162,6 +162,47 @@ LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
     )
 $$;
 
+-- Markup validator (mirror of migrations/030-markup-validator.sql)
+CREATE OR REPLACE FUNCTION bibleget_markup_ok(src TEXT) RETURNS BOOLEAN
+LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
+DECLARE
+    line_tags   CONSTANT TEXT[] := ARRAY['po', 'pof', 'pol', 'poi', 'poil', 'poif', 'pos', 'po3', 'po3l',
+                                         'pr', 'bq', 'bqf', 'bql'];
+    inline_tags CONSTANT TEXT[] := ARRAY['sm', 'i', 'sup', 'speaker'];
+    line        TEXT;
+    m           TEXT[];
+    stack       TEXT[];
+    tag         TEXT;
+BEGIN
+    IF src IS NULL THEN
+        RETURN TRUE;
+    END IF;
+    FOREACH line IN ARRAY string_to_array(src, E'\n') LOOP
+        stack := '{}';
+        FOR m IN SELECT regexp_matches(line, '<(/?)([A-Za-z][A-Za-z0-9]*)([^>]*)>', 'g') LOOP
+            tag := m[2];
+            IF m[3] <> '' OR NOT (tag = ANY (line_tags) OR tag = ANY (inline_tags)) THEN
+                RETURN FALSE;  -- unknown tag, attributes or self-closing
+            END IF;
+            IF m[1] = '' THEN
+                IF tag = ANY (line_tags) AND stack && line_tags THEN
+                    RETURN FALSE;  -- line tag inside a line tag
+                END IF;
+                stack := stack || tag;
+            ELSIF cardinality(stack) = 0 OR stack[cardinality(stack)] <> tag THEN
+                RETURN FALSE;  -- unmatched or mis-nested closing tag
+            ELSE
+                stack := stack[1:cardinality(stack) - 1];
+            END IF;
+        END LOOP;
+        IF cardinality(stack) > 0 THEN
+            RETURN FALSE;  -- tag left open at the end of the line
+        END IF;
+    END LOOP;
+    RETURN TRUE;
+END
+$$;
+
 -- Trigger function to auto-maintain text_plain and text_hash on verse tables
 CREATE OR REPLACE FUNCTION update_text_hash()
 RETURNS TRIGGER AS $$
