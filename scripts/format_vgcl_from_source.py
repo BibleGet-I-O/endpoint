@@ -112,86 +112,106 @@ def copy_unescape(s):
     return re.sub(r"\\(.)", lambda m: {"n": "\n", "t": "\t", "\\": "\\", "N": None}.get(m[1], m[1]) or "", s)
 
 
-def format_book(verses):
-    """verses: [(key, raw)] for one book in order.
-    Return {key: (text, title1, title_position)}."""
-    out = {}
-    in_poem = False
-    for key, raw in verses:
-        raw = raw.replace("\\", " ")  # paragraph break: not representable, drop
-        title, title_at = None, None  # title_at: index into `lines` (+ char 0)
-        lines = []                    # [(kind, text)] kind: prose|pof|po|pol
-        cur, cur_opens = "", False
-        cur_speaker = None
+class VerseLines:
+    """Turns one verse's source markup into tagged lines (see the module
+    docstring). `in_poem` carries the open/closed state of a [ ... ] passage
+    from verse to verse."""
 
-        def flush(closes):
-            nonlocal cur, cur_opens, cur_speaker
-            t = re.sub(r"\s+", " ", cur).strip()
-            if cur_speaker:
-                t = f"<speaker>{cur_speaker}</speaker> {t}"
-            if t:
-                if in_poem or closes:
-                    kind = "pof" if cur_opens else ("pol" if closes else "po")
-                else:
-                    kind = "prose"
-                lines.append((kind, t))
-                cur, cur_opens, cur_speaker = "", False, None
-                return
-            # No text on this line: keep a pending "[" for the next line; a "]"
-            # closes the previous poetic line.
-            if closes and lines and lines[-1][0] == "po":
-                lines[-1] = ("pol", lines[-1][1])
-            cur = ""
+    def __init__(self, key, in_poem):
+        self.key, self.in_poem = key, in_poem
+        self.lines = []        # [(kind, text)], kind: prose | pof | po | pol
+        self.cur, self.opens, self.speaker = "", False, None
+        self.title, self.title_at = None, None  # title_at: index into lines
 
+    def flush(self, closes):
+        """End the current line (at "/", "[", "]" or the end of the verse)."""
+        t = re.sub(r"\s+", " ", self.cur).strip()
+        if self.speaker:
+            t = f"<speaker>{self.speaker}</speaker> {t}"
+        if t:
+            if self.in_poem or closes:
+                kind = "pof" if self.opens else ("pol" if closes else "po")
+            else:
+                kind = "prose"
+            self.lines.append((kind, t))
+            self.cur, self.opens, self.speaker = "", False, None
+            return
+        # No text on this line: keep a pending "[" for the next line; a "]"
+        # closes the previous poetic line.
+        if closes and self.lines and self.lines[-1][0] == "po":
+            self.lines[-1] = ("pol", self.lines[-1][1])
+        self.cur = ""
+
+    def marker(self, label):
+        """Handle a <label>: a speaker, or a heading (title1)."""
+        if label in SPEAKERS:
+            if self.cur.strip():
+                raise ValueError(f"speaker mid-line in {self.key}")
+            self.speaker = label
+            return
+        if not (label in ACROSTIC or label.startswith(HEADING_PREFIXES)):
+            raise ValueError(f"unknown marker <{label}> in {self.key}")
+        if self.title is not None:
+            if self.key == (31, 1, 1) and label == "Aleph":
+                return  # see module docstring
+            raise ValueError(f"two headings in {self.key}")
+        if self.cur.strip():
+            raise ValueError(f"heading mid-line in {self.key}")
+        self.title, self.title_at = label, len(self.lines)
+
+    def open_poem(self):
+        if self.in_poem:
+            raise ValueError(f"nested [ in {self.key}")
+        self.flush(False)
+        self.in_poem, self.opens = True, True
+
+    def close_poem(self):
+        if not self.in_poem:
+            raise ValueError(f"unbalanced ] in {self.key}")
+        self.flush(True)
+        self.in_poem = False
+
+    def feed(self, raw):
+        actions = {"[": self.open_poem, "]": self.close_poem, "/": lambda: self.flush(False)}
         i = 0
         while i < len(raw):
             ch = raw[i]
             if ch == "<":
                 j = raw.index(">", i)
-                label = raw[i + 1:j]
+                self.marker(raw[i + 1:j])
                 i = j + 1
-                if label in SPEAKERS:
-                    if cur.strip():
-                        raise ValueError(f"speaker mid-line in {key}")
-                    cur_speaker = label
-                elif label in ACROSTIC or label.startswith(HEADING_PREFIXES):
-                    if title is not None:
-                        if key == (31, 1, 1) and label == "Aleph":
-                            continue  # see module docstring
-                        raise ValueError(f"two headings in {key}")
-                    if cur.strip():
-                        raise ValueError(f"heading mid-line in {key}")
-                    title, title_at = label, len(lines)
-                else:
-                    raise ValueError(f"unknown marker <{label}> in {key}")
                 continue
-            if ch == "[":
-                if in_poem:
-                    raise ValueError(f"nested [ in {key}")
-                flush(False)
-                in_poem, cur_opens = True, True
-            elif ch == "]":
-                if not in_poem:
-                    raise ValueError(f"unbalanced ] in {key}")
-                flush(True)
-                in_poem = False
-            elif ch == "/":
-                flush(False)
+            if ch in actions:
+                actions[ch]()
             else:
-                cur += ch
+                self.cur += ch
             i += 1
-        flush(False)
+        self.flush(False)
+        return self
 
-        rendered = [t if k == "prose" else f"<{k}>{t}</{k}>" for k, t in lines]
+    def render(self):
+        """Return (text, title1, title_position), checked."""
+        rendered = [t if k == "prose" else f"<{k}>{t}</{k}>" for k, t in self.lines]
         text = "\n".join(rendered)
         position = None
-        if title_at is not None and title_at > 0:
-            position = len("\n".join(rendered[:title_at])) + 1
+        if self.title_at:  # a heading after the first line sits mid-verse
+            position = len("\n".join(rendered[:self.title_at])) + 1
         if not valid_title_position(text, position):
-            raise ValueError(f"title_position guard failed for {key}: {position}")
-        if len(text) > TEXT_MAX or (title and len(title) > TITLE_MAX):
-            raise ValueError(f"too long: {key}")
-        out[key] = (text, title, position)
+            raise ValueError(f"title_position guard failed for {self.key}: {position}")
+        if len(text) > TEXT_MAX or (self.title and len(self.title) > TITLE_MAX):
+            raise ValueError(f"too long: {self.key}")
+        return text, self.title, position
+
+
+def format_book(verses):
+    """verses: [(key, raw)] for one book in order.
+    Return {key: (text, title1, title_position)}."""
+    out, in_poem = {}, False
+    for key, raw in verses:
+        # "\\" is a paragraph break: not representable, dropped.
+        parsed = VerseLines(key, in_poem).feed(raw.replace("\\", " "))
+        in_poem = parsed.in_poem
+        out[key] = parsed.render()
     if in_poem:
         raise ValueError(f"unterminated [ at end of book {verses[-1][0]}")
     return out
@@ -201,15 +221,10 @@ def sql_str(s):
     return "E'" + s.replace("\\", "\\\\").replace("'", "''").replace("\n", "\\n") + "'"
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--source", required=True, help="Clementine-Vulgate/src/utf8 directory")
-    ap.add_argument("--dump", required=True, help="COPY dump of the VGCL table (see docstring)")
-    args = ap.parse_args()
-
-    source = load_source(args.source)
+def load_db(path):
+    """{key: (verseID, text, [title1, title2, title3])} from the COPY dump (Esther skipped)."""
     db = {}
-    with open(args.dump, encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         for line in fh:
             vid, book, chapter, verse, text, t1, t2, t3 = line.rstrip("\n").split("\t")
             if int(book) == ESTHER:
@@ -218,50 +233,46 @@ def main():
             if key in db:
                 raise ValueError(f"duplicate key outside Esther: {key}")
             db[key] = (int(vid), copy_unescape(text), [("" if t == "\\N" else copy_unescape(t)) for t in (t1, t2, t3)])
+    return db
 
-    by_book = {}
-    for book, chapter, verse, raw in source:
-        if book != ESTHER:
-            by_book.setdefault(book, []).append(((book, chapter, verse), raw))
 
-    updates, stats = [], {"text": 0, "title": 0, "position": 0}
-    for book, verses in by_book.items():
-        for key, (text, title, position) in format_book(verses).items():
-            if key not in db:
-                raise ValueError(f"source verse missing from DB: {key}")
-            vid, old, titles = db[key]
-            # Sanity: apart from the markup, the text must be what we already have
-            # (except Sir 1:1, which was truncated).
-            old_norm = re.sub(r"[\[\]]|<(?:Aleph|Beth|Ghimel|Daleth|He|Vau|Zain|Heth|Teth|Jod|Caph|Lamed|Mem|Nun|Samech|Ain|Phe|Sade|Coph|Res|Sin|Tau|Thau|Prologus|Oratio[^>]*|Exemplar[^>]*)>", " ", old)
-            old_norm = re.sub(r"<(Sponsa|Sponsus|Chorus[^>]*)>", r" \1 ", old_norm)
-            old_norm = re.sub(r"\s+", " ", old_norm).strip()
-            new_cmp = plain_text(text)
-            if key == (31, 1, 1):
-                new_cmp = new_cmp.replace(" Aleph ", " ")  # dropped Aleph is not in new text
-            if key == (28, 1, 1):
-                if not new_cmp.startswith(old_norm.rstrip()):
-                    raise ValueError("Sir 1:1 is not an extension of the stored text")
-            elif new_cmp != old_norm:
-                raise ValueError(f"content mismatch {key}:\n  db : {old_norm[:200]}\n  new: {new_cmp[:200]}")
-            if any(titles):
-                raise ValueError(f"{key} already has titles: {titles}")
-            if title is None and re.sub(r"\s+", " ", old).strip() == text:
-                continue  # no markup in this verse; leave its whitespace alone
-            sets = []
-            if text != old:
-                sets.append(f"text = {sql_str(text)}")
-                stats["text"] += 1
-            if title is not None:
-                sets.append(f"title1 = {sql_str(title)}")
-                stats["title"] += 1
-            if position is not None:
-                sets.append(f"title_position = {position}")
-                stats["position"] += 1
-            updates.append(f'UPDATE "VGCL" SET {", ".join(sets)} WHERE "verseID" = {vid} '
-                           f"AND text = {sql_str(old)} AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' "
-                           f"AND coalesce(title3, '') = '';"
-                           f"  -- {BOOKS[key[0] - 1]} {key[1]}:{key[2]}")
+def check_content(key, text, old):
+    """Apart from the markup, the new text must say what the stored text says
+    (Sir 1:1, truncated on import, must extend it)."""
+    old_norm = re.sub(r"[\[\]]|<(?:Aleph|Beth|Ghimel|Daleth|He|Vau|Zain|Heth|Teth|Jod|Caph|Lamed|Mem|Nun|Samech|Ain|Phe|Sade|Coph|Res|Sin|Tau|Thau|Prologus|Oratio[^>]*|Exemplar[^>]*)>", " ", old)
+    old_norm = re.sub(r"<(Sponsa|Sponsus|Chorus[^>]*)>", r" \1 ", old_norm)
+    old_norm = re.sub(r"\s+", " ", old_norm).strip()
+    new_cmp = plain_text(text)
+    if key == (31, 1, 1):
+        new_cmp = new_cmp.replace(" Aleph ", " ")  # dropped Aleph is not in new text
+    if key == (28, 1, 1):
+        if not new_cmp.startswith(old_norm.rstrip()):
+            raise ValueError("Sir 1:1 is not an extension of the stored text")
+    elif new_cmp != old_norm:
+        raise ValueError(f"content mismatch {key}:\n  db : {old_norm[:200]}\n  new: {new_cmp[:200]}")
 
+
+def build_update(key, vid, old, text, title, position, stats):
+    """The guarded UPDATE for one verse, or None when nothing changes."""
+    if title is None and re.sub(r"\s+", " ", old).strip() == text:
+        return None  # no markup in this verse; leave its whitespace alone
+    sets = []
+    if text != old:
+        sets.append(f"text = {sql_str(text)}")
+        stats["text"] += 1
+    if title is not None:
+        sets.append(f"title1 = {sql_str(title)}")
+        stats["title"] += 1
+    if position is not None:
+        sets.append(f"title_position = {position}")
+        stats["position"] += 1
+    return (f'UPDATE "VGCL" SET {", ".join(sets)} WHERE "verseID" = {vid} '
+            f"AND text = {sql_str(old)} AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' "
+            f"AND coalesce(title3, '') = '';"
+            f"  -- {BOOKS[key[0] - 1]} {key[1]}:{key[2]}")
+
+
+def write_sql(updates, stats):
     w = sys.stdout.write
     w("-- Generated by scripts/format_vgcl_from_source.py -- do not edit by hand.\n")
     w("-- Stores the Clementine Vulgate Project markup of VGCL the way the other\n")
@@ -299,6 +310,34 @@ END $$;
 
 COMMIT;
 """)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--source", required=True, help="Clementine-Vulgate/src/utf8 directory")
+    ap.add_argument("--dump", required=True, help="COPY dump of the VGCL table (see docstring)")
+    args = ap.parse_args()
+
+    db = load_db(args.dump)
+    by_book = {}
+    for book, chapter, verse, raw in load_source(args.source):
+        if book != ESTHER:
+            by_book.setdefault(book, []).append(((book, chapter, verse), raw))
+
+    updates, stats = [], {"text": 0, "title": 0, "position": 0}
+    for verses in by_book.values():
+        for key, (text, title, position) in format_book(verses).items():
+            if key not in db:
+                raise ValueError(f"source verse missing from DB: {key}")
+            vid, old, titles = db[key]
+            check_content(key, text, old)
+            if any(titles):
+                raise ValueError(f"{key} already has titles: {titles}")
+            update = build_update(key, vid, old, text, title, position, stats)
+            if update:
+                updates.append(update)
+
+    write_sql(updates, stats)
     print(f"{len(updates)} updates; {stats}", file=sys.stderr)
 
 
