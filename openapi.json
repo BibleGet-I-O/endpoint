@@ -796,6 +796,128 @@
                 }
             }
         },
+        "/search/hybrid": {
+            "get": {
+                "summary": "Hybrid keyword + semantic search (Reciprocal Rank Fusion)",
+                "description": "Runs the keyword retriever (`/search/keyword` with `match=fulltext`) and the semantic retriever (`/search/semantic`) on the same `query`, then fuses the two ranked lists with weighted Reciprocal Rank Fusion (Cormack et al. 2009): `score(d) = Σ_i w_i / (k + rank_i(d))`, where `rank_i(d)` is the 1-based rank of verse `d` in leg `i` (the term is omitted when `d` was not retrieved by that leg). RRF is rank-based, so the incomparable score scales of `ts_rank_cd` and cosine similarity need no normalization.\n\nEach leg retrieves `min(300, max(limit × 3, 50))` candidates (ranked globally across the requested versions, like the sibling endpoints); the fused list is then trimmed to `limit`. Ties on the fused score are broken by the better best-rank across legs, then by the requested version order, then by canonical order.\n\nA leg whose weight is `0` is not executed (its `components` entry is always `null`). When `query` is shorter than the keyword leg's 4-character minimum, only the semantic leg runs. When the semantic leg runs and the embedding microservice is unavailable, the request fails with 503 — it does not silently degrade to keyword-only; pass `semantic_weight=0` for an explicit keyword-only request.",
+                "operationId": "hybridSearchByGET",
+                "tags": [
+                    "SearchAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "description": "Search string, fed verbatim to both retrievers: the keyword leg parses it with `websearch_to_tsquery` (stemmed full-text match), the semantic leg embeds it.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "love your neighbor"
+                    },
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "description": "Bible version sigla. Comma-separated values (e.g. `NABRE,DRB`) search across multiple versions and fuse globally; results from each version share a per-version `canonical_order` partition. As on `/search/keyword`, all listed versions must share the same full-text-search language (`ts_language`), otherwise the request is rejected with 422.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Maximum number of fused results to return. Out-of-range values are clamped.",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "k",
+                        "in": "query",
+                        "description": "RRF smoothing constant. Larger values flatten the contribution curve so lower-ranked hits matter relatively more; `60` is the standard default.",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 60,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "keyword_weight",
+                        "in": "query",
+                        "description": "Weight `w` of the keyword leg in the fused score. Non-negative finite number; `0` disables the keyword leg. `keyword_weight` and `semantic_weight` cannot both be `0`.",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "format": "float",
+                            "default": 1.0,
+                            "minimum": 0.0
+                        }
+                    },
+                    {
+                        "name": "semantic_weight",
+                        "in": "query",
+                        "description": "Weight `w` of the semantic leg in the fused score. Non-negative finite number; `0` disables the semantic leg (no embedding-service call is made).",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "format": "float",
+                            "default": 1.0,
+                            "minimum": 0.0
+                        }
+                    },
+                    {
+                        "name": "threshold",
+                        "in": "query",
+                        "description": "Minimum cosine-similarity score (0.0–1.0) for a verse to enter the semantic leg's candidate list. Same semantics as on `/search/semantic`; the default 0.0 is a no-op filter.",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "format": "float",
+                            "default": 0.0,
+                            "minimum": 0.0,
+                            "maximum": 1.0
+                        }
+                    },
+                    {
+                        "name": "model",
+                        "in": "query",
+                        "description": "Embedding model for the semantic leg. Same values and default as on `/search/semantic`.",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/EmbeddingModel"
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/return"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Fused search results ranked by RRF score",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HybridSearchResponseJSON"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error (missing/invalid parameters, mixed `ts_language` versions, or a query too short for the keyword leg when `semantic_weight=0`)"
+                    },
+                    "503": {
+                        "description": "Embedding service unavailable. Use `/search/keyword`, or pass `semantic_weight=0`, for text-based search as a fallback."
+                    }
+                }
+            }
+        },
         "/search/similar": {
             "get": {
                 "summary": "Find thematically related passages by verse reference",
@@ -14811,6 +14933,158 @@
                             "ENDPOINT_VERSION": {
                                 "type": "string",
                                 "example": "3.0"
+                            }
+                        }
+                    }
+                }
+            },
+            "HybridSearchComponent": {
+                "type": "object",
+                "nullable": true,
+                "description": "One retriever's contribution to a fused row. `null` when that retriever did not retrieve the row (or did not run).",
+                "properties": {
+                    "rank": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "1-based rank of the row in this retriever's candidate list (global across the requested versions)."
+                    },
+                    "score": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true,
+                        "description": "The retriever's own score, as the sibling endpoint reports it: `ts_rank_cd` for the keyword leg, cosine similarity for the semantic leg."
+                    }
+                },
+                "required": ["rank", "score"]
+            },
+            "HybridSearchResultItem": {
+                "type": "object",
+                "description": "A verse result from hybrid search: the sibling search-row shape, with `score` holding the fused RRF score, plus per-retriever `components`.",
+                "properties": {
+                    "version": {
+                        "type": "string",
+                        "description": "Bible version sigla"
+                    },
+                    "testament": {
+                        "type": "integer",
+                        "description": "`1` = Old Testament, `2` = New Testament"
+                    },
+                    "section": {
+                        "type": "integer",
+                        "description": "Section of the Bible (1-9)"
+                    },
+                    "book": {
+                        "type": "string",
+                        "description": "Full name of the book"
+                    },
+                    "bookabbrev": {
+                        "type": "string",
+                        "description": "Abbreviated book name"
+                    },
+                    "booknum": {
+                        "type": "integer",
+                        "description": "0-based book index in the version"
+                    },
+                    "univbooknum": {
+                        "type": "string",
+                        "description": "Universal book number (Catholic canon)"
+                    },
+                    "chapter": {
+                        "type": "integer"
+                    },
+                    "verse": {
+                        "type": "integer"
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "The verse text"
+                    },
+                    "text_plain": {
+                        "type": "string",
+                        "description": "The verse text with all formatting markup removed (see `SemanticSearchResultItem.text_plain`)."
+                    },
+                    "score": {
+                        "type": "number",
+                        "format": "float",
+                        "minimum": 0.0,
+                        "description": "Raw fused RRF score `Σ w_i / (k + rank_i)`, unrounded. Small values (≈0.016 for a single rank-1 hit at the default `k=60`); meaningful only for relative ordering within one response.",
+                        "example": 0.0325
+                    },
+                    "canonical_order": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Independent of array position: the array is in fused-score order."
+                    },
+                    "components": {
+                        "type": "object",
+                        "description": "Per-retriever rank and score behind the fused score, so clients can debug, threshold or re-fuse locally.",
+                        "properties": {
+                            "keyword": {
+                                "$ref": "#/components/schemas/HybridSearchComponent"
+                            },
+                            "semantic": {
+                                "$ref": "#/components/schemas/HybridSearchComponent"
+                            }
+                        },
+                        "required": ["keyword", "semantic"]
+                    }
+                },
+                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "text_plain", "score", "canonical_order", "components"]
+            },
+            "HybridSearchResponseJSON": {
+                "type": "object",
+                "required": ["results", "errors", "info"],
+                "properties": {
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/HybridSearchResultItem"
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "info": {
+                        "type": "object",
+                        "required": ["ENDPOINT_VERSION", "model", "k", "keyword_weight", "semantic_weight", "candidates", "legs"],
+                        "properties": {
+                            "ENDPOINT_VERSION": {
+                                "type": "string",
+                                "example": "3.0"
+                            },
+                            "model": {
+                                "$ref": "#/components/schemas/EmbeddingModel"
+                            },
+                            "k": {
+                                "type": "integer",
+                                "example": 60
+                            },
+                            "keyword_weight": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 1.0
+                            },
+                            "semantic_weight": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 1.0
+                            },
+                            "candidates": {
+                                "type": "integer",
+                                "description": "Per-leg retrieval depth used for this request: `min(300, max(limit × 3, 50))`.",
+                                "example": 60
+                            },
+                            "legs": {
+                                "type": "array",
+                                "description": "Retrievers that actually ran. A leg is skipped when its weight is 0, and the keyword leg is skipped when `query` is shorter than 4 characters.",
+                                "items": {
+                                    "type": "string",
+                                    "enum": ["keyword", "semantic"]
+                                },
+                                "example": ["keyword", "semantic"]
                             }
                         }
                     }
