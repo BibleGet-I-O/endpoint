@@ -6,6 +6,10 @@
 -- a space, joining the lines. Result: 2,453 Psalm verses truncated or joined
 -- (Ps 23:1 read only "Salmo di Davide."), plus 41 verses in other books
 -- (37 joined, 4 truncated: Num 24:20, Prov 30:1, Prov 31:1, Amos 1:2).
+-- It also discarded everything before the `^` that marks a verse heading,
+-- which in 4 verses where the heading falls mid-verse was the first half of
+-- the verse itself (2 Kgs 25:21, Neh 7:73, John 12:36, Acts 9:19). 2,498
+-- rows in all. (The headings themselves are restored by 018.)
 --
 -- Every new text below is the original source run through the importer's
 -- own conversion (scripts/repair_luzzi_from_source.py), which reproduces
@@ -34,6 +38,8 @@ UPDATE "LUZZI" SET text = 'Allora Giosuè parlò all''Eterno, il giorno che l''E
 UPDATE "LUZZI" SET text = 'E il sole si fermò, e la luna rimase al suo luogo, finché la nazione si fosse vendicata de'' suoi nemici». Questo non sta egli scritto nel libro del Giusto? E il sole si fermò in mezzo al cielo e non s''affrettò a tramontare per quasi un giorno intero.' WHERE "verseID" = 92680 AND (text = 'E il sole si fermò, e la luna rimase al suo luogo, finché la nazione si fosse vendicata de'' suoi nemici».Questo non sta egli scritto nel libro del Giusto? E il sole si fermò in mezzo al cielo e non s''affrettò a tramontare per quasi un giorno intero.'); -- 6 10:13
 UPDATE "LUZZI" SET text = 'Così periscano tutti i tuoi nemici, o Eterno! E quei che t''amano sian come il sole quando si leva in tutta la sua forza!» Ed il paese ebbe requie per quarant''anni.' WHERE "verseID" = 93256 AND (text = 'Così periscano tutti i tuoi nemici, o Eterno! E quei che t''amano sian come il sole quando si leva in tutta la sua forza!»Ed il paese ebbe requie per quarant''anni.'); -- 7 5:31
 UPDATE "LUZZI" SET text = 'E il re fece un canto funebre su Abner, e disse: «Doveva Abner morire come muore uno stolto?' WHERE "verseID" = 94716 AND (text = 'E il re fece un canto funebre su Abner, e disse:«Doveva Abner morire come muore uno stolto?'); -- 10 3:33
+UPDATE "LUZZI" SET text = 'e il re di Babilonia li fece colpire a morte a Ribla, nel paese di Hamath. Così Giuda fu menato in cattività lungi dal suo paese.' WHERE "verseID" = 96844 AND (text = 'Così Giuda fu menato in cattività lungi dal suo paese.'); -- 12 25:21
+UPDATE "LUZZI" SET text = 'I sacerdoti, i Leviti, i portinai, i cantori, la gente del popolo, i Nethinei e tutti gl''Israeliti si stabilirono nelle loro città. Come fu giunto il settimo mese, e i figliuoli d''Israele si furono stabiliti nelle loro città,' WHERE "verseID" = 99092 AND (text = 'Come fu giunto il settimo mese, e i figliuoli d''Israele si furono stabiliti nelle loro città,'); -- 16 7:73
 UPDATE "LUZZI" SET text = 'che invece di grano mi nascano spine, invece d''orzo mi crescano zizzanie!» Qui finiscono i discorsi di Giobbe.' WHERE "verseID" = 100228 AND (text = 'che invece di grano mi nascano spine, invece d''orzo mi crescano zizzanie!»Qui finiscono i discorsi di Giobbe.'); -- 22 31:40
 UPDATE "LUZZI" SET text = 'Ed Elihu, figliuolo di Barakeel il Buzita, rispose e disse: «Io son giovine d''età e voi siete vecchi; perciò mi son tenuto indietro e non ho ardito esporvi il mio pensiero.' WHERE "verseID" = 100234 AND (text = 'Ed Elihu, figliuolo di Barakeel il Buzita, rispose e disse:«Io son giovine d''età e voi siete vecchi; perciò mi son tenuto indietro e non ho ardito esporvi il mio pensiero.'); -- 22 32:6
 UPDATE "LUZZI" SET text = 'Beato l''uomo che non cammina secondo il consiglio degli empi, che non si ferma nella via de'' peccatori; né si siede sul banco degli schernitori;' WHERE "verseID" = 100539 AND (text = 'Beato l''uomo che non cammina secondo il consiglio degli empi,' OR text = 'Beato l''uomo che non cammina secondo il consiglio degli empi, che non si ferma nella via de'' peccatori, né si siede sul banco degli schernitori;'); -- 23 1:1
@@ -2517,5 +2523,7 @@ UPDATE "LUZZI" SET text = 'Visione di Abdia. Così parla il Signore, l''Eterno, 
 UPDATE "LUZZI" SET text = 'L''Eterno, il Signore, è la mia forza; egli renderà i miei piedi come quelli delle cerve, e mi farà camminare sui miei alti luoghi. Al Capo de'' musici. Per strumenti a corda.' WHERE "verseID" = 109383 AND (text = 'L''Eterno, il Signore, è la mia forza; egli renderà i miei piedi come quelli delle cerve, e mi farà camminare sui miei alti luoghi.Al Capo de'' musici. Per strumenti a corda.'); -- 42 3:19
 UPDATE "LUZZI" SET text = 'Oracolo, parola dell''Eterno, riguardo a Israele. Parola dell''Eterno che ha disteso i cieli e fondata la terra, e che ha formato lo spirito dell''uomo dentro di lui:' WHERE "verseID" = 109642 AND (text = 'Oracolo, parola dell''Eterno, riguardo a Israele.Parola dell''Eterno che ha disteso i cieli e fondata la terra, e che ha formato lo spirito dell''uomo dentro di lui:'); -- 45 12:1
 UPDATE "LUZZI" SET text = 'E Maria disse: «L''anima mia magnifica il Signore,' WHERE "verseID" = 111535 AND (text = 'E Maria disse:«L''anima mia magnifica il Signore,'); -- 49 1:46
+UPDATE "LUZZI" SET text = 'Mentre avete la luce, credete nella luce, affinché diventiate figliuoli di luce. Queste cose disse Gesù, poi se ne andò e si nascose da loro.' WHERE "verseID" = 113211 AND (text = 'Queste cose disse Gesù, poi se ne andò e si nascose da loro.'); -- 50 12:36
+UPDATE "LUZZI" SET text = 'E avendo preso cibo, riacquistò le forze. E Saulo rimase alcuni giorni coi discepoli che erano a Damasco.' WHERE "verseID" = 113830 AND (text = 'E Saulo rimase alcuni giorni coi discepoli che erano a Damasco.'); -- 51 9:19
 
 COMMIT;

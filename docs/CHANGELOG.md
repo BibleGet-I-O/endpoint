@@ -120,6 +120,20 @@ Deprecated / Fixed / Removed / Security where applicable.
   embeddings of the changed rows were recomputed. On other databases,
   NULL `embedding_labse` where `text_hash != embedded_text_hash`, then run
   `compute_embeddings.py --version LUZZI` for both columns.
+  The same importer also discarded everything before the `^` heading
+  marker. In 4 verses where the heading falls mid-verse (2 Kgs 25:21,
+  Neh 7:73, John 12:36, Acts 9:19), that was the first half of the verse,
+  so 015 now covers 2,498 rows.
+- **LUZZI section headings stored in `title1`–`title3`.** The 1,651 headings
+  in `luzzi.txt` (e.g. *"La creazione"*, *"LIBRO PRIMO (Salmi 1 a 41)"*)
+  were discarded by the 2015 import. `migrations/018-luzzi-section-headings.sql`
+  stores them by level: each `<br />`-separated part is a level, outermost
+  first, with a parenthetical range or parallel joined to its heading.
+  1,639 are single-level and land in `title1`. `migrations/017-widen-title-columns.sql`
+  widens `title1`–`title3` from `VARCHAR(100)` to `VARCHAR(255)` on every
+  edition table (the longest LUZZI heading is 203 characters), and
+  `production-schema.sql` is updated to match. No client reads the title
+  fields yet; they are returned on every verse row.
 - **LUZZI provenance recorded.** `luzzi.txt` turned out to be a dump of
   LaParola.net's "Luzzi/Riveduta" text, which follows the Società Biblica
   Britannica e Forestiera printing (1925) as reproduced in the Libreria Sacre
