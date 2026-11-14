@@ -94,15 +94,15 @@ BEGIN
             tbl, tbl || '_title_position_check'
         );
 
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger
-                       WHERE tgname = tbl || '_text_hash_trigger'
-                         AND tgrelid = format('public.%I', tbl)::regclass) THEN
-            EXECUTE format(
-                'CREATE TRIGGER %I BEFORE INSERT OR UPDATE OF text ON %I '
-                || 'FOR EACH ROW EXECUTE FUNCTION update_text_hash()',
-                tbl || '_text_hash_trigger', tbl
-            );
-        END IF;
+        -- text_plain and text_hash are derived: the trigger also fires on a
+        -- direct write to either, and recomputes both from text. Replaced on
+        -- every run, so the trigger created by migration 005 (UPDATE OF text
+        -- only) gets the new event list.
+        EXECUTE format(
+            'CREATE OR REPLACE TRIGGER %I BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON %I '
+            || 'FOR EACH ROW EXECUTE FUNCTION update_text_hash()',
+            tbl || '_text_hash_trigger', tbl
+        );
     END LOOP;
 END
 $$;
