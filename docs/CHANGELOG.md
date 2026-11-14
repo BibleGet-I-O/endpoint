@@ -125,6 +125,13 @@ Deprecated / Fixed / Removed / Security where applicable.
     only in whitespace. MiniLM and LaBSE produce bit-identical vectors for
     those, as verified. Only rows whose markup changes the words go stale,
     in practice NABRE's tagged verses.
+- **HTML quote output renders formatted text.** `return=html` used to
+  escape the whole verse, so NABRE's (and now LUZZI's and CEI2008's)
+  `<pof>`, `<sm>` and other tags showed literally. Production v3 did the
+  same. `FormattedText::toHtml()` now escapes the text, then turns matched
+  pairs of the known tags back into markup: line tags and `<sm>` become
+  `<span class="…">`, `<i>` and `<sup>` are kept, and line breaks become
+  `<br>`. Unknown or unmatched tags stay escaped.
 - **LUZZI formatted text** (`migrations/020-luzzi-formatted-text.sql`,
   2,847 verses). `luzzi.txt`'s line breaks and `<i>` are restored into
   `text` in the NABRE tag set the clients already render. Only the Psalms
