@@ -9,6 +9,16 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Changed
 
+- **Psalm superscriptions left out of embeddings** (migration `022`).
+  `scripts/compute_embeddings.py` now embeds
+  `bibleget_embedding_text(book, text)`: `text_plain`, except that a
+  Psalms verse whose superscription stands on its own line before the
+  poem (NABRE, LUZZI, VGCL) is embedded without it. "the LORD is my
+  shepherd" ranked NABRE Ps 23:1 11th (LaBSE) / 6th (MiniLM); it is now
+  1st in both. Quotes and keyword search still include the
+  superscription. 022 marks the 256 affected rows stale (NABRE 60,
+  LUZZI 114, VGCL 82).
+
 - **Minimum PHP raised to 8.4.1; PHPUnit 11 → 13.** Production already
   runs Plesk PHP 8.4. PHPUnit 13 requires PHP ≥ 8.4.1, which is why
   Dependabot's bump (#170) failed on the 8.2/8.3 CI jobs. CI now runs
@@ -153,6 +163,25 @@ Deprecated / Fixed / Removed / Security where applicable.
   `docs/future-migrations/README.md` for the promotion-back procedure.
 
 ### Fixed
+
+- **VGCL: Clementine Vulgate Project markup stored like the other
+  editions** (migration `021`, generated from the
+  [BibleGet-I-O/Clementine-Vulgate](https://github.com/BibleGet-I-O/Clementine-Vulgate)
+  mirror by `scripts/format_vgcl_from_source.py`; PostgreSQL only).
+  The source's `[`…`]` poetry delimiters were left in 943 verses as
+  literal brackets. They are now NABRE line tags (`<pof>`/`<po>`/`<pol>`),
+  with prose lead-ins kept as untagged lines. The other markers are
+  stored as follows:
+  - Song of Songs speakers (`<Sponsa>`, `<Chorus>`, …) are
+    `<speaker>…</speaker>`.
+  - Acrostic letters (Ps 118, Lam 1-4) and the headings `Prologus`,
+    `Oratio Jeremiæ prophetæ` and `Exemplar epistolæ…` (Bar 6:1) are in
+    `title1`: 157 verses. Ps 118:1 uses `title_position`.
+  - **Sir 1:1** had been truncated at 900 characters, losing the end of
+    the Prologue and all of verse 1. It is now complete, and `text`/`text_plain`
+    are widened to `VARCHAR(2000)` in every edition.
+  - Lam 1:1 keeps `Prologus` as its heading; its mid-verse `Aleph`
+    can't be stored with a single `title_position`.
 
 - **LUZZI verses truncated by the original import** (2,494 rows). The
   importer of the original source `luzzi.txt` split each verse on its

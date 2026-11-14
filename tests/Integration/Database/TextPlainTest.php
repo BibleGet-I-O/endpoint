@@ -51,6 +51,31 @@ class TextPlainTest extends DatabaseTestCase
         self::assertSame($expected, $stmt->fetchColumn());
     }
 
+    /**
+     * @return array<string, array{int, string, string}>
+     */
+    public static function embeddingTextCases(): array
+    {
+        $ps23 = "A psalm of David.\n<pof>The L<sm>ORD</sm> is my shepherd;</pof>\n<poi>there is nothing I lack.</poi>";
+        return [
+            'psalm superscription dropped'      => [23, $ps23, 'The LORD is my shepherd; there is nothing I lack.'],
+            'tagged superscription dropped'     => [23, "<i>Salmo di Davide</i>.\n<pof>L'Eterno è il mio pastore</pof>", "L'Eterno è il mio pastore"],
+            'multi-line superscription dropped' => [23, "Alleluja.\nPsalmus.\n<pof>Beati</pof>", 'Beati'],
+            'superscription-only verse kept'    => [23, 'For the leader. A psalm of David,', 'For the leader. A psalm of David,'],
+            'psalm verse starting with poetry'  => [23, "<po>Even though I walk</po>\n<poi>I fear no harm</poi>", 'Even though I walk I fear no harm'],
+            'lead-in outside Psalms kept'       => [1, "ait :\n<pof>Maledictus Chanaan,</pof>", 'ait : Maledictus Chanaan,'],
+            'prose psalm verse is just plain'   => [23, 'Psalmus David. Dominus regit me', 'Psalmus David. Dominus regit me'],
+        ];
+    }
+
+    #[DataProvider('embeddingTextCases')]
+    public function testEmbeddingTextLeavesOutPsalmSuperscriptions(int $book, string $input, string $expected): void
+    {
+        $stmt = $this->getConnection()->prepare('SELECT bibleget_embedding_text(?::int, ?)');
+        $stmt->execute([$book, $input]);
+        self::assertSame($expected, $stmt->fetchColumn());
+    }
+
     public function testTriggerDerivesTextPlainAndHashesIt(): void
     {
         $row = $this->getConnection()->query(
