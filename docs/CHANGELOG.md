@@ -154,9 +154,13 @@ Deprecated / Fixed / Removed / Security where applicable.
   text, so the migration is idempotent. Applied on 2026-11-14 to live
   PostgreSQL (`bibleget_dev`) and the legacy v3 MariaDB. All 31,094 LUZZI
   rows in both now match the source, and on live PG the MiniLM and LaBSE
-  embeddings of the changed rows were recomputed. On other databases,
-  NULL `embedding_labse` where `text_hash != embedded_text_hash`, then run
-  `compute_embeddings.py --version LUZZI` for both columns.
+  embeddings of the changed rows were recomputed. On other databases, only
+  the default column `embedding_labse` tracks `text_hash`; the MiniLM
+  `embedding` column is only filled where it is NULL. So, *before*
+  re-embedding, NULL `embedding` where `text_hash != embedded_text_hash`
+  (the LaBSE run resets the hash). Then run `compute_embeddings.py --version
+  LUZZI` (LaBSE: the stale rows) and `compute_embeddings.py --version LUZZI
+  --column embedding` (MiniLM: the NULLed rows).
   The same importer also discarded everything before the `^` heading
   marker. In 4 verses where the heading falls mid-verse (2 Kgs 25:21,
   Neh 7:73, John 12:36, Acts 9:19), that was the first half of the verse,
