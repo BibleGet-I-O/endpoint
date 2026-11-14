@@ -106,6 +106,53 @@ Deprecated / Fixed / Removed / Security where applicable.
   migrations doesn't accidentally retire MiniLM. See
   `docs/future-migrations/README.md` for the promotion-back procedure.
 
+### Fixed
+
+- **LUZZI verses truncated by the original import** (2,494 rows). The
+  importer of the original source `luzzi.txt` split each verse on its
+  `<br />` poetic line breaks and kept only the first segment, and where a
+  verse did not end in `<br />` it dropped the tags without a space. Result:
+  2,453 Psalm verses truncated or joined (Ps 1:1 kept one line of three;
+  Ps 23:1 read only *"Salmo di Davide."*; *"m'accompagnerannotutti"*), plus
+  41 verses in other books: 37 joined (*"disse:«Balak"*) and 4 truncated
+  (Num 24:20, Prov 30:1, Prov 31:1, Amos 1:2, which read only *"Egli
+  disse:"*). `migrations/015-restore-luzzi-verses-from-source.sql`, generated
+  by `scripts/repair_luzzi_from_source.py`, rebuilds those rows from
+  `luzzi.txt` using the importer's own conversion: drop the `^` heading,
+  strip `<i>`, `<br />` → space, decode entities. That conversion reproduces
+  every undamaged row exactly. Each UPDATE is guarded on a known damaged
+  text, so the migration is idempotent. Applied on 2026-11-14 to live
+  PostgreSQL (`bibleget_dev`) and the legacy v3 MariaDB. All 31,094 LUZZI
+  rows in both now match the source, and on live PG the MiniLM and LaBSE
+  embeddings of the changed rows were recomputed. On other databases, only
+  the default column `embedding_labse` tracks `text_hash`; the MiniLM
+  `embedding` column is only filled where it is NULL. So, *before*
+  re-embedding, NULL `embedding` where `text_hash != embedded_text_hash`
+  (the LaBSE run resets the hash). Then run `compute_embeddings.py --version
+  LUZZI` (LaBSE: the stale rows) and `compute_embeddings.py --version LUZZI
+  --column embedding` (MiniLM: the NULLed rows).
+  The same importer also discarded everything before the `^` heading
+  marker. In 4 verses where the heading falls mid-verse (2 Kgs 25:21,
+  Neh 7:73, John 12:36, Acts 9:19), that was the first half of the verse,
+  so 015 now covers 2,498 rows.
+- **LUZZI section headings stored in `title1`–`title3`.** The 1,651 headings
+  in `luzzi.txt` (e.g. *"La creazione"*, *"LIBRO PRIMO (Salmi 1 a 41)"*)
+  were discarded by the 2015 import. `migrations/018-luzzi-section-headings.sql`
+  stores them by level: each `<br />`-separated part is a level, outermost
+  first, with a parenthetical range or parallel joined to its heading.
+  1,639 are single-level and land in `title1`. `migrations/017-widen-title-columns.sql`
+  widens `title1`–`title3` from `VARCHAR(100)` to `VARCHAR(255)` on every
+  edition table (the longest LUZZI heading is 203 characters), and
+  `production-schema.sql` is updated to match. No client reads the title
+  fields yet; they are returned on every verse row.
+- **LUZZI provenance recorded.** `luzzi.txt` turned out to be a dump of
+  LaParola.net's "Luzzi/Riveduta" text, which follows the Società Biblica
+  Britannica e Forestiera printing (1925) as reproduced in the Libreria Sacre
+  Scritture edition (Roma 1990, ISBN 88-237-1051-0).
+  `migrations/016-luzzi-provenance-notes.sql` fills the previously empty
+  `versions_available.notes` for LUZZI. It is applied to live PG and the v3
+  MariaDB.
+
 ### Known edge cases under LaBSE
 
 These verses are known to rank correctly under MiniLM but lose the `#1`

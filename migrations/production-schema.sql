@@ -130,9 +130,9 @@ CREATE TABLE IF NOT EXISTS "CEI2008" (
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) DEFAULT NULL,
-    title2      VARCHAR(100) DEFAULT NULL,
-    title3      VARCHAR(100) DEFAULT NULL,
+    title1      VARCHAR(255) DEFAULT NULL,
+    title2      VARCHAR(255) DEFAULT NULL,
+    title3      VARCHAR(255) DEFAULT NULL,
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "CEI2008_bcv" ON "CEI2008" (book, chapter, verse, verseequiv, verseorigin);
@@ -160,9 +160,9 @@ CREATE TABLE IF NOT EXISTS "BLPD" (
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) DEFAULT NULL,
-    title2      VARCHAR(100) DEFAULT NULL,
-    title3      VARCHAR(100) DEFAULT NULL,
+    title1      VARCHAR(255) DEFAULT NULL,
+    title2      VARCHAR(255) DEFAULT NULL,
+    title3      VARCHAR(255) DEFAULT NULL,
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "BLPD_bcv" ON "BLPD" (book, chapter, verse, verseequiv, verseorigin);
@@ -190,9 +190,9 @@ CREATE TABLE IF NOT EXISTS "NVBSE" (
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) NOT NULL DEFAULT '',
-    title2      VARCHAR(100) NOT NULL DEFAULT '',
-    title3      VARCHAR(100) NOT NULL DEFAULT '',
+    title1      VARCHAR(255) NOT NULL DEFAULT '',
+    title2      VARCHAR(255) NOT NULL DEFAULT '',
+    title3      VARCHAR(255) NOT NULL DEFAULT '',
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "NVBSE_bcv" ON "NVBSE" (book, chapter, verse, verseequiv, verseorigin);
@@ -217,9 +217,9 @@ CREATE TABLE IF NOT EXISTS "NABRE" (
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) NOT NULL DEFAULT '',
-    title2      VARCHAR(100) NOT NULL DEFAULT '',
-    title3      VARCHAR(100) NOT NULL DEFAULT '',
+    title1      VARCHAR(255) NOT NULL DEFAULT '',
+    title2      VARCHAR(255) NOT NULL DEFAULT '',
+    title3      VARCHAR(255) NOT NULL DEFAULT '',
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "NABRE_bcv" ON "NABRE" (book, chapter, verse, verseequiv);
@@ -248,9 +248,9 @@ CREATE TABLE IF NOT EXISTS "NABRE_old" (
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL,
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) NOT NULL DEFAULT '',
-    title2      VARCHAR(100) NOT NULL DEFAULT '',
-    title3      VARCHAR(100) NOT NULL DEFAULT '',
+    title1      VARCHAR(255) NOT NULL DEFAULT '',
+    title2      VARCHAR(255) NOT NULL DEFAULT '',
+    title3      VARCHAR(255) NOT NULL DEFAULT '',
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "NABRE_old_bcv" ON "NABRE_old" (book, chapter, verse, verseequiv);
@@ -265,9 +265,9 @@ CREATE TABLE IF NOT EXISTS "LUZZI" (
     verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) NOT NULL DEFAULT '',
-    title2      VARCHAR(100) NOT NULL DEFAULT '',
-    title3      VARCHAR(100) NOT NULL DEFAULT '',
+    title1      VARCHAR(255) NOT NULL DEFAULT '',
+    title2      VARCHAR(255) NOT NULL DEFAULT '',
+    title3      VARCHAR(255) NOT NULL DEFAULT '',
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "LUZZI_bcv" ON "LUZZI" (book, chapter, verse);
@@ -290,9 +290,9 @@ CREATE TABLE IF NOT EXISTS "DIVCOM" (
     verse       INT NOT NULL,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) DEFAULT NULL,
-    title2      VARCHAR(100) DEFAULT NULL,
-    title3      VARCHAR(100) DEFAULT NULL,
+    title1      VARCHAR(255) DEFAULT NULL,
+    title2      VARCHAR(255) DEFAULT NULL,
+    title3      VARCHAR(255) DEFAULT NULL,
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "DIVCOM_bcv" ON "DIVCOM" (book, chapter, verse);
@@ -319,9 +319,9 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) DEFAULT NULL,
-    title2      VARCHAR(100) DEFAULT NULL,
-    title3      VARCHAR(100) DEFAULT NULL,
+    title1      VARCHAR(255) DEFAULT NULL,
+    title2      VARCHAR(255) DEFAULT NULL,
+    title3      VARCHAR(255) DEFAULT NULL,
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "VGCL_bcv" ON "VGCL" (book, chapter, verse, verseequiv, verseorigin);
@@ -346,9 +346,9 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     verseequiv  VARCHAR(10) DEFAULT NULL,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),
     text        VARCHAR(900) NOT NULL DEFAULT '',
-    title1      VARCHAR(100) DEFAULT NULL,
-    title2      VARCHAR(100) DEFAULT NULL,
-    title3      VARCHAR(100) DEFAULT NULL,
+    title1      VARCHAR(255) DEFAULT NULL,
+    title2      VARCHAR(255) DEFAULT NULL,
+    title3      VARCHAR(255) DEFAULT NULL,
     "verseID"   SERIAL PRIMARY KEY
 );
 CREATE INDEX IF NOT EXISTS "DRB_bcv" ON "DRB" (book, chapter, verse, verseequiv, verseorigin);
