@@ -24,8 +24,11 @@
 -- be split reliably and are not affected.
 --
 -- The rows whose embedding text now differs from text_plain get
--- embedded_text_hash = NULL, which makes them stale; re-run
--- scripts/compute_embeddings.py (both columns) afterwards. As of 2026-11-14:
+-- embedded_text_hash = NULL, which makes them stale for embedding_labse (the
+-- default, hash-tracked column). Before re-running compute_embeddings.py,
+-- also NULL MiniLM `embedding` on those rows (WHERE embedded_text_hash IS
+-- NULL), since that column is only filled where NULL; then run it for both
+-- columns (default, and --column embedding). As of 2026-11-14:
 -- NABRE 60, LUZZI 114, VGCL (after 021) ~150 rows.
 
 BEGIN;

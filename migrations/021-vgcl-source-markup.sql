@@ -3,8 +3,11 @@
 -- editions do (see the script's docstring for the rules), and restores the
 -- truncated Sir 1:1. PostgreSQL only.
 -- 10898 rows: 10898 text, 157 title1, 1 title_position.
--- Rows whose text changes get a new text_plain/text_hash from the trigger;
--- re-run scripts/compute_embeddings.py --version VGCL afterwards.
+-- Rows whose text changes get a new text_plain/text_hash from the trigger.
+-- Re-embed afterwards: only embedding_labse (the default column) tracks
+-- text_hash; MiniLM `embedding` is only filled where NULL. So first NULL
+-- `embedding` where text_hash <> embedded_text_hash, then run
+-- compute_embeddings.py --version VGCL and the same with --column embedding.
 
 BEGIN;
 
