@@ -204,4 +204,23 @@ final class SearchUtilsTest extends TestCase
         SearchUtils::sortByScoreDesc($rows);
         $this->assertSame(['e', 'b', 'd', 'c', 'a'], array_column($rows, 'id'));
     }
+
+    public function testSortByScoreDescUsesUnroundedScoreExact(): void
+    {
+        // Both round to 0.8; the unrounded score decides.
+        $rows = [
+            ['id' => 'a', 'score' => 0.8, 'score_exact' => 0.80001],
+            ['id' => 'b', 'score' => 0.8, 'score_exact' => 0.80004],
+        ];
+        SearchUtils::sortByScoreDesc($rows);
+        $this->assertSame(['b', 'a'], array_column($rows, 'id'));
+    }
+
+    public function testAssignCanonicalOrderStripsScoreExact(): void
+    {
+        $rows = [['version' => 'X', 'verseID' => 1, 'score' => 0.8, 'score_exact' => 0.80001]];
+        SearchUtils::assignCanonicalOrder($rows);
+        $this->assertArrayNotHasKey('score_exact', $rows[0]);
+        $this->assertSame(0.8, $rows[0]['score']);
+    }
 }

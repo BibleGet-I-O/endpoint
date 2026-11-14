@@ -331,6 +331,46 @@ class HybridSearchHandlerTest extends DatabaseTestCase
         }
     }
 
+    /**
+     * A vector whose cosine similarity to matchVector() is exactly $cos:
+     * cos·q̂ + sin·û, with û orthogonal to q̂ (half +1, half −1).
+     *
+     * @return list<float>
+     */
+    private static function vectorAtCosine(float $cos, int $dim = 384): array
+    {
+        $sin  = sqrt(1 - $cos * $cos);
+        $norm = sqrt($dim);
+        $v    = [];
+        for ($i = 0; $i < $dim; $i++) {
+            $v[] = ( $cos + ( $i < $dim / 2 ? $sin : -$sin ) ) / $norm;
+        }
+        return $v;
+    }
+
+    public function testCrossVersionRanksUseUnroundedScores(): void
+    {
+        // Both similarities round to 0.8000; TEST2's is higher at full
+        // precision, so it must take semantic rank 1 although TEST1 is
+        // requested first.
+        $pdo = $this->getConnection();
+        $pdo->exec('UPDATE "TEST1" SET embedding = \'' . self::vec(self::vectorAtCosine(0.80001)) . '\' WHERE book = 2 AND chapter = 1 AND verse = 1');
+        $pdo->exec('UPDATE "TEST2" SET embedding = \'' . self::vec(self::vectorAtCosine(0.80004)) . '\' WHERE book = 2 AND chapter = 1 AND verse = 1');
+
+        $body = $this->search([
+            'query'          => 'light',
+            'version'        => 'TEST1,TEST2',
+            'model'          => 'minilm',
+            'keyword_weight' => '0',
+        ]);
+
+        self::assertSame(['TEST2 2:1:1', 'TEST1 2:1:1'], array_slice(self::refs($body), 0, 2));
+        self::assertIsArray($body['results']);
+        self::assertSame(1, $body['results'][0]['components']['semantic']['rank']);
+        self::assertSame(0.8, $body['results'][0]['components']['semantic']['score']);
+        self::assertArrayNotHasKey('score_exact', $body['results'][0]);
+    }
+
     public function testMixedTsLanguageRejected(): void
     {
         $this->expectException(ValidationException::class);

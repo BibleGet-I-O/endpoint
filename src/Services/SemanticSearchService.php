@@ -97,8 +97,10 @@ class SemanticSearchService
             // genuine score of 0.0 — orthogonal verses — is distinguishable
             // from "no score". Comparators that order results must treat
             // null as worse than any numeric score.
-            $score = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
-                ? round((float) $row['score'], 4)
+            // Unrounded score, carried as `score_exact` so cross-version sorts
+            // (SearchUtils::sortByScoreDesc) do not tie on the rounded value.
+            $exact = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
+                ? (float) $row['score']
                 : null;
 
             $entry     = [
@@ -113,7 +115,8 @@ class SemanticSearchService
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
                 'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
                 'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
-                'score'       => $score,
+                'score'       => $exact === null ? null : round($exact, 4),
+                'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder
                 // can rank rows; unset before the row leaves the handler.
                 'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,

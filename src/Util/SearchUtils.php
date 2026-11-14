@@ -125,7 +125,9 @@ class SearchUtils
     }
 
     /**
-     * Sort rows by `score` DESC in place. Null scores (computation failures)
+     * Sort rows by score DESC in place, on the unrounded `score_exact` when a
+     * row carries it (the services round `score` to 4 decimals for output, and
+     * rounded scores from different versions can tie). Null scores (computation failures)
      * sort to the bottom so a genuine 0.0 still outranks them. usort is
      * stable, so rows with equal scores keep their incoming order.
      *
@@ -134,8 +136,8 @@ class SearchUtils
     public static function sortByScoreDesc(array &$rows): void
     {
         usort($rows, static function (array $a, array $b): int {
-            $sa = $a['score'] ?? null;
-            $sb = $b['score'] ?? null;
+            $sa = $a['score_exact'] ?? $a['score'] ?? null;
+            $sb = $b['score_exact'] ?? $b['score'] ?? null;
             if ($sa === null && $sb === null) {
                 return 0;
             }
@@ -188,7 +190,8 @@ class SearchUtils
      * Assign a per-version 1-based `canonical_order` to each row, derived
      * from the row's `verseID` (the subverse-aware canonical-order key the
      * server has always used internally). Removes `verseID` from each row
-     * after ranking, so the column never leaves the API boundary.
+     * after ranking, so the column never leaves the API boundary; likewise the
+     * internal `score_exact` sort key.
      *
      * Within each `version` partition rows are ranked 1..N in ascending
      * `verseID` order. The original $rows order is preserved — only the
@@ -217,7 +220,7 @@ class SearchUtils
 
         foreach ($rows as $i => &$row) {
             $row['canonical_order'] = $rankByIndex[$i] ?? 0;
-            unset($row['verseID']);
+            unset($row['verseID'], $row['score_exact']);
         }
     }
 }
