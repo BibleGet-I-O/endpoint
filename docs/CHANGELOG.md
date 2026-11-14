@@ -67,6 +67,32 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Added
 
+- **`/v3/search/hybrid` — keyword + semantic search fused with Reciprocal
+  Rank Fusion** (#112). One request runs the keyword leg (`match=fulltext`)
+  and the semantic leg on the same `query=` and fuses the two ranked lists:
+  `score = Σ w_i / (k + rank_i)`.
+  - Parameters: `query`, `version` (comma-separated; same single-`ts_language`
+    constraint as `/search/keyword`), `limit` (default 20, max 100), `k`
+    (default 60, positive integer), `keyword_weight` / `semantic_weight`
+    (default 1.0, non-negative, not both 0; a weight of 0 skips that leg),
+    plus `/search/semantic`'s `model` (default `labse`) and `threshold`.
+  - Each leg fetches `min(300, max(limit × 3, 50))` candidates, ranked
+    globally across versions; the fused list is trimmed to `limit`. Ties
+    break on best per-leg rank, then requested version order, then
+    canonical order.
+  - Rows keep the sibling shape (`text`, `text_plain`, per-version
+    `canonical_order`); `score` is the raw RRF sum, and a new `components`
+    object gives each leg's `{rank, score}` (or `null` when that leg did not
+    retrieve the row). `info` echoes `model`, `k`, the weights, the
+    candidate depth and the `legs` that ran.
+  - A query shorter than the keyword leg's 4-character minimum runs the
+    semantic leg only. An unavailable embedding service is a 503, as on
+    `/search/semantic`; `semantic_weight=0` gives an explicit keyword-only
+    request that needs no embedding service.
+  - Internally, the keyword and semantic query logic moved out of their
+    handlers into `KeywordSearchService` and `SemanticSearchService`, shared
+    with the new handler. The existing endpoints' behaviour is unchanged.
+
 - **`text_plain` and `title_position` on every edition table** (#123,
   `migrations/019-add-text-plain-and-title-position.sql`).
   - `text` stays the formatted, markup-bearing text for rendering.

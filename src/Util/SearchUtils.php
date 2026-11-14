@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Util;
 
+use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use Psr\Log\LoggerInterface;
 
 /**
  * Utilities shared across search handlers (and `/quote`) for parsing the
@@ -99,6 +101,87 @@ class SearchUtils
             throw new \InvalidArgumentException('Unknown embedding model slug: ' . $modelSlug);
         }
         return self::EMBEDDING_MODELS[$modelSlug]['column'];
+    }
+
+    /**
+     * Parse a `limit=` parameter, clamping to [1, $max]. Non-numeric values
+     * fall back to $default rather than erroring (the convention shared by
+     * `/search/semantic`, `/search/similar` and `/search/hybrid`).
+     */
+    public static function parseLimitParam(mixed $raw, int $default, int $max): int
+    {
+        $limit = is_numeric($raw) ? (int) $raw : $default;
+        return max(1, min($limit, $max));
+    }
+
+    /**
+     * Parse a cosine-similarity `threshold=` parameter, clamping to [0, 1].
+     * Non-numeric values fall back to $default.
+     */
+    public static function parseThresholdParam(mixed $raw, float $default = 0.0): float
+    {
+        $threshold = is_numeric($raw) ? (float) $raw : $default;
+        return max(0.0, min($threshold, 1.0));
+    }
+
+    /**
+     * Sort rows by `score` DESC in place. Null scores (computation failures)
+     * sort to the bottom so a genuine 0.0 still outranks them. usort is
+     * stable, so rows with equal scores keep their incoming order.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     */
+    public static function sortByScoreDesc(array &$rows): void
+    {
+        usort($rows, static function (array $a, array $b): int {
+            $sa = $a['score'] ?? null;
+            $sb = $b['score'] ?? null;
+            if ($sa === null && $sb === null) {
+                return 0;
+            }
+            if ($sa === null) {
+                return 1;
+            }
+            if ($sb === null) {
+                return -1;
+            }
+            return $sb <=> $sa;
+        });
+    }
+
+    /**
+     * Load a version's `*_idx` table: per-book abbreviation, full name and
+     * universal book number, in index order (the index position is the
+     * version-local `booknum` emitted on every search row).
+     *
+     * @return array{abbreviations: list<string>, books: list<string>, book_num: list<string>}
+     * @throws ValidationException when the version identifier is malformed
+     * @throws InternalServerErrorException on database failure or an empty index
+     */
+    public static function loadVersionIndex(\PDO $pdo, string $version, LoggerInterface $logger): array
+    {
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
+            throw new ValidationException('Invalid version identifier format: ' . $version);
+        }
+        $abbreviations = $books = $book_num = [];
+        try {
+            $idxResult = $pdo->query('SELECT * FROM "' . $version . '_idx"');
+        } catch (\PDOException $e) {
+            $logger->error('Failed to load index for version ' . $version . ': ' . $e->getMessage());
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        if ($idxResult === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        while (is_array($row = $idxResult->fetch(\PDO::FETCH_ASSOC))) {
+            $abbreviations[] = StringUtils::asString($row['abbrev'] ?? '');
+            $books[]         = StringUtils::asString($row['fullname'] ?? '');
+            $book_num[]      = StringUtils::asString($row['book'] ?? '');
+        }
+        if (empty($abbreviations)) {
+            throw new InternalServerErrorException('No index data found for version: ' . $version);
+        }
+        return ['abbreviations' => $abbreviations, 'books' => $books, 'book_num' => $book_num];
     }
 
     /**

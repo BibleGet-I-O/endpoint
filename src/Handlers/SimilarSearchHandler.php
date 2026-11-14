@@ -119,20 +119,7 @@ class SimilarSearchHandler extends AbstractHandler
         // limit. Null scores (computation failures) sort to the bottom so a
         // genuine 0.0 still outranks them.
         if (count($validatedVersions) > 1) {
-            usort($allResults, static function (array $a, array $b): int {
-                $sa = $a['score'] ?? null;
-                $sb = $b['score'] ?? null;
-                if ($sa === null && $sb === null) {
-                    return 0;
-                }
-                if ($sa === null) {
-                    return 1;
-                }
-                if ($sb === null) {
-                    return -1;
-                }
-                return $sb <=> $sa;
-            });
+            SearchUtils::sortByScoreDesc($allResults);
             $allResults = array_slice($allResults, 0, $limit);
         }
 
