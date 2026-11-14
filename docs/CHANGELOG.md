@@ -87,6 +87,10 @@ Deprecated / Fixed / Removed / Security where applicable.
     globally across versions; the fused list is trimmed to `limit`. Ties
     break on best per-leg rank, then requested version order, then
     canonical order.
+  - Global leg ranks are assigned on the unrounded scores. The same applies
+    to the merged multi-version lists of `/search/semantic` and
+    `/search/similar`: two scores that round to the same 4 decimals are
+    ordered by their real values (`score` itself is still rounded).
   - Rows keep the sibling shape (`text`, `text_plain`, per-version
     `canonical_order`); `score` is the raw RRF sum, and a new `components`
     object gives each leg's `{rank, score}` (or `null` when that leg did not
@@ -108,7 +112,8 @@ Deprecated / Fixed / Removed / Security where applicable.
     turns line/block tags and `<br/>` into spaces, collapses whitespace, and
     leaves unknown angle-bracket content (VGCL's `<Aleph>`) alone.
   - The `text_hash` trigger now sets `text_plain` and hashes it, so the two
-    columns cannot drift.
+    columns cannot drift. It also fires on a direct write to `text_plain` or
+    `text_hash`, which is recomputed from `text`.
   - Keyword search (all three modes) now matches against `text_plain`, with a
     new `<T>_text_plain_fts` index. Words split by markup are now found, and
     tag names are no longer searchable.
