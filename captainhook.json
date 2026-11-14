@@ -23,6 +23,12 @@
                 "config": {
                     "allow-failure": false
                 }
+            },
+            {
+                "action": "if command -v uvx >/dev/null 2>&1; then composer lint:python; else echo 'uvx not found: skipping the Python complexity check (CI runs it). Install uv: https://docs.astral.sh/uv/'; fi",
+                "config": {
+                    "allow-failure": false
+                }
             }
         ]
     },

@@ -52,7 +52,8 @@
         "restart": "./restart-server.sh",
         "lint": "phpcs",
         "lint:fix": "phpcbf",
-        "lint:openapi": "npx @redocly/cli lint openapi.json"
+        "lint:openapi": "npx @redocly/cli lint openapi.json",
+        "lint:python": "uvx --from xenon==0.9.3 xenon --max-absolute C scripts services/embedding"
     },
     "config": {
         "allow-plugins": {

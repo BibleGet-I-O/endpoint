@@ -43,6 +43,17 @@ jobs:
       - name: Run PHPStan
         run: composer analyse
 
+  python-complexity:
+    name: Python complexity (xenon)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # pipx is preinstalled on GitHub's Ubuntu runners; same check as
+      # `composer lint:python` (fail any block above cyclomatic complexity 20).
+      - name: Run xenon
+        run: pipx run --spec xenon==0.9.3 xenon --max-absolute C scripts services/embedding
+
   test:
     name: Tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest

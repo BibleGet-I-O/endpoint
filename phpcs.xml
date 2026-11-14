@@ -34,6 +34,22 @@
     <rule ref="Generic.WhiteSpace.SpreadOperatorSpacingAfter"/>
     <rule ref="Generic.ControlStructures.InlineControlStructure"/>
     <rule ref="Generic.Formatting.SpaceAfterCast"/>
+    <!-- Complexity gates (CodeFactor flags complex methods on PRs; these keep
+         them from growing locally first). Fail above 20; the largest function
+         was 18 when this was added (AbstractHandler, 2026-11-14). Lower the
+         limits as functions get refactored. -->
+    <rule ref="Generic.Metrics.CyclomaticComplexity">
+        <properties>
+            <property name="complexity" value="20"/>
+            <property name="absoluteComplexity" value="20"/>
+        </properties>
+    </rule>
+    <rule ref="Generic.Metrics.NestingLevel">
+        <properties>
+            <property name="nestingLevel" value="5"/>
+            <property name="absoluteNestingLevel" value="5"/>
+        </properties>
+    </rule>
     <file>src</file>
     <file>tests</file>
     <exclude-pattern>*/vendor/*</exclude-pattern>

@@ -9,6 +9,14 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Changed
 
+- **Complexity gates.** `phpcs.xml` now fails any PHP function with
+  cyclomatic complexity above 20 (largest today: 18) or nesting deeper
+  than 5, so `composer lint`, the pre-commit hook and CI enforce it. Python
+  code (`scripts/`, `services/embedding/`) is checked by xenon at the same
+  limit: `composer lint:python` (via `uvx`), a pre-push hook action
+  (skipped with a notice when `uv` isn't installed) and a new
+  `Python complexity (xenon)` CI job.
+
 - **Minimum PHP raised to 8.4.1; PHPUnit 11 → 13.** Production already
   runs Plesk PHP 8.4. PHPUnit 13 requires PHP ≥ 8.4.1, which is why
   Dependabot's bump (#170) failed on the 8.2/8.3 CI jobs. CI now runs
