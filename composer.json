@@ -10,7 +10,7 @@
         }
     ],
     "require": {
-        "php": ">=8.4",
+        "php": ">=8.4.1",
         "ext-pdo_pgsql": "*",
         "ext-json": "*",
         "ext-simplexml": "*",
