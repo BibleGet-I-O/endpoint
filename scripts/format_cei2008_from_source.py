@@ -131,6 +131,9 @@ def balance_italics(lines):
     out, carry = [], False
     for line in lines:
         line = ("<i>" if carry else "") + line
+        # an italic run that started in the previous verse closes here
+        if re.match(r"(?:(?!<i>).)*</i>", line):
+            line = "<i>" + line
         opens, closes = line.count("<i>"), line.count("</i>")
         carry = opens > closes
         line += "</i>" if carry else ""
@@ -160,10 +163,12 @@ def split_lines(raw):
     body = re.sub(r"\\qa\s+(" + "|".join(LETTER_NAMES) + r")\b\s*", lambda m: f"{LETTER}{m[1]}{LETTER}", body)  # raw USFM leak (Ps 37:28)
     for _ in range(3):  # "<i>Di Davide.<br></i>": the </i> closes the line before the <br>
         body = re.sub(r"(<br\s*/?>)(\s*</(?:i|em)>)", r"\2\1", body)
+        # "<i> <br /> Al momento ...": the <i> opens the line after the <br>
+        body = re.sub(r"(<(?:i|em)>\s*)(<br\s*/?>)", r"\2\1", body)
     parts = re.split(r"<br\s*/?>", body)
     lines, texts, trailing = [], [], False
     for i, part in enumerate(parts):
-        visible = re.sub(r"<[^>]+>|\s", "", part)
+        visible = re.sub(r"\s", "", html.unescape(re.sub(r"<[^>]+>", "", part)).replace(LETTER, ""))
         if not visible:
             if lines and i < len(parts) - 1:
                 lines[-1]["stanza_end"] = True
@@ -179,8 +184,25 @@ def split_lines(raw):
         texts.append(clean_inline(part.replace("\t", " ")))
     for line, text in zip(lines, balance_italics(texts)):
         line["text"] = text
-    trailing = trailing or (len(parts) > 1 and not re.sub(r"<[^>]+>|\s", "", parts[-1]))
-    return lines, trailing
+    lines, carried = carry_letter_lines(lines)
+    trailing = trailing or (len(parts) > 1 and not re.sub(r"\s", "", html.unescape(re.sub(r"<[^>]+>", "", parts[-1]))))
+    return lines, trailing, carried
+
+
+def carry_letter_lines(lines):
+    """A line holding only an acrostic letter heads what follows: move its
+    letters to the next line, or (at the end of the verse) return them for
+    the next verse (Lam 3:40, Prov 31:10, Nah 1:5)."""
+    out, pending = [], []
+    for line in lines:
+        if not plain_text(line["text"]):
+            pending += line["letters"]
+            continue
+        if pending:
+            line["letters"], line["letter_mid"] = pending + line["letters"], False
+            pending = []
+        out.append(line)
+    return out, pending
 
 
 def parse_chapter(path):
@@ -195,8 +217,9 @@ def parse_chapter(path):
             label = verse_label(m["verse"], previous)
             number = re.match(r"\d+", label)
             previous = int(number[0]) if number else previous
-            lines, trailing = split_lines(m["verse"])
+            lines, trailing, carried = split_lines(m["verse"])
             events.append(("verse", label, lines, trailing))
+            events.extend(("letter", letter) for letter in carried)
     return events
 
 
@@ -225,20 +248,37 @@ def is_superscription(line):
 
 
 def mark_poetic(verses):
-    """Set verse["poetic"] (see module docstring)."""
-    multi = [len(v["lines"]) >= 2 for v in verses]
-    for i, verse in enumerate(verses):
-        if multi[i]:
-            verse["poetic"] = True
-            continue
-        if not (verse["lines"] and verse["trailing"]):
-            verse["poetic"] = False
-            continue
-        neighbours = (i > 0 and multi[i - 1]) + (i + 1 < len(verses) and multi[i + 1])
-        line = verse["lines"][0]
-        verse["poetic"] = neighbours == 2 or (
-            neighbours == 1 and len(plain_text(line["text"])) <= PROSE_LINE_MAX and not is_lead_in(line)
-        )
+    """Set verse["poetic"] (see module docstring). Multi-line verses are
+    poetic; a single line ending in <br> is poetic between two poetic verses,
+    or next to one when it looks like a verse line. Applied until stable, so
+    runs of one-line half-verses (Sir 28:24a-25a) stay inside their poem."""
+    for verse in verses:
+        verse["poetic"] = len(verse["lines"]) >= 2
+    changed = True
+    while changed:
+        changed = False
+        for i, verse in enumerate(verses):
+            if verse["poetic"] or not (verse["lines"] and verse["trailing"]):
+                continue
+            if single_line_is_poetic(verses, i):
+                verse["poetic"] = changed = True
+
+
+def single_line_is_poetic(verses, i):
+    """Neighbours count when they have several lines; for a half-verse row
+    ("24a", "25b") a poetic neighbour of any kind counts, so a run of
+    half-verses stays inside its poem without turning one-line prose lists
+    (Ezra 10) into poetry."""
+    half_verse = re.fullmatch(r"\d+[a-z]", verses[i]["label"]) is not None
+
+    def counts(j):
+        return 0 <= j < len(verses) and (verses[j]["poetic"] if half_verse else len(verses[j]["lines"]) >= 2)
+
+    neighbours = counts(i - 1) + counts(i + 1)
+    line = verses[i]["lines"][0]
+    return neighbours == 2 or (
+        neighbours == 1 and len(plain_text(line["text"])) <= PROSE_LINE_MAX and not is_lead_in(line)
+    )
 
 
 def is_plain_line(verse, k, prev_poetic):
@@ -297,20 +337,44 @@ def render_line(line, base_indent):
     return f"<{tag}>{line['text']}</{tag}>"
 
 
+def verse_letters(verse):
+    """Acrostic letters of a verse, in order, a repeated letter counted once."""
+    letters = verse["titles"][len(verse["titles"]) - verse["letters_before"]:] if verse["letters_before"] else []
+    letters += [x for line in verse["lines"] for x in line["letters"]]
+    return [x for i, x in enumerate(letters) if i == 0 or x != letters[i - 1]]
+
+
+def has_several_letters(verse):
+    return len(verse_letters(verse)) > 1 or any(line["letter_mid"] for line in verse["lines"])
+
+
 def half_line_acrostic(verses):
-    """Ps 111/112 put a letter before each half-line, several per verse: no
-    single heading position can hold them, so such chapters keep none."""
-    return any(verse["letters_before"] + sum(len(line["letters"]) for line in verse["lines"]) > 1
-               or any(line["letter_mid"] for line in verse["lines"])
-               for verse in verses)
+    """Ps 111/112 and Nah 1 put a letter before each half-line, several per
+    verse: no single heading position can hold them, so such chapters keep
+    none. One or two such verses (Ps 145:13 Mem + Nun) only lose their
+    extra letters (see keep_first_letter)."""
+    return sum(has_several_letters(verse) for verse in verses) > 2
 
 
 def drop_letters(verses):
     for verse in verses:
         if verse["letters_before"]:
             verse["titles"] = verse["titles"][:-verse["letters_before"]]
+            verse["letters_before"] = 0
         for line in verse["lines"]:
             line["letters"] = []
+
+
+def keep_first_letter(verses):
+    """In a verse with several letters keep only the first one (repeats of the
+    same letter, e.g. Lam 3:41 "Nun" both carried and inline, collapse)."""
+    for verse in verses:
+        if not has_several_letters(verse):
+            continue
+        first = verse_letters(verse)[0]
+        drop_letters([verse])
+        verse["titles"].append(first)
+        verse["letters_before"] = 1
 
 
 def render_verse(verse, base_indent):
@@ -321,6 +385,8 @@ def render_verse(verse, base_indent):
     rendered = [render_line(line, base_indent) for line in lines]
     titles, position = list(verse["titles"]), None
     inner = [(k, letter) for k, line in enumerate(lines) for letter in line["letters"]]
+    if inner and titles and inner[0] == (0, titles[-1]):
+        inner = inner[1:]  # the same letter carried from the previous verse
     if len(inner) == 1 and inner[0][0] == 0:
         titles.append(inner[0][1])
     elif len(inner) == 1 and not titles:
@@ -332,14 +398,21 @@ def render_verse(verse, base_indent):
 
 def format_chapter(path):
     """{label: (text, titles, title_position)} for every verse of a chapter."""
+    return {label: rendered for label, rendered in format_chapter_list(path)}
+
+
+def format_chapter_list(path):
+    """[(label, (text, titles, title_position))] in page order (labels may repeat on the site)."""
     verses = attach_headings(parse_chapter(path))
     if half_line_acrostic(verses):
         drop_letters(verses)
+    else:
+        keep_first_letter(verses)
     mark_poetic(verses)
     line_roles(verses)
     indents = [line["indent"] for v in verses if v["poetic"] for line in v["lines"] if line.get("role") == "poem"]
     base = min(indents) if indents else 0
-    return {verse["label"]: render_verse(verse, base) for verse in verses}
+    return [(verse["label"], render_verse(verse, base)) for verse in verses]
 
 
 # ---------------------------------------------------------------- database
@@ -356,7 +429,7 @@ def load_dump(path):
             f = [copy_unescape(x) for x in line.rstrip("\n").split("\t")]
             label = f[3] if not f[4] or f[4].startswith("(") else f[4]
             rows[(int(f[1]), int(f[2]))][label].append({
-                "vid": int(f[0]), "verse": int(f[3]), "text": f[7], "plain": f[8],
+                "vid": int(f[0]), "verse": int(f[3]), "equiv": f[4], "text": f[7], "plain": f[8],
                 "titles": f[9:12], "position": f[12], "origin": f[6],
             })
     return rows
@@ -425,7 +498,14 @@ def transplant(formatted, target):
         if any(p < 0 for p in positions):
             return None  # would have to change a line break or a tag boundary
         if positions:
-            edits.append((positions[0], positions[-1] + 1, target[j1:j2]))
+            start, end = positions[0], positions[-1] + 1
+            if "<" in formatted[start:end]:
+                # the change spans a tag: only safe character by character
+                if len(positions) != j2 - j1:
+                    return None
+                edits.extend((p, p + 1, target[j1 + k]) for k, p in enumerate(positions))
+                continue
+            edits.append((start, end, target[j1:j2]))
         else:
             # insert right after the previous character, so it stays on its line
             anchor = vis[i1 - 1][1] + 1 if i1 > 0 and vis[i1 - 1][1] >= 0 else (
