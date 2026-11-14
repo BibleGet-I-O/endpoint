@@ -211,6 +211,7 @@ def search_book(order, book, following):
 
 
 notes = []  # headings applied, but moved to before the verse
+moved = set()  # their row keys, for the review report
 
 
 def merge_placement(placed, row, heads, position, report):
@@ -224,9 +225,11 @@ def merge_placement(placed, row, heads, position, report):
     _, old_heads, old_position = placed[key]
     if old_position is None and position is not None:
         notes.append(f"{key}: {heads} placed before the verse (it already has headings there)")
+        moved.add(key)
         placed[key] = (row, old_heads + list(heads), None)
     elif old_position is not None and position is None:
         notes.append(f"{key}: {old_heads} placed before the verse (it also has headings there)")
+        moved.add(key)
         placed[key] = (row, list(heads) + old_heads, None)
     else:
         placed[key] = (row, old_heads + list(heads), old_position)
@@ -269,17 +272,42 @@ BEGIN;
 """
 
 
+BOOK_ABBR = ("Gn Ex Lv Nm Dt Jos Jgs Ru 1Sm 2Sm 1Kgs 2Kgs 1Chr 2Chr Ezr Neh Tb Jdt Est 1Mc 2Mc Jb Ps Prv "
+             "Eccl Sg Wis Sir Is Jer Lam Bar Ez Dn Hos Jl Am Ob Jon Mi Na Hb Zep Hg Zec Mal Mt Mk Lk Jn "
+             "Acts Rom 1Cor 2Cor Gal Eph Phil Col 1Thes 2Thes 1Tm 2Tm Ti Phlm Heb Jas 1Pt 2Pt 1Jn 2Jn 3Jn "
+             "Jude Rev").split()
+
+
+def write_report(path, placed):
+    """One row per verse that gets headings, for review (heading text is
+    copyrighted: keep the file private)."""
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("book\tchapter\tverse\treference\tplacement\ttitle_position\ttitle1\ttitle2\ttitle3\tnote\n")
+        for key, (row, heads, position) in sorted(placed.items()):
+            label = key[3] or str(key[2])
+            placement = "before the verse" if position is None else "inside the verse"
+            note = ("stanza numeral/letter found after the superscription, stored before the verse (#177)"
+                    if key in moved else "")
+            t = (heads + ["", "", ""])[:3]
+            fh.write("\t".join([str(key[0]), str(key[1]), label, f"{BOOK_ABBR[key[0] - 1]} {key[1]}:{label}",
+                                 placement, "" if position is None else str(position), *t, note]) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scml", required=True, help="directory with nab-NN-*.scml")
     ap.add_argument("--dump", required=True, help="COPY dump of NABRE (see docstring)")
+    ap.add_argument("--report", help="also write a TSV of every verse that gets headings, for review")
     args = ap.parse_args()
     rows, order = load_dump(args.dump)
     events = []
     for path in sorted(Path(args.scml).glob("nab-*.scml")):
         events.extend(scan_book(path.read_text(encoding="utf-8", errors="replace")))
     report = []
-    updates = build_updates(collect(events, rows, order, report), report)
+    placed = collect(events, rows, order, report)
+    updates = build_updates(placed, report)
+    if args.report:
+        write_report(args.report, placed)
     mid = sum("title_position = NULL" not in u for u in updates)
     skipped = "; ".join(report) if report else "none"
     sys.stdout.write(HEADER.format(n=len(updates), mid=mid, moved=len(notes), skipped=skipped.replace("\n", " ")))
