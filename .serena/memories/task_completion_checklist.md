@@ -13,7 +13,7 @@ Run before declaring done / committing:
    composer analyse
    ```
 
-3. **Tests (PHPUnit 11)**
+3. **Tests (PHPUnit 13)**
    ```bash
    composer test            # full: Unit + Integration (PostgreSQL) + Server (HTTP)
    composer test:quick      # exclude @group slow for fast iteration

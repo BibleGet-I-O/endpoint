@@ -1,7 +1,7 @@
 # Code Style & Conventions — BibleGet endpoint
 
 ## Standards
-- **PHP >= 8.2**
+- **PHP >= 8.4**
 - **PSR-12** (with custom rules in `phpcs.xml`); enforced by `phpcs`, auto-fix via `phpcbf`
 - **PHPStan level 10** (`phpstan.neon.dist`)
 - **PSR-4** autoload: `BibleGet\Api\` → `src/`; tests `BibleGet\Tests\` → `tests/`
