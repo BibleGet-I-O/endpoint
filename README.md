@@ -43,6 +43,7 @@ Response emission is handled by [laminas/laminas-httphandlerrunner](https://gith
 | `/v3/search/keyword` | `KeywordSearchHandler` | Full-text keyword search with stemming |
 | `/v3/search/semantic` | `SemanticSearchHandler` | Natural-language semantic search via verse embeddings |
 | `/v3/search/similar` | `SimilarSearchHandler` | Find verses similar to a given reference |
+| `/v3/search/hybrid` | `HybridSearchHandler` | Keyword + semantic search fused with Reciprocal Rank Fusion |
 
 ### Testing & CI
 
@@ -273,14 +274,17 @@ The data is structured in a similar manner to the main API endpoint (`/v3/quote`
     * **`version`**: just echoes back the acronym of the Bible version that the search was performed against
 
 
-## /v3/search/keyword, /v3/search/semantic, /v3/search/similar
+## /v3/search/keyword, /v3/search/semantic, /v3/search/similar, /v3/search/hybrid
 
-Three sibling search endpoints share a coherent response shape (`score`, `canonical_order`, comma-separated `version`):
+Four sibling search endpoints share a coherent response shape (`score`, `canonical_order`, comma-separated `version`):
 
 | Endpoint | Source | Score |
 |---|---|---|
 | `/v3/search/keyword` | full-text + stemming via PostgreSQL `to_tsvector` | `ts_rank_cd` cover-density (raw, query-relative; `null` for `match=exact`) |
 | `/v3/search/semantic` | natural-language query embedded into a vector via the embedding microservice | `1 - cosine_distance` against pre-computed verse embeddings (in `[0,1]`, query-relative) |
 | `/v3/search/similar` | a verse reference's pre-computed embedding | `1 - cosine_distance` against the rest of the version (or any additional listed versions) |
+| `/v3/search/hybrid` | the same `query=` run through the keyword (`match=fulltext`) and semantic retrievers | Reciprocal Rank Fusion `Σ w_i / (k + rank_i)` (raw, small, relative ordering only) |
+
+`/v3/search/hybrid` takes `query`, `version`, `limit` (default 20, max 100), `k` (RRF constant, default 60), `keyword_weight` / `semantic_weight` (default 1.0 each; `0` skips that leg, not both 0), and `/v3/search/semantic`'s `model` and `threshold`. Each leg fetches `min(300, max(limit × 3, 50))` candidates before fusion. Every row adds a `components` object with each leg's `{rank, score}`, or `null` when that leg did not retrieve the row. Queries shorter than 4 characters run the semantic leg only; an unavailable embedding service returns 503 (use `semantic_weight=0` for keyword-only).
 
 `/v3/search` is preserved as a backward-compat alias for `/v3/search/keyword` (with `exactmatch=true` mapping to `match=exact`). The full per-endpoint parameter and response schema is in [`openapi.json`](./openapi.json).
