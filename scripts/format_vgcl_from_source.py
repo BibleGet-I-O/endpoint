@@ -78,14 +78,19 @@ def plain_text(text):
 
 
 def valid_title_position(text, pos):
-    """Python mirror of the <T>_title_position_check constraint."""
+    """Python mirror of bibleget_title_position_ok() (migration 019)."""
     if pos is None:
         return True
     if not 0 < pos < len(text):
         return False
-    if text[pos - 1].isalnum() and text[pos].isalnum():
-        return False
-    return re.search(r"<[^>]*$", text[:pos]) is None
+    if re.search(r"<[^>]*$", text[:pos]):
+        return False  # inside a tag
+
+    def visible(fragment):
+        return re.sub(r"<[^>]*>", " ", re.sub(r"</?(sm|i|sup)>", "", fragment))
+
+    before, after = visible(text[:pos]), visible(text[pos:])
+    return not (before[-1:].isalnum() and after[:1].isalnum())  # would split a word
 
 
 def load_source(src_dir):

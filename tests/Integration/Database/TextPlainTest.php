@@ -130,6 +130,35 @@ class TextPlainTest extends DatabaseTestCase
         $this->assertGuardRejects(1, 3);
     }
 
+    /**
+     * @return array<string, array{string, int|null, bool}>
+     */
+    public static function guardCases(): array
+    {
+        return [
+            'null position'                     => ['any text', null, true],
+            'after a space'                     => ['Light. Then darkness', 7, true],
+            'after a full stop'                 => ['Light.Then', 6, true],
+            'mid-word'                          => ['Light', 2, false],
+            'start of text'                     => ['Light', 0, false],
+            'end of text'                       => ['Light', 5, false],
+            'inside a tag'                      => ['<pof>Light</pof>', 2, false],
+            'mid-word across an inline tag'     => ['L<sm>ORD</sm> God', 5, false],
+            'mid-word after an inline tag'      => ['L<sm>ORD</sm>s', 13, false],
+            'after an inline tag, before space' => ['L<sm>ORD</sm> God', 13, true],
+            'between line tags'                 => ["<pof>one</pof>\n<pol>two</pol>", 15, true],
+            'between line tags, no newline'     => ['<pof>one</pof><pol>two</pol>', 14, true],
+        ];
+    }
+
+    #[DataProvider('guardCases')]
+    public function testTitlePositionGuardFunction(string $text, ?int $position, bool $expected): void
+    {
+        $stmt = $this->getConnection()->prepare('SELECT bibleget_title_position_ok(?, ?::int)');
+        $stmt->execute([$text, $position]);
+        self::assertSame($expected, $stmt->fetchColumn());
+    }
+
     public function testTitlePositionGuardAcceptsTokenBoundaries(): void
     {
         $pdo = $this->getConnection();

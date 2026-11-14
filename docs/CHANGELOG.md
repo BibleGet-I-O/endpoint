@@ -101,21 +101,30 @@ Deprecated / Fixed / Removed / Security where applicable.
     Quote results gain `text_plain` and `title_position`.
   - `title_position` places a verse's headings inside the verse: a 0-based
     character offset into `text` (tags count), or NULL for before the verse.
-    A `<T>_title_position_check` constraint keeps it on a token boundary:
-    never splitting a word, never inside a tag, never at either end.
+    A `<T>_title_position_check` constraint (`bibleget_title_position_ok()`)
+    keeps it on a token boundary: never splitting a word (judged on the
+    visible characters, so `L<sm>|ORD</sm>` is rejected), never inside a
+    tag, never at either end.
   - Embedding freshness carries over where `text` and `text_plain` differ
     only in whitespace. MiniLM and LaBSE produce bit-identical vectors for
     those, as verified. Only rows whose markup changes the words go stale,
     in practice NABRE's tagged verses.
-- **LUZZI formatted text** (`migrations/020-luzzi-formatted-text.sql`).
-  `luzzi.txt`'s `<br />` poetic lines and `<i>` are restored into `text` in
-  the NABRE tag set the clients already render: `<pof>`/`<po>`/`<pol>`
-  lines joined by `\n`, and untagged lead-ins and superscriptions. The
-  4 mid-verse headings get their `title_position`. Every UPDATE asserts that
+- **LUZZI formatted text** (`migrations/020-luzzi-formatted-text.sql`,
+  2,847 verses). `luzzi.txt`'s line breaks and `<i>` are restored into
+  `text` in the NABRE tag set the clients already render. Only the Psalms
+  are laid out line by line in the source, so only they get
+  `<pof>`/`<po>`/`<pol>` lines (joined by `\n`, with untagged
+  superscriptions and lead-ins). Elsewhere the source is laid out in prose
+  paragraphs: a trailing `<br />` only ends a paragraph and is dropped, and
+  the ~40 inner `<br />` (lead-ins, the end of a quoted song: Josh 10:13,
+  Lk 1:46) become untagged line breaks. The 4 mid-verse headings get their
+  `title_position`. Every UPDATE asserts that
   the formatted text normalizes back to exactly the current plain text, so
   LUZZI's `text_plain`, hashes and embeddings are unchanged.
 - `scripts/compute_embeddings.py` is now column-aware via a `--column` flag
-  (default `embedding`), so the same script can fill an A/B column without
+  (default `embedding_labse`), and the column picks its model and pinned
+  revision (`--column embedding` loads MiniLM) unless `EMBEDDING_MODEL` /
+  `EMBEDDING_MODEL_REVISION` override it, so the same script can fill an A/B column without
   touching the primary one. Stale-row detection (text_hash watermarking)
   only applies to the primary column; non-primary columns recompute on
   NULL or `--force`.
