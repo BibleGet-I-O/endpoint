@@ -54,6 +54,35 @@ class QuoteHandlerTest extends DatabaseTestCase
         self::assertEmpty($body['errors']);
     }
 
+    public function testQuoteReturnsFormattedTextPlainTextAndTitlePosition(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = new ServerRequest('GET', '/v3/quote?query=Genesis3,1-2&version=TEST1');
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertCount(2, $body['results']);
+        [$poem, $prose] = $body['results'];
+
+        // Formatted text for rendering, derived plain text alongside.
+        self::assertStringStartsWith('<pof>', $poem['text']);
+        self::assertSame(
+            'Now the serpent was the most cunning of all the animals that the LORD God had made.',
+            $poem['text_plain']
+        );
+        self::assertNull($poem['title_position'], 'no heading → NULL (headings go before the verse)');
+
+        // A mid-verse heading: title1 is inserted at character offset 32 of `text`.
+        self::assertSame(32, $prose['title_position']);
+        self::assertSame('The woman replies', $prose['title1']);
+        self::assertSame('The woman answered the serpent. ', mb_substr($prose['text'], 0, 32));
+
+        foreach ($body['results'] as $verse) {
+            self::assertArrayNotHasKey('text_hash', $verse);
+        }
+    }
+
     public function testVerseRangeJson(): void
     {
         $handler  = $this->createHandler();

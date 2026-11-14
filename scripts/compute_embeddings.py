@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Batch-compute verse embeddings for BibleGet semantic search.
 
-Connects to PostgreSQL, loads verse texts per Bible version,
+Connects to PostgreSQL, loads verse plain texts (text_plain) per Bible version,
 computes embeddings via sentence-transformers, and writes them
 back to the chosen embedding column.
 
@@ -118,6 +118,9 @@ def get_versions(conn, single_version=None):
 def load_verses(conn, version, column, force=False):
     """Load verses that need embeddings computed for the given column.
 
+    Embeds `text_plain` (markup stripped, see migration 019 / #123), never the
+    formatted `text`; text_hash is the hash of text_plain.
+
     Default mode (primary column only): verses with no embedding OR whose
     text changed since last embedding.
     For non-primary columns (e.g. embedding_labse): only NULL rows are
@@ -129,10 +132,10 @@ def load_verses(conn, version, column, force=False):
     col_ident = sql.Identifier(column)
 
     if force:
-        query = sql.SQL('SELECT "verseID", text FROM {} ORDER BY "verseID"').format(table_ident)
+        query = sql.SQL('SELECT "verseID", text_plain FROM {} ORDER BY "verseID"').format(table_ident)
     elif track_hash:
         query = sql.SQL(
-            'SELECT "verseID", text FROM {table} '
+            'SELECT "verseID", text_plain FROM {table} '
             "WHERE {col} IS NULL "
             "OR embedded_text_hash IS NULL "
             "OR text_hash != embedded_text_hash "
@@ -140,7 +143,7 @@ def load_verses(conn, version, column, force=False):
         ).format(table=table_ident, col=col_ident)
     else:
         query = sql.SQL(
-            'SELECT "verseID", text FROM {table} WHERE {col} IS NULL ORDER BY "verseID"'
+            'SELECT "verseID", text_plain FROM {table} WHERE {col} IS NULL ORDER BY "verseID"'
         ).format(table=table_ident, col=col_ident)
 
     with conn.cursor() as cur:

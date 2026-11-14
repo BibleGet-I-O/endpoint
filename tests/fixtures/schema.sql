@@ -134,11 +134,22 @@ CREATE TABLE IF NOT EXISTS embedding_metadata (
     PRIMARY KEY (version_sigla, column_name)
 );
 
--- Trigger function to auto-maintain text_hash on verse tables
+-- Plain-text normalizer (mirror of migrations/019-add-text-plain-and-title-position.sql)
+CREATE OR REPLACE FUNCTION bibleget_plain_text(src TEXT) RETURNS TEXT
+LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
+    SELECT btrim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(src,
+        '</?(sm|i|sup)>', '', 'g'),
+        '</?(po|pof|pol|poi|poil|poif|pos|po3|po3l|pr|bq|bqf|bql|speaker)>', ' ', 'g'),
+        '<br\s*/?>', ' ', 'gi'),
+        '\s+', ' ', 'g'))
+$$;
+
+-- Trigger function to auto-maintain text_plain and text_hash on verse tables
 CREATE OR REPLACE FUNCTION update_text_hash()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.text_hash := decode(md5(NEW.text), 'hex');
+    NEW.text_plain := bibleget_plain_text(NEW.text);
+    NEW.text_hash  := decode(md5(NEW.text_plain), 'hex');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

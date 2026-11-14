@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     chapter     INT NOT NULL,
     verse       INT NOT NULL,
     text        TEXT NOT NULL,
+    text_plain    TEXT NOT NULL DEFAULT '',
+    title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
@@ -59,7 +61,19 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     text_hash           BYTEA,
     embedded_text_hash  BYTEA
 );
+ALTER TABLE "TEST1" ADD COLUMN IF NOT EXISTS title1 VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS title2 VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS title3 VARCHAR(255) NOT NULL DEFAULT '';
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'TEST1_title_position_check') THEN
+        ALTER TABLE "TEST1" ADD CONSTRAINT "TEST1_title_position_check" CHECK (title_position IS NULL OR (
+            title_position > 0 AND title_position < char_length(text)
+            AND NOT (substr(text, title_position, 1) ~ '[[:alnum:]]' AND substr(text, title_position + 1, 1) ~ '[[:alnum:]]')
+            AND left(text, title_position) !~ '<[^>]*$'));
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "TEST1_text_plain_fts" ON "TEST1" USING gin(to_tsvector('english', text_plain));
 CREATE INDEX IF NOT EXISTS "TEST1_embedding_hnsw" ON "TEST1" USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS "TEST1_embedding_labse_hnsw" ON "TEST1" USING hnsw (embedding_labse vector_cosine_ops);
 DO $$ BEGIN
@@ -100,6 +114,13 @@ INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
 (23, 51, 6, 'Yet you desired faithfulness even in the womb; you taught me wisdom in that secret place.', 1, 7)
 ON CONFLICT DO NOTHING;
 
+-- Formatted text (NABRE tag set) and a mid-verse heading, for the
+-- text_plain / title_position tests. text_plain is derived by the trigger.
+INSERT INTO "TEST1" (book, chapter, verse, text, title1, title_position, testament, section) VALUES
+(1, 3, 1, E'<pof>Now the serpent was the most cunning</pof>\n<poi>of all the animals that the L<sm>ORD</sm> God had made.</poi>', '', NULL, 1, 1),
+(1, 3, 2, 'The woman answered the serpent. We may eat of the fruit of the trees in the garden.', 'The woman replies', 32, 1, 1)
+ON CONFLICT DO NOTHING;
+
 -- Bible text tables for TEST2 (same sample verses)
 CREATE TABLE IF NOT EXISTS "TEST2" (
     "verseID"     SERIAL PRIMARY KEY,
@@ -107,6 +128,8 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     chapter     INT NOT NULL,
     verse       INT NOT NULL,
     text        TEXT NOT NULL,
+    text_plain    TEXT NOT NULL DEFAULT '',
+    title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
@@ -158,6 +181,8 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     chapter     INT NOT NULL,
     verse       INT NOT NULL,
     text        TEXT NOT NULL,
+    text_plain    TEXT NOT NULL DEFAULT '',
+    title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
@@ -213,6 +238,8 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     chapter     INT NOT NULL,
     verse       INT NOT NULL,
     text        TEXT NOT NULL,
+    text_plain    TEXT NOT NULL DEFAULT '',
+    title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',

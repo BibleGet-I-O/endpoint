@@ -1147,6 +1147,11 @@
                                     },
                                     "example": " Beloved, let us love one another, because love is of God; everyone who loves is begotten by God and knows God. "
                                 },
+                                "text_plain": {
+                                    "type": "string",
+                                    "description": "The verse text with all formatting markup removed (derived from `text`; line and block tags become spaces, inline tags such as `<sm>` are dropped, whitespace is collapsed). This is the text that keyword search and semantic search operate on. Use `text` to render the verse with its formatting, `text_plain` where only the words are wanted.",
+                                    "example": "Beloved, let us love one another, because love is of God; everyone who loves is begotten by God and knows God."
+                                },
                                 "version": {
                                     "type": "string",
                                     "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `/metadata` endpoints can be used",
@@ -1157,7 +1162,7 @@
                                 },
                                 "title1": {
                                     "type": "string",
-                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any first-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "description": "The first-level section heading that precedes the verse (or that falls inside it, see `title_position`), in editions that carry headings (e.g. LUZZI). Empty when there is none.",
                                     "xml": {
                                         "attribute": true
                                     },
@@ -1165,7 +1170,7 @@
                                 },
                                 "title2": {
                                     "type": "string",
-                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "description": "A second-level section heading under `title1`, e.g. a section within a major division. Empty when there is none.",
                                     "xml": {
                                         "attribute": true
                                     },
@@ -1173,11 +1178,18 @@
                                 },
                                 "title3": {
                                     "type": "string",
-                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "description": "A third-level section heading under `title2`. Empty when there is none.",
                                     "xml": {
                                         "attribute": true
                                     },
                                     "example": ""
+                                },
+                                "title_position": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "minimum": 1,
+                                    "description": "Where the verse's section headings (`title1`-`title3`) are placed. `null` (the usual case): the headings precede the verse. An integer: a heading falls in the middle of the verse, and is inserted at this 0-based character offset into `text` (formatting tags count as characters; offsets count Unicode code points, not bytes). Render as `text[0:title_position]` + headings + `text[title_position:]`. The offset always lies on a token boundary, never inside a word or a tag.",
+                                    "example": null
                                 },
                                 "originalquery": {
                                     "type": "string",
@@ -1484,6 +1496,11 @@
                         },
                         "example": " Beloved, let us love one another, because love is of God; everyone who loves is begotten by God and knows God. "
                     },
+                    "text_plain": {
+                        "type": "string",
+                        "description": "The verse text with all formatting markup removed (derived from `text`; line and block tags become spaces, inline tags such as `<sm>` are dropped, whitespace is collapsed). This is the text that keyword search and semantic search operate on. Use `text` to render the verse with its formatting, `text_plain` where only the words are wanted.",
+                        "example": "Beloved, let us love one another, because love is of God; everyone who loves is begotten by God and knows God."
+                    },
                     "version": {
                         "type": "string",
                         "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `/metadata` endpoints can be used",
@@ -1494,7 +1511,7 @@
                     },
                     "title1": {
                         "type": "string",
-                        "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any first-level title text preceding the given verse in the version of the Bible being quoted from.",
+                        "description": "The first-level section heading that precedes the verse (or that falls inside it, see `title_position`), in editions that carry headings (e.g. LUZZI). Empty when there is none.",
                         "xml": {
                             "attribute": true
                         },
@@ -1502,7 +1519,7 @@
                     },
                     "title2": {
                         "type": "string",
-                        "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.",
+                        "description": "A second-level section heading under `title1`, e.g. a section within a major division. Empty when there is none.",
                         "xml": {
                             "attribute": true
                         },
@@ -1510,11 +1527,18 @@
                     },
                     "title3": {
                         "type": "string",
-                        "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.",
+                        "description": "A third-level section heading under `title2`. Empty when there is none.",
                         "xml": {
                             "attribute": true
                         },
                         "example": ""
+                    },
+                    "title_position": {
+                        "type": "integer",
+                        "nullable": true,
+                        "minimum": 1,
+                        "description": "Where the verse's section headings (`title1`-`title3`) are placed. `null` (the usual case): the headings precede the verse. An integer: a heading falls in the middle of the verse, and is inserted at this 0-based character offset into `text` (formatting tags count as characters; offsets count Unicode code points, not bytes). Render as `text[0:title_position]` + headings + `text[title_position:]`. The offset always lies on a token boundary, never inside a word or a tag.",
+                        "example": null
                     },
                     "originalquery": {
                         "type": "string",
@@ -14347,6 +14371,11 @@
                                         "attribute": true
                                     }
                                 },
+                                "text_plain": {
+                                    "type": "string",
+                                    "description": "The verse text with all formatting markup removed (derived from `text`; line and block tags become spaces, inline tags such as `<sm>` are dropped, whitespace is collapsed). This is the text that keyword search and semantic search operate on. Use `text` to render the verse with its formatting, `text_plain` where only the words are wanted.",
+                                    "example": "Beloved, let us love one another, because love is of God; everyone who loves is begotten by God and knows God."
+                                },
                                 "version": {
                                     "type": "string",
                                     "description": "the acronym of the Bible version being quoted from. For data associated with any given Bible version, for example index information, the `/metadata` endpoints can be used",
@@ -14356,21 +14385,21 @@
                                 },
                                 "title1": {
                                     "type": "string",
-                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any first-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "description": "The first-level section heading that precedes the verse (or that falls inside it, see `title_position`), in editions that carry headings (e.g. LUZZI). Empty when there is none.",
                                     "xml": {
                                         "attribute": true
                                     }
                                 },
                                 "title2": {
                                     "type": "string",
-                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "description": "A second-level section heading under `title1`, e.g. a section within a major division. Empty when there is none.",
                                     "xml": {
                                         "attribute": true
                                     }
                                 },
                                 "title3": {
                                     "type": "string",
-                                    "description": "not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.",
+                                    "description": "A third-level section heading under `title2`. Empty when there is none.",
                                     "xml": {
                                         "attribute": true
                                     }
@@ -14737,6 +14766,11 @@
                     "text": {
                         "type": "string",
                         "description": "The verse text"
+                    },
+                    "text_plain": {
+                        "type": "string",
+                        "description": "The verse text with all formatting markup removed (derived from `text`; line and block tags become spaces, inline tags such as `<sm>` are dropped, whitespace is collapsed). This is the text that keyword search and semantic search operate on. Use `text` to render the verse with its formatting, `text_plain` where only the words are wanted.",
+                        "example": "Beloved, let us love one another, because love is of God; everyone who loves is begotten by God and knows God."
                     },
                     "score": {
                         "type": "number",
