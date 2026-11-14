@@ -292,11 +292,11 @@ def write_sql(updates, stats):
     w("-- so the schema stays uniform; varchar widening is a catalog-only change.\n")
     w("DO $$\nDECLARE t TEXT;\nBEGIN\n")
     w("    FOR t IN SELECT sigla FROM versions_available LOOP\n")
-    w("        -- the text_hash trigger is UPDATE OF text, which blocks ALTER TYPE\n")
+    w("        -- the text_hash trigger (UPDATE OF text, text_plain, text_hash) blocks ALTER TYPE\n")
     w("        EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I', t || '_text_hash_trigger', t);\n")
     w("        EXECUTE format('ALTER TABLE %I ALTER COLUMN text TYPE VARCHAR(2000), "
       "ALTER COLUMN text_plain TYPE VARCHAR(2000)', t);\n")
-    w("        EXECUTE format('CREATE TRIGGER %I BEFORE INSERT OR UPDATE OF text ON %I '\n")
+    w("        EXECUTE format('CREATE TRIGGER %I BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON %I '\n")
     w("                       'FOR EACH ROW EXECUTE FUNCTION update_text_hash()', t || '_text_hash_trigger', t);\n")
     w("    END LOOP;\nEND $$;\n\n")
     for u in updates:

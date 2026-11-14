@@ -17,10 +17,10 @@ DO $$
 DECLARE t TEXT;
 BEGIN
     FOR t IN SELECT sigla FROM versions_available LOOP
-        -- the text_hash trigger is UPDATE OF text, which blocks ALTER TYPE
+        -- the text_hash trigger (UPDATE OF text, text_plain, text_hash) blocks ALTER TYPE
         EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I', t || '_text_hash_trigger', t);
         EXECUTE format('ALTER TABLE %I ALTER COLUMN text TYPE VARCHAR(2000), ALTER COLUMN text_plain TYPE VARCHAR(2000)', t);
-        EXECUTE format('CREATE TRIGGER %I BEFORE INSERT OR UPDATE OF text ON %I '
+        EXECUTE format('CREATE TRIGGER %I BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON %I '
                        'FOR EACH ROW EXECUTE FUNCTION update_text_hash()', t || '_text_hash_trigger', t);
     END LOOP;
 END $$;
