@@ -12,7 +12,7 @@
 -- larger differences and rows missing on either side are not touched
 -- (reports/unmatched.tsv). Idempotent.
 --
--- 10906 rows: {'formatted': 10354, 'headings': 552, 'unchanged': 24556, 'unmatched (db)': 206, 'unmatched (site)': 90, 'wording kept (layout only)': 411}
+-- 10906 rows: {'formatted': 10354, 'headings': 552, 'unchanged': 24556, 'unmatched (db)': 206, 'unmatched (site)': 90, 'wording kept (layout only)': 410}
 
 BEGIN;
 
@@ -40603,17 +40603,17 @@ UPDATE "CEI2008" SET text = '<po>L''altezza del cielo, la distesa della terra</p
 <po>e le profondità dell''abisso chi le potrà esplorare?</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19921 AND text = 'L''altezza del cielo, la distesa della terra e le profondità dell''abisso chi le potrà esplorare?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>L''altezza del cielo, la distesa della terra</po>
 <po>e le profondità dell''abisso chi le potrà esplorare?</po>') = text_plain;  -- Sir 1:3
 UPDATE "CEI2008" SET text = '<po>Prima d''ogni cosa fu creata la sapienza</po>
-<pol>e l''intelligenza prudente è da sempre.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19922 AND text = 'Prima d''ogni cosa fu creata la sapienza e l''intelligenza prudente è da sempre.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Prima d''ogni cosa fu creata la sapienza</po>
-<pol>e l''intelligenza prudente è da sempre.</pol>') = text_plain;  -- Sir 1:4
-UPDATE "CEI2008" SET text = '<i>Fonte della sapienza è la parola di Dio nei cieli,</i>
-<pof><i>le sue vie sono i comandamenti eterni.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19923 AND text = 'Fonte della sapienza è la parola di Dio nei cieli, le sue vie sono i comandamenti eterni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Fonte della sapienza è la parola di Dio nei cieli,</i>
-<pof><i>le sue vie sono i comandamenti eterni.</i></pof>') = text_plain;  -- Sir 1:5
+<po>e l''intelligenza prudente è da sempre.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19922 AND text = 'Prima d''ogni cosa fu creata la sapienza e l''intelligenza prudente è da sempre.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Prima d''ogni cosa fu creata la sapienza</po>
+<po>e l''intelligenza prudente è da sempre.</po>') = text_plain;  -- Sir 1:4
+UPDATE "CEI2008" SET text = '<po><i>Fonte della sapienza è la parola di Dio nei cieli,</i></po>
+<po><i>le sue vie sono i comandamenti eterni.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19923 AND text = 'Fonte della sapienza è la parola di Dio nei cieli, le sue vie sono i comandamenti eterni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Fonte della sapienza è la parola di Dio nei cieli,</i></po>
+<po><i>le sue vie sono i comandamenti eterni.</i></po>') = text_plain;  -- Sir 1:5
 UPDATE "CEI2008" SET text = '<po>La radice della sapienza a chi fu rivelata?</po>
-<pol>E le sue sottigliezze chi le conosce?</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19924 AND text = 'La radice della sapienza a chi fu rivelata? E le sue sottigliezze chi le conosce?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>La radice della sapienza a chi fu rivelata?</po>
-<pol>E le sue sottigliezze chi le conosce?</pol>') = text_plain;  -- Sir 1:6
-UPDATE "CEI2008" SET text = '<i>Ciò che insegna la sapienza a chi fu manifestato?</i>
-<pof><i>La sua grande esperienza chi la comprende?</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19925 AND text = 'Ciò che insegna la sapienza a chi fu manifestato? La sua grande esperienza chi la comprende?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Ciò che insegna la sapienza a chi fu manifestato?</i>
-<pof><i>La sua grande esperienza chi la comprende?</i></pof>') = text_plain;  -- Sir 1:7
+<po>E le sue sottigliezze chi le conosce?</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19924 AND text = 'La radice della sapienza a chi fu rivelata? E le sue sottigliezze chi le conosce?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>La radice della sapienza a chi fu rivelata?</po>
+<po>E le sue sottigliezze chi le conosce?</po>') = text_plain;  -- Sir 1:6
+UPDATE "CEI2008" SET text = '<po><i>Ciò che insegna la sapienza a chi fu manifestato?</i></po>
+<po><i>La sua grande esperienza chi la comprende?</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19925 AND text = 'Ciò che insegna la sapienza a chi fu manifestato? La sua grande esperienza chi la comprende?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Ciò che insegna la sapienza a chi fu manifestato?</i></po>
+<po><i>La sua grande esperienza chi la comprende?</i></po>') = text_plain;  -- Sir 1:7
 UPDATE "CEI2008" SET text = '<po>Uno solo è il sapiente e incute timore,</po>
 <po>seduto sopra il suo trono.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19926 AND text = 'Uno solo è il sapiente e incute timore, seduto sopra il suo trono.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Uno solo è il sapiente e incute timore,</po>
 <po>seduto sopra il suo trono.</po>') = text_plain;  -- Sir 1:8
@@ -40667,11 +40667,11 @@ UPDATE "CEI2008" SET text = '<po>Egli ha visto e misurato la sapienza,</po>
 <po>ha fatto piovere scienza e conoscenza intelligente,</po>
 <po>ha esaltato la gloria di quanti la possiedono.</po>') = text_plain;  -- Sir 1:19
 UPDATE "CEI2008" SET text = '<po>Radice di sapienza è temere il Signore,</po>
-<pol>i suoi rami sono abbondanza di giorni. *</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19938 AND text = 'Radice di sapienza è temere il Signore, i suoi rami sono abbondanza di giorni. *' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Radice di sapienza è temere il Signore,</po>
-<pol>i suoi rami sono abbondanza di giorni. *</pol>') = text_plain;  -- Sir 1:20
-UPDATE "CEI2008" SET text = '<i>Il timore del Signore tiene lontani i peccati,</i>
-<pof><i>chi vi persevera respinge ogni moto di collera.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19939 AND text = 'Il timore del Signore tiene lontani i peccati, chi vi persevera respinge ogni moto di collera.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il timore del Signore tiene lontani i peccati,</i>
-<pof><i>chi vi persevera respinge ogni moto di collera.</i></pof>') = text_plain;  -- Sir 1:21
+<po>i suoi rami sono abbondanza di giorni. *</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19938 AND text = 'Radice di sapienza è temere il Signore, i suoi rami sono abbondanza di giorni. *' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Radice di sapienza è temere il Signore,</po>
+<po>i suoi rami sono abbondanza di giorni. *</po>') = text_plain;  -- Sir 1:20
+UPDATE "CEI2008" SET text = '<po><i>Il timore del Signore tiene lontani i peccati,</i></po>
+<po><i>chi vi persevera respinge ogni moto di collera.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19939 AND text = 'Il timore del Signore tiene lontani i peccati, chi vi persevera respinge ogni moto di collera.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il timore del Signore tiene lontani i peccati,</i></po>
+<po><i>chi vi persevera respinge ogni moto di collera.</i></po>') = text_plain;  -- Sir 1:21
 UPDATE "CEI2008" SET text = '<po>La collera ingiusta non si potrà scusare,</po>
 <po>il traboccare della sua passione sarà causa di rovina.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19940 AND text = 'La collera ingiusta non si potrà scusare, il traboccare della sua passione sarà causa di rovina.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>La collera ingiusta non si potrà scusare,</po>
 <po>il traboccare della sua passione sarà causa di rovina.</po>') = text_plain;  -- Sir 1:22
@@ -40785,11 +40785,11 @@ UPDATE "CEI2008" SET text = '<po>Chi onora il padre avrà gioia dai propri figli
 <po>e sarà esaudito nel giorno della sua preghiera.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19971 AND text = 'Chi onora il padre avrà gioia dai propri figli e sarà esaudito nel giorno della sua preghiera.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chi onora il padre avrà gioia dai propri figli</po>
 <po>e sarà esaudito nel giorno della sua preghiera.</po>') = text_plain;  -- Sir 3:5
 UPDATE "CEI2008" SET text = '<po>Chi glorifica il padre vivrà a lungo,</po>
-<pol>chi obbedisce al Signore darà consolazione alla madre.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19972 AND text = 'Chi glorifica il padre vivrà a lungo, chi obbedisce al Signore darà consolazione alla madre.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chi glorifica il padre vivrà a lungo,</po>
-<pol>chi obbedisce al Signore darà consolazione alla madre.</pol>') = text_plain;  -- Sir 3:6
-UPDATE "CEI2008" SET text = '<i>Chi teme il Signore, onora il padre</i>
-<pof>e serve come padroni i suoi genitori.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19973 AND text = 'Chi teme il Signore, onora il padre e serve come padroni i suoi genitori.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Chi teme il Signore, onora il padre</i>
-<pof>e serve come padroni i suoi genitori.</pof>') = text_plain;  -- Sir 3:7
+<po>chi obbedisce al Signore darà consolazione alla madre.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19972 AND text = 'Chi glorifica il padre vivrà a lungo, chi obbedisce al Signore darà consolazione alla madre.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chi glorifica il padre vivrà a lungo,</po>
+<po>chi obbedisce al Signore darà consolazione alla madre.</po>') = text_plain;  -- Sir 3:6
+UPDATE "CEI2008" SET text = '<po><i>Chi teme il Signore, onora il padre</i></po>
+<po>e serve come padroni i suoi genitori.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19973 AND text = 'Chi teme il Signore, onora il padre e serve come padroni i suoi genitori.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Chi teme il Signore, onora il padre</i></po>
+<po>e serve come padroni i suoi genitori.</po>') = text_plain;  -- Sir 3:7
 UPDATE "CEI2008" SET text = '<po>Con le azioni e con le parole onora tuo padre,</po>
 <po>perché scenda su di te la sua benedizione,</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19974 AND text = 'Con le azioni e con le parole onora tuo padre, perché scenda su di te la sua benedizione,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Con le azioni e con le parole onora tuo padre,</po>
 <po>perché scenda su di te la sua benedizione,</po>') = text_plain;  -- Sir 3:8
@@ -40821,11 +40821,11 @@ UPDATE "CEI2008" SET text = '<pof>Figlio, compi le tue opere con mitezza,</pof>
 <po>e sarai amato più di un uomo generoso.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19983 AND text = 'Figlio, compi le tue opere con mitezza, e sarai amato più di un uomo generoso.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Figlio, compi le tue opere con mitezza,</pof>
 <po>e sarai amato più di un uomo generoso.</po>') = text_plain;  -- Sir 3:17
 UPDATE "CEI2008" SET text = '<po>Quanto più sei grande, tanto più fatti umile,</po>
-<pol>e troverai grazia davanti al Signore.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19984 AND text = 'Quanto più sei grande, tanto più fatti umile, e troverai grazia davanti al Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Quanto più sei grande, tanto più fatti umile,</po>
-<pol>e troverai grazia davanti al Signore.</pol>') = text_plain;  -- Sir 3:18
-UPDATE "CEI2008" SET text = '<i>Molti sono gli uomini orgogliosi e superbi,</i>
-<pof><i>ma ai miti Dio rivela i suoi segreti.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19985 AND text = 'Molti sono gli uomini orgogliosi e superbi, ma ai miti Dio rivela i suoi segreti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Molti sono gli uomini orgogliosi e superbi,</i>
-<pof><i>ma ai miti Dio rivela i suoi segreti.</i></pof>') = text_plain;  -- Sir 3:19
+<po>e troverai grazia davanti al Signore.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19984 AND text = 'Quanto più sei grande, tanto più fatti umile, e troverai grazia davanti al Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Quanto più sei grande, tanto più fatti umile,</po>
+<po>e troverai grazia davanti al Signore.</po>') = text_plain;  -- Sir 3:18
+UPDATE "CEI2008" SET text = '<po><i>Molti sono gli uomini orgogliosi e superbi,</i></po>
+<po><i>ma ai miti Dio rivela i suoi segreti.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19985 AND text = 'Molti sono gli uomini orgogliosi e superbi, ma ai miti Dio rivela i suoi segreti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Molti sono gli uomini orgogliosi e superbi,</i></po>
+<po><i>ma ai miti Dio rivela i suoi segreti.</i></po>') = text_plain;  -- Sir 3:19
 UPDATE "CEI2008" SET text = '<po>Perché grande è la potenza del Signore,</po>
 <po>e dagli umili egli è glorificato.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19986 AND text = 'Perché grande è la potenza del Signore, e dagli umili egli è glorificato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Perché grande è la potenza del Signore,</po>
 <po>e dagli umili egli è glorificato.</po>') = text_plain;  -- Sir 3:20
@@ -40839,11 +40839,11 @@ UPDATE "CEI2008" SET text = '<po>Non affaticarti in opere superflue,</po>
 <po>ti è stato mostrato infatti più di quanto possa comprendere la mente umana.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19989 AND text = 'Non affaticarti in opere superflue, ti è stato mostrato infatti più di quanto possa comprendere la mente umana.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non affaticarti in opere superflue,</po>
 <po>ti è stato mostrato infatti più di quanto possa comprendere la mente umana.</po>') = text_plain;  -- Sir 3:23
 UPDATE "CEI2008" SET text = '<po>La presunzione ha fatto smarrire molti</po>
-<pol>e le cattive illusioni hanno fuorviato i loro pensieri.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19990 AND text = 'La presunzione ha fatto smarrire molti e le cattive illusioni hanno fuorviato i loro pensieri.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>La presunzione ha fatto smarrire molti</po>
-<pol>e le cattive illusioni hanno fuorviato i loro pensieri.</pol>') = text_plain;  -- Sir 3:24
-UPDATE "CEI2008" SET text = '<i>Se non hai le pupille, tu manchi di luce;</i>
-<pof><i>se ti manca la scienza, non dare consigli.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19991 AND text = 'Se non hai le pupille, tu manchi di luce; se ti manca la scienza, non dare consigli.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Se non hai le pupille, tu manchi di luce;</i>
-<pof><i>se ti manca la scienza, non dare consigli.</i></pof>') = text_plain;  -- Sir 3:25
+<po>e le cattive illusioni hanno fuorviato i loro pensieri.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19990 AND text = 'La presunzione ha fatto smarrire molti e le cattive illusioni hanno fuorviato i loro pensieri.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>La presunzione ha fatto smarrire molti</po>
+<po>e le cattive illusioni hanno fuorviato i loro pensieri.</po>') = text_plain;  -- Sir 3:24
+UPDATE "CEI2008" SET text = '<po><i>Se non hai le pupille, tu manchi di luce;</i></po>
+<po><i>se ti manca la scienza, non dare consigli.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19991 AND text = 'Se non hai le pupille, tu manchi di luce; se ti manca la scienza, non dare consigli.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Se non hai le pupille, tu manchi di luce;</i></po>
+<po><i>se ti manca la scienza, non dare consigli.</i></po>') = text_plain;  -- Sir 3:25
 UPDATE "CEI2008" SET text = '<po>Un cuore ostinato alla fine cadrà nel male,</po>
 <po>chi ama il pericolo in esso si perderà.*</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 19992 AND text = 'Un cuore ostinato alla fine cadrà nel male, chi ama il pericolo in esso si perderà.*' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Un cuore ostinato alla fine cadrà nel male,</po>
 <po>chi ama il pericolo in esso si perderà.*</po>') = text_plain;  -- Sir 3:26
@@ -41466,11 +41466,11 @@ UPDATE "CEI2008" SET text = '<pof>[Quale stirpe è degna d''onore? La stirpe del
 <po>[Quale stirpe non è degna d''onore? La stirpe dell''uomo.]</po>
 <po>Quale stirpe non è degna d''onore? Quelli che trasgrediscono i comandamenti.</po>') = text_plain;  -- Sir 10:19
 UPDATE "CEI2008" SET text = '<po>Tra i fratelli viene onorato chi li comanda,</po>
-<pol>ma agli occhi del Signore quelli che lo temono.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20173 AND text = 'Tra i fratelli viene onorato chi li comanda, ma agli occhi del Signore quelli che lo temono.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Tra i fratelli viene onorato chi li comanda,</po>
-<pol>ma agli occhi del Signore quelli che lo temono.</pol>') = text_plain;  -- Sir 10:20
-UPDATE "CEI2008" SET text = '<i>[Principio di gradimento è il timore del Signore,</i>
-<pof><i>principio di rifiuto l''ostinazione e la superbia.]</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20174 AND text = '[Principio di gradimento è il timore del Signore, principio di rifiuto l''ostinazione e la superbia.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>[Principio di gradimento è il timore del Signore,</i>
-<pof><i>principio di rifiuto l''ostinazione e la superbia.]</i></pof>') = text_plain;  -- Sir 10:21
+<po>ma agli occhi del Signore quelli che lo temono.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20173 AND text = 'Tra i fratelli viene onorato chi li comanda, ma agli occhi del Signore quelli che lo temono.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Tra i fratelli viene onorato chi li comanda,</po>
+<po>ma agli occhi del Signore quelli che lo temono.</po>') = text_plain;  -- Sir 10:20
+UPDATE "CEI2008" SET text = '<po><i>[Principio di gradimento è il timore del Signore,</i></po>
+<po><i>principio di rifiuto l''ostinazione e la superbia.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20174 AND text = '[Principio di gradimento è il timore del Signore, principio di rifiuto l''ostinazione e la superbia.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>[Principio di gradimento è il timore del Signore,</i></po>
+<po><i>principio di rifiuto l''ostinazione e la superbia.]</i></po>') = text_plain;  -- Sir 10:21
 UPDATE "CEI2008" SET text = '<po>Il ricco, il nobile, il povero:</po>
 <po>loro vanto è il timore del Signore.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20175 AND text = 'Il ricco, il nobile, il povero: loro vanto è il timore del Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Il ricco, il nobile, il povero:</po>
 <po>loro vanto è il timore del Signore.</po>') = text_plain;  -- Sir 10:22
@@ -41553,14 +41553,14 @@ UPDATE "CEI2008" SET text = '<po>e gli fanno alzare la testa,</po>
 <po>sì che molti ne restano stupiti.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20197 AND text = 'e gli fanno alzare la testa, sì che molti ne restano stupiti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>e gli fanno alzare la testa,</po>
 <po>sì che molti ne restano stupiti.</po>') = text_plain;  -- Sir 11:13
 UPDATE "CEI2008" SET text = '<po>Bene e male, vita e morte,</po>
-<pol>povertà e ricchezza provengono dal Signore.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20198 AND text = 'Bene e male, vita e morte, povertà e ricchezza provengono dal Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Bene e male, vita e morte,</po>
-<pol>povertà e ricchezza provengono dal Signore.</pol>') = text_plain;  -- Sir 11:14
-UPDATE "CEI2008" SET text = '<i>Sapienza, scienza e conoscenza della legge vengono dal Signore;</i>
-<pof><i>l''amore e la pratica delle opere buone provengono da lui.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20199 AND text = 'Sapienza, scienza e conoscenza della legge vengono dal Signore; l''amore e la pratica delle opere buone provengono da lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Sapienza, scienza e conoscenza della legge vengono dal Signore;</i>
-<pof><i>l''amore e la pratica delle opere buone provengono da lui.</i></pof>') = text_plain;  -- Sir 11:15
-UPDATE "CEI2008" SET text = '<i>Errore e tenebre sono creati per i peccatori;</i>
-<pof><i>quanti si vantano del male, il male li accompagna nella vecchiaia.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20200 AND text = 'Errore e tenebre sono creati per i peccatori; quanti si vantano del male, il male li accompagna nella vecchiaia.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Errore e tenebre sono creati per i peccatori;</i>
-<pof><i>quanti si vantano del male, il male li accompagna nella vecchiaia.</i></pof>') = text_plain;  -- Sir 11:16
+<po>povertà e ricchezza provengono dal Signore.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20198 AND text = 'Bene e male, vita e morte, povertà e ricchezza provengono dal Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Bene e male, vita e morte,</po>
+<po>povertà e ricchezza provengono dal Signore.</po>') = text_plain;  -- Sir 11:14
+UPDATE "CEI2008" SET text = '<po><i>Sapienza, scienza e conoscenza della legge vengono dal Signore;</i></po>
+<po><i>l''amore e la pratica delle opere buone provengono da lui.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20199 AND text = 'Sapienza, scienza e conoscenza della legge vengono dal Signore; l''amore e la pratica delle opere buone provengono da lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Sapienza, scienza e conoscenza della legge vengono dal Signore;</i></po>
+<po><i>l''amore e la pratica delle opere buone provengono da lui.</i></po>') = text_plain;  -- Sir 11:15
+UPDATE "CEI2008" SET text = '<po><i>Errore e tenebre sono creati per i peccatori;</i></po>
+<po><i>quanti si vantano del male, il male li accompagna nella vecchiaia.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20200 AND text = 'Errore e tenebre sono creati per i peccatori; quanti si vantano del male, il male li accompagna nella vecchiaia.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Errore e tenebre sono creati per i peccatori;</i></po>
+<po><i>quanti si vantano del male, il male li accompagna nella vecchiaia.</i></po>') = text_plain;  -- Sir 11:16
 UPDATE "CEI2008" SET text = '<po>Il dono del Signore è assicurato ai suoi fedeli</po>
 <po>e la sua benevolenza li guida sempre sulla retta via.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20201 AND text = 'Il dono del Signore è assicurato ai suoi fedeli e la sua benevolenza li guida sempre sulla retta via.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Il dono del Signore è assicurato ai suoi fedeli</po>
 <po>e la sua benevolenza li guida sempre sulla retta via.</po>') = text_plain;  -- Sir 11:17
@@ -41750,12 +41750,12 @@ UPDATE "CEI2008" SET text = '<po>Non ha pietà chi non mantiene la parola,</po>
 <po>non ti risparmierà maltrattamenti e catene.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20248 AND text = 'Non ha pietà chi non mantiene la parola, non ti risparmierà maltrattamenti e catene.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non ha pietà chi non mantiene la parola,</po>
 <po>non ti risparmierà maltrattamenti e catene.</po>') = text_plain;  -- Sir 13:12
 UPDATE "CEI2008" SET text = '<po>Guàrdati e sta'' molto attento,</po>
-<pol>perché cammini sull''orlo del precipizio.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20249 AND text = 'Guàrdati e sta'' molto attento, perché cammini sull''orlo del precipizio.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Guàrdati e sta'' molto attento,</po>
-<pol>perché cammini sull''orlo del precipizio.</pol>') = text_plain;  -- Sir 13:13
-UPDATE "CEI2008" SET text = '<i>Quando ascolti queste cose nel sonno, svégliati:</i>
-<pof><i>per tutta la tua vita ama il Signore</i></pof>
-<po><i>e invocalo per la tua salvezza.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20250 AND text = 'Quando ascolti queste cose nel sonno, svégliati: per tutta la tua vita ama il Signore e invocalo per la tua salvezza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Quando ascolti queste cose nel sonno, svégliati:</i>
-<pof><i>per tutta la tua vita ama il Signore</i></pof>
+<po>perché cammini sull''orlo del precipizio.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20249 AND text = 'Guàrdati e sta'' molto attento, perché cammini sull''orlo del precipizio.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Guàrdati e sta'' molto attento,</po>
+<po>perché cammini sull''orlo del precipizio.</po>') = text_plain;  -- Sir 13:13
+UPDATE "CEI2008" SET text = '<po><i>Quando ascolti queste cose nel sonno, svégliati:</i></po>
+<po><i>per tutta la tua vita ama il Signore</i></po>
+<po><i>e invocalo per la tua salvezza.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20250 AND text = 'Quando ascolti queste cose nel sonno, svégliati: per tutta la tua vita ama il Signore e invocalo per la tua salvezza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Quando ascolti queste cose nel sonno, svégliati:</i></po>
+<po><i>per tutta la tua vita ama il Signore</i></po>
 <po><i>e invocalo per la tua salvezza.</i></po>') = text_plain;  -- Sir 13:14
 UPDATE "CEI2008" SET text = '<po>Ogni vivente ama il suo simile</po>
 <po>e ogni uomo il suo vicino.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20251 AND text = 'Ogni vivente ama il suo simile e ogni uomo il suo vicino.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Ogni vivente ama il suo simile</po>
@@ -42006,14 +42006,14 @@ UPDATE "CEI2008" SET text = '<po>Non sfuggirà il peccatore con la sua preda,</p
 <po>né la pazienza del giusto sarà delusa.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20322 AND text = 'Non sfuggirà il peccatore con la sua preda, né la pazienza del giusto sarà delusa.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non sfuggirà il peccatore con la sua preda,</po>
 <po>né la pazienza del giusto sarà delusa.</po>') = text_plain;  -- Sir 16:13
 UPDATE "CEI2008" SET text = '<po>Egli riconoscerà ogni atto di misericordia,</po>
-<pol>ciascuno riceverà secondo le sue opere*.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20323 AND text = 'Egli riconoscerà ogni atto di misericordia, ciascuno riceverà secondo le sue opere*.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Egli riconoscerà ogni atto di misericordia,</po>
-<pol>ciascuno riceverà secondo le sue opere*.</pol>') = text_plain;  -- Sir 16:14
-UPDATE "CEI2008" SET text = '<i>Il Signore ha indurito il faraone perché non lo riconoscesse,</i>
-<pof><i>perché fossero note le sue opere sotto il cielo.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20324 AND text = 'Il Signore ha indurito il faraone perché non lo riconoscesse, perché fossero note le sue opere sotto il cielo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il Signore ha indurito il faraone perché non lo riconoscesse,</i>
-<pof><i>perché fossero note le sue opere sotto il cielo.</i></pof>') = text_plain;  -- Sir 16:15
-UPDATE "CEI2008" SET text = '<i>A tutta la creazione la sua misericordia è manifesta,</i>
-<pof><i>ha dispensato la luce e le tenebre agli uomini.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20325 AND text = 'A tutta la creazione la sua misericordia è manifesta, ha dispensato la luce e le tenebre agli uomini.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>A tutta la creazione la sua misericordia è manifesta,</i>
-<pof><i>ha dispensato la luce e le tenebre agli uomini.</i></pof>') = text_plain;  -- Sir 16:16
+<po>ciascuno riceverà secondo le sue opere*.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20323 AND text = 'Egli riconoscerà ogni atto di misericordia, ciascuno riceverà secondo le sue opere*.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Egli riconoscerà ogni atto di misericordia,</po>
+<po>ciascuno riceverà secondo le sue opere*.</po>') = text_plain;  -- Sir 16:14
+UPDATE "CEI2008" SET text = '<po><i>Il Signore ha indurito il faraone perché non lo riconoscesse,</i></po>
+<po><i>perché fossero note le sue opere sotto il cielo.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20324 AND text = 'Il Signore ha indurito il faraone perché non lo riconoscesse, perché fossero note le sue opere sotto il cielo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il Signore ha indurito il faraone perché non lo riconoscesse,</i></po>
+<po><i>perché fossero note le sue opere sotto il cielo.</i></po>') = text_plain;  -- Sir 16:15
+UPDATE "CEI2008" SET text = '<po><i>A tutta la creazione la sua misericordia è manifesta,</i></po>
+<po><i>ha dispensato la luce e le tenebre agli uomini.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20325 AND text = 'A tutta la creazione la sua misericordia è manifesta, ha dispensato la luce e le tenebre agli uomini.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>A tutta la creazione la sua misericordia è manifesta,</i></po>
+<po><i>ha dispensato la luce e le tenebre agli uomini.</i></po>') = text_plain;  -- Sir 16:16
 UPDATE "CEI2008" SET text = '<po>Non dire: "Mi nasconderò al Signore!</po>
 <po>Lassù chi si ricorderà di me?</po>
 <po>Fra tanta gente non sarò riconosciuto,</po>
@@ -42078,12 +42078,12 @@ UPDATE "CEI2008" SET text = '<po>Li rivestì di una forza pari alla sua</po>
 <po>e a sua immagine li formò.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20342 AND text = 'Li rivestì di una forza pari alla sua e a sua immagine li formò.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Li rivestì di una forza pari alla sua</po>
 <po>e a sua immagine li formò.</po>') = text_plain;  -- Sir 17:3
 UPDATE "CEI2008" SET text = '<po>In ogni vivente infuse il timore dell''uomo,</po>
-<pol>perché dominasse sulle bestie e sugli uccelli.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20343 AND text = 'In ogni vivente infuse il timore dell''uomo, perché dominasse sulle bestie e sugli uccelli.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>In ogni vivente infuse il timore dell''uomo,</po>
-<pol>perché dominasse sulle bestie e sugli uccelli.</pol>') = text_plain;  -- Sir 17:4
-UPDATE "CEI2008" SET text = '<i>[Ricevettero l''uso delle cinque opere del Signore,</i>
-<pof><i>come sesta fu concessa loro in dono la ragione</i></pof>
-<po><i>e come settima la parola, interprete delle sue opere.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20344 AND text = '[Ricevettero l''uso delle cinque opere del Signore, come sesta fu concessa loro in dono la ragione e come settima la parola, interprete delle sue opere.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>[Ricevettero l''uso delle cinque opere del Signore,</i>
-<pof><i>come sesta fu concessa loro in dono la ragione</i></pof>
+<po>perché dominasse sulle bestie e sugli uccelli.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20343 AND text = 'In ogni vivente infuse il timore dell''uomo, perché dominasse sulle bestie e sugli uccelli.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>In ogni vivente infuse il timore dell''uomo,</po>
+<po>perché dominasse sulle bestie e sugli uccelli.</po>') = text_plain;  -- Sir 17:4
+UPDATE "CEI2008" SET text = '<po><i>[Ricevettero l''uso delle cinque opere del Signore,</i></po>
+<po><i>come sesta fu concessa loro in dono la ragione</i></po>
+<po><i>e come settima la parola, interprete delle sue opere.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20344 AND text = '[Ricevettero l''uso delle cinque opere del Signore, come sesta fu concessa loro in dono la ragione e come settima la parola, interprete delle sue opere.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>[Ricevettero l''uso delle cinque opere del Signore,</i></po>
+<po><i>come sesta fu concessa loro in dono la ragione</i></po>
 <po><i>e come settima la parola, interprete delle sue opere.]</i></po>') = text_plain;  -- Sir 17:5
 UPDATE "CEI2008" SET text = '<po>Discernimento, lingua, occhi,</po>
 <po>orecchi e cuore diede loro per pensare.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20345 AND text = 'Discernimento, lingua, occhi, orecchi e cuore diede loro per pensare.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Discernimento, lingua, occhi,</po>
@@ -42111,28 +42111,28 @@ UPDATE "CEI2008" SET text = '<po>Disse loro: "Guardatevi da ogni ingiustizia!"</
 <pol>e a ciascuno ordinò di prendersi cura del prossimo.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20353 AND text = 'Disse loro: "Guardatevi da ogni ingiustizia!" e a ciascuno ordinò di prendersi cura del prossimo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Disse loro: "Guardatevi da ogni ingiustizia!"</po>
 <pol>e a ciascuno ordinò di prendersi cura del prossimo.</pol>') = text_plain;  -- Sir 17:14
 UPDATE "CEI2008" SET text = '<pof>Le loro vie sono sempre davanti a lui,</pof>
-<pol>non restano nascoste ai suoi occhi.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20354 AND text = 'Le loro vie sono sempre davanti a lui, non restano nascoste ai suoi occhi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Le loro vie sono sempre davanti a lui,</pof>
-<pol>non restano nascoste ai suoi occhi.</pol>') = text_plain;  -- Sir 17:15
-UPDATE "CEI2008" SET text = '<i>[Fin dalla giovinezza le loro vie vanno verso il male,</i>
-<pof><i>e non sanno cambiare i loro cuori di pietra in cuori di carne.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20355 AND text = '[Fin dalla giovinezza le loro vie vanno verso il male, e non sanno cambiare i loro cuori di pietra in cuori di carne.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>[Fin dalla giovinezza le loro vie vanno verso il male,</i>
-<pof><i>e non sanno cambiare i loro cuori di pietra in cuori di carne.</i></pof>') = text_plain;  -- Sir 17:16
-UPDATE "CEI2008" SET text = '<i>Nel dividere i popoli di tutta la terra]</i>
-<pof>su ogni popolo mise un capo,</pof>
-<pol>ma porzione del Signore è Israele,</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20356 AND text = 'Nel dividere i popoli di tutta la terra] su ogni popolo mise un capo, ma porzione del Signore è Israele,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Nel dividere i popoli di tutta la terra]</i>
-<pof>su ogni popolo mise un capo,</pof>
-<pol>ma porzione del Signore è Israele,</pol>') = text_plain;  -- Sir 17:17
-UPDATE "CEI2008" SET text = '<i>[che, come primogenito, egli nutre istruendolo</i>
-<pof><i>e, dispensandogli la luce del suo amore, mai abbandona.]</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20357 AND text = '[che, come primogenito, egli nutre istruendolo e, dispensandogli la luce del suo amore, mai abbandona.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>[che, come primogenito, egli nutre istruendolo</i>
-<pof><i>e, dispensandogli la luce del suo amore, mai abbandona.]</i></pof>') = text_plain;  -- Sir 17:18
+<po>non restano nascoste ai suoi occhi.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20354 AND text = 'Le loro vie sono sempre davanti a lui, non restano nascoste ai suoi occhi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Le loro vie sono sempre davanti a lui,</pof>
+<po>non restano nascoste ai suoi occhi.</po>') = text_plain;  -- Sir 17:15
+UPDATE "CEI2008" SET text = '<po><i>[Fin dalla giovinezza le loro vie vanno verso il male,</i></po>
+<po><i>e non sanno cambiare i loro cuori di pietra in cuori di carne.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20355 AND text = '[Fin dalla giovinezza le loro vie vanno verso il male, e non sanno cambiare i loro cuori di pietra in cuori di carne.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>[Fin dalla giovinezza le loro vie vanno verso il male,</i></po>
+<po><i>e non sanno cambiare i loro cuori di pietra in cuori di carne.</i></po>') = text_plain;  -- Sir 17:16
+UPDATE "CEI2008" SET text = '<po><i>Nel dividere i popoli di tutta la terra]</i></po>
+<po>su ogni popolo mise un capo,</po>
+<po>ma porzione del Signore è Israele,</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20356 AND text = 'Nel dividere i popoli di tutta la terra] su ogni popolo mise un capo, ma porzione del Signore è Israele,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Nel dividere i popoli di tutta la terra]</i></po>
+<po>su ogni popolo mise un capo,</po>
+<po>ma porzione del Signore è Israele,</po>') = text_plain;  -- Sir 17:17
+UPDATE "CEI2008" SET text = '<po><i>[che, come primogenito, egli nutre istruendolo</i></po>
+<po><i>e, dispensandogli la luce del suo amore, mai abbandona.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20357 AND text = '[che, come primogenito, egli nutre istruendolo e, dispensandogli la luce del suo amore, mai abbandona.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>[che, come primogenito, egli nutre istruendolo</i></po>
+<po><i>e, dispensandogli la luce del suo amore, mai abbandona.]</i></po>') = text_plain;  -- Sir 17:18
 UPDATE "CEI2008" SET text = '<po>Tutte le loro opere sono davanti a lui come il sole,</po>
 <po>e i suoi occhi scrutano sempre la loro condotta.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20358 AND text = 'Tutte le loro opere sono davanti a lui come il sole, e i suoi occhi scrutano sempre la loro condotta.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Tutte le loro opere sono davanti a lui come il sole,</po>
 <po>e i suoi occhi scrutano sempre la loro condotta.</po>') = text_plain;  -- Sir 17:19
 UPDATE "CEI2008" SET text = '<po>A lui non sono nascoste le loro ingiustizie,</po>
-<pol>tutti i loro peccati sono davanti al Signore.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20359 AND text = 'A lui non sono nascoste le loro ingiustizie, tutti i loro peccati sono davanti al Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>A lui non sono nascoste le loro ingiustizie,</po>
-<pol>tutti i loro peccati sono davanti al Signore.</pol>') = text_plain;  -- Sir 17:20
-UPDATE "CEI2008" SET text = '<i>[Ma il Signore è buono e conosce le sue creature,</i>
-<pof><i>non le distrugge né le abbandona, ma le risparmia.]</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20360 AND text = '[Ma il Signore è buono e conosce le sue creature, non le distrugge né le abbandona, ma le risparmia.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>[Ma il Signore è buono e conosce le sue creature,</i>
-<pof><i>non le distrugge né le abbandona, ma le risparmia.]</i></pof>') = text_plain;  -- Sir 17:21
+<po>tutti i loro peccati sono davanti al Signore.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20359 AND text = 'A lui non sono nascoste le loro ingiustizie, tutti i loro peccati sono davanti al Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>A lui non sono nascoste le loro ingiustizie,</po>
+<po>tutti i loro peccati sono davanti al Signore.</po>') = text_plain;  -- Sir 17:20
+UPDATE "CEI2008" SET text = '<po><i>[Ma il Signore è buono e conosce le sue creature,</i></po>
+<po><i>non le distrugge né le abbandona, ma le risparmia.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20360 AND text = '[Ma il Signore è buono e conosce le sue creature, non le distrugge né le abbandona, ma le risparmia.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>[Ma il Signore è buono e conosce le sue creature,</i></po>
+<po><i>non le distrugge né le abbandona, ma le risparmia.]</i></po>') = text_plain;  -- Sir 17:21
 UPDATE "CEI2008" SET text = '<po>La beneficenza di un uomo è per lui come un sigillo</po>
 <po>e il bene fatto lo custodisce come la pupilla,</po>
 <po><i>[concedendo conversione ai suoi figli e alle sue figlie.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20361 AND text = 'La beneficenza di un uomo è per lui come un sigillo e il bene fatto lo custodisce come la pupilla, [concedendo conversione ai suoi figli e alle sue figlie.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>La beneficenza di un uomo è per lui come un sigillo</po>
@@ -42172,13 +42172,13 @@ UPDATE "CEI2008" SET text = '<po>Egli passa in rassegna l''esercito nel più alt
 <pol>ma gli uomini sono tutti terra e cenere.</pol>') = text_plain;  -- Sir 17:32
 UPDATE "CEI2008" SET text = '<pof>Colui che vive in eterno ha creato l''intero universo.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20372 AND text = 'Colui che vive in eterno ha creato l''intero universo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Colui che vive in eterno ha creato l''intero universo.</pof>') = text_plain;  -- Sir 18:1
 UPDATE "CEI2008" SET text = '<po>Il Signore soltanto è riconosciuto giusto</po>
-<pol><i>[e non c''è altri al di fuori di lui.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20373 AND text = 'Il Signore soltanto è riconosciuto giusto [e non c''è altri al di fuori di lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Il Signore soltanto è riconosciuto giusto</po>
-<pol><i>[e non c''è altri al di fuori di lui.</i></pol>') = text_plain;  -- Sir 18:2
-UPDATE "CEI2008" SET text = '<i>Egli regge il mondo con il palmo della mano</i>
-<pof><i>e tutto obbedisce alla sua volontà;</i></pof>
+<po><i>[e non c''è altri al di fuori di lui.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20373 AND text = 'Il Signore soltanto è riconosciuto giusto [e non c''è altri al di fuori di lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Il Signore soltanto è riconosciuto giusto</po>
+<po><i>[e non c''è altri al di fuori di lui.</i></po>') = text_plain;  -- Sir 18:2
+UPDATE "CEI2008" SET text = '<po><i>Egli regge il mondo con il palmo della mano</i></po>
+<po><i>e tutto obbedisce alla sua volontà;</i></po>
 <po><i>con il suo potere egli è il re di tutte le cose</i></po>
-<po><i>e in esse distingue il sacro dal profano].</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20374 AND text = 'Egli regge il mondo con il palmo della mano e tutto obbedisce alla sua volontà; con il suo potere egli è il re di tutte le cose e in esse distingue il sacro dal profano].' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Egli regge il mondo con il palmo della mano</i>
-<pof><i>e tutto obbedisce alla sua volontà;</i></pof>
+<po><i>e in esse distingue il sacro dal profano].</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20374 AND text = 'Egli regge il mondo con il palmo della mano e tutto obbedisce alla sua volontà; con il suo potere egli è il re di tutte le cose e in esse distingue il sacro dal profano].' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Egli regge il mondo con il palmo della mano</i></po>
+<po><i>e tutto obbedisce alla sua volontà;</i></po>
 <po><i>con il suo potere egli è il re di tutte le cose</i></po>
 <po><i>e in esse distingue il sacro dal profano].</i></po>') = text_plain;  -- Sir 18:3
 UPDATE "CEI2008" SET text = '<po>A nessuno è possibile svelare le sue opere</po>
@@ -42294,11 +42294,11 @@ UPDATE "CEI2008" SET text = '<po>Chi si fida troppo presto, è di animo leggero,
 <po>chi pecca, danneggia se stesso.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20408 AND text = 'Chi si fida troppo presto, è di animo leggero, chi pecca, danneggia se stesso.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chi si fida troppo presto, è di animo leggero,</po>
 <po>chi pecca, danneggia se stesso.</po>') = text_plain;  -- Sir 19:4
 UPDATE "CEI2008" SET text = '<po>Chi si compiace del male, sarà condannato;</po>
-<pol><i>[chi resiste ai piaceri, corona la propria vita.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20409 AND text = 'Chi si compiace del male, sarà condannato; [chi resiste ai piaceri, corona la propria vita.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chi si compiace del male, sarà condannato;</po>
-<pol><i>[chi resiste ai piaceri, corona la propria vita.</i></pol>') = text_plain;  -- Sir 19:5
-UPDATE "CEI2008" SET text = '<i>Chi domina la lingua, vivrà senza liti];</i>
-<pof>chi odia la loquacità, riduce i guai.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20410 AND text = 'Chi domina la lingua, vivrà senza liti]; chi odia la loquacità, riduce i guai.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Chi domina la lingua, vivrà senza liti];</i>
-<pof>chi odia la loquacità, riduce i guai.</pof>') = text_plain;  -- Sir 19:6
+<po><i>[chi resiste ai piaceri, corona la propria vita.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20409 AND text = 'Chi si compiace del male, sarà condannato; [chi resiste ai piaceri, corona la propria vita.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chi si compiace del male, sarà condannato;</po>
+<po><i>[chi resiste ai piaceri, corona la propria vita.</i></po>') = text_plain;  -- Sir 19:5
+UPDATE "CEI2008" SET text = '<po><i>Chi domina la lingua, vivrà senza liti];</i></po>
+<po>chi odia la loquacità, riduce i guai.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20410 AND text = 'Chi domina la lingua, vivrà senza liti]; chi odia la loquacità, riduce i guai.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Chi domina la lingua, vivrà senza liti];</i></po>
+<po>chi odia la loquacità, riduce i guai.</po>') = text_plain;  -- Sir 19:6
 UPDATE "CEI2008" SET text = '<po>Non ripetere mai la parola udita</po>
 <po>e non ne avrai alcun danno.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20411 AND text = 'Non ripetere mai la parola udita e non ne avrai alcun danno.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non ripetere mai la parola udita</po>
 <po>e non ne avrai alcun danno.</po>') = text_plain;  -- Sir 19:7
@@ -42330,22 +42330,22 @@ UPDATE "CEI2008" SET text = '<po>C''è chi scivola, ma non di proposito;</po>
 <po>e chi non ha peccato con la sua lingua?</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20420 AND text = 'C''è chi scivola, ma non di proposito; e chi non ha peccato con la sua lingua?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>C''è chi scivola, ma non di proposito;</po>
 <po>e chi non ha peccato con la sua lingua?</po>') = text_plain;  -- Sir 19:16
 UPDATE "CEI2008" SET text = '<po>Chiedi conto al tuo prossimo, prima di minacciarlo;</po>
-<pol>da'' corso alla legge dell''Altissimo. [</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20421 AND text = 'Chiedi conto al tuo prossimo, prima di minacciarlo; da'' corso alla legge dell''Altissimo. [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chiedi conto al tuo prossimo, prima di minacciarlo;</po>
-<pol>da'' corso alla legge dell''Altissimo. [</pol>') = text_plain;  -- Sir 19:17
-UPDATE "CEI2008" SET text = '<i>Il timore del Signore è il principio dell''accoglienza,</i>
-<pof><i>la sapienza procura l''amore presso di lui.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20422 AND text = 'Il timore del Signore è il principio dell''accoglienza, la sapienza procura l''amore presso di lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il timore del Signore è il principio dell''accoglienza,</i>
-<pof><i>la sapienza procura l''amore presso di lui.</i></pof>') = text_plain;  -- Sir 19:18
-UPDATE "CEI2008" SET text = '<i>La conoscenza dei comandamenti del Signore è educazione alla vita,</i>
-<pof><i>chi fa ciò che gli è gradito raccoglie i frutti dell''albero dell''immortalità.]</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20423 AND text = 'La conoscenza dei comandamenti del Signore è educazione alla vita, chi fa ciò che gli è gradito raccoglie i frutti dell''albero dell''immortalità.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La conoscenza dei comandamenti del Signore è educazione alla vita,</i>
-<pof><i>chi fa ciò che gli è gradito raccoglie i frutti dell''albero dell''immortalità.]</i></pof>') = text_plain;  -- Sir 19:19
+<po>da'' corso alla legge dell''Altissimo. [</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20421 AND text = 'Chiedi conto al tuo prossimo, prima di minacciarlo; da'' corso alla legge dell''Altissimo. [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chiedi conto al tuo prossimo, prima di minacciarlo;</po>
+<po>da'' corso alla legge dell''Altissimo. [</po>') = text_plain;  -- Sir 19:17
+UPDATE "CEI2008" SET text = '<po><i>Il timore del Signore è il principio dell''accoglienza,</i></po>
+<po><i>la sapienza procura l''amore presso di lui.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20422 AND text = 'Il timore del Signore è il principio dell''accoglienza, la sapienza procura l''amore presso di lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il timore del Signore è il principio dell''accoglienza,</i></po>
+<po><i>la sapienza procura l''amore presso di lui.</i></po>') = text_plain;  -- Sir 19:18
+UPDATE "CEI2008" SET text = '<po><i>La conoscenza dei comandamenti del Signore è educazione alla vita,</i></po>
+<po><i>chi fa ciò che gli è gradito raccoglie i frutti dell''albero dell''immortalità.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20423 AND text = 'La conoscenza dei comandamenti del Signore è educazione alla vita, chi fa ciò che gli è gradito raccoglie i frutti dell''albero dell''immortalità.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La conoscenza dei comandamenti del Signore è educazione alla vita,</i></po>
+<po><i>chi fa ciò che gli è gradito raccoglie i frutti dell''albero dell''immortalità.]</i></po>') = text_plain;  -- Sir 19:19
 UPDATE "CEI2008" SET text = '<po>Ogni sapienza è timore del Signore</po>
 <po>e in ogni sapienza c''è la pratica della legge</po>
-<pol><i>[e la conoscenza della sua onnipotenza.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20424 AND text = 'Ogni sapienza è timore del Signore e in ogni sapienza c''è la pratica della legge [e la conoscenza della sua onnipotenza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Ogni sapienza è timore del Signore</po>
+<po><i>[e la conoscenza della sua onnipotenza.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20424 AND text = 'Ogni sapienza è timore del Signore e in ogni sapienza c''è la pratica della legge [e la conoscenza della sua onnipotenza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Ogni sapienza è timore del Signore</po>
 <po>e in ogni sapienza c''è la pratica della legge</po>
-<pol><i>[e la conoscenza della sua onnipotenza.</i></pol>') = text_plain;  -- Sir 19:20
-UPDATE "CEI2008" SET text = '<i>Il servo che dice al padrone: "Non farò ciò che ti piace",</i>
-<pof><i>anche se dopo lo fa, irrita colui che gli dà da mangiare].</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20425 AND text = 'Il servo che dice al padrone: "Non farò ciò che ti piace", anche se dopo lo fa, irrita colui che gli dà da mangiare].' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il servo che dice al padrone: "Non farò ciò che ti piace",</i>
-<pof><i>anche se dopo lo fa, irrita colui che gli dà da mangiare].</i></pof>') = text_plain;  -- Sir 19:21
+<po><i>[e la conoscenza della sua onnipotenza.</i></po>') = text_plain;  -- Sir 19:20
+UPDATE "CEI2008" SET text = '<po><i>Il servo che dice al padrone: "Non farò ciò che ti piace",</i></po>
+<po><i>anche se dopo lo fa, irrita colui che gli dà da mangiare].</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20425 AND text = 'Il servo che dice al padrone: "Non farò ciò che ti piace", anche se dopo lo fa, irrita colui che gli dà da mangiare].' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il servo che dice al padrone: "Non farò ciò che ti piace",</i></po>
+<po><i>anche se dopo lo fa, irrita colui che gli dà da mangiare].</i></po>') = text_plain;  -- Sir 19:21
 UPDATE "CEI2008" SET text = '<po>Non c''è sapienza nella conoscenza del male,</po>
 <po>non è mai prudenza il consiglio dei peccatori.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20426 AND text = 'Non c''è sapienza nella conoscenza del male, non è mai prudenza il consiglio dei peccatori.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non c''è sapienza nella conoscenza del male,</po>
 <po>non è mai prudenza il consiglio dei peccatori.</po>') = text_plain;  -- Sir 19:22
@@ -42586,14 +42586,14 @@ UPDATE "CEI2008" SET text = '<po>La figlia sfacciata disonora il padre e il mari
 <po>dall''uno e dall''altro sarà disprezzata.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20499 AND text = 'La figlia sfacciata disonora il padre e il marito, dall''uno e dall''altro sarà disprezzata.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>La figlia sfacciata disonora il padre e il marito,</po>
 <po>dall''uno e dall''altro sarà disprezzata.</po>') = text_plain;  -- Sir 22:5
 UPDATE "CEI2008" SET text = '<po>Un discorso inopportuno è come musica in caso di lutto,</po>
-<pol>ma frusta e correzione sono saggezza in ogni tempo. [</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20500 AND text = 'Un discorso inopportuno è come musica in caso di lutto, ma frusta e correzione sono saggezza in ogni tempo. [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Un discorso inopportuno è come musica in caso di lutto,</po>
-<pol>ma frusta e correzione sono saggezza in ogni tempo. [</pol>') = text_plain;  -- Sir 22:6
-UPDATE "CEI2008" SET text = '<i>I figli che hanno di che vivere con una vita onesta</i>
-<pof><i>fanno dimenticare l''umile origine dei loro genitori.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20501 AND text = 'I figli che hanno di che vivere con una vita onesta fanno dimenticare l''umile origine dei loro genitori.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>I figli che hanno di che vivere con una vita onesta</i>
-<pof><i>fanno dimenticare l''umile origine dei loro genitori.</i></pof>') = text_plain;  -- Sir 22:7
-UPDATE "CEI2008" SET text = '<i>I figli che millantano superbia e cattiva educazione</i>
-<pof><i>disonorano la nobiltà delle loro famiglie.]</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20502 AND text = 'I figli che millantano superbia e cattiva educazione disonorano la nobiltà delle loro famiglie.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>I figli che millantano superbia e cattiva educazione</i>
-<pof><i>disonorano la nobiltà delle loro famiglie.]</i></pof>') = text_plain;  -- Sir 22:8
+<po>ma frusta e correzione sono saggezza in ogni tempo. [</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20500 AND text = 'Un discorso inopportuno è come musica in caso di lutto, ma frusta e correzione sono saggezza in ogni tempo. [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Un discorso inopportuno è come musica in caso di lutto,</po>
+<po>ma frusta e correzione sono saggezza in ogni tempo. [</po>') = text_plain;  -- Sir 22:6
+UPDATE "CEI2008" SET text = '<po><i>I figli che hanno di che vivere con una vita onesta</i></po>
+<po><i>fanno dimenticare l''umile origine dei loro genitori.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20501 AND text = 'I figli che hanno di che vivere con una vita onesta fanno dimenticare l''umile origine dei loro genitori.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>I figli che hanno di che vivere con una vita onesta</i></po>
+<po><i>fanno dimenticare l''umile origine dei loro genitori.</i></po>') = text_plain;  -- Sir 22:7
+UPDATE "CEI2008" SET text = '<po><i>I figli che millantano superbia e cattiva educazione</i></po>
+<po><i>disonorano la nobiltà delle loro famiglie.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20502 AND text = 'I figli che millantano superbia e cattiva educazione disonorano la nobiltà delle loro famiglie.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>I figli che millantano superbia e cattiva educazione</i></po>
+<po><i>disonorano la nobiltà delle loro famiglie.]</i></po>') = text_plain;  -- Sir 22:8
 UPDATE "CEI2008" SET text = '<po>Chi ammaestra uno stolto è come uno che incolla cocci,</po>
 <po>[che sveglia un dormiglione da un sonno profondo.]</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20503 AND text = 'Chi ammaestra uno stolto è come uno che incolla cocci, [che sveglia un dormiglione da un sonno profondo.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Chi ammaestra uno stolto è come uno che incolla cocci,</po>
 <po>[che sveglia un dormiglione da un sonno profondo.]</po>') = text_plain;  -- Sir 22:9
@@ -42829,12 +42829,12 @@ UPDATE "CEI2008" SET text = '<po>Lascerà il suo ricordo come una maledizione,</
 <po>la sua infamia non sarà cancellata.</po>') = text_plain;  -- Sir 23:26
 UPDATE "CEI2008" SET text = '<po>I superstiti sapranno</po>
 <po>che nulla è meglio del timore del Signore,</po>
-<pol>nulla è più dolce dell''osservare i suoi comandamenti.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20548 AND text = 'I superstiti sapranno che nulla è meglio del timore del Signore, nulla è più dolce dell''osservare i suoi comandamenti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>I superstiti sapranno</po>
+<po>nulla è più dolce dell''osservare i suoi comandamenti.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20548 AND text = 'I superstiti sapranno che nulla è meglio del timore del Signore, nulla è più dolce dell''osservare i suoi comandamenti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>I superstiti sapranno</po>
 <po>che nulla è meglio del timore del Signore,</po>
-<pol>nulla è più dolce dell''osservare i suoi comandamenti.</pol>') = text_plain;  -- Sir 23:27
-UPDATE "CEI2008" SET text = '<i>Grande gloria è seguire Dio,</i>
-<pof><i>essere a lui graditi è lunga vita.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20549 AND text = 'Grande gloria è seguire Dio, essere a lui graditi è lunga vita.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Grande gloria è seguire Dio,</i>
-<pof><i>essere a lui graditi è lunga vita.</i></pof>') = text_plain;  -- Sir 23:28
+<po>nulla è più dolce dell''osservare i suoi comandamenti.</po>') = text_plain;  -- Sir 23:27
+UPDATE "CEI2008" SET text = '<po><i>Grande gloria è seguire Dio,</i></po>
+<pol><i>essere a lui graditi è lunga vita.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20549 AND text = 'Grande gloria è seguire Dio, essere a lui graditi è lunga vita.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Grande gloria è seguire Dio,</i></po>
+<pol><i>essere a lui graditi è lunga vita.</i></pol>') = text_plain;  -- Sir 23:28
 UPDATE "CEI2008" SET text = '<pof>La sapienza fa il proprio elogio,</pof>
 <po>in mezzo al suo popolo proclama la sua gloria.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20550 AND text = 'La sapienza fa il proprio elogio, in mezzo al suo popolo proclama la sua gloria.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>La sapienza fa il proprio elogio,</pof>
 <po>in mezzo al suo popolo proclama la sua gloria.</po>') = text_plain;  -- Sir 24:1
@@ -42896,13 +42896,13 @@ UPDATE "CEI2008" SET text = '<po>Come un terebinto io ho esteso i miei rami</po>
 <po>e i miei rami sono piacevoli e belli.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20565 AND text = 'Come un terebinto io ho esteso i miei rami e i miei rami sono piacevoli e belli.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Come un terebinto io ho esteso i miei rami</po>
 <po>e i miei rami sono piacevoli e belli.</po>') = text_plain;  -- Sir 24:16
 UPDATE "CEI2008" SET text = '<po>Io come vite ho prodotto splendidi germogli</po>
-<pol>e i miei fiori danno frutti di gloria e ricchezza.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20566 AND text = 'Io come vite ho prodotto splendidi germogli e i miei fiori danno frutti di gloria e ricchezza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Io come vite ho prodotto splendidi germogli</po>
-<pol>e i miei fiori danno frutti di gloria e ricchezza.</pol>') = text_plain;  -- Sir 24:17
-UPDATE "CEI2008" SET text = '<i>Io sono la madre del bell''amore e del timore,</i>
-<pof><i>della conoscenza e della santa speranza;</i></pof>
+<po>e i miei fiori danno frutti di gloria e ricchezza.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20566 AND text = 'Io come vite ho prodotto splendidi germogli e i miei fiori danno frutti di gloria e ricchezza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Io come vite ho prodotto splendidi germogli</po>
+<po>e i miei fiori danno frutti di gloria e ricchezza.</po>') = text_plain;  -- Sir 24:17
+UPDATE "CEI2008" SET text = '<po><i>Io sono la madre del bell''amore e del timore,</i></po>
+<po><i>della conoscenza e della santa speranza;</i></po>
 <po><i>[eterna, sono donata a tutti i miei figli,</i></po>
-<po><i>a coloro che sono scelti da lui.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20567 AND text = 'Io sono la madre del bell''amore e del timore, della conoscenza e della santa speranza; [eterna, sono donata a tutti i miei figli, a coloro che sono scelti da lui.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Io sono la madre del bell''amore e del timore,</i>
-<pof><i>della conoscenza e della santa speranza;</i></pof>
+<po><i>a coloro che sono scelti da lui.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20567 AND text = 'Io sono la madre del bell''amore e del timore, della conoscenza e della santa speranza; [eterna, sono donata a tutti i miei figli, a coloro che sono scelti da lui.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Io sono la madre del bell''amore e del timore,</i></po>
+<po><i>della conoscenza e della santa speranza;</i></po>
 <po><i>[eterna, sono donata a tutti i miei figli,</i></po>
 <po><i>a coloro che sono scelti da lui.]</i></po>') = text_plain;  -- Sir 24:18
 UPDATE "CEI2008" SET text = '<po>Avvicinatevi a me, voi che mi desiderate,</po>
@@ -42919,14 +42919,14 @@ UPDATE "CEI2008" SET text = '<po>Chi mi obbedisce non si vergognerà,</po>
 <po>chi compie le mie opere non peccherà*".</po>') = text_plain;  -- Sir 24:22
 UPDATE "CEI2008" SET text = '<po>Tutto questo è il libro dell''alleanza del Dio altissimo,</po>
 <po>la legge che Mosè ci ha prescritto,</po>
-<pol>eredità per le assemblee di Giacobbe. [</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20572 AND text = 'Tutto questo è il libro dell''alleanza del Dio altissimo, la legge che Mosè ci ha prescritto, eredità per le assemblee di Giacobbe. [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Tutto questo è il libro dell''alleanza del Dio altissimo,</po>
+<po>eredità per le assemblee di Giacobbe. [</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20572 AND text = 'Tutto questo è il libro dell''alleanza del Dio altissimo, la legge che Mosè ci ha prescritto, eredità per le assemblee di Giacobbe. [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Tutto questo è il libro dell''alleanza del Dio altissimo,</po>
 <po>la legge che Mosè ci ha prescritto,</po>
-<pol>eredità per le assemblee di Giacobbe. [</pol>') = text_plain;  -- Sir 24:23
-UPDATE "CEI2008" SET text = '<i>Non cessate di rafforzarvi nel Signore,</i>
-<pof><i>aderite a lui perché vi dia vigore.</i></pof>
+<po>eredità per le assemblee di Giacobbe. [</po>') = text_plain;  -- Sir 24:23
+UPDATE "CEI2008" SET text = '<po><i>Non cessate di rafforzarvi nel Signore,</i></po>
+<po><i>aderite a lui perché vi dia vigore.</i></po>
 <po><i>Il Signore onnipotente è l''unico Dio</i></po>
-<po><i>e non c''è altro salvatore al di fuori di lui.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20573 AND text = 'Non cessate di rafforzarvi nel Signore, aderite a lui perché vi dia vigore. Il Signore onnipotente è l''unico Dio e non c''è altro salvatore al di fuori di lui.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non cessate di rafforzarvi nel Signore,</i>
-<pof><i>aderite a lui perché vi dia vigore.</i></pof>
+<po><i>e non c''è altro salvatore al di fuori di lui.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20573 AND text = 'Non cessate di rafforzarvi nel Signore, aderite a lui perché vi dia vigore. Il Signore onnipotente è l''unico Dio e non c''è altro salvatore al di fuori di lui.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Non cessate di rafforzarvi nel Signore,</i></po>
+<po><i>aderite a lui perché vi dia vigore.</i></po>
 <po><i>Il Signore onnipotente è l''unico Dio</i></po>
 <po><i>e non c''è altro salvatore al di fuori di lui.]</i></po>') = text_plain;  -- Sir 24:24
 UPDATE "CEI2008" SET text = '<po>Essa trabocca di sapienza come il Pison</po>
@@ -43010,11 +43010,11 @@ UPDATE "CEI2008" SET text = '<po>quanto è grande chi ha trovato la sapienza,</p
 <po>ma nessuno supera chi teme il Signore!</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20593 AND text = 'quanto è grande chi ha trovato la sapienza, ma nessuno supera chi teme il Signore!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>quanto è grande chi ha trovato la sapienza,</po>
 <po>ma nessuno supera chi teme il Signore!</po>') = text_plain;  -- Sir 25:10
 UPDATE "CEI2008" SET text = '<po>Il timore del Signore vale più di ogni cosa;</po>
-<pol>chi lo possiede a chi potrà essere paragonato?</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20594 AND text = 'Il timore del Signore vale più di ogni cosa; chi lo possiede a chi potrà essere paragonato?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Il timore del Signore vale più di ogni cosa;</po>
-<pol>chi lo possiede a chi potrà essere paragonato?</pol>') = text_plain;  -- Sir 25:11
-UPDATE "CEI2008" SET text = '<i>Il timore del Signore è inizio di amore per lui,</i>
-<pof><i>la fede è inizio di adesione a lui.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20595 AND text = 'Il timore del Signore è inizio di amore per lui, la fede è inizio di adesione a lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il timore del Signore è inizio di amore per lui,</i>
-<pof><i>la fede è inizio di adesione a lui.</i></pof>') = text_plain;  -- Sir 25:12
+<po>chi lo possiede a chi potrà essere paragonato?</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20594 AND text = 'Il timore del Signore vale più di ogni cosa; chi lo possiede a chi potrà essere paragonato?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Il timore del Signore vale più di ogni cosa;</po>
+<po>chi lo possiede a chi potrà essere paragonato?</po>') = text_plain;  -- Sir 25:11
+UPDATE "CEI2008" SET text = '<po><i>Il timore del Signore è inizio di amore per lui,</i></po>
+<po><i>la fede è inizio di adesione a lui.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20595 AND text = 'Il timore del Signore è inizio di amore per lui, la fede è inizio di adesione a lui.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il timore del Signore è inizio di amore per lui,</i></po>
+<po><i>la fede è inizio di adesione a lui.</i></po>') = text_plain;  -- Sir 25:12
 UPDATE "CEI2008" SET text = '<po>*Qualunque ferita, ma non la ferita del cuore,</po>
 <po>qualunque malvagità, ma non la malvagità di una donna;</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20596 AND text = '*Qualunque ferita, ma non la ferita del cuore, qualunque malvagità, ma non la malvagità di una donna;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>*Qualunque ferita, ma non la ferita del cuore,</po>
 <po>qualunque malvagità, ma non la malvagità di una donna;</po>') = text_plain;  -- Sir 25:13
@@ -43121,41 +43121,41 @@ UPDATE "CEI2008" SET text = '<po>Lampada che brilla sul sacro candelabro,</po>
 <po>così è la bellezza di un volto su una robusta statura.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20626 AND text = 'Lampada che brilla sul sacro candelabro, così è la bellezza di un volto su una robusta statura.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Lampada che brilla sul sacro candelabro,</po>
 <po>così è la bellezza di un volto su una robusta statura.</po>') = text_plain;  -- Sir 26:17
 UPDATE "CEI2008" SET text = '<po>Colonne d''oro su base d''argento</po>
-<pol>sono gambe graziose su solidi piedi* [</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20627 AND text = 'Colonne d''oro su base d''argento sono gambe graziose su solidi piedi* [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Colonne d''oro su base d''argento</po>
-<pol>sono gambe graziose su solidi piedi* [</pol>') = text_plain;  -- Sir 26:18
-UPDATE "CEI2008" SET text = '<i>Figlio, conserva sano il fiore dell''età</i>
-<pof><i>e non affidare la tua forza a donne straniere.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20628 AND text = 'Figlio, conserva sano il fiore dell''età e non affidare la tua forza a donne straniere.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Figlio, conserva sano il fiore dell''età</i>
-<pof><i>e non affidare la tua forza a donne straniere.</i></pof>') = text_plain;  -- Sir 26:19
-UPDATE "CEI2008" SET text = '<i>Cerca nella pianura un campo fertile</i>
-<pof><i>per gettarvi il tuo seme, attendendo la progenie.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20629 AND text = 'Cerca nella pianura un campo fertile per gettarvi il tuo seme, attendendo la progenie.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Cerca nella pianura un campo fertile</i>
-<pof><i>per gettarvi il tuo seme, attendendo la progenie.</i></pof>') = text_plain;  -- Sir 26:20
-UPDATE "CEI2008" SET text = '<i>Così i frutti che lascerai,</i>
-<pof><i>fieri della loro nobiltà, prospereranno.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20630 AND text = 'Così i frutti che lascerai, fieri della loro nobiltà, prospereranno.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Così i frutti che lascerai,</i>
-<pof><i>fieri della loro nobiltà, prospereranno.</i></pof>') = text_plain;  -- Sir 26:21
-UPDATE "CEI2008" SET text = '<i>La donna pagata vale uno sputo,</i>
-<pof><i>se è sposata, è torre di morte per quanti la usano.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20631 AND text = 'La donna pagata vale uno sputo, se è sposata, è torre di morte per quanti la usano.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La donna pagata vale uno sputo,</i>
-<pof><i>se è sposata, è torre di morte per quanti la usano.</i></pof>') = text_plain;  -- Sir 26:22
-UPDATE "CEI2008" SET text = '<i>La moglie empia l''avrà in sorte il peccatore,</i>
-<pof><i>quella pia sarà data a chi teme il Signore.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20632 AND text = 'La moglie empia l''avrà in sorte il peccatore, quella pia sarà data a chi teme il Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La moglie empia l''avrà in sorte il peccatore,</i>
-<pof><i>quella pia sarà data a chi teme il Signore.</i></pof>') = text_plain;  -- Sir 26:23
-UPDATE "CEI2008" SET text = '<i>La donna impudica cerca sempre il disonore,</i>
-<pof><i>una figlia pudica è riservata anche con il marito.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20633 AND text = 'La donna impudica cerca sempre il disonore, una figlia pudica è riservata anche con il marito.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La donna impudica cerca sempre il disonore,</i>
-<pof><i>una figlia pudica è riservata anche con il marito.</i></pof>') = text_plain;  -- Sir 26:24
-UPDATE "CEI2008" SET text = '<i>La donna sfrontata viene stimata come un cane,</i>
-<pof><i>quella che ha pudore teme il Signore.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20634 AND text = 'La donna sfrontata viene stimata come un cane, quella che ha pudore teme il Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La donna sfrontata viene stimata come un cane,</i>
-<pof><i>quella che ha pudore teme il Signore.</i></pof>') = text_plain;  -- Sir 26:25
-UPDATE "CEI2008" SET text = '<i>La donna che onora il marito a tutti appare saggia,</i>
-<pof><i>quella orgogliosa che lo umilia sarà empia per tutti.</i></pof>
+<po>sono gambe graziose su solidi piedi* [</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20627 AND text = 'Colonne d''oro su base d''argento sono gambe graziose su solidi piedi* [' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Colonne d''oro su base d''argento</po>
+<po>sono gambe graziose su solidi piedi* [</po>') = text_plain;  -- Sir 26:18
+UPDATE "CEI2008" SET text = '<po><i>Figlio, conserva sano il fiore dell''età</i></po>
+<po><i>e non affidare la tua forza a donne straniere.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20628 AND text = 'Figlio, conserva sano il fiore dell''età e non affidare la tua forza a donne straniere.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Figlio, conserva sano il fiore dell''età</i></po>
+<po><i>e non affidare la tua forza a donne straniere.</i></po>') = text_plain;  -- Sir 26:19
+UPDATE "CEI2008" SET text = '<po><i>Cerca nella pianura un campo fertile</i></po>
+<po><i>per gettarvi il tuo seme, attendendo la progenie.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20629 AND text = 'Cerca nella pianura un campo fertile per gettarvi il tuo seme, attendendo la progenie.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Cerca nella pianura un campo fertile</i></po>
+<po><i>per gettarvi il tuo seme, attendendo la progenie.</i></po>') = text_plain;  -- Sir 26:20
+UPDATE "CEI2008" SET text = '<po><i>Così i frutti che lascerai,</i></po>
+<po><i>fieri della loro nobiltà, prospereranno.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20630 AND text = 'Così i frutti che lascerai, fieri della loro nobiltà, prospereranno.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Così i frutti che lascerai,</i></po>
+<po><i>fieri della loro nobiltà, prospereranno.</i></po>') = text_plain;  -- Sir 26:21
+UPDATE "CEI2008" SET text = '<po><i>La donna pagata vale uno sputo,</i></po>
+<po><i>se è sposata, è torre di morte per quanti la usano.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20631 AND text = 'La donna pagata vale uno sputo, se è sposata, è torre di morte per quanti la usano.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La donna pagata vale uno sputo,</i></po>
+<po><i>se è sposata, è torre di morte per quanti la usano.</i></po>') = text_plain;  -- Sir 26:22
+UPDATE "CEI2008" SET text = '<po><i>La moglie empia l''avrà in sorte il peccatore,</i></po>
+<po><i>quella pia sarà data a chi teme il Signore.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20632 AND text = 'La moglie empia l''avrà in sorte il peccatore, quella pia sarà data a chi teme il Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La moglie empia l''avrà in sorte il peccatore,</i></po>
+<po><i>quella pia sarà data a chi teme il Signore.</i></po>') = text_plain;  -- Sir 26:23
+UPDATE "CEI2008" SET text = '<po><i>La donna impudica cerca sempre il disonore,</i></po>
+<po><i>una figlia pudica è riservata anche con il marito.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20633 AND text = 'La donna impudica cerca sempre il disonore, una figlia pudica è riservata anche con il marito.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La donna impudica cerca sempre il disonore,</i></po>
+<po><i>una figlia pudica è riservata anche con il marito.</i></po>') = text_plain;  -- Sir 26:24
+UPDATE "CEI2008" SET text = '<po><i>La donna sfrontata viene stimata come un cane,</i></po>
+<po><i>quella che ha pudore teme il Signore.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20634 AND text = 'La donna sfrontata viene stimata come un cane, quella che ha pudore teme il Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La donna sfrontata viene stimata come un cane,</i></po>
+<po><i>quella che ha pudore teme il Signore.</i></po>') = text_plain;  -- Sir 26:25
+UPDATE "CEI2008" SET text = '<po><i>La donna che onora il marito a tutti appare saggia,</i></po>
+<po><i>quella orgogliosa che lo umilia sarà empia per tutti.</i></po>
 <po><i>Felice il marito di una brava moglie,</i></po>
-<pol><i>il numero dei suoi giorni sarà raddoppiato.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20635 AND text = 'La donna che onora il marito a tutti appare saggia, quella orgogliosa che lo umilia sarà empia per tutti. Felice il marito di una brava moglie, il numero dei suoi giorni sarà raddoppiato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La donna che onora il marito a tutti appare saggia,</i>
-<pof><i>quella orgogliosa che lo umilia sarà empia per tutti.</i></pof>
+<po><i>il numero dei suoi giorni sarà raddoppiato.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20635 AND text = 'La donna che onora il marito a tutti appare saggia, quella orgogliosa che lo umilia sarà empia per tutti. Felice il marito di una brava moglie, il numero dei suoi giorni sarà raddoppiato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La donna che onora il marito a tutti appare saggia,</i></po>
+<po><i>quella orgogliosa che lo umilia sarà empia per tutti.</i></po>
 <po><i>Felice il marito di una brava moglie,</i></po>
-<pol><i>il numero dei suoi giorni sarà raddoppiato.</i></pol>') = text_plain;  -- Sir 26:26
-UPDATE "CEI2008" SET text = '<i>La donna che grida ed è chiacchierona</i>
-<pof><i>è come tromba di guerra che suona la carica.</i></pof>
+<po><i>il numero dei suoi giorni sarà raddoppiato.</i></po>') = text_plain;  -- Sir 26:26
+UPDATE "CEI2008" SET text = '<po><i>La donna che grida ed è chiacchierona</i></po>
+<po><i>è come tromba di guerra che suona la carica.</i></po>
 <po><i>L''uomo che si trova in simili condizioni</i></po>
-<po><i>passa la vita tra rumori di guerra.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20636 AND text = 'La donna che grida ed è chiacchierona è come tromba di guerra che suona la carica. L''uomo che si trova in simili condizioni passa la vita tra rumori di guerra.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La donna che grida ed è chiacchierona</i>
-<pof><i>è come tromba di guerra che suona la carica.</i></pof>
+<po><i>passa la vita tra rumori di guerra.]</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20636 AND text = 'La donna che grida ed è chiacchierona è come tromba di guerra che suona la carica. L''uomo che si trova in simili condizioni passa la vita tra rumori di guerra.]' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La donna che grida ed è chiacchierona</i></po>
+<po><i>è come tromba di guerra che suona la carica.</i></po>
 <po><i>L''uomo che si trova in simili condizioni</i></po>
 <po><i>passa la vita tra rumori di guerra.]</i></po>') = text_plain;  -- Sir 26:27
 UPDATE "CEI2008" SET text = '<po>Due cose rattristano il mio cuore,</po>
@@ -43487,13 +43487,13 @@ UPDATE "CEI2008" SET text = '<po>Non ridere con lui per non doverti rattristare,
 <po>e non debba alla fine digrignare i denti.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20732 AND text = 'Non ridere con lui per non doverti rattristare, e non debba alla fine digrignare i denti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non ridere con lui per non doverti rattristare,</po>
 <po>e non debba alla fine digrignare i denti.</po>') = text_plain;  -- Sir 30:10
 UPDATE "CEI2008" SET text = '<po>Non concedergli libertà in gioventù,</po>
-<pol><i>non prendere alla leggera i suoi errori.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20733 AND text = 'Non concedergli libertà in gioventù, non prendere alla leggera i suoi errori.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non concedergli libertà in gioventù,</po>
-<pol><i>non prendere alla leggera i suoi errori.</i></pol>') = text_plain;  -- Sir 30:11
-UPDATE "CEI2008" SET text = '<i>Piegagli il collo quando è giovane,</i>
-<pof>e battigli i fianchi finché è fanciullo,</pof>
+<po><i>non prendere alla leggera i suoi errori.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20733 AND text = 'Non concedergli libertà in gioventù, non prendere alla leggera i suoi errori.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Non concedergli libertà in gioventù,</po>
+<po><i>non prendere alla leggera i suoi errori.</i></po>') = text_plain;  -- Sir 30:11
+UPDATE "CEI2008" SET text = '<po><i>Piegagli il collo quando è giovane,</i></po>
+<po>e battigli i fianchi finché è fanciullo,</po>
 <po>perché poi intestardito non ti disobbedisca</po>
-<po><i>e tu ne abbia un profondo dolore.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20734 AND text = 'Piegagli il collo quando è giovane, e battigli i fianchi finché è fanciullo, perché poi intestardito non ti disobbedisca e tu ne abbia un profondo dolore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Piegagli il collo quando è giovane,</i>
-<pof>e battigli i fianchi finché è fanciullo,</pof>
+<po><i>e tu ne abbia un profondo dolore.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 20734 AND text = 'Piegagli il collo quando è giovane, e battigli i fianchi finché è fanciullo, perché poi intestardito non ti disobbedisca e tu ne abbia un profondo dolore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Piegagli il collo quando è giovane,</i></po>
+<po>e battigli i fianchi finché è fanciullo,</po>
 <po>perché poi intestardito non ti disobbedisca</po>
 <po><i>e tu ne abbia un profondo dolore.</i></po>') = text_plain;  -- Sir 30:12
 UPDATE "CEI2008" SET text = '<po>Educa tuo figlio e prenditi cura di lui,</po>
@@ -44627,12 +44627,12 @@ UPDATE "CEI2008" SET text = '<po>Contro un padre empio imprecano i figli,</po>
 <po>perché a causa sua sono disonorati.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 21057 AND text = 'Contro un padre empio imprecano i figli, perché a causa sua sono disonorati.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Contro un padre empio imprecano i figli,</po>
 <po>perché a causa sua sono disonorati.</po>') = text_plain;  -- Sir 41:7
 UPDATE "CEI2008" SET text = '<po>Guai a voi, uomini empi,</po>
-<pol>che avete abbandonato la legge dell''Altissimo!</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 21058 AND text = 'Guai a voi, uomini empi, che avete abbandonato la legge dell''Altissimo!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Guai a voi, uomini empi,</po>
-<pol>che avete abbandonato la legge dell''Altissimo!</pol>') = text_plain;  -- Sir 41:8
-UPDATE "CEI2008" SET text = '<i>[Se vi moltiplicate, è per la rovina,]</i>
-<pof>se nascete, nascete per la maledizione,</pof>
-<po>e se morite, la maledizione sarà la vostra sorte.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 21059 AND text = '[Se vi moltiplicate, è per la rovina,] se nascete, nascete per la maledizione, e se morite, la maledizione sarà la vostra sorte.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>[Se vi moltiplicate, è per la rovina,]</i>
-<pof>se nascete, nascete per la maledizione,</pof>
+<po>che avete abbandonato la legge dell''Altissimo!</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 21058 AND text = 'Guai a voi, uomini empi, che avete abbandonato la legge dell''Altissimo!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Guai a voi, uomini empi,</po>
+<po>che avete abbandonato la legge dell''Altissimo!</po>') = text_plain;  -- Sir 41:8
+UPDATE "CEI2008" SET text = '<po><i>[Se vi moltiplicate, è per la rovina,]</i></po>
+<po>se nascete, nascete per la maledizione,</po>
+<po>e se morite, la maledizione sarà la vostra sorte.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 21059 AND text = '[Se vi moltiplicate, è per la rovina,] se nascete, nascete per la maledizione, e se morite, la maledizione sarà la vostra sorte.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>[Se vi moltiplicate, è per la rovina,]</i></po>
+<po>se nascete, nascete per la maledizione,</po>
 <po>e se morite, la maledizione sarà la vostra sorte.</po>') = text_plain;  -- Sir 41:9
 UPDATE "CEI2008" SET text = '<po>Quanto è dalla terra alla terra ritornerà,</po>
 <pol>così gli empi passano dalla maledizione alla rovina.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 21060 AND text = 'Quanto è dalla terra alla terra ritornerà, così gli empi passano dalla maledizione alla rovina.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>Quanto è dalla terra alla terra ritornerà,</po>
@@ -46858,9 +46858,9 @@ UPDATE "CEI2008" SET text = 'il primo <i>uomo,</i> Adamo, <i>divenne un essere v
 UPDATE "CEI2008" SET text = 'Quando poi questo corpo corruttibile si sarà vestito d''incorruttibilità e questo corpo mortale d''immortalità, si compirà la parola della Scrittura:
 <pof><i>La morte è stata inghiottita nella vittoria.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32826 AND text = 'Quando poi questo corpo corruttibile si sarà vestito d''incorruttibilità e questo corpo mortale d''immortalità, si compirà la parola della Scrittura: La morte è stata inghiottita nella vittoria.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Quando poi questo corpo corruttibile si sarà vestito d''incorruttibilità e questo corpo mortale d''immortalità, si compirà la parola della Scrittura:
 <pof><i>La morte è stata inghiottita nella vittoria.</i></pof>') = text_plain;  -- 1Cor 15:54
-UPDATE "CEI2008" SET text = '<i>Dov''è, o morte, la tua vittoria?</i>
-<pof><i>Dov''è, o morte, il tuo pungiglione?</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32827 AND text = 'Dov''è, o morte, la tua vittoria? Dov''è, o morte, il tuo pungiglione?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Dov''è, o morte, la tua vittoria?</i>
-<pof><i>Dov''è, o morte, il tuo pungiglione?</i></pof>') = text_plain;  -- 1Cor 15:55
+UPDATE "CEI2008" SET text = '<po><i>Dov''è, o morte, la tua vittoria?</i></po>
+<pol><i>Dov''è, o morte, il tuo pungiglione?</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32827 AND text = 'Dov''è, o morte, la tua vittoria? Dov''è, o morte, il tuo pungiglione?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Dov''è, o morte, la tua vittoria?</i></po>
+<pol><i>Dov''è, o morte, il tuo pungiglione?</i></pol>') = text_plain;  -- 1Cor 15:55
 UPDATE "CEI2008" SET text = 'Se qualcuno non ama il Signore, sia anàtema! <i>Maràna tha </i>!', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32852 AND text = 'Se qualcuno non ama il Signore, sia anàtema! Maràna tha !' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Se qualcuno non ama il Signore, sia anàtema! <i>Maràna tha </i>!') = text_plain;  -- 1Cor 16:22
 UPDATE "CEI2008" SET text = '<pof>Scrivo a voi, figlioli,</pof>
 <po>perché vi sono stati perdonati i peccati in virtù del suo nome.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34615 AND text = 'Scrivo a voi, figlioli, perché vi sono stati perdonati i peccati in virtù del suo nome.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Scrivo a voi, figlioli,</pof>
@@ -46891,12 +46891,12 @@ UPDATE "CEI2008" SET text = 'Poiché sta scritto: <i>Sarete santi, perché io so
 UPDATE "CEI2008" SET text = '<pof>Perché</pof>
 <pof><i>ogni carne è come l''erba</i></pof>
 <po><i>e tutta la</i> sua <i>gloria come un fiore di campo.</i></po>
-<pol><i>L''erba inaridisce, i fiori cadono,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34451 AND text = 'Perché ogni carne è come l''erba e tutta la sua gloria come un fiore di campo. L''erba inaridisce, i fiori cadono,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Perché</pof>
+<po><i>L''erba inaridisce, i fiori cadono,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34451 AND text = 'Perché ogni carne è come l''erba e tutta la sua gloria come un fiore di campo. L''erba inaridisce, i fiori cadono,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Perché</pof>
 <pof><i>ogni carne è come l''erba</i></pof>
 <po><i>e tutta la</i> sua <i>gloria come un fiore di campo.</i></po>
-<pol><i>L''erba inaridisce, i fiori cadono,</i></pol>') = text_plain;  -- 1Pt 1:24
-UPDATE "CEI2008" SET text = '<i>ma la parola del Signore rimane in eterno.</i>
-<pof>E questa è la parola del Vangelo che vi è stato annunciato.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34452 AND text = 'ma la parola del Signore rimane in eterno. E questa è la parola del Vangelo che vi è stato annunciato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>ma la parola del Signore rimane in eterno.</i>
+<po><i>L''erba inaridisce, i fiori cadono,</i></po>') = text_plain;  -- 1Pt 1:24
+UPDATE "CEI2008" SET text = '<pol><i>ma la parola del Signore rimane in eterno.</i></pol>
+<pof>E questa è la parola del Vangelo che vi è stato annunciato.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34452 AND text = 'ma la parola del Signore rimane in eterno. E questa è la parola del Vangelo che vi è stato annunciato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>ma la parola del Signore rimane in eterno.</i></pol>
 <pof>E questa è la parola del Vangelo che vi è stato annunciato.</pof>') = text_plain;  -- 1Pt 1:25
 UPDATE "CEI2008" SET text = 'Si legge infatti nella Scrittura:
 <pof><i>Ecco, io pongo in Sion</i></pof>
@@ -46949,17 +46949,17 @@ UPDATE "CEI2008" SET text = '<po>Eravate <i>erranti come pecore </i>,</po>
 UPDATE "CEI2008" SET text = '<pof><i>Chi</i> infatti <i>vuole amare la vita</i></pof>
 <po><i>e vedere giorni felici</i></po>
 <po><i>trattenga la lingua dal male</i></po>
-<pol><i>e le labbra da parole d''inganno,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34487 AND text = 'Chi infatti vuole amare la vita e vedere giorni felici trattenga la lingua dal male e le labbra da parole d''inganno,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Chi</i> infatti <i>vuole amare la vita</i></pof>
+<po><i>e le labbra da parole d''inganno,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34487 AND text = 'Chi infatti vuole amare la vita e vedere giorni felici trattenga la lingua dal male e le labbra da parole d''inganno,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Chi</i> infatti <i>vuole amare la vita</i></pof>
 <po><i>e vedere giorni felici</i></po>
 <po><i>trattenga la lingua dal male</i></po>
-<pol><i>e le labbra da parole d''inganno,</i></pol>') = text_plain;  -- 1Pt 3:10
-UPDATE "CEI2008" SET text = '<i>eviti il male e faccia il bene,</i>
-<pof><i>cerchi la pace e la segua,</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34488 AND text = 'eviti il male e faccia il bene, cerchi la pace e la segua,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>eviti il male e faccia il bene,</i>
-<pof><i>cerchi la pace e la segua,</i></pof>') = text_plain;  -- 1Pt 3:11
-UPDATE "CEI2008" SET text = '<i>perché gli occhi del Signore sono sopra i giusti</i>
-<pof><i>e le sue orecchie sono attente alle loro preghiere;</i></pof>
-<pol><i>ma il volto del Signore è contro coloro che fanno il male</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34489 AND text = 'perché gli occhi del Signore sono sopra i giusti e le sue orecchie sono attente alle loro preghiere; ma il volto del Signore è contro coloro che fanno il male.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>perché gli occhi del Signore sono sopra i giusti</i>
-<pof><i>e le sue orecchie sono attente alle loro preghiere;</i></pof>
+<po><i>e le labbra da parole d''inganno,</i></po>') = text_plain;  -- 1Pt 3:10
+UPDATE "CEI2008" SET text = '<po><i>eviti il male e faccia il bene,</i></po>
+<po><i>cerchi la pace e la segua,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34488 AND text = 'eviti il male e faccia il bene, cerchi la pace e la segua,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>eviti il male e faccia il bene,</i></po>
+<po><i>cerchi la pace e la segua,</i></po>') = text_plain;  -- 1Pt 3:11
+UPDATE "CEI2008" SET text = '<po><i>perché gli occhi del Signore sono sopra i giusti</i></po>
+<po><i>e le sue orecchie sono attente alle loro preghiere;</i></po>
+<pol><i>ma il volto del Signore è contro coloro che fanno il male</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34489 AND text = 'perché gli occhi del Signore sono sopra i giusti e le sue orecchie sono attente alle loro preghiere; ma il volto del Signore è contro coloro che fanno il male.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>perché gli occhi del Signore sono sopra i giusti</i></po>
+<po><i>e le sue orecchie sono attente alle loro preghiere;</i></po>
 <pol><i>ma il volto del Signore è contro coloro che fanno il male</i>.</pol>') = text_plain;  -- 1Pt 3:12
 UPDATE "CEI2008" SET text = 'Se poi doveste soffrire per la giustizia, beati voi! <i>Non sgomentatevi per paura di loro e non turbatevi,</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34491 AND text = 'Se poi doveste soffrire per la giustizia, beati voi! Non sgomentatevi per paura di loro e non turbatevi,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Se poi doveste soffrire per la giustizia, beati voi! <i>Non sgomentatevi per paura di loro e non turbatevi,</i>') = text_plain;  -- 1Pt 3:14
 UPDATE "CEI2008" SET text = '<i>ma adorate il Signore </i>, Cristo, nei vostri cuori, pronti sempre a rispondere a chiunque vi domandi ragione della speranza che è in voi.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34492 AND text = 'ma adorate il Signore , Cristo, nei vostri cuori, pronti sempre a rispondere a chiunque vi domandi ragione della speranza che è in voi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>ma adorate il Signore </i>, Cristo, nei vostri cuori, pronti sempre a rispondere a chiunque vi domandi ragione della speranza che è in voi.') = text_plain;  -- 1Pt 3:15
@@ -47109,9 +47109,9 @@ UPDATE "CEI2008" SET text = 'All''angelo della Chiesa che è a Tiàtira scrivi:
 UPDATE "CEI2008" SET text = '<pof>Al vincitore che custodisce sino alla fine le mie opere</pof>
 <pof>darò autorità sopra le nazioni:</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34797 AND text = 'Al vincitore che custodisce sino alla fine le mie opere darò autorità sopra le nazioni:' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Al vincitore che custodisce sino alla fine le mie opere</pof>
 <pof>darò autorità sopra le nazioni:</pof>') = text_plain;  -- Ap 2:26
-UPDATE "CEI2008" SET text = '<i>le governerà con scettro di ferro,</i>
-<pof><i>come vasi di argilla si frantumeranno,</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34798 AND text = 'le governerà con scettro di ferro, come vasi di argilla si frantumeranno,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>le governerà con scettro di ferro,</i>
-<pof><i>come vasi di argilla si frantumeranno,</i></pof>') = text_plain;  -- Ap 2:27
+UPDATE "CEI2008" SET text = '<po><i>le governerà con scettro di ferro,</i></po>
+<pol><i>come vasi di argilla si frantumeranno,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34798 AND text = 'le governerà con scettro di ferro, come vasi di argilla si frantumeranno,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>le governerà con scettro di ferro,</i></po>
+<pol><i>come vasi di argilla si frantumeranno,</i></pol>') = text_plain;  -- Ap 2:27
 UPDATE "CEI2008" SET text = 'All''angelo della Chiesa che è a Sardi scrivi:
 <pof>"Così parla Colui che possiede i sette spiriti di Dio e le sette stelle. Conosco le tue opere; ti si crede vivo, e sei morto.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34801 AND text = 'All''angelo della Chiesa che è a Sardi scrivi: "Così parla Colui che possiede i sette spiriti di Dio e le sette stelle. Conosco le tue opere; ti si crede vivo, e sei morto.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('All''angelo della Chiesa che è a Sardi scrivi:
 <pof>"Così parla Colui che possiede i sette spiriti di Dio e le sette stelle. Conosco le tue opere; ti si crede vivo, e sei morto.</pof>') = text_plain;  -- Ap 3:1
@@ -47316,18 +47316,18 @@ UPDATE "CEI2008" SET text = 'cantano il canto di Mosè, il servo di Dio, e il ca
 <pof>" <i>Grandi</i> e <i>mirabili sono le tue opere,</i></pof>
 <po><i>Signore Dio onnipotente;</i></po>
 <po><i>giuste e vere le tue vie,</i></po>
-<pol><i>Re delle genti!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 35004 AND text = 'cantano il canto di Mosè, il servo di Dio, e il canto dell''Agnello: " Grandi e mirabili sono le tue opere, Signore Dio onnipotente; giuste e vere le tue vie, Re delle genti!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('cantano il canto di Mosè, il servo di Dio, e il canto dell''Agnello:
+<po><i>Re delle genti!</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 35004 AND text = 'cantano il canto di Mosè, il servo di Dio, e il canto dell''Agnello: " Grandi e mirabili sono le tue opere, Signore Dio onnipotente; giuste e vere le tue vie, Re delle genti!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('cantano il canto di Mosè, il servo di Dio, e il canto dell''Agnello:
 <pof>" <i>Grandi</i> e <i>mirabili sono le tue opere,</i></pof>
 <po><i>Signore Dio onnipotente;</i></po>
 <po><i>giuste e vere le tue vie,</i></po>
-<pol><i>Re delle genti!</i></pol>') = text_plain;  -- Ap 15:3
-UPDATE "CEI2008" SET text = '<i>O Signore, chi non temerà</i>
-<pof><i>e non darà gloria al tuo nome?</i></pof>
+<po><i>Re delle genti!</i></po>') = text_plain;  -- Ap 15:3
+UPDATE "CEI2008" SET text = '<po><i>O Signore, chi non temerà</i></po>
+<po><i>e non darà gloria al tuo nome?</i></po>
 <po>Poiché tu solo sei santo,</po>
 <po>e <i>tutte le genti verranno</i></po>
 <po><i>e si prostreranno davanti a te,</i></po>
-<pol>perché i tuoi giudizi furono manifestati".</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 35415 AND text = 'O Signore, chi non temerà e non darà gloria al tuo nome? Poiché tu solo sei santo, e tutte le genti verranno e si prostreranno davanti a te, perché i tuoi giudizi furono manifestati".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>O Signore, chi non temerà</i>
-<pof><i>e non darà gloria al tuo nome?</i></pof>
+<pol>perché i tuoi giudizi furono manifestati".</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 35415 AND text = 'O Signore, chi non temerà e non darà gloria al tuo nome? Poiché tu solo sei santo, e tutte le genti verranno e si prostreranno davanti a te, perché i tuoi giudizi furono manifestati".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>O Signore, chi non temerà</i></po>
+<po><i>e non darà gloria al tuo nome?</i></po>
 <po>Poiché tu solo sei santo,</po>
 <po>e <i>tutte le genti verranno</i></po>
 <po><i>e si prostreranno davanti a te,</i></po>
@@ -47627,26 +47627,26 @@ UPDATE "CEI2008" SET text = '<pof><i>Avverrà </i>: negli ultimi giorni - dice D
 <po><i>su tutti effonderò il mio Spirito;</i></po>
 <po><i>i vostri figli e le vostre figlie profeteranno </i>,</po>
 <po><i>i vostri giovani avranno visioni</i></po>
-<pol><i>e i vostri anziani faranno sogni</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31021 AND text = 'Avverrà : negli ultimi giorni - dice Dio - su tutti effonderò il mio Spirito; i vostri figli e le vostre figlie profeteranno , i vostri giovani avranno visioni e i vostri anziani faranno sogni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Avverrà </i>: negli ultimi giorni - dice Dio -</pof>
+<po><i>e i vostri anziani faranno sogni</i>.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31021 AND text = 'Avverrà : negli ultimi giorni - dice Dio - su tutti effonderò il mio Spirito; i vostri figli e le vostre figlie profeteranno , i vostri giovani avranno visioni e i vostri anziani faranno sogni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Avverrà </i>: negli ultimi giorni - dice Dio -</pof>
 <po><i>su tutti effonderò il mio Spirito;</i></po>
 <po><i>i vostri figli e le vostre figlie profeteranno </i>,</po>
 <po><i>i vostri giovani avranno visioni</i></po>
-<pol><i>e i vostri anziani faranno sogni</i>.</pol>') = text_plain;  -- At 2:17
-UPDATE "CEI2008" SET text = '<i>E anche sui miei servi e sulle mie serve</i>
-<pof><i>in quei giorni effonderò il mio Spirito</i></pof>
-<po>ed essi profeteranno.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31022 AND text = 'E anche sui miei servi e sulle mie serve in quei giorni effonderò il mio Spirito ed essi profeteranno.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>E anche sui miei servi e sulle mie serve</i>
-<pof><i>in quei giorni effonderò il mio Spirito</i></pof>
+<po><i>e i vostri anziani faranno sogni</i>.</po>') = text_plain;  -- At 2:17
+UPDATE "CEI2008" SET text = '<po><i>E anche sui miei servi e sulle mie serve</i></po>
+<po><i>in quei giorni effonderò il mio Spirito</i></po>
+<po>ed essi profeteranno.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31022 AND text = 'E anche sui miei servi e sulle mie serve in quei giorni effonderò il mio Spirito ed essi profeteranno.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>E anche sui miei servi e sulle mie serve</i></po>
+<po><i>in quei giorni effonderò il mio Spirito</i></po>
 <po>ed essi profeteranno.</po>') = text_plain;  -- At 2:18
 UPDATE "CEI2008" SET text = '<po><i>Farò prodigi</i> lassù <i>nel cielo</i></po>
 <po><i>e</i> segni quaggiù <i>sulla terra,</i></po>
-<pol><i>sangue, fuoco e nuvole di fumo.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31023 AND text = 'Farò prodigi lassù nel cielo e segni quaggiù sulla terra, sangue, fuoco e nuvole di fumo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Farò prodigi</i> lassù <i>nel cielo</i></po>
+<po><i>sangue, fuoco e nuvole di fumo.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31023 AND text = 'Farò prodigi lassù nel cielo e segni quaggiù sulla terra, sangue, fuoco e nuvole di fumo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Farò prodigi</i> lassù <i>nel cielo</i></po>
 <po><i>e</i> segni quaggiù <i>sulla terra,</i></po>
-<pol><i>sangue, fuoco e nuvole di fumo.</i></pol>') = text_plain;  -- At 2:19
-UPDATE "CEI2008" SET text = '<i>Il sole si muterà in tenebra</i>
-<pof><i>e la luna in sangue,</i></pof>
+<po><i>sangue, fuoco e nuvole di fumo.</i></po>') = text_plain;  -- At 2:19
+UPDATE "CEI2008" SET text = '<po><i>Il sole si muterà in tenebra</i></po>
+<po><i>e la luna in sangue,</i></po>
 <po><i>prima che giunga il giorno del Signore </i>,</po>
-<po><i>giorno grande e glorioso.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31024 AND text = 'Il sole si muterà in tenebra e la luna in sangue, prima che giunga il giorno del Signore , giorno grande e glorioso.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il sole si muterà in tenebra</i>
-<pof><i>e la luna in sangue,</i></pof>
+<po><i>giorno grande e glorioso.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31024 AND text = 'Il sole si muterà in tenebra e la luna in sangue, prima che giunga il giorno del Signore , giorno grande e glorioso.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il sole si muterà in tenebra</i></po>
+<po><i>e la luna in sangue,</i></po>
 <po><i>prima che giunga il giorno del Signore </i>,</po>
 <po><i>giorno grande e glorioso.</i></po>') = text_plain;  -- At 2:20
 UPDATE "CEI2008" SET text = '<po><i>E avverrà </i>:</po>
@@ -47654,26 +47654,26 @@ UPDATE "CEI2008" SET text = '<po><i>E avverrà </i>:</po>
 <pol><i>chiunque invocherà il nome del Signore sarà salvato</i>.</pol>') = text_plain;  -- At 2:21
 UPDATE "CEI2008" SET text = 'Dice infatti Davide a suo riguardo:
 <pof><i>Contemplavo sempre il Signore innanzi a me;</i></pof>
-<pol><i>egli sta alla mia destra, perché io non vacilli.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31029 AND text = 'Dice infatti Davide a suo riguardo: Contemplavo sempre il Signore innanzi a me; egli sta alla mia destra, perché io non vacilli.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Dice infatti Davide a suo riguardo:
+<po><i>egli sta alla mia destra, perché io non vacilli.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31029 AND text = 'Dice infatti Davide a suo riguardo: Contemplavo sempre il Signore innanzi a me; egli sta alla mia destra, perché io non vacilli.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Dice infatti Davide a suo riguardo:
 <pof><i>Contemplavo sempre il Signore innanzi a me;</i></pof>
-<pol><i>egli sta alla mia destra, perché io non vacilli.</i></pol>') = text_plain;  -- At 2:25
-UPDATE "CEI2008" SET text = '<i>Per questo si rallegrò il mio cuore ed esultò la mia lingua,</i>
-<pof><i>e anche la mia carne riposerà nella speranza,</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31030 AND text = 'Per questo si rallegrò il mio cuore ed esultò la mia lingua, e anche la mia carne riposerà nella speranza,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Per questo si rallegrò il mio cuore ed esultò la mia lingua,</i>
-<pof><i>e anche la mia carne riposerà nella speranza,</i></pof>') = text_plain;  -- At 2:26
-UPDATE "CEI2008" SET text = '<i>perché tu non abbandonerai la mia vita negli inferi</i>
-<pof><i>né permetterai che il tuo Santo subisca la corruzione.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31031 AND text = 'perché tu non abbandonerai la mia vita negli inferi né permetterai che il tuo Santo subisca la corruzione.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>perché tu non abbandonerai la mia vita negli inferi</i>
-<pof><i>né permetterai che il tuo Santo subisca la corruzione.</i></pof>') = text_plain;  -- At 2:27
-UPDATE "CEI2008" SET text = '<i>Mi hai fatto conoscere le vie della vita,</i>
-<pof><i>mi colmerai di gioia con la tua presenza</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31032 AND text = 'Mi hai fatto conoscere le vie della vita, mi colmerai di gioia con la tua presenza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Mi hai fatto conoscere le vie della vita,</i>
-<pof><i>mi colmerai di gioia con la tua presenza</i>.</pof>') = text_plain;  -- At 2:28
+<po><i>egli sta alla mia destra, perché io non vacilli.</i></po>') = text_plain;  -- At 2:25
+UPDATE "CEI2008" SET text = '<po><i>Per questo si rallegrò il mio cuore ed esultò la mia lingua,</i></po>
+<po><i>e anche la mia carne riposerà nella speranza,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31030 AND text = 'Per questo si rallegrò il mio cuore ed esultò la mia lingua, e anche la mia carne riposerà nella speranza,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Per questo si rallegrò il mio cuore ed esultò la mia lingua,</i></po>
+<po><i>e anche la mia carne riposerà nella speranza,</i></po>') = text_plain;  -- At 2:26
+UPDATE "CEI2008" SET text = '<po><i>perché tu non abbandonerai la mia vita negli inferi</i></po>
+<po><i>né permetterai che il tuo Santo subisca la corruzione.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31031 AND text = 'perché tu non abbandonerai la mia vita negli inferi né permetterai che il tuo Santo subisca la corruzione.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>perché tu non abbandonerai la mia vita negli inferi</i></po>
+<po><i>né permetterai che il tuo Santo subisca la corruzione.</i></po>') = text_plain;  -- At 2:27
+UPDATE "CEI2008" SET text = '<po><i>Mi hai fatto conoscere le vie della vita,</i></po>
+<pol><i>mi colmerai di gioia con la tua presenza</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31032 AND text = 'Mi hai fatto conoscere le vie della vita, mi colmerai di gioia con la tua presenza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Mi hai fatto conoscere le vie della vita,</i></po>
+<pol><i>mi colmerai di gioia con la tua presenza</i>.</pol>') = text_plain;  -- At 2:28
 UPDATE "CEI2008" SET text = 'Davide infatti non salì al cielo; tuttavia egli dice:
 <pof><i>Disse il Signore al mio Signore:</i></pof>
-<pol><i>siedi alla mia destra,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31038 AND text = 'Davide infatti non salì al cielo; tuttavia egli dice: Disse il Signore al mio Signore: siedi alla mia destra,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Davide infatti non salì al cielo; tuttavia egli dice:
+<po><i>siedi alla mia destra,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31038 AND text = 'Davide infatti non salì al cielo; tuttavia egli dice: Disse il Signore al mio Signore: siedi alla mia destra,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Davide infatti non salì al cielo; tuttavia egli dice:
 <pof><i>Disse il Signore al mio Signore:</i></pof>
-<pol><i>siedi alla mia destra,</i></pol>') = text_plain;  -- At 2:34
-UPDATE "CEI2008" SET text = '<i>finché io ponga i tuoi nemici</i>
-<pof><i>come sgabello dei tuoi piedi.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31039 AND text = 'finché io ponga i tuoi nemici come sgabello dei tuoi piedi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>finché io ponga i tuoi nemici</i>
-<pof><i>come sgabello dei tuoi piedi.</i></pof>') = text_plain;  -- At 2:35
+<po><i>siedi alla mia destra,</i></po>') = text_plain;  -- At 2:34
+UPDATE "CEI2008" SET text = '<po><i>finché io ponga i tuoi nemici</i></po>
+<pol><i>come sgabello dei tuoi piedi.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31039 AND text = 'finché io ponga i tuoi nemici come sgabello dei tuoi piedi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>finché io ponga i tuoi nemici</i></po>
+<pol><i>come sgabello dei tuoi piedi.</i></pol>') = text_plain;  -- At 2:35
 UPDATE "CEI2008" SET text = '<i>Il Dio di Abramo, il Dio di Isacco, il Dio di Giacobbe, il Dio dei nostri padri</i> ha glorificato il suo servo Gesù, che voi avete consegnato e rinnegato di fronte a Pilato, mentre egli aveva deciso di liberarlo;', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31064 AND text = 'Il Dio di Abramo, il Dio di Isacco, il Dio di Giacobbe, il Dio dei nostri padri ha glorificato il suo servo Gesù, che voi avete consegnato e rinnegato di fronte a Pilato, mentre egli aveva deciso di liberarlo;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il Dio di Abramo, il Dio di Isacco, il Dio di Giacobbe, il Dio dei nostri padri</i> ha glorificato il suo servo Gesù, che voi avete consegnato e rinnegato di fronte a Pilato, mentre egli aveva deciso di liberarlo;') = text_plain;  -- At 3:13
 UPDATE "CEI2008" SET text = 'Mosè infatti disse: <i>Il Signore vostro Dio farà sorgere per voi, dai vostri fratelli, un profeta come me; voi lo ascolterete in tutto quello che egli</i> vi <i>dirà.</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31073 AND text = 'Mosè infatti disse: Il Signore vostro Dio farà sorgere per voi, dai vostri fratelli, un profeta come me; voi lo ascolterete in tutto quello che egli vi dirà.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Mosè infatti disse: <i>Il Signore vostro Dio farà sorgere per voi, dai vostri fratelli, un profeta come me; voi lo ascolterete in tutto quello che egli</i> vi <i>dirà.</i>') = text_plain;  -- At 3:22
 UPDATE "CEI2008" SET text = '<i>E avverrà: chiunque non ascolterà quel profeta, sarà estirpato di mezzo al popolo</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31074 AND text = 'E avverrà: chiunque non ascolterà quel profeta, sarà estirpato di mezzo al popolo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>E avverrà: chiunque non ascolterà quel profeta, sarà estirpato di mezzo al popolo</i>.') = text_plain;  -- At 3:23
@@ -47681,13 +47681,13 @@ UPDATE "CEI2008" SET text = 'Voi siete i figli dei profeti e dell''alleanza che 
 UPDATE "CEI2008" SET text = 'Quando udirono questo, tutti insieme innalzarono la loro voce a Dio dicendo: "Signore, <i>tu che hai creato il cielo, la terra, il mare e tutte le cose che in essi si trovano </i>,', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31101 AND text = 'Quando udirono questo, tutti insieme innalzarono la loro voce a Dio dicendo: "Signore, tu che hai creato il cielo, la terra, il mare e tutte le cose che in essi si trovano ,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Quando udirono questo, tutti insieme innalzarono la loro voce a Dio dicendo: "Signore, <i>tu che hai creato il cielo, la terra, il mare e tutte le cose che in essi si trovano </i>,') = text_plain;  -- At 4:24
 UPDATE "CEI2008" SET text = 'tu che, per mezzo dello Spirito Santo, dicesti per bocca del nostro padre, il tuo servo Davide:
 <pof><i>Perché le nazioni si agitarono</i></pof>
-<pol><i>e i popoli tramarono cose vane </i>?</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31102 AND text = 'tu che, per mezzo dello Spirito Santo, dicesti per bocca del nostro padre, il tuo servo Davide: Perché le nazioni si agitarono e i popoli tramarono cose vane ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('tu che, per mezzo dello Spirito Santo, dicesti per bocca del nostro padre, il tuo servo Davide:
+<po><i>e i popoli tramarono cose vane </i>?</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31102 AND text = 'tu che, per mezzo dello Spirito Santo, dicesti per bocca del nostro padre, il tuo servo Davide: Perché le nazioni si agitarono e i popoli tramarono cose vane ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('tu che, per mezzo dello Spirito Santo, dicesti per bocca del nostro padre, il tuo servo Davide:
 <pof><i>Perché le nazioni si agitarono</i></pof>
-<pol><i>e i popoli tramarono cose vane </i>?</pol>') = text_plain;  -- At 4:25
-UPDATE "CEI2008" SET text = '<i>Si sollevarono i re della terra</i>
-<pof><i>e i prìncipi si allearono insieme</i></pof>
-<pol><i>contro il Signore e contro il suo Cristo </i>;</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31103 AND text = 'Si sollevarono i re della terra e i prìncipi si allearono insieme contro il Signore e contro il suo Cristo ;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Si sollevarono i re della terra</i>
-<pof><i>e i prìncipi si allearono insieme</i></pof>
+<po><i>e i popoli tramarono cose vane </i>?</po>') = text_plain;  -- At 4:25
+UPDATE "CEI2008" SET text = '<po><i>Si sollevarono i re della terra</i></po>
+<po><i>e i prìncipi si allearono insieme</i></po>
+<pol><i>contro il Signore e contro il suo Cristo </i>;</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31103 AND text = 'Si sollevarono i re della terra e i prìncipi si allearono insieme contro il Signore e contro il suo Cristo ;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Si sollevarono i re della terra</i></po>
+<po><i>e i prìncipi si allearono insieme</i></po>
 <pol><i>contro il Signore e contro il suo Cristo </i>;</pol>') = text_plain;  -- At 4:26
 UPDATE "CEI2008" SET text = '<pof>Udito questo, entrarono nel tempio sul far del giorno e si misero a insegnare.</pof>
 <pol>Quando arrivò il sommo sacerdote con quelli della sua parte, convocarono il sinedrio, cioè tutto il senato dei figli d''Israele; mandarono quindi a prelevare gli apostoli nella prigione.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31135 AND text = 'Udito questo, entrarono nel tempio sul far del giorno e si misero a insegnare. Quando arrivò il sommo sacerdote con quelli della sua parte, convocarono il sinedrio, cioè tutto il senato dei figli d''Israele; mandarono quindi a prelevare gli apostoli nella prigione.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Udito questo, entrarono nel tempio sul far del giorno e si misero a insegnare.</pof>
@@ -47710,24 +47710,24 @@ UPDATE "CEI2008" SET text = 'Egli è quel Mosè che disse ai figli d''Israele: "
 UPDATE "CEI2008" SET text = 'dicendo ad Aronne: " <i>Fa'' per noi degli dèi che camminino davanti a noi, perché a questo Mosè, che ci condusse fuori dalla terra d''Egitto, non sappiamo che cosa sia accaduto </i>".', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31211 AND text = 'dicendo ad Aronne: " Fa'' per noi degli dèi che camminino davanti a noi, perché a questo Mosè, che ci condusse fuori dalla terra d''Egitto, non sappiamo che cosa sia accaduto ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('dicendo ad Aronne: " <i>Fa'' per noi degli dèi che camminino davanti a noi, perché a questo Mosè, che ci condusse fuori dalla terra d''Egitto, non sappiamo che cosa sia accaduto </i>".') = text_plain;  -- At 7:40
 UPDATE "CEI2008" SET text = 'Ma Dio si allontanò da loro e li abbandonò al culto degli astri del cielo, come è scritto nel libro dei Profeti:
 <pof><i>Mi avete forse offerto vittime e sacrifici</i></pof>
-<pol><i>per quarant''anni nel deserto, o casa d''Israele?</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31213 AND text = 'Ma Dio si allontanò da loro e li abbandonò al culto degli astri del cielo, come è scritto nel libro dei Profeti: Mi avete forse offerto vittime e sacrifici per quarant''anni nel deserto, o casa d''Israele?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Ma Dio si allontanò da loro e li abbandonò al culto degli astri del cielo, come è scritto nel libro dei Profeti:
+<po><i>per quarant''anni nel deserto, o casa d''Israele?</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31213 AND text = 'Ma Dio si allontanò da loro e li abbandonò al culto degli astri del cielo, come è scritto nel libro dei Profeti: Mi avete forse offerto vittime e sacrifici per quarant''anni nel deserto, o casa d''Israele?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Ma Dio si allontanò da loro e li abbandonò al culto degli astri del cielo, come è scritto nel libro dei Profeti:
 <pof><i>Mi avete forse offerto vittime e sacrifici</i></pof>
-<pol><i>per quarant''anni nel deserto, o casa d''Israele?</i></pol>') = text_plain;  -- At 7:42
-UPDATE "CEI2008" SET text = '<i>Avete preso con voi la tenda di Moloc</i>
-<pof><i>e la stella del vostro dio Refan </i>,</pof>
+<po><i>per quarant''anni nel deserto, o casa d''Israele?</i></po>') = text_plain;  -- At 7:42
+UPDATE "CEI2008" SET text = '<po><i>Avete preso con voi la tenda di Moloc</i></po>
+<po><i>e la stella del vostro dio Refan </i>,</po>
 <po><i>immagini che vi siete fabbricate</i> per adorarle!</po>
-<pol><i>Perciò vi deporterò al di là</i> di Babilonia.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31214 AND text = 'Avete preso con voi la tenda di Moloc e la stella del vostro dio Refan , immagini che vi siete fabbricate per adorarle! Perciò vi deporterò al di là di Babilonia.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Avete preso con voi la tenda di Moloc</i>
-<pof><i>e la stella del vostro dio Refan </i>,</pof>
+<pol><i>Perciò vi deporterò al di là</i> di Babilonia.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31214 AND text = 'Avete preso con voi la tenda di Moloc e la stella del vostro dio Refan , immagini che vi siete fabbricate per adorarle! Perciò vi deporterò al di là di Babilonia.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Avete preso con voi la tenda di Moloc</i></po>
+<po><i>e la stella del vostro dio Refan </i>,</po>
 <po><i>immagini che vi siete fabbricate</i> per adorarle!</po>
 <pol><i>Perciò vi deporterò al di là</i> di Babilonia.</pol>') = text_plain;  -- At 7:43
-UPDATE "CEI2008" SET text = '<i>Il cielo è il mio trono</i>
-<pof><i>e la terra sgabello dei miei piedi.</i></pof>
+UPDATE "CEI2008" SET text = '<pof><i>Il cielo è il mio trono</i></pof>
+<po><i>e la terra sgabello dei miei piedi.</i></po>
 <po><i>Quale casa potrete costruirmi, dice il Signore </i>,</po>
-<pol><i>o quale sarà il luogo del mio riposo?</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31220 AND text = 'Il cielo è il mio trono e la terra sgabello dei miei piedi. Quale casa potrete costruirmi, dice il Signore , o quale sarà il luogo del mio riposo?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il cielo è il mio trono</i>
-<pof><i>e la terra sgabello dei miei piedi.</i></pof>
+<po><i>o quale sarà il luogo del mio riposo?</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31220 AND text = 'Il cielo è il mio trono e la terra sgabello dei miei piedi. Quale casa potrete costruirmi, dice il Signore , o quale sarà il luogo del mio riposo?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Il cielo è il mio trono</i></pof>
+<po><i>e la terra sgabello dei miei piedi.</i></po>
 <po><i>Quale casa potrete costruirmi, dice il Signore </i>,</po>
-<pol><i>o quale sarà il luogo del mio riposo?</i></pol>') = text_plain;  -- At 7:49
-UPDATE "CEI2008" SET text = '<i>Non è forse la mia mano che ha creato tutte queste cose?</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31221 AND text = 'Non è forse la mia mano che ha creato tutte queste cose?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non è forse la mia mano che ha creato tutte queste cose?</i>') = text_plain;  -- At 7:50
+<po><i>o quale sarà il luogo del mio riposo?</i></po>') = text_plain;  -- At 7:49
+UPDATE "CEI2008" SET text = '<pol><i>Non è forse la mia mano che ha creato tutte queste cose?</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31221 AND text = 'Non è forse la mia mano che ha creato tutte queste cose?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>Non è forse la mia mano che ha creato tutte queste cose?</i></pol>') = text_plain;  -- At 7:50
 UPDATE "CEI2008" SET text = '<pof>Saulo approvava la sua uccisione.</pof>
 <pol>In quel giorno scoppiò una violenta persecuzione contro la Chiesa di Gerusalemme; tutti, ad eccezione degli apostoli, si dispersero nelle regioni della Giudea e della Samaria.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31232 AND text = 'Saulo approvava la sua uccisione. In quel giorno scoppiò una violenta persecuzione contro la Chiesa di Gerusalemme; tutti, ad eccezione degli apostoli, si dispersero nelle regioni della Giudea e della Samaria.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Saulo approvava la sua uccisione.</pof>
 <pol>In quel giorno scoppiò una violenta persecuzione contro la Chiesa di Gerusalemme; tutti, ad eccezione degli apostoli, si dispersero nelle regioni della Giudea e della Samaria.</pol>') = text_plain;  -- At 8:1
@@ -47771,15 +47771,15 @@ UPDATE "CEI2008" SET text = 'Così infatti ci ha ordinato il Signore:
 <pof><i>Io ti ho posto per essere luce delle genti,</i></pof>
 <pol><i>perché tu porti la salvezza sino all''estremità della terra </i>".</pol>') = text_plain;  -- At 13:47
 UPDATE "CEI2008" SET text = '"Uomini, perché fate questo? Anche noi siamo esseri umani, mortali come voi, e vi annunciamo che dovete convertirvi da queste vanità al Dio vivente, <i>che ha fatto il cielo, la terra, il mare e tutte le cose che in essi si trovano</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31484 AND text = '"Uomini, perché fate questo? Anche noi siamo esseri umani, mortali come voi, e vi annunciamo che dovete convertirvi da queste vanità al Dio vivente, che ha fatto il cielo, la terra, il mare e tutte le cose che in essi si trovano.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('"Uomini, perché fate questo? Anche noi siamo esseri umani, mortali come voi, e vi annunciamo che dovete convertirvi da queste vanità al Dio vivente, <i>che ha fatto il cielo, la terra, il mare e tutte le cose che in essi si trovano</i>.') = text_plain;  -- At 14:15
-UPDATE "CEI2008" SET text = '<i>Dopo queste cose ritornerò</i>
-<pof><i>e riedificherò la tenda di Davide, che era caduta;</i></pof>
-<pol><i>ne riedificherò le rovine e la rialzerò,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31513 AND text = 'Dopo queste cose ritornerò e riedificherò la tenda di Davide, che era caduta; ne riedificherò le rovine e la rialzerò,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Dopo queste cose ritornerò</i>
-<pof><i>e riedificherò la tenda di Davide, che era caduta;</i></pof>
-<pol><i>ne riedificherò le rovine e la rialzerò,</i></pol>') = text_plain;  -- At 15:16
-UPDATE "CEI2008" SET text = '<i>perché cerchino il Signore anche gli altri uomini</i>
-<pof><i>e tutte le genti sulle quali è stato invocato il mio nome,</i></pof>
-<po><i>dice il Signore, che fa queste cose,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31514 AND text = 'perché cerchino il Signore anche gli altri uomini e tutte le genti sulle quali è stato invocato il mio nome, dice il Signore, che fa queste cose,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>perché cerchino il Signore anche gli altri uomini</i>
-<pof><i>e tutte le genti sulle quali è stato invocato il mio nome,</i></pof>
+UPDATE "CEI2008" SET text = '<pof><i>Dopo queste cose ritornerò</i></pof>
+<po><i>e riedificherò la tenda di Davide, che era caduta;</i></po>
+<po><i>ne riedificherò le rovine e la rialzerò,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31513 AND text = 'Dopo queste cose ritornerò e riedificherò la tenda di Davide, che era caduta; ne riedificherò le rovine e la rialzerò,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Dopo queste cose ritornerò</i></pof>
+<po><i>e riedificherò la tenda di Davide, che era caduta;</i></po>
+<po><i>ne riedificherò le rovine e la rialzerò,</i></po>') = text_plain;  -- At 15:16
+UPDATE "CEI2008" SET text = '<po><i>perché cerchino il Signore anche gli altri uomini</i></po>
+<po><i>e tutte le genti sulle quali è stato invocato il mio nome,</i></po>
+<po><i>dice il Signore, che fa queste cose,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31514 AND text = 'perché cerchino il Signore anche gli altri uomini e tutte le genti sulle quali è stato invocato il mio nome, dice il Signore, che fa queste cose,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>perché cerchino il Signore anche gli altri uomini</i></po>
+<po><i>e tutte le genti sulle quali è stato invocato il mio nome,</i></po>
 <po><i>dice il Signore, che fa queste cose,</i></po>') = text_plain;  -- At 15:17
 UPDATE "CEI2008" SET text = '<pol><i>note</i> <i>da sempre</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31515 AND text = 'note da sempre.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>note</i> <i>da sempre</i>.</pol>') = text_plain;  -- At 15:18
 UPDATE "CEI2008" SET text = 'Allora Paolo, in piedi in mezzo all''Areòpago, disse:
@@ -47788,17 +47788,17 @@ UPDATE "CEI2008" SET text = 'Allora Paolo, in piedi in mezzo all''Areòpago, dis
 UPDATE "CEI2008" SET text = 'Rispose Paolo: "Non sapevo, fratelli, che fosse il sommo sacerdote; sta scritto infatti: <i>Non insulterai il capo del tuo popolo </i>".', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31793 AND text = 'Rispose Paolo: "Non sapevo, fratelli, che fosse il sommo sacerdote; sta scritto infatti: Non insulterai il capo del tuo popolo ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Rispose Paolo: "Non sapevo, fratelli, che fosse il sommo sacerdote; sta scritto infatti: <i>Non insulterai il capo del tuo popolo </i>".') = text_plain;  -- At 23:5
 UPDATE "CEI2008" SET text = '<i>Va'' da questo popolo e di'' </i>:
 <pof><i>Udrete, sì, ma non comprenderete </i>;</pof>
-<pol><i>guarderete, sì, ma non vedrete.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31979 AND text = 'Va'' da questo popolo e di'' : Udrete, sì, ma non comprenderete ; guarderete, sì, ma non vedrete.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Va'' da questo popolo e di'' </i>:
+<po><i>guarderete, sì, ma non vedrete.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31979 AND text = 'Va'' da questo popolo e di'' : Udrete, sì, ma non comprenderete ; guarderete, sì, ma non vedrete.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Va'' da questo popolo e di'' </i>:
 <pof><i>Udrete, sì, ma non comprenderete </i>;</pof>
-<pol><i>guarderete, sì, ma non vedrete.</i></pol>') = text_plain;  -- At 28:26
-UPDATE "CEI2008" SET text = '<i>Perché il cuore di questo popolo è diventato insensibile,</i>
-<pof><i>sono diventati duri di orecchi</i></pof>
+<po><i>guarderete, sì, ma non vedrete.</i></po>') = text_plain;  -- At 28:26
+UPDATE "CEI2008" SET text = '<po><i>Perché il cuore di questo popolo è diventato insensibile,</i></po>
+<po><i>sono diventati duri di orecchi</i></po>
 <po><i>e hanno chiuso gli occhi,</i></po>
 <po><i>perché non vedano con gli occhi </i>,</po>
 <po><i>non ascoltino con gli orecchi</i></po>
 <po><i>e non comprendano con il cuore</i></po>
-<pol><i>e non si convertano, e io li guarisca!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31980 AND text = 'Perché il cuore di questo popolo è diventato insensibile, sono diventati duri di orecchi e hanno chiuso gli occhi, perché non vedano con gli occhi , non ascoltino con gli orecchi e non comprendano con il cuore e non si convertano, e io li guarisca!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Perché il cuore di questo popolo è diventato insensibile,</i>
-<pof><i>sono diventati duri di orecchi</i></pof>
+<pol><i>e non si convertano, e io li guarisca!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 31980 AND text = 'Perché il cuore di questo popolo è diventato insensibile, sono diventati duri di orecchi e hanno chiuso gli occhi, perché non vedano con gli occhi , non ascoltino con gli orecchi e non comprendano con il cuore e non si convertano, e io li guarisca!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Perché il cuore di questo popolo è diventato insensibile,</i></po>
+<po><i>sono diventati duri di orecchi</i></po>
 <po><i>e hanno chiuso gli occhi,</i></po>
 <po><i>perché non vedano con gli occhi </i>,</po>
 <po><i>non ascoltino con gli orecchi</i></po>
@@ -47872,23 +47872,23 @@ UPDATE "CEI2008" SET text = '<pof>al Figlio invece dice:</pof>
 <pof><i>Il tuo trono, Dio, sta nei secoli dei secoli </i>;</pof>
 <pof>e:</pof>
 <pof><i>Lo scettro del tuo regno è scettro di equità;</i></pof>') = text_plain;  -- Eb 1:8
-UPDATE "CEI2008" SET text = '<i>hai amato la giustizia e odiato l''iniquità,</i>
-<pof><i>perciò Dio, il tuo Dio, ti ha consacrato</i></pof>
-<pol><i>con olio di esultanza, a preferenza dei tuoi compagni</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34025 AND text = 'hai amato la giustizia e odiato l''iniquità, perciò Dio, il tuo Dio, ti ha consacrato con olio di esultanza, a preferenza dei tuoi compagni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>hai amato la giustizia e odiato l''iniquità,</i>
-<pof><i>perciò Dio, il tuo Dio, ti ha consacrato</i></pof>
+UPDATE "CEI2008" SET text = '<po><i>hai amato la giustizia e odiato l''iniquità,</i></po>
+<po><i>perciò Dio, il tuo Dio, ti ha consacrato</i></po>
+<pol><i>con olio di esultanza, a preferenza dei tuoi compagni</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34025 AND text = 'hai amato la giustizia e odiato l''iniquità, perciò Dio, il tuo Dio, ti ha consacrato con olio di esultanza, a preferenza dei tuoi compagni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>hai amato la giustizia e odiato l''iniquità,</i></po>
+<po><i>perciò Dio, il tuo Dio, ti ha consacrato</i></po>
 <pol><i>con olio di esultanza, a preferenza dei tuoi compagni</i>.</pol>') = text_plain;  -- Eb 1:9
 UPDATE "CEI2008" SET text = '<pof>E ancora:</pof>
 <pof><i>In principio tu, Signore, hai fondato la terra</i></pof>
-<pol><i>e i cieli sono opera delle tue mani.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34026 AND text = 'E ancora: In principio tu, Signore, hai fondato la terra e i cieli sono opera delle tue mani.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>E ancora:</pof>
+<po><i>e i cieli sono opera delle tue mani.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34026 AND text = 'E ancora: In principio tu, Signore, hai fondato la terra e i cieli sono opera delle tue mani.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>E ancora:</pof>
 <pof><i>In principio tu, Signore, hai fondato la terra</i></pof>
-<pol><i>e i cieli sono opera delle tue mani.</i></pol>') = text_plain;  -- Eb 1:10
-UPDATE "CEI2008" SET text = '<i>Essi periranno, ma tu rimani;</i>
-<pof><i>tutti si logoreranno come un vestito.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34027 AND text = 'Essi periranno, ma tu rimani; tutti si logoreranno come un vestito.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Essi periranno, ma tu rimani;</i>
-<pof><i>tutti si logoreranno come un vestito.</i></pof>') = text_plain;  -- Eb 1:11
-UPDATE "CEI2008" SET text = '<i>Come un mantello li avvolgerai,</i>
-<pof>come un vestito anch''essi <i>saranno cambiati;</i></pof>
-<pol><i>ma tu rimani lo stesso e i tuoi anni non avranno fine</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34028 AND text = 'Come un mantello li avvolgerai, come un vestito anch''essi saranno cambiati; ma tu rimani lo stesso e i tuoi anni non avranno fine.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Come un mantello li avvolgerai,</i>
-<pof>come un vestito anch''essi <i>saranno cambiati;</i></pof>
+<po><i>e i cieli sono opera delle tue mani.</i></po>') = text_plain;  -- Eb 1:10
+UPDATE "CEI2008" SET text = '<po><i>Essi periranno, ma tu rimani;</i></po>
+<po><i>tutti si logoreranno come un vestito.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34027 AND text = 'Essi periranno, ma tu rimani; tutti si logoreranno come un vestito.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Essi periranno, ma tu rimani;</i></po>
+<po><i>tutti si logoreranno come un vestito.</i></po>') = text_plain;  -- Eb 1:11
+UPDATE "CEI2008" SET text = '<po><i>Come un mantello li avvolgerai,</i></po>
+<po>come un vestito anch''essi <i>saranno cambiati;</i></po>
+<pol><i>ma tu rimani lo stesso e i tuoi anni non avranno fine</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34028 AND text = 'Come un mantello li avvolgerai, come un vestito anch''essi saranno cambiati; ma tu rimani lo stesso e i tuoi anni non avranno fine.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Come un mantello li avvolgerai,</i></po>
+<po>come un vestito anch''essi <i>saranno cambiati;</i></po>
 <pol><i>ma tu rimani lo stesso e i tuoi anni non avranno fine</i>.</pol>') = text_plain;  -- Eb 1:12
 UPDATE "CEI2008" SET text = '<pof>E a quale degli angeli poi ha mai detto:</pof>
 <pof><i>Siedi alla mia destra,</i></pof>
@@ -47897,14 +47897,14 @@ UPDATE "CEI2008" SET text = '<pof>E a quale degli angeli poi ha mai detto:</pof>
 <pol><i>finché io non abbia messo i tuoi nemici a sgabello dei tuoi piedi </i>?</pol>') = text_plain;  -- Eb 1:13
 UPDATE "CEI2008" SET text = 'Anzi, in un passo della Scrittura qualcuno ha dichiarato:
 <pof><i>Che cos''è l''uomo perché di lui ti ricordi</i></pof>
-<pol><i>o il figlio dell''uomo perché te ne curi?</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34036 AND text = 'Anzi, in un passo della Scrittura qualcuno ha dichiarato: Che cos''è l''uomo perché di lui ti ricordi o il figlio dell''uomo perché te ne curi?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Anzi, in un passo della Scrittura qualcuno ha dichiarato:
+<po><i>o il figlio dell''uomo perché te ne curi?</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34036 AND text = 'Anzi, in un passo della Scrittura qualcuno ha dichiarato: Che cos''è l''uomo perché di lui ti ricordi o il figlio dell''uomo perché te ne curi?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Anzi, in un passo della Scrittura qualcuno ha dichiarato:
 <pof><i>Che cos''è l''uomo perché di lui ti ricordi</i></pof>
-<pol><i>o il figlio dell''uomo perché te ne curi?</i></pol>') = text_plain;  -- Eb 2:6
-UPDATE "CEI2008" SET text = '<i>Di poco l''hai fatto inferiore agli angeli,</i>
-<pof><i>di gloria e di onore l''hai coronato</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34037 AND text = 'Di poco l''hai fatto inferiore agli angeli, di gloria e di onore l''hai coronato' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Di poco l''hai fatto inferiore agli angeli,</i>
-<pof><i>di gloria e di onore l''hai coronato</i></pof>') = text_plain;  -- Eb 2:7
-UPDATE "CEI2008" SET text = '<i>e hai messo ogni cosa sotto i suoi piedi</i>.
-<pof>Avendo sottomesso a lui tutte le cose, nulla ha lasciato che non gli fosse sottomesso. Al momento presente però non vediamo ancora che ogni cosa sia a lui sottomessa.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34038 AND text = 'e hai messo ogni cosa sotto i suoi piedi. Avendo sottomesso a lui tutte le cose, nulla ha lasciato che non gli fosse sottomesso. Al momento presente però non vediamo ancora che ogni cosa sia a lui sottomessa.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>e hai messo ogni cosa sotto i suoi piedi</i>.
+<po><i>o il figlio dell''uomo perché te ne curi?</i></po>') = text_plain;  -- Eb 2:6
+UPDATE "CEI2008" SET text = '<po><i>Di poco l''hai fatto inferiore agli angeli,</i></po>
+<po><i>di gloria e di onore l''hai coronato</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34037 AND text = 'Di poco l''hai fatto inferiore agli angeli, di gloria e di onore l''hai coronato' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Di poco l''hai fatto inferiore agli angeli,</i></po>
+<po><i>di gloria e di onore l''hai coronato</i></po>') = text_plain;  -- Eb 2:7
+UPDATE "CEI2008" SET text = '<pol><i>e hai messo ogni cosa sotto i suoi piedi</i>.</pol>
+<pof>Avendo sottomesso a lui tutte le cose, nulla ha lasciato che non gli fosse sottomesso. Al momento presente però non vediamo ancora che ogni cosa sia a lui sottomessa.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34038 AND text = 'e hai messo ogni cosa sotto i suoi piedi. Avendo sottomesso a lui tutte le cose, nulla ha lasciato che non gli fosse sottomesso. Al momento presente però non vediamo ancora che ogni cosa sia a lui sottomessa.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>e hai messo ogni cosa sotto i suoi piedi</i>.</pol>
 <pof>Avendo sottomesso a lui tutte le cose, nulla ha lasciato che non gli fosse sottomesso. Al momento presente però non vediamo ancora che ogni cosa sia a lui sottomessa.</pof>') = text_plain;  -- Eb 2:8
 UPDATE "CEI2008" SET text = 'dicendo:
 <pof><i>Annuncerò il tuo nome ai miei fratelli,</i></pof>
@@ -47922,22 +47922,22 @@ UPDATE "CEI2008" SET text = 'In verità <i>Mosè fu degno di fede in tutta la su
 UPDATE "CEI2008" SET text = 'Per questo, come dice lo Spirito Santo:
 <pof><i>Oggi, se udite la sua voce,</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34055 AND text = 'Per questo, come dice lo Spirito Santo: Oggi, se udite la sua voce,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Per questo, come dice lo Spirito Santo:
 <pof><i>Oggi, se udite la sua voce,</i></pof>') = text_plain;  -- Eb 3:7
-UPDATE "CEI2008" SET text = '<i>non indurite i vostri cuori</i>
-<pof><i>come nel giorno della ribellione,</i></pof>
-<pol><i>il giorno della tentazione nel deserto,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34056 AND text = 'non indurite i vostri cuori come nel giorno della ribellione, il giorno della tentazione nel deserto,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>non indurite i vostri cuori</i>
-<pof><i>come nel giorno della ribellione,</i></pof>
-<pol><i>il giorno della tentazione nel deserto,</i></pol>') = text_plain;  -- Eb 3:8
-UPDATE "CEI2008" SET text = '<i>dove mi tentarono i vostri padri mettendomi alla prova,</i>
-<pof><i>pur avendo visto per quarant''anni le mie opere.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34057 AND text = 'dove mi tentarono i vostri padri mettendomi alla prova, pur avendo visto per quarant''anni le mie opere.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>dove mi tentarono i vostri padri mettendomi alla prova,</i>
-<pof><i>pur avendo visto per quarant''anni le mie opere.</i></pof>') = text_plain;  -- Eb 3:9
-UPDATE "CEI2008" SET text = '<i>Perciò mi disgustai di quella generazione</i>
-<pof><i>e dissi: hanno sempre il cuore sviato.</i></pof>
-<pol><i>Non hanno conosciuto le mie vie.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34058 AND text = 'Perciò mi disgustai di quella generazione e dissi: hanno sempre il cuore sviato. Non hanno conosciuto le mie vie.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Perciò mi disgustai di quella generazione</i>
-<pof><i>e dissi: hanno sempre il cuore sviato.</i></pof>
-<pol><i>Non hanno conosciuto le mie vie.</i></pol>') = text_plain;  -- Eb 3:10
-UPDATE "CEI2008" SET text = '<i>Così ho giurato nella mia ira:</i>
-<pof><i>non entreranno nel mio riposo</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34059 AND text = 'Così ho giurato nella mia ira: non entreranno nel mio riposo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Così ho giurato nella mia ira:</i>
-<pof><i>non entreranno nel mio riposo</i>.</pof>') = text_plain;  -- Eb 3:11
+UPDATE "CEI2008" SET text = '<po><i>non indurite i vostri cuori</i></po>
+<po><i>come nel giorno della ribellione,</i></po>
+<po><i>il giorno della tentazione nel deserto,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34056 AND text = 'non indurite i vostri cuori come nel giorno della ribellione, il giorno della tentazione nel deserto,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>non indurite i vostri cuori</i></po>
+<po><i>come nel giorno della ribellione,</i></po>
+<po><i>il giorno della tentazione nel deserto,</i></po>') = text_plain;  -- Eb 3:8
+UPDATE "CEI2008" SET text = '<po><i>dove mi tentarono i vostri padri mettendomi alla prova,</i></po>
+<po><i>pur avendo visto per quarant''anni le mie opere.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34057 AND text = 'dove mi tentarono i vostri padri mettendomi alla prova, pur avendo visto per quarant''anni le mie opere.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>dove mi tentarono i vostri padri mettendomi alla prova,</i></po>
+<po><i>pur avendo visto per quarant''anni le mie opere.</i></po>') = text_plain;  -- Eb 3:9
+UPDATE "CEI2008" SET text = '<po><i>Perciò mi disgustai di quella generazione</i></po>
+<po><i>e dissi: hanno sempre il cuore sviato.</i></po>
+<po><i>Non hanno conosciuto le mie vie.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34058 AND text = 'Perciò mi disgustai di quella generazione e dissi: hanno sempre il cuore sviato. Non hanno conosciuto le mie vie.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Perciò mi disgustai di quella generazione</i></po>
+<po><i>e dissi: hanno sempre il cuore sviato.</i></po>
+<po><i>Non hanno conosciuto le mie vie.</i></po>') = text_plain;  -- Eb 3:10
+UPDATE "CEI2008" SET text = '<po><i>Così ho giurato nella mia ira:</i></po>
+<pol><i>non entreranno nel mio riposo</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34059 AND text = 'Così ho giurato nella mia ira: non entreranno nel mio riposo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Così ho giurato nella mia ira:</i></po>
+<pol><i>non entreranno nel mio riposo</i>.</pol>') = text_plain;  -- Eb 3:11
 UPDATE "CEI2008" SET text = 'Quando si dice:
 <pof><i>Oggi, se udite la sua voce,</i></pof>
 <po><i>non indurite i vostri cuori</i></po>
@@ -47984,55 +47984,55 @@ UPDATE "CEI2008" SET text = 'Questi offrono un culto che è immagine e ombra del
 UPDATE "CEI2008" SET text = 'Dio infatti, biasimando il suo popolo, dice:
 <pof><i>Ecco: vengono giorni, dice il Signore,</i></pof>
 <po><i>quando io concluderò un''alleanza nuova</i></po>
-<pol><i>con la casa d''Israele e con la casa di Giuda.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34153 AND text = 'Dio infatti, biasimando il suo popolo, dice: Ecco: vengono giorni, dice il Signore, quando io concluderò un''alleanza nuova con la casa d''Israele e con la casa di Giuda.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Dio infatti, biasimando il suo popolo, dice:
+<po><i>con la casa d''Israele e con la casa di Giuda.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34153 AND text = 'Dio infatti, biasimando il suo popolo, dice: Ecco: vengono giorni, dice il Signore, quando io concluderò un''alleanza nuova con la casa d''Israele e con la casa di Giuda.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Dio infatti, biasimando il suo popolo, dice:
 <pof><i>Ecco: vengono giorni, dice il Signore,</i></pof>
 <po><i>quando io concluderò un''alleanza nuova</i></po>
-<pol><i>con la casa d''Israele e con la casa di Giuda.</i></pol>') = text_plain;  -- Eb 8:8
-UPDATE "CEI2008" SET text = '<i>Non sarà come l''alleanza che feci con i loro padri,</i>
-<pof><i>nel giorno in cui li presi per mano</i></pof>
+<po><i>con la casa d''Israele e con la casa di Giuda.</i></po>') = text_plain;  -- Eb 8:8
+UPDATE "CEI2008" SET text = '<po><i>Non sarà come l''alleanza che feci con i loro padri,</i></po>
+<po><i>nel giorno in cui li presi per mano</i></po>
 <po><i>per farli uscire dalla terra d''Egitto;</i></po>
 <po><i>poiché essi non rimasero fedeli alla mia alleanza,</i></po>
-<pol><i>anch''io non ebbi più cura di loro, dice il Signore.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34154 AND text = 'Non sarà come l''alleanza che feci con i loro padri, nel giorno in cui li presi per mano per farli uscire dalla terra d''Egitto; poiché essi non rimasero fedeli alla mia alleanza, anch''io non ebbi più cura di loro, dice il Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non sarà come l''alleanza che feci con i loro padri,</i>
-<pof><i>nel giorno in cui li presi per mano</i></pof>
+<po><i>anch''io non ebbi più cura di loro, dice il Signore.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34154 AND text = 'Non sarà come l''alleanza che feci con i loro padri, nel giorno in cui li presi per mano per farli uscire dalla terra d''Egitto; poiché essi non rimasero fedeli alla mia alleanza, anch''io non ebbi più cura di loro, dice il Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Non sarà come l''alleanza che feci con i loro padri,</i></po>
+<po><i>nel giorno in cui li presi per mano</i></po>
 <po><i>per farli uscire dalla terra d''Egitto;</i></po>
 <po><i>poiché essi non rimasero fedeli alla mia alleanza,</i></po>
-<pol><i>anch''io non ebbi più cura di loro, dice il Signore.</i></pol>') = text_plain;  -- Eb 8:9
-UPDATE "CEI2008" SET text = '<i>E questa è l''alleanza che io stipulerò con la casa d''Israele</i>
-<pof><i>dopo quei giorni, dice il Signore:</i></pof>
+<po><i>anch''io non ebbi più cura di loro, dice il Signore.</i></po>') = text_plain;  -- Eb 8:9
+UPDATE "CEI2008" SET text = '<po><i>E questa è l''alleanza che io stipulerò con la casa d''Israele</i></po>
+<po><i>dopo quei giorni, dice il Signore:</i></po>
 <po><i>porrò le mie leggi nella loro mente</i></po>
 <po><i>e le imprimerò nei loro cuori;</i></po>
 <po><i>sarò il loro Dio</i></po>
-<pol><i>ed essi saranno il mio popolo.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34155 AND text = 'E questa è l''alleanza che io stipulerò con la casa d''Israele dopo quei giorni, dice il Signore: porrò le mie leggi nella loro mente e le imprimerò nei loro cuori; sarò il loro Dio ed essi saranno il mio popolo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>E questa è l''alleanza che io stipulerò con la casa d''Israele</i>
-<pof><i>dopo quei giorni, dice il Signore:</i></pof>
+<po><i>ed essi saranno il mio popolo.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34155 AND text = 'E questa è l''alleanza che io stipulerò con la casa d''Israele dopo quei giorni, dice il Signore: porrò le mie leggi nella loro mente e le imprimerò nei loro cuori; sarò il loro Dio ed essi saranno il mio popolo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>E questa è l''alleanza che io stipulerò con la casa d''Israele</i></po>
+<po><i>dopo quei giorni, dice il Signore:</i></po>
 <po><i>porrò le mie leggi nella loro mente</i></po>
 <po><i>e le imprimerò nei loro cuori;</i></po>
 <po><i>sarò il loro Dio</i></po>
-<pol><i>ed essi saranno il mio popolo.</i></pol>') = text_plain;  -- Eb 8:10
-UPDATE "CEI2008" SET text = '<i>Né alcuno avrà più da istruire il suo concittadino,</i>
-<pof><i>né alcuno il proprio fratello, dicendo:</i></pof>
+<po><i>ed essi saranno il mio popolo.</i></po>') = text_plain;  -- Eb 8:10
+UPDATE "CEI2008" SET text = '<po><i>Né alcuno avrà più da istruire il suo concittadino,</i></po>
+<po><i>né alcuno il proprio fratello, dicendo:</i></po>
 <po><i>"Conosci il Signore!".</i></po>
 <po><i>Tutti infatti mi conosceranno,</i></po>
-<pol><i>dal più piccolo al più grande di loro.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34156 AND text = 'Né alcuno avrà più da istruire il suo concittadino, né alcuno il proprio fratello, dicendo: "Conosci il Signore!". Tutti infatti mi conosceranno, dal più piccolo al più grande di loro.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Né alcuno avrà più da istruire il suo concittadino,</i>
-<pof><i>né alcuno il proprio fratello, dicendo:</i></pof>
+<po><i>dal più piccolo al più grande di loro.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34156 AND text = 'Né alcuno avrà più da istruire il suo concittadino, né alcuno il proprio fratello, dicendo: "Conosci il Signore!". Tutti infatti mi conosceranno, dal più piccolo al più grande di loro.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Né alcuno avrà più da istruire il suo concittadino,</i></po>
+<po><i>né alcuno il proprio fratello, dicendo:</i></po>
 <po><i>"Conosci il Signore!".</i></po>
 <po><i>Tutti infatti mi conosceranno,</i></po>
-<pol><i>dal più piccolo al più grande di loro.</i></pol>') = text_plain;  -- Eb 8:11
-UPDATE "CEI2008" SET text = '<i>Perché io perdonerò le loro iniquità</i>
-<pof><i>e non mi ricorderò più dei loro peccati</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34157 AND text = 'Perché io perdonerò le loro iniquità e non mi ricorderò più dei loro peccati.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Perché io perdonerò le loro iniquità</i>
-<pof><i>e non mi ricorderò più dei loro peccati</i>.</pof>') = text_plain;  -- Eb 8:12
+<po><i>dal più piccolo al più grande di loro.</i></po>') = text_plain;  -- Eb 8:11
+UPDATE "CEI2008" SET text = '<po><i>Perché io perdonerò le loro iniquità</i></po>
+<pol><i>e non mi ricorderò più dei loro peccati</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34157 AND text = 'Perché io perdonerò le loro iniquità e non mi ricorderò più dei loro peccati.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Perché io perdonerò le loro iniquità</i></po>
+<pol><i>e non mi ricorderò più dei loro peccati</i>.</pol>') = text_plain;  -- Eb 8:12
 UPDATE "CEI2008" SET text = 'dicendo: <i>Questo</i> <i>è il sangue dell''alleanza che Dio ha stabilito per voi</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34178 AND text = 'dicendo: Questo è il sangue dell''alleanza che Dio ha stabilito per voi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('dicendo: <i>Questo</i> <i>è il sangue dell''alleanza che Dio ha stabilito per voi</i>.') = text_plain;  -- Eb 9:20
 UPDATE "CEI2008" SET text = 'Per questo, entrando nel mondo, Cristo dice:
 <pof><i>Tu non hai voluto né sacrificio né offerta,</i></pof>
-<pol><i>un corpo invece mi hai preparato.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34191 AND text = 'Per questo, entrando nel mondo, Cristo dice: Tu non hai voluto né sacrificio né offerta, un corpo invece mi hai preparato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Per questo, entrando nel mondo, Cristo dice:
+<po><i>un corpo invece mi hai preparato.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34191 AND text = 'Per questo, entrando nel mondo, Cristo dice: Tu non hai voluto né sacrificio né offerta, un corpo invece mi hai preparato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Per questo, entrando nel mondo, Cristo dice:
 <pof><i>Tu non hai voluto né sacrificio né offerta,</i></pof>
-<pol><i>un corpo invece mi hai preparato.</i></pol>') = text_plain;  -- Eb 10:5
-UPDATE "CEI2008" SET text = '<i>Non hai gradito</i>
-<pof><i>né olocausti né sacrifici per il peccato.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34192 AND text = 'Non hai gradito né olocausti né sacrifici per il peccato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non hai gradito</i>
-<pof><i>né olocausti né sacrifici per il peccato.</i></pof>') = text_plain;  -- Eb 10:6
-UPDATE "CEI2008" SET text = '<i>Allora ho detto: "Ecco, io vengo</i>
-<pof><i>- poiché di me sta scritto nel rotolo del libro -</i></pof>
-<pol><i>per fare, o Dio, la tua volontà"</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34193 AND text = 'Allora ho detto: "Ecco, io vengo - poiché di me sta scritto nel rotolo del libro - per fare, o Dio, la tua volontà".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Allora ho detto: "Ecco, io vengo</i>
-<pof><i>- poiché di me sta scritto nel rotolo del libro -</i></pof>
+<po><i>un corpo invece mi hai preparato.</i></po>') = text_plain;  -- Eb 10:5
+UPDATE "CEI2008" SET text = '<po><i>Non hai gradito</i></po>
+<po><i>né olocausti né sacrifici per il peccato.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34192 AND text = 'Non hai gradito né olocausti né sacrifici per il peccato.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Non hai gradito</i></po>
+<po><i>né olocausti né sacrifici per il peccato.</i></po>') = text_plain;  -- Eb 10:6
+UPDATE "CEI2008" SET text = '<po><i>Allora ho detto: "Ecco, io vengo</i></po>
+<po><i>- poiché di me sta scritto nel rotolo del libro -</i></po>
+<pol><i>per fare, o Dio, la tua volontà"</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34193 AND text = 'Allora ho detto: "Ecco, io vengo - poiché di me sta scritto nel rotolo del libro - per fare, o Dio, la tua volontà".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Allora ho detto: "Ecco, io vengo</i></po>
+<po><i>- poiché di me sta scritto nel rotolo del libro -</i></po>
 <pol><i>per fare, o Dio, la tua volontà"</i>.</pol>') = text_plain;  -- Eb 10:7
 UPDATE "CEI2008" SET text = 'Dopo aver detto: <i>Tu</i> <i>non hai voluto e non hai gradito né sacrifici né offerte, né olocausti né sacrifici per il peccato </i>, cose che vengono offerte secondo la Legge,', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34194 AND text = 'Dopo aver detto: Tu non hai voluto e non hai gradito né sacrifici né offerte, né olocausti né sacrifici per il peccato , cose che vengono offerte secondo la Legge,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Dopo aver detto: <i>Tu</i> <i>non hai voluto e non hai gradito né sacrifici né offerte, né olocausti né sacrifici per il peccato </i>, cose che vengono offerte secondo la Legge,') = text_plain;  -- Eb 10:8
 UPDATE "CEI2008" SET text = 'soggiunge: <i>Ecco, io vengo a fare la tua volontà </i>. Così egli abolisce il primo sacrificio per costituire quello nuovo.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34195 AND text = 'soggiunge: Ecco, io vengo a fare la tua volontà . Così egli abolisce il primo sacrificio per costituire quello nuovo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('soggiunge: <i>Ecco, io vengo a fare la tua volontà </i>. Così egli abolisce il primo sacrificio per costituire quello nuovo.') = text_plain;  -- Eb 10:9
@@ -48049,21 +48049,21 @@ UPDATE "CEI2008" SET text = '<pof><i>e non mi ricorderò più dei loro peccati</
 UPDATE "CEI2008" SET text = 'Quando qualcuno ha violato la legge di Mosè, <i>viene messo a morte</i> senza pietà <i>sulla parola di due o tre testimoni</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34214 AND text = 'Quando qualcuno ha violato la legge di Mosè, viene messo a morte senza pietà sulla parola di due o tre testimoni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Quando qualcuno ha violato la legge di Mosè, <i>viene messo a morte</i> senza pietà <i>sulla parola di due o tre testimoni</i>.') = text_plain;  -- Eb 10:28
 UPDATE "CEI2008" SET text = 'Conosciamo infatti colui che ha detto: <i>A me la vendetta! Io darò la retribuzione!</i> E ancora: <i>Il Signore giudicherà il suo popolo</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34216 AND text = 'Conosciamo infatti colui che ha detto: A me la vendetta! Io darò la retribuzione! E ancora: Il Signore giudicherà il suo popolo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Conosciamo infatti colui che ha detto: <i>A me la vendetta! Io darò la retribuzione!</i> E ancora: <i>Il Signore giudicherà il suo popolo</i>.') = text_plain;  -- Eb 10:30
 UPDATE "CEI2008" SET text = '<pof>Ancora <i>un poco,</i> infatti, <i>un poco appena,</i></pof>
-<pol><i>e colui che deve venire, verrà e non tarderà.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34223 AND text = 'Ancora un poco, infatti, un poco appena, e colui che deve venire, verrà e non tarderà.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Ancora <i>un poco,</i> infatti, <i>un poco appena,</i></pof>
-<pol><i>e colui che deve venire, verrà e non tarderà.</i></pol>') = text_plain;  -- Eb 10:37
-UPDATE "CEI2008" SET text = '<i>Il mio giusto per fede vivrà;</i>
-<pof>ma <i>se cede, non porrò in lui il mio amore</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34224 AND text = 'Il mio giusto per fede vivrà; ma se cede, non porrò in lui il mio amore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il mio giusto per fede vivrà;</i>
-<pof>ma <i>se cede, non porrò in lui il mio amore</i>.</pof>') = text_plain;  -- Eb 10:38
+<po><i>e colui che deve venire, verrà e non tarderà.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34223 AND text = 'Ancora un poco, infatti, un poco appena, e colui che deve venire, verrà e non tarderà.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Ancora <i>un poco,</i> infatti, <i>un poco appena,</i></pof>
+<po><i>e colui che deve venire, verrà e non tarderà.</i></po>') = text_plain;  -- Eb 10:37
+UPDATE "CEI2008" SET text = '<po><i>Il mio giusto per fede vivrà;</i></po>
+<pol>ma <i>se cede, non porrò in lui il mio amore</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34224 AND text = 'Il mio giusto per fede vivrà; ma se cede, non porrò in lui il mio amore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il mio giusto per fede vivrà;</i></po>
+<pol>ma <i>se cede, non porrò in lui il mio amore</i>.</pol>') = text_plain;  -- Eb 10:38
 UPDATE "CEI2008" SET text = 'del quale era stato detto: <i>Mediante Isacco avrai una tua discendenza</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34243 AND text = 'del quale era stato detto: Mediante Isacco avrai una tua discendenza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('del quale era stato detto: <i>Mediante Isacco avrai una tua discendenza</i>.') = text_plain;  -- Eb 11:18
 UPDATE "CEI2008" SET text = 'Per fede, Giacobbe, morente, benedisse ciascuno dei figli di Giuseppe e <i>si prostrò, appoggiandosi sull''estremità del bastone.</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34246 AND text = 'Per fede, Giacobbe, morente, benedisse ciascuno dei figli di Giuseppe e si prostrò, appoggiandosi sull''estremità del bastone.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Per fede, Giacobbe, morente, benedisse ciascuno dei figli di Giuseppe e <i>si prostrò, appoggiandosi sull''estremità del bastone.</i>') = text_plain;  -- Eb 11:21
 UPDATE "CEI2008" SET text = 'e avete già dimenticato l''esortazione a voi rivolta come a figli:
 <pof><i>Figlio mio, non disprezzare la correzione del Signore</i></pof>
-<pol><i>e non ti perdere d''animo quando sei ripreso da lui;</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34270 AND text = 'e avete già dimenticato l''esortazione a voi rivolta come a figli: Figlio mio, non disprezzare la correzione del Signore e non ti perdere d''animo quando sei ripreso da lui;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('e avete già dimenticato l''esortazione a voi rivolta come a figli:
+<po><i>e non ti perdere d''animo quando sei ripreso da lui;</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34270 AND text = 'e avete già dimenticato l''esortazione a voi rivolta come a figli: Figlio mio, non disprezzare la correzione del Signore e non ti perdere d''animo quando sei ripreso da lui;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('e avete già dimenticato l''esortazione a voi rivolta come a figli:
 <pof><i>Figlio mio, non disprezzare la correzione del Signore</i></pof>
-<pol><i>e non ti perdere d''animo quando sei ripreso da lui;</i></pol>') = text_plain;  -- Eb 12:5
-UPDATE "CEI2008" SET text = '<i>perché il Signore corregge colui che egli ama</i>
-<pof><i>e percuote chiunque riconosce come figlio</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34271 AND text = 'perché il Signore corregge colui che egli ama e percuote chiunque riconosce come figlio.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>perché il Signore corregge colui che egli ama</i>
-<pof><i>e percuote chiunque riconosce come figlio</i>.</pof>') = text_plain;  -- Eb 12:6
+<po><i>e non ti perdere d''animo quando sei ripreso da lui;</i></po>') = text_plain;  -- Eb 12:5
+UPDATE "CEI2008" SET text = '<po><i>perché il Signore corregge colui che egli ama</i></po>
+<pol><i>e percuote chiunque riconosce come figlio</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34271 AND text = 'perché il Signore corregge colui che egli ama e percuote chiunque riconosce come figlio.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>perché il Signore corregge colui che egli ama</i></po>
+<pol><i>e percuote chiunque riconosce come figlio</i>.</pol>') = text_plain;  -- Eb 12:6
 UPDATE "CEI2008" SET text = 'vigilate perché nessuno si privi della grazia di Dio. <i>Non spunti né cresca in mezzo a voi alcuna radice velenosa </i>, che provochi danni e molti ne siano contagiati.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34280 AND text = 'vigilate perché nessuno si privi della grazia di Dio. Non spunti né cresca in mezzo a voi alcuna radice velenosa , che provochi danni e molti ne siano contagiati.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('vigilate perché nessuno si privi della grazia di Dio. <i>Non spunti né cresca in mezzo a voi alcuna radice velenosa </i>, che provochi danni e molti ne siano contagiati.') = text_plain;  -- Eb 12:15
 UPDATE "CEI2008" SET text = 'Lo spettacolo, in realtà, era così terrificante che Mosè disse: <i>Ho paura</i> e tremo.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34286 AND text = 'Lo spettacolo, in realtà, era così terrificante che Mosè disse: Ho paura e tremo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Lo spettacolo, in realtà, era così terrificante che Mosè disse: <i>Ho paura</i> e tremo.') = text_plain;  -- Eb 12:21
 UPDATE "CEI2008" SET text = 'La sua voce un giorno scosse la terra; adesso invece ha fatto questa promessa: <i>Ancora una volta io scuoterò</i> non solo <i>la terra,</i> ma anche <i>il cielo</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34291 AND text = 'La sua voce un giorno scosse la terra; adesso invece ha fatto questa promessa: Ancora una volta io scuoterò non solo la terra, ma anche il cielo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('La sua voce un giorno scosse la terra; adesso invece ha fatto questa promessa: <i>Ancora una volta io scuoterò</i> non solo <i>la terra,</i> ma anche <i>il cielo</i>.') = text_plain;  -- Eb 12:26
@@ -48135,13 +48135,13 @@ UPDATE "CEI2008" SET text = '<pof>Egli la manifestò in Cristo,</pof>
 UPDATE "CEI2008" SET text = '<po>al di sopra di ogni Principato e Potenza,</po>
 <po>al di sopra di ogni Forza e Dominazione</po>
 <po>e di ogni nome che viene nominato</po>
-<pol>non solo nel tempo presente ma anche in quello futuro.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 33280 AND text = 'al di sopra di ogni Principato e Potenza, al di sopra di ogni Forza e Dominazione e di ogni nome che viene nominato non solo nel tempo presente ma anche in quello futuro.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>al di sopra di ogni Principato e Potenza,</po>
+<po>non solo nel tempo presente ma anche in quello futuro.</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 33280 AND text = 'al di sopra di ogni Principato e Potenza, al di sopra di ogni Forza e Dominazione e di ogni nome che viene nominato non solo nel tempo presente ma anche in quello futuro.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>al di sopra di ogni Principato e Potenza,</po>
 <po>al di sopra di ogni Forza e Dominazione</po>
 <po>e di ogni nome che viene nominato</po>
-<pol>non solo nel tempo presente ma anche in quello futuro.</pol>') = text_plain;  -- Ef 1:21
-UPDATE "CEI2008" SET text = '<i>Tutto infatti egli ha messo sotto i suoi piedi</i>
-<pof>e lo ha dato alla Chiesa come capo su tutte le cose:</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 33281 AND text = 'Tutto infatti egli ha messo sotto i suoi piedi e lo ha dato alla Chiesa come capo su tutte le cose:' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Tutto infatti egli ha messo sotto i suoi piedi</i>
-<pof>e lo ha dato alla Chiesa come capo su tutte le cose:</pof>') = text_plain;  -- Ef 1:22
+<po>non solo nel tempo presente ma anche in quello futuro.</po>') = text_plain;  -- Ef 1:21
+UPDATE "CEI2008" SET text = '<po><i>Tutto infatti egli ha messo sotto i suoi piedi</i></po>
+<po>e lo ha dato alla Chiesa come capo su tutte le cose:</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 33281 AND text = 'Tutto infatti egli ha messo sotto i suoi piedi e lo ha dato alla Chiesa come capo su tutte le cose:' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Tutto infatti egli ha messo sotto i suoi piedi</i></po>
+<po>e lo ha dato alla Chiesa come capo su tutte le cose:</po>') = text_plain;  -- Ef 1:22
 UPDATE "CEI2008" SET text = '<po>essa è il corpo di lui,</po>
 <pol>la pienezza di colui che è il perfetto compimento di tutte le cose.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 33282 AND text = 'essa è il corpo di lui, la pienezza di colui che è il perfetto compimento di tutte le cose.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po>essa è il corpo di lui,</po>
 <pol>la pienezza di colui che è il perfetto compimento di tutte le cose.</pol>') = text_plain;  -- Ef 1:23
@@ -48365,10 +48365,10 @@ UPDATE "CEI2008" SET text = 'prese dei rami di palme e uscì incontro a lui grid
 <po><i>Benedetto colui che viene nel nome del Signore </i>,</po>
 <pol>il <i>re d''Israele </i>!".</pol>') = text_plain;  -- Gv 12:13
 UPDATE "CEI2008" SET text = '<pof>Gesù, trovato un asinello, vi montò sopra, come sta scritto:</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 30649 AND text = 'Gesù, trovato un asinello, vi montò sopra, come sta scritto:' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Gesù, trovato un asinello, vi montò sopra, come sta scritto:</pof>') = text_plain;  -- Gv 12:14
-UPDATE "CEI2008" SET text = '<i>Non temere, figlia di Sion!</i>
-<pof><i>Ecco, il tuo re viene </i>,</pof>
-<pol><i>seduto su un puledro d''asina</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 30650 AND text = 'Non temere, figlia di Sion! Ecco, il tuo re viene , seduto su un puledro d''asina.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non temere, figlia di Sion!</i>
-<pof><i>Ecco, il tuo re viene </i>,</pof>
+UPDATE "CEI2008" SET text = '<pof><i>Non temere, figlia di Sion!</i></pof>
+<po><i>Ecco, il tuo re viene </i>,</po>
+<pol><i>seduto su un puledro d''asina</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 30650 AND text = 'Non temere, figlia di Sion! Ecco, il tuo re viene , seduto su un puledro d''asina.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Non temere, figlia di Sion!</i></pof>
+<po><i>Ecco, il tuo re viene </i>,</po>
 <pol><i>seduto su un puledro d''asina</i>.</pol>') = text_plain;  -- Gv 12:15
 UPDATE "CEI2008" SET text = 'Adesso <i>l''anima mia è turbata </i>; che cosa dirò? Padre, <i>salvami</i> da quest''ora? Ma proprio per questo sono giunto a quest''ora!', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 30662 AND text = 'Adesso l''anima mia è turbata ; che cosa dirò? Padre, salvami da quest''ora? Ma proprio per questo sono giunto a quest''ora!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Adesso <i>l''anima mia è turbata </i>; che cosa dirò? Padre, <i>salvami</i> da quest''ora? Ma proprio per questo sono giunto a quest''ora!') = text_plain;  -- Gv 12:27
 UPDATE "CEI2008" SET text = 'perché si compisse la parola detta dal profeta Isaia:
@@ -48497,18 +48497,18 @@ UPDATE "CEI2008" SET text = '<pof>luce per rivelarti alle genti</pof>
 UPDATE "CEI2008" SET text = 'com''è scritto nel libro degli oracoli del profeta Isaia:
 <pof><i>Voce di uno che grida nel deserto </i>:</pof>
 <po><i>Preparate la via del Signore,</i></po>
-<pol><i>raddrizzate i</i> suoi <i>sentieri </i>!</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29084 AND text = 'com''è scritto nel libro degli oracoli del profeta Isaia: Voce di uno che grida nel deserto : Preparate la via del Signore, raddrizzate i suoi sentieri !' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('com''è scritto nel libro degli oracoli del profeta Isaia:
+<po><i>raddrizzate i</i> suoi <i>sentieri </i>!</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29084 AND text = 'com''è scritto nel libro degli oracoli del profeta Isaia: Voce di uno che grida nel deserto : Preparate la via del Signore, raddrizzate i suoi sentieri !' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('com''è scritto nel libro degli oracoli del profeta Isaia:
 <pof><i>Voce di uno che grida nel deserto </i>:</pof>
 <po><i>Preparate la via del Signore,</i></po>
-<pol><i>raddrizzate i</i> suoi <i>sentieri </i>!</pol>') = text_plain;  -- Lc 3:4
-UPDATE "CEI2008" SET text = '<i>Ogni burrone sarà riempito,</i>
-<pof><i>ogni monte e ogni colle sarà abbassato </i>;</pof>
+<po><i>raddrizzate i</i> suoi <i>sentieri </i>!</po>') = text_plain;  -- Lc 3:4
+UPDATE "CEI2008" SET text = '<po><i>Ogni burrone sarà riempito,</i></po>
+<po><i>ogni monte e ogni colle sarà abbassato </i>;</po>
 <po><i>le vie tortuose diverranno diritte</i></po>
-<pol><i>e quelle impervie, spianate.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29085 AND text = 'Ogni burrone sarà riempito, ogni monte e ogni colle sarà abbassato ; le vie tortuose diverranno diritte e quelle impervie, spianate.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Ogni burrone sarà riempito,</i>
-<pof><i>ogni monte e ogni colle sarà abbassato </i>;</pof>
+<po><i>e quelle impervie, spianate.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29085 AND text = 'Ogni burrone sarà riempito, ogni monte e ogni colle sarà abbassato ; le vie tortuose diverranno diritte e quelle impervie, spianate.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Ogni burrone sarà riempito,</i></po>
+<po><i>ogni monte e ogni colle sarà abbassato </i>;</po>
 <po><i>le vie tortuose diverranno diritte</i></po>
-<pol><i>e quelle impervie, spianate.</i></pol>') = text_plain;  -- Lc 3:5
-UPDATE "CEI2008" SET text = '<i>Ogni uomo vedrà la salvezza di Dio!</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29086 AND text = 'Ogni uomo vedrà la salvezza di Dio!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Ogni uomo vedrà la salvezza di Dio!</i>') = text_plain;  -- Lc 3:6
+<po><i>e quelle impervie, spianate.</i></po>') = text_plain;  -- Lc 3:5
+UPDATE "CEI2008" SET text = '<pol><i>Ogni uomo vedrà la salvezza di Dio!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29086 AND text = 'Ogni uomo vedrà la salvezza di Dio!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>Ogni uomo vedrà la salvezza di Dio!</i></pol>') = text_plain;  -- Lc 3:6
 UPDATE "CEI2008" SET text = 'Gesù gli rispose: "Sta scritto: <i>Non di solo pane vivrà l''uomo </i>".', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29122 AND text = 'Gesù gli rispose: "Sta scritto: Non di solo pane vivrà l''uomo ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Gesù gli rispose: "Sta scritto: <i>Non di solo pane vivrà l''uomo </i>".') = text_plain;  -- Lc 4:4
 UPDATE "CEI2008" SET text = 'Gesù gli rispose: "Sta scritto: <i>Il Signore, Dio tuo, adorerai </i>: <i>a lui solo renderai culto </i>".', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29126 AND text = 'Gesù gli rispose: "Sta scritto: Il Signore, Dio tuo, adorerai : a lui solo renderai culto ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Gesù gli rispose: "Sta scritto: <i>Il Signore, Dio tuo, adorerai </i>: <i>a lui solo renderai culto </i>".') = text_plain;  -- Lc 4:8
 UPDATE "CEI2008" SET text = 'sta scritto infatti:
@@ -48522,18 +48522,18 @@ UPDATE "CEI2008" SET text = '<pof>e anche:</pof>
 <pof><i>Essi ti porteranno sulle loro mani</i></pof>
 <pol><i>perché il tuo piede non inciampi in una pietra </i>".</pol>') = text_plain;  -- Lc 4:11
 UPDATE "CEI2008" SET text = '<pof>Gesù gli rispose: "È stato detto: <i>Non metterai alla prova il Signore Dio tuo </i>".</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29130 AND text = 'Gesù gli rispose: "È stato detto: Non metterai alla prova il Signore Dio tuo ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Gesù gli rispose: "È stato detto: <i>Non metterai alla prova il Signore Dio tuo </i>".</pof>') = text_plain;  -- Lc 4:12
-UPDATE "CEI2008" SET text = '<i>Lo Spirito del Signore è sopra di me;</i>
-<pof><i>per questo mi ha consacrato con l''unzione</i></pof>
+UPDATE "CEI2008" SET text = '<pof><i>Lo Spirito del Signore è sopra di me;</i></pof>
+<po><i>per questo mi ha consacrato con l''unzione</i></po>
 <po><i>e mi ha mandato a portare ai poveri il lieto annuncio,</i></po>
 <po><i>a proclamare ai prigionieri la liberazione</i></po>
 <po><i>e ai ciechi la vista;</i></po>
-<pol><i>a rimettere in libertà gli oppressi,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29136 AND text = 'Lo Spirito del Signore è sopra di me; per questo mi ha consacrato con l''unzione e mi ha mandato a portare ai poveri il lieto annuncio, a proclamare ai prigionieri la liberazione e ai ciechi la vista; a rimettere in libertà gli oppressi,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Lo Spirito del Signore è sopra di me;</i>
-<pof><i>per questo mi ha consacrato con l''unzione</i></pof>
+<po><i>a rimettere in libertà gli oppressi,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29136 AND text = 'Lo Spirito del Signore è sopra di me; per questo mi ha consacrato con l''unzione e mi ha mandato a portare ai poveri il lieto annuncio, a proclamare ai prigionieri la liberazione e ai ciechi la vista; a rimettere in libertà gli oppressi,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Lo Spirito del Signore è sopra di me;</i></pof>
+<po><i>per questo mi ha consacrato con l''unzione</i></po>
 <po><i>e mi ha mandato a portare ai poveri il lieto annuncio,</i></po>
 <po><i>a proclamare ai prigionieri la liberazione</i></po>
 <po><i>e ai ciechi la vista;</i></po>
-<pol><i>a rimettere in libertà gli oppressi,</i></pol>') = text_plain;  -- Lc 4:18
-UPDATE "CEI2008" SET text = '<i>a proclamare l''anno di grazia del Signore</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29137 AND text = 'a proclamare l''anno di grazia del Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>a proclamare l''anno di grazia del Signore</i>.') = text_plain;  -- Lc 4:19
+<po><i>a rimettere in libertà gli oppressi,</i></po>') = text_plain;  -- Lc 4:18
+UPDATE "CEI2008" SET text = '<pol><i>a proclamare l''anno di grazia del Signore</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29137 AND text = 'a proclamare l''anno di grazia del Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>a proclamare l''anno di grazia del Signore</i>.</pol>') = text_plain;  -- Lc 4:19
 UPDATE "CEI2008" SET text = 'Un altro sabato egli entrò nella sinagoga e si mise a insegnare. C''era là un uomo che aveva la mano destra paralizzata<i>.</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29207 AND text = 'Un altro sabato egli entrò nella sinagoga e si mise a insegnare. C''era là un uomo che aveva la mano destra paralizzata.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Un altro sabato egli entrò nella sinagoga e si mise a insegnare. C''era là un uomo che aveva la mano destra paralizzata<i>.</i>') = text_plain;  -- Lc 6:6
 UPDATE "CEI2008" SET text = '<pof>Tutta la folla cercava di toccarlo, perché da lui usciva una forza che guariva tutti.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29220 AND text = 'Tutta la folla cercava di toccarlo, perché da lui usciva una forza che guariva tutti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Tutta la folla cercava di toccarlo, perché da lui usciva una forza che guariva tutti.</pof>') = text_plain;  -- Lc 6:19
 UPDATE "CEI2008" SET text = '<pol>Ed egli, alzàti gli occhi verso i suoi discepoli, diceva:</pol>
@@ -48638,12 +48638,12 @@ UPDATE "CEI2008" SET text = '"Maestro, Mosè ci ha prescritto: <i>Se muore il fr
 UPDATE "CEI2008" SET text = 'Che poi i morti risorgano, lo ha indicato anche Mosè a proposito del roveto, quando dice: <i>Il</i> <i>Signore è il Dio di Abramo, Dio di Isacco e Dio di Giacobbe</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29871 AND text = 'Che poi i morti risorgano, lo ha indicato anche Mosè a proposito del roveto, quando dice: Il Signore è il Dio di Abramo, Dio di Isacco e Dio di Giacobbe.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Che poi i morti risorgano, lo ha indicato anche Mosè a proposito del roveto, quando dice: <i>Il</i> <i>Signore è il Dio di Abramo, Dio di Isacco e Dio di Giacobbe</i>.') = text_plain;  -- Lc 20:37
 UPDATE "CEI2008" SET text = 'se Davide stesso nel libro dei Salmi dice:
 <pof><i>Disse il Signore al mio Signore </i>:</pof>
-<pol><i>Siedi alla mia destra</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29876 AND text = 'se Davide stesso nel libro dei Salmi dice: Disse il Signore al mio Signore : Siedi alla mia destra' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('se Davide stesso nel libro dei Salmi dice:
+<po><i>Siedi alla mia destra</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29876 AND text = 'se Davide stesso nel libro dei Salmi dice: Disse il Signore al mio Signore : Siedi alla mia destra' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('se Davide stesso nel libro dei Salmi dice:
 <pof><i>Disse il Signore al mio Signore </i>:</pof>
-<pol><i>Siedi alla mia destra</i></pol>') = text_plain;  -- Lc 20:42
-UPDATE "CEI2008" SET text = '<i>finché io ponga i tuoi nemici</i>
-<pof><i>come sgabello dei tuoi piedi </i>?</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29877 AND text = 'finché io ponga i tuoi nemici come sgabello dei tuoi piedi ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>finché io ponga i tuoi nemici</i>
-<pof><i>come sgabello dei tuoi piedi </i>?</pof>') = text_plain;  -- Lc 20:43
+<po><i>Siedi alla mia destra</i></po>') = text_plain;  -- Lc 20:42
+UPDATE "CEI2008" SET text = '<po><i>finché io ponga i tuoi nemici</i></po>
+<pol><i>come sgabello dei tuoi piedi </i>?</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29877 AND text = 'finché io ponga i tuoi nemici come sgabello dei tuoi piedi ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>finché io ponga i tuoi nemici</i></po>
+<pol><i>come sgabello dei tuoi piedi </i>?</pol>') = text_plain;  -- Lc 20:43
 UPDATE "CEI2008" SET text = '<pof>Davide dunque lo chiama Signore; perciò, come può essere suo figlio?".</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29878 AND text = 'Davide dunque lo chiama Signore; perciò, come può essere suo figlio?".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Davide dunque lo chiama Signore; perciò, come può essere suo figlio?".</pof>') = text_plain;  -- Lc 20:44
 UPDATE "CEI2008" SET text = 'mentre gli uomini moriranno per la paura e per l''attesa di ciò che dovrà accadere sulla terra. <i>Le potenze dei cieli</i> infatti saranno sconvolte.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29907 AND text = 'mentre gli uomini moriranno per la paura e per l''attesa di ciò che dovrà accadere sulla terra. Le potenze dei cieli infatti saranno sconvolte.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('mentre gli uomini moriranno per la paura e per l''attesa di ciò che dovrà accadere sulla terra. <i>Le potenze dei cieli</i> infatti saranno sconvolte.') = text_plain;  -- Lc 21:26
 UPDATE "CEI2008" SET text = 'Allora vedranno <i>il Figlio dell''uomo venire su una nube</i> con grande potenza e gloria.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 29908 AND text = 'Allora vedranno il Figlio dell''uomo venire su una nube con grande potenza e gloria.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Allora vedranno <i>il Figlio dell''uomo venire su una nube</i> con grande potenza e gloria.') = text_plain;  -- Lc 21:27
@@ -48654,13 +48654,13 @@ UPDATE "CEI2008" SET text = 'Gesù, gridando a gran voce, disse: "Padre, <i>nell
 UPDATE "CEI2008" SET text = '<pof>Inizio del vangelo di Gesù, Cristo, Figlio di Dio.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28271 AND text = 'Inizio del vangelo di Gesù, Cristo, Figlio di Dio.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Inizio del vangelo di Gesù, Cristo, Figlio di Dio.</pof>') = text_plain;  -- Mc 1:1
 UPDATE "CEI2008" SET text = '<pol>Come sta scritto nel profeta Isaia:</pol>
 <pof><i>Ecco, dinanzi a te io mando il mio messaggero:</i></pof>
-<pol><i>egli preparerà la tua via.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28272 AND text = 'Come sta scritto nel profeta Isaia: Ecco, dinanzi a te io mando il mio messaggero: egli preparerà la tua via.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol>Come sta scritto nel profeta Isaia:</pol>
+<po><i>egli preparerà la tua via.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28272 AND text = 'Come sta scritto nel profeta Isaia: Ecco, dinanzi a te io mando il mio messaggero: egli preparerà la tua via.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol>Come sta scritto nel profeta Isaia:</pol>
 <pof><i>Ecco, dinanzi a te io mando il mio messaggero:</i></pof>
-<pol><i>egli preparerà la tua via.</i></pol>') = text_plain;  -- Mc 1:2
-UPDATE "CEI2008" SET text = '<i>Voce di uno che grida nel deserto:</i>
-<pof><i>Preparate la via del Signore,</i></pof>
-<pol><i>raddrizzate i suoi sentieri ,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28273 AND text = 'Voce di uno che grida nel deserto: Preparate la via del Signore, raddrizzate i suoi sentieri ,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Voce di uno che grida nel deserto:</i>
-<pof><i>Preparate la via del Signore,</i></pof>
+<po><i>egli preparerà la tua via.</i></po>') = text_plain;  -- Mc 1:2
+UPDATE "CEI2008" SET text = '<po><i>Voce di uno che grida nel deserto:</i></po>
+<po><i>Preparate la via del Signore,</i></po>
+<pol><i>raddrizzate i suoi sentieri ,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28273 AND text = 'Voce di uno che grida nel deserto: Preparate la via del Signore, raddrizzate i suoi sentieri ,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Voce di uno che grida nel deserto:</i></po>
+<po><i>Preparate la via del Signore,</i></po>
 <pol><i>raddrizzate i suoi sentieri ,</i></pol>') = text_plain;  -- Mc 1:3
 UPDATE "CEI2008" SET text = '<pof>affinché</pof>
 <pof><i>guardino, sì, ma non vedano,</i></pof>
@@ -48677,12 +48677,12 @@ UPDATE "CEI2008" SET text = '<pof>E si meravigliava della loro incredulità.</po
 UPDATE "CEI2008" SET text = 'Sceso dalla barca, egli vide una grande folla, ebbe compassione di loro, perché erano <i>come</i> <i>pecore che non hanno pastore </i>, e si mise a insegnare loro molte cose.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28496 AND text = 'Sceso dalla barca, egli vide una grande folla, ebbe compassione di loro, perché erano come pecore che non hanno pastore , e si mise a insegnare loro molte cose.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Sceso dalla barca, egli vide una grande folla, ebbe compassione di loro, perché erano <i>come</i> <i>pecore che non hanno pastore </i>, e si mise a insegnare loro molte cose.') = text_plain;  -- Mc 6:34
 UPDATE "CEI2008" SET text = 'Ed egli rispose loro: "Bene ha profetato Isaia di voi, ipocriti, come sta scritto:
 <pof><i>Questo popolo mi onora con le labbra,</i></pof>
-<pol><i>ma il suo cuore è lontano da me.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28524 AND text = 'Ed egli rispose loro: "Bene ha profetato Isaia di voi, ipocriti, come sta scritto: Questo popolo mi onora con le labbra, ma il suo cuore è lontano da me.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Ed egli rispose loro: "Bene ha profetato Isaia di voi, ipocriti, come sta scritto:
+<po><i>ma il suo cuore è lontano da me.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28524 AND text = 'Ed egli rispose loro: "Bene ha profetato Isaia di voi, ipocriti, come sta scritto: Questo popolo mi onora con le labbra, ma il suo cuore è lontano da me.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Ed egli rispose loro: "Bene ha profetato Isaia di voi, ipocriti, come sta scritto:
 <pof><i>Questo popolo mi onora con le labbra,</i></pof>
-<pol><i>ma il suo cuore è lontano da me.</i></pol>') = text_plain;  -- Mc 7:6
-UPDATE "CEI2008" SET text = '<i>Invano mi rendono culto,</i>
-<pof><i>insegnando dottrine che sono precetti di uomini</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28525 AND text = 'Invano mi rendono culto, insegnando dottrine che sono precetti di uomini.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Invano mi rendono culto,</i>
-<pof><i>insegnando dottrine che sono precetti di uomini</i>.</pof>') = text_plain;  -- Mc 7:7
+<po><i>ma il suo cuore è lontano da me.</i></po>') = text_plain;  -- Mc 7:6
+UPDATE "CEI2008" SET text = '<po><i>Invano mi rendono culto,</i></po>
+<pol><i>insegnando dottrine che sono precetti di uomini</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28525 AND text = 'Invano mi rendono culto, insegnando dottrine che sono precetti di uomini.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Invano mi rendono culto,</i></po>
+<pol><i>insegnando dottrine che sono precetti di uomini</i>.</pol>') = text_plain;  -- Mc 7:7
 UPDATE "CEI2008" SET text = 'Mosè infatti disse: <i>Onora tuo padre</i> <i>e tua madre </i>, e: <i>Chi maledice il padre o la madre sia messo a morte</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28528 AND text = 'Mosè infatti disse: Onora tuo padre e tua madre , e: Chi maledice il padre o la madre sia messo a morte.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Mosè infatti disse: <i>Onora tuo padre</i> <i>e tua madre </i>, e: <i>Chi maledice il padre o la madre sia messo a morte</i>.') = text_plain;  -- Mc 7:10
 UPDATE "CEI2008" SET text = 'Voi invece dite: "Se uno dichiara al padre o alla madre: Ciò con cui dovrei aiutarti è <i>korbàn </i>, cioè offerta a Dio",', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28529 AND text = 'Voi invece dite: "Se uno dichiara al padre o alla madre: Ciò con cui dovrei aiutarti è korbàn , cioè offerta a Dio",' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Voi invece dite: "Se uno dichiara al padre o alla madre: Ciò con cui dovrei aiutarti è <i>korbàn </i>, cioè offerta a Dio",') = text_plain;  -- Mc 7:11
 UPDATE "CEI2008" SET text = 'guardando quindi verso il cielo, emise un sospiro e gli disse: " <i>Effatà </i>", cioè: "Apriti!".', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28552 AND text = 'guardando quindi verso il cielo, emise un sospiro e gli disse: " Effatà ", cioè: "Apriti!".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('guardando quindi verso il cielo, emise un sospiro e gli disse: " <i>Effatà </i>", cioè: "Apriti!".') = text_plain;  -- Mc 7:34
@@ -48710,12 +48710,12 @@ UPDATE "CEI2008" SET text = 'E insegnava loro dicendo: "Non sta forse scritto:
 <pof>Voi invece ne avete fatto <i>un covo di ladri </i>".</pof>') = text_plain;  -- Mc 11:17
 UPDATE "CEI2008" SET text = 'Non avete letto questa Scrittura:
 <pof><i>La pietra che i costruttori hanno scartato</i></pof>
-<pol><i>è diventata la pietra d''angolo </i>;</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28738 AND text = 'Non avete letto questa Scrittura: La pietra che i costruttori hanno scartato è diventata la pietra d''angolo ;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Non avete letto questa Scrittura:
+<po><i>è diventata la pietra d''angolo </i>;</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28738 AND text = 'Non avete letto questa Scrittura: La pietra che i costruttori hanno scartato è diventata la pietra d''angolo ;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Non avete letto questa Scrittura:
 <pof><i>La pietra che i costruttori hanno scartato</i></pof>
-<pol><i>è diventata la pietra d''angolo </i>;</pol>') = text_plain;  -- Mc 12:10
-UPDATE "CEI2008" SET text = '<i>questo è stato fatto dal Signore</i>
-<pof><i>ed è una meraviglia ai nostri occhi </i>?".</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28739 AND text = 'questo è stato fatto dal Signore ed è una meraviglia ai nostri occhi ?".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>questo è stato fatto dal Signore</i>
-<pof><i>ed è una meraviglia ai nostri occhi </i>?".</pof>') = text_plain;  -- Mc 12:11
+<po><i>è diventata la pietra d''angolo </i>;</po>') = text_plain;  -- Mc 12:10
+UPDATE "CEI2008" SET text = '<po><i>questo è stato fatto dal Signore</i></po>
+<pol><i>ed è una meraviglia ai nostri occhi </i>?".</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28739 AND text = 'questo è stato fatto dal Signore ed è una meraviglia ai nostri occhi ?".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>questo è stato fatto dal Signore</i></po>
+<pol><i>ed è una meraviglia ai nostri occhi </i>?".</pol>') = text_plain;  -- Mc 12:11
 UPDATE "CEI2008" SET text = '"Maestro, Mosè ci ha lasciato scritto che, <i>se muore il fratello di qualcuno</i> e lascia la moglie <i>senza figli, suo fratello prenda la moglie e dia una discendenza al proprio fratello.</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28747 AND text = '"Maestro, Mosè ci ha lasciato scritto che, se muore il fratello di qualcuno e lascia la moglie senza figli, suo fratello prenda la moglie e dia una discendenza al proprio fratello.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('"Maestro, Mosè ci ha lasciato scritto che, <i>se muore il fratello di qualcuno</i> e lascia la moglie <i>senza figli, suo fratello prenda la moglie e dia una discendenza al proprio fratello.</i>') = text_plain;  -- Mc 12:19
 UPDATE "CEI2008" SET text = 'Riguardo al fatto che i morti risorgono, non avete letto nel libro di Mosè, nel racconto del roveto, come Dio gli parlò dicendo: <i>Io sono il Dio di Abramo, il Dio di Isacco e il Dio di Giacobbe </i>?', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28754 AND text = 'Riguardo al fatto che i morti risorgono, non avete letto nel libro di Mosè, nel racconto del roveto, come Dio gli parlò dicendo: Io sono il Dio di Abramo, il Dio di Isacco e il Dio di Giacobbe ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Riguardo al fatto che i morti risorgono, non avete letto nel libro di Mosè, nel racconto del roveto, come Dio gli parlò dicendo: <i>Io sono il Dio di Abramo, il Dio di Isacco e il Dio di Giacobbe </i>?') = text_plain;  -- Mc 12:26
 UPDATE "CEI2008" SET text = 'Gesù rispose: "Il primo è: <i>Ascolta, Israele! Il Signore nostro Dio è l''unico Signore </i>;', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 28757 AND text = 'Gesù rispose: "Il primo è: Ascolta, Israele! Il Signore nostro Dio è l''unico Signore ;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Gesù rispose: "Il primo è: <i>Ascolta, Israele! Il Signore nostro Dio è l''unico Signore </i>;') = text_plain;  -- Mc 12:29
@@ -48760,10 +48760,10 @@ UPDATE "CEI2008" SET text = 'Uno corse a inzuppare di aceto una spugna, la fiss�
 UPDATE "CEI2008" SET text = '<pof>Iesse generò il re Davide.</pof>
 <pol>Davide generò Salomone da quella che era stata la moglie di Uria,</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27205 AND text = 'Iesse generò il re Davide. Davide generò Salomone da quella che era stata la moglie di Uria,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Iesse generò il re Davide.</pof>
 <pol>Davide generò Salomone da quella che era stata la moglie di Uria,</pol>') = text_plain;  -- Mt 1:6
-UPDATE "CEI2008" SET text = '<i>Ecco, la vergine concepirà e darà alla luce un figlio:</i>
-<pof><i>a lui sarà dato il nome di Emmanuele </i>,</pof>
-<pof>che significa <i>Dio con noi</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27222 AND text = 'Ecco, la vergine concepirà e darà alla luce un figlio: a lui sarà dato il nome di Emmanuele , che significa Dio con noi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Ecco, la vergine concepirà e darà alla luce un figlio:</i>
-<pof><i>a lui sarà dato il nome di Emmanuele </i>,</pof>
+UPDATE "CEI2008" SET text = '<pof><i>Ecco, la vergine concepirà e darà alla luce un figlio:</i></pof>
+<pol><i>a lui sarà dato il nome di Emmanuele </i>,</pol>
+<pof>che significa <i>Dio con noi</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27222 AND text = 'Ecco, la vergine concepirà e darà alla luce un figlio: a lui sarà dato il nome di Emmanuele , che significa Dio con noi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Ecco, la vergine concepirà e darà alla luce un figlio:</i></pof>
+<pol><i>a lui sarà dato il nome di Emmanuele </i>,</pol>
 <pof>che significa <i>Dio con noi</i>.</pof>') = text_plain;  -- Mt 1:23
 UPDATE "CEI2008" SET text = '<pof><i>E tu, Betlemme,</i> terra di Giuda,</pof>
 <po>non <i>sei</i> davvero <i>l''ultima delle città principali di Giuda:</i></po>
@@ -48775,12 +48775,12 @@ UPDATE "CEI2008" SET text = '<pof><i>E tu, Betlemme,</i> terra di Giuda,</pof>
 UPDATE "CEI2008" SET text = 'dove rimase fino alla morte di Erode, perché si compisse ciò che era stato detto dal Signore per mezzo del profeta:
 <pof><i>Dall''Egitto ho chiamato mio figlio</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27239 AND text = 'dove rimase fino alla morte di Erode, perché si compisse ciò che era stato detto dal Signore per mezzo del profeta: Dall''Egitto ho chiamato mio figlio.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('dove rimase fino alla morte di Erode, perché si compisse ciò che era stato detto dal Signore per mezzo del profeta:
 <pof><i>Dall''Egitto ho chiamato mio figlio</i>.</pof>') = text_plain;  -- Mt 2:15
-UPDATE "CEI2008" SET text = '<i>Un grido è stato udito in Rama,</i>
-<pof><i>un pianto e un lamento</i> grande:</pof>
+UPDATE "CEI2008" SET text = '<pof><i>Un grido è stato udito in Rama,</i></pof>
+<po><i>un pianto e un lamento</i> grande:</po>
 <po><i>Rachele piange i suoi figli</i></po>
 <po><i>e non vuole essere consolata,</i></po>
-<pol><i>perché non sono più</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27242 AND text = 'Un grido è stato udito in Rama, un pianto e un lamento grande: Rachele piange i suoi figli e non vuole essere consolata, perché non sono più.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Un grido è stato udito in Rama,</i>
-<pof><i>un pianto e un lamento</i> grande:</pof>
+<pol><i>perché non sono più</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27242 AND text = 'Un grido è stato udito in Rama, un pianto e un lamento grande: Rachele piange i suoi figli e non vuole essere consolata, perché non sono più.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Un grido è stato udito in Rama,</i></pof>
+<po><i>un pianto e un lamento</i> grande:</po>
 <po><i>Rachele piange i suoi figli</i></po>
 <po><i>e non vuole essere consolata,</i></po>
 <pol><i>perché non sono più</i>.</pol>') = text_plain;  -- Mt 2:18
@@ -48815,14 +48815,14 @@ UPDATE "CEI2008" SET text = 'Allora Gesù gli rispose: "Vattene, Satana! Sta scr
 UPDATE "CEI2008" SET text = '<pof>Allora il diavolo lo lasciò, ed ecco, degli angeli gli si avvicinarono e lo servivano.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27275 AND text = 'Allora il diavolo lo lasciò, ed ecco, degli angeli gli si avvicinarono e lo servivano.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Allora il diavolo lo lasciò, ed ecco, degli angeli gli si avvicinarono e lo servivano.</pof>') = text_plain;  -- Mt 4:11
 UPDATE "CEI2008" SET text = '<pof><i>Terra di Zàbulon</i> e <i>terra di Nèftali,</i></pof>
 <po><i>sulla via del mare, oltre il Giordano,</i></po>
-<pol><i>Galilea delle genti!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27279 AND text = 'Terra di Zàbulon e terra di Nèftali, sulla via del mare, oltre il Giordano, Galilea delle genti!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Terra di Zàbulon</i> e <i>terra di Nèftali,</i></pof>
+<po><i>Galilea delle genti!</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27279 AND text = 'Terra di Zàbulon e terra di Nèftali, sulla via del mare, oltre il Giordano, Galilea delle genti!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Terra di Zàbulon</i> e <i>terra di Nèftali,</i></pof>
 <po><i>sulla via del mare, oltre il Giordano,</i></po>
-<pol><i>Galilea delle genti!</i></pol>') = text_plain;  -- Mt 4:15
-UPDATE "CEI2008" SET text = '<i>Il popolo che abitava nelle tenebre</i>
-<pof><i>vide una grande luce,</i></pof>
+<po><i>Galilea delle genti!</i></po>') = text_plain;  -- Mt 4:15
+UPDATE "CEI2008" SET text = '<po><i>Il popolo che abitava nelle tenebre</i></po>
+<po><i>vide una grande luce,</i></po>
 <po>per quelli <i>che abitavano in regione e ombra di morte</i></po>
-<pol><i>una luce è sorta</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27280 AND text = 'Il popolo che abitava nelle tenebre vide una grande luce, per quelli che abitavano in regione e ombra di morte una luce è sorta.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Il popolo che abitava nelle tenebre</i>
-<pof><i>vide una grande luce,</i></pof>
+<pol><i>una luce è sorta</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27280 AND text = 'Il popolo che abitava nelle tenebre vide una grande luce, per quelli che abitavano in regione e ombra di morte una luce è sorta.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Il popolo che abitava nelle tenebre</i></po>
+<po><i>vide una grande luce,</i></po>
 <po>per quelli <i>che abitavano in regione e ombra di morte</i></po>
 <pol><i>una luce è sorta</i>.</pol>') = text_plain;  -- Mt 4:16
 UPDATE "CEI2008" SET text = '<pof>"Beati i poveri in spirito,</pof>
@@ -48890,36 +48890,36 @@ UPDATE "CEI2008" SET text = '<pof>"Vi abbiamo suonato il flauto e non avete ball
 <pol>abbiamo cantato un lamento e non vi siete battuti il petto!".</pol>') = text_plain;  -- Mt 11:17
 UPDATE "CEI2008" SET text = 'Prendete il mio giogo sopra di voi e imparate da me, che sono mite e umile di cuore, <i>e troverete ristoro per la vostra vita</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27543 AND text = 'Prendete il mio giogo sopra di voi e imparate da me, che sono mite e umile di cuore, e troverete ristoro per la vostra vita.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Prendete il mio giogo sopra di voi e imparate da me, che sono mite e umile di cuore, <i>e troverete ristoro per la vostra vita</i>.') = text_plain;  -- Mt 11:29
 UPDATE "CEI2008" SET text = 'Se aveste compreso che cosa significhi: <i>Misericordia io voglio e non sacrifici </i>, non avreste condannato persone senza colpa.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27551 AND text = 'Se aveste compreso che cosa significhi: Misericordia io voglio e non sacrifici , non avreste condannato persone senza colpa.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Se aveste compreso che cosa significhi: <i>Misericordia io voglio e non sacrifici </i>, non avreste condannato persone senza colpa.') = text_plain;  -- Mt 12:7
-UPDATE "CEI2008" SET text = '<i>Ecco il mio servo, che io ho scelto;</i>
-<pof><i>il mio amato, nel quale ho posto il mio compiacimento.</i></pof>
+UPDATE "CEI2008" SET text = '<pof><i>Ecco il mio servo, che io ho scelto;</i></pof>
+<po><i>il mio amato, nel quale ho posto il mio compiacimento.</i></po>
 <po><i>Porrò il mio spirito sopra di lui</i></po>
-<pol><i>e annuncerà alle nazioni la giustizia.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27562 AND text = 'Ecco il mio servo, che io ho scelto; il mio amato, nel quale ho posto il mio compiacimento. Porrò il mio spirito sopra di lui e annuncerà alle nazioni la giustizia.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Ecco il mio servo, che io ho scelto;</i>
-<pof><i>il mio amato, nel quale ho posto il mio compiacimento.</i></pof>
+<po><i>e annuncerà alle nazioni la giustizia.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27562 AND text = 'Ecco il mio servo, che io ho scelto; il mio amato, nel quale ho posto il mio compiacimento. Porrò il mio spirito sopra di lui e annuncerà alle nazioni la giustizia.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Ecco il mio servo, che io ho scelto;</i></pof>
+<po><i>il mio amato, nel quale ho posto il mio compiacimento.</i></po>
 <po><i>Porrò il mio spirito sopra di lui</i></po>
-<pol><i>e annuncerà alle nazioni la giustizia.</i></pol>') = text_plain;  -- Mt 12:18
-UPDATE "CEI2008" SET text = '<i>Non contesterà né griderà</i>
-<pof><i>né si udrà nelle piazze la sua voce.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27563 AND text = 'Non contesterà né griderà né si udrà nelle piazze la sua voce.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non contesterà né griderà</i>
-<pof><i>né si udrà nelle piazze la sua voce.</i></pof>') = text_plain;  -- Mt 12:19
-UPDATE "CEI2008" SET text = '<i>Non spezzerà una canna già incrinata,</i>
-<pof><i>non spegnerà una fiamma smorta,</i></pof>
-<pol><i>finché non abbia fatto</i> trionfare la <i>giustizia;</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27564 AND text = 'Non spezzerà una canna già incrinata, non spegnerà una fiamma smorta, finché non abbia fatto trionfare la giustizia;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non spezzerà una canna già incrinata,</i>
-<pof><i>non spegnerà una fiamma smorta,</i></pof>
-<pol><i>finché non abbia fatto</i> trionfare la <i>giustizia;</i></pol>') = text_plain;  -- Mt 12:20
-UPDATE "CEI2008" SET text = '<i>nel suo nome spereranno le nazioni</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27565 AND text = 'nel suo nome spereranno le nazioni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>nel suo nome spereranno le nazioni</i>.') = text_plain;  -- Mt 12:21
+<po><i>e annuncerà alle nazioni la giustizia.</i></po>') = text_plain;  -- Mt 12:18
+UPDATE "CEI2008" SET text = '<po><i>Non contesterà né griderà</i></po>
+<po><i>né si udrà nelle piazze la sua voce.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27563 AND text = 'Non contesterà né griderà né si udrà nelle piazze la sua voce.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Non contesterà né griderà</i></po>
+<po><i>né si udrà nelle piazze la sua voce.</i></po>') = text_plain;  -- Mt 12:19
+UPDATE "CEI2008" SET text = '<po><i>Non spezzerà una canna già incrinata,</i></po>
+<po><i>non spegnerà una fiamma smorta,</i></po>
+<po><i>finché non abbia fatto</i> trionfare la <i>giustizia;</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27564 AND text = 'Non spezzerà una canna già incrinata, non spegnerà una fiamma smorta, finché non abbia fatto trionfare la giustizia;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Non spezzerà una canna già incrinata,</i></po>
+<po><i>non spegnerà una fiamma smorta,</i></po>
+<po><i>finché non abbia fatto</i> trionfare la <i>giustizia;</i></po>') = text_plain;  -- Mt 12:20
+UPDATE "CEI2008" SET text = '<pol><i>nel suo nome spereranno le nazioni</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27565 AND text = 'nel suo nome spereranno le nazioni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>nel suo nome spereranno le nazioni</i>.</pol>') = text_plain;  -- Mt 12:21
 UPDATE "CEI2008" SET text = 'Come infatti <i>Giona rimase tre giorni e tre notti nel ventre del pesce,</i> così il Figlio dell''uomo resterà tre giorni e tre notti nel cuore della terra.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27584 AND text = 'Come infatti Giona rimase tre giorni e tre notti nel ventre del pesce, così il Figlio dell''uomo resterà tre giorni e tre notti nel cuore della terra.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Come infatti <i>Giona rimase tre giorni e tre notti nel ventre del pesce,</i> così il Figlio dell''uomo resterà tre giorni e tre notti nel cuore della terra.') = text_plain;  -- Mt 12:40
 UPDATE "CEI2008" SET text = 'Così si compie per loro la profezia di Isaia che dice:
 <pof><i>Udrete, sì, ma non comprenderete,</i></pof>
-<pol><i>guarderete, sì, ma non vedrete.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27608 AND text = 'Così si compie per loro la profezia di Isaia che dice: Udrete, sì, ma non comprenderete, guarderete, sì, ma non vedrete.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Così si compie per loro la profezia di Isaia che dice:
+<po><i>guarderete, sì, ma non vedrete.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27608 AND text = 'Così si compie per loro la profezia di Isaia che dice: Udrete, sì, ma non comprenderete, guarderete, sì, ma non vedrete.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Così si compie per loro la profezia di Isaia che dice:
 <pof><i>Udrete, sì, ma non comprenderete,</i></pof>
-<pol><i>guarderete, sì, ma non vedrete.</i></pol>') = text_plain;  -- Mt 13:14
-UPDATE "CEI2008" SET text = '<i>Perché il cuore di questo popolo è diventato insensibile,</i>
-<pof><i>sono diventati duri di orecchi</i></pof>
+<po><i>guarderete, sì, ma non vedrete.</i></po>') = text_plain;  -- Mt 13:14
+UPDATE "CEI2008" SET text = '<po><i>Perché il cuore di questo popolo è diventato insensibile,</i></po>
+<po><i>sono diventati duri di orecchi</i></po>
 <po><i>e hanno chiuso gli occhi,</i></po>
 <po><i>perché non vedano con gli occhi,</i></po>
 <po><i>non ascoltino con gli orecchi</i></po>
 <po><i>e non comprendano con il cuore</i></po>
-<pol><i>e non si convertano e io li guarisca!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27609 AND text = 'Perché il cuore di questo popolo è diventato insensibile, sono diventati duri di orecchi e hanno chiuso gli occhi, perché non vedano con gli occhi, non ascoltino con gli orecchi e non comprendano con il cuore e non si convertano e io li guarisca!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Perché il cuore di questo popolo è diventato insensibile,</i>
-<pof><i>sono diventati duri di orecchi</i></pof>
+<pol><i>e non si convertano e io li guarisca!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27609 AND text = 'Perché il cuore di questo popolo è diventato insensibile, sono diventati duri di orecchi e hanno chiuso gli occhi, perché non vedano con gli occhi, non ascoltino con gli orecchi e non comprendano con il cuore e non si convertano e io li guarisca!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Perché il cuore di questo popolo è diventato insensibile,</i></po>
+<po><i>sono diventati duri di orecchi</i></po>
 <po><i>e hanno chiuso gli occhi,</i></po>
 <po><i>perché non vedano con gli occhi,</i></po>
 <po><i>non ascoltino con gli orecchi</i></po>
@@ -48934,12 +48934,12 @@ UPDATE "CEI2008" SET text = 'perché si compisse ciò che era stato detto per me
 UPDATE "CEI2008" SET text = 'e <i>li getteranno nella fornace ardente </i>, dove sarà pianto e stridore di denti.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27636 AND text = 'e li getteranno nella fornace ardente , dove sarà pianto e stridore di denti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('e <i>li getteranno nella fornace ardente </i>, dove sarà pianto e stridore di denti.') = text_plain;  -- Mt 13:42
 UPDATE "CEI2008" SET text = 'e <i>li getteranno nella fornace ardente </i>, dove sarà pianto e stridore di denti.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27644 AND text = 'e li getteranno nella fornace ardente , dove sarà pianto e stridore di denti.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('e <i>li getteranno nella fornace ardente </i>, dove sarà pianto e stridore di denti.') = text_plain;  -- Mt 13:50
 UPDATE "CEI2008" SET text = 'Dio ha detto: <i>Onora il padre e la madre</i> e inoltre: <i>Chi maledice il padre o la madre sia messo a morte</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27692 AND text = 'Dio ha detto: Onora il padre e la madre e inoltre: Chi maledice il padre o la madre sia messo a morte.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Dio ha detto: <i>Onora il padre e la madre</i> e inoltre: <i>Chi maledice il padre o la madre sia messo a morte</i>.') = text_plain;  -- Mt 15:4
-UPDATE "CEI2008" SET text = '<i>Questo popolo mi onora con le labbra,</i>
-<pof><i>ma il suo cuore è lontano da me.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27696 AND text = 'Questo popolo mi onora con le labbra, ma il suo cuore è lontano da me.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Questo popolo mi onora con le labbra,</i>
-<pof><i>ma il suo cuore è lontano da me.</i></pof>') = text_plain;  -- Mt 15:8
-UPDATE "CEI2008" SET text = '<i>Invano essi mi rendono culto,</i>
-<pof><i>insegnando dottrine che sono precetti di uomini</i> ".</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27697 AND text = 'Invano essi mi rendono culto, insegnando dottrine che sono precetti di uomini ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Invano essi mi rendono culto,</i>
-<pof><i>insegnando dottrine che sono precetti di uomini</i> ".</pof>') = text_plain;  -- Mt 15:9
+UPDATE "CEI2008" SET text = '<pof><i>Questo popolo mi onora con le labbra,</i></pof>
+<po><i>ma il suo cuore è lontano da me.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27696 AND text = 'Questo popolo mi onora con le labbra, ma il suo cuore è lontano da me.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Questo popolo mi onora con le labbra,</i></pof>
+<po><i>ma il suo cuore è lontano da me.</i></po>') = text_plain;  -- Mt 15:8
+UPDATE "CEI2008" SET text = '<po><i>Invano essi mi rendono culto,</i></po>
+<pol><i>insegnando dottrine che sono precetti di uomini</i> ".</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27697 AND text = 'Invano essi mi rendono culto, insegnando dottrine che sono precetti di uomini ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Invano essi mi rendono culto,</i></po>
+<pol><i>insegnando dottrine che sono precetti di uomini</i> ".</pol>') = text_plain;  -- Mt 15:9
 UPDATE "CEI2008" SET text = 'Perché il Figlio dell''uomo sta per venire nella gloria del Padre suo, con i suoi angeli, e allora <i>renderà a ciascuno secondo le sue azioni</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27754 AND text = 'Perché il Figlio dell''uomo sta per venire nella gloria del Padre suo, con i suoi angeli, e allora renderà a ciascuno secondo le sue azioni.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Perché il Figlio dell''uomo sta per venire nella gloria del Padre suo, con i suoi angeli, e allora <i>renderà a ciascuno secondo le sue azioni</i>.') = text_plain;  -- Mt 16:27
 UPDATE "CEI2008" SET text = 'Allora i discepoli gli domandarono: "Perché dunque gli scribi dicono che <i>prima deve</i> <i>venire Elia </i>?".', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27765 AND text = 'Allora i discepoli gli domandarono: "Perché dunque gli scribi dicono che prima deve venire Elia ?".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Allora i discepoli gli domandarono: "Perché dunque gli scribi dicono che <i>prima deve</i> <i>venire Elia </i>?".') = text_plain;  -- Mt 17:10
 UPDATE "CEI2008" SET text = 'Ed egli rispose: "Sì, <i>verrà Elia e ristabilirà</i> ogni cosa.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27766 AND text = 'Ed egli rispose: "Sì, verrà Elia e ristabilirà ogni cosa.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Ed egli rispose: "Sì, <i>verrà Elia e ristabilirà</i> ogni cosa.') = text_plain;  -- Mt 17:11
@@ -48948,11 +48948,11 @@ UPDATE "CEI2008" SET text = 'Egli rispose: "Non avete letto che il Creatore da p
 UPDATE "CEI2008" SET text = 'e disse: <i>Per questo l''uomo lascerà il padre e la madre e si unirà a sua moglie e i due diventeranno una sola carne</i> ?', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27822 AND text = 'e disse: Per questo l''uomo lascerà il padre e la madre e si unirà a sua moglie e i due diventeranno una sola carne ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('e disse: <i>Per questo l''uomo lascerà il padre e la madre e si unirà a sua moglie e i due diventeranno una sola carne</i> ?') = text_plain;  -- Mt 19:5
 UPDATE "CEI2008" SET text = 'Gli chiese: "Quali?". Gesù rispose: <i>"Non ucciderai, non commetterai adulterio, non ruberai, non testimonierai il falso,</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27835 AND text = 'Gli chiese: "Quali?". Gesù rispose: "Non ucciderai, non commetterai adulterio, non ruberai, non testimonierai il falso,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Gli chiese: "Quali?". Gesù rispose: <i>"Non ucciderai, non commetterai adulterio, non ruberai, non testimonierai il falso,</i>') = text_plain;  -- Mt 19:18
 UPDATE "CEI2008" SET text = '<i>onora il padre e la madre</i> e <i>amerai il prossimo tuo come te stesso </i>"<i>.</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27836 AND text = 'onora il padre e la madre e amerai il prossimo tuo come te stesso ".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>onora il padre e la madre</i> e <i>amerai il prossimo tuo come te stesso </i>"<i>.</i>') = text_plain;  -- Mt 19:19
-UPDATE "CEI2008" SET text = '<i>Dite alla figlia di Sion:</i>
-<pof><i>Ecco, a te viene il tuo re,</i></pof>
+UPDATE "CEI2008" SET text = '<pof><i>Dite alla figlia di Sion:</i></pof>
+<po><i>Ecco, a te viene il tuo re,</i></po>
 <po><i>mite, seduto su un''asina</i></po>
-<pol><i>e su un puledro, figlio di una bestia da soma</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27886 AND text = 'Dite alla figlia di Sion: Ecco, a te viene il tuo re, mite, seduto su un''asina e su un puledro, figlio di una bestia da soma.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Dite alla figlia di Sion:</i>
-<pof><i>Ecco, a te viene il tuo re,</i></pof>
+<pol><i>e su un puledro, figlio di una bestia da soma</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27886 AND text = 'Dite alla figlia di Sion: Ecco, a te viene il tuo re, mite, seduto su un''asina e su un puledro, figlio di una bestia da soma.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Dite alla figlia di Sion:</i></pof>
+<po><i>Ecco, a te viene il tuo re,</i></po>
 <po><i>mite, seduto su un''asina</i></po>
 <pol><i>e su un puledro, figlio di una bestia da soma</i>.</pol>') = text_plain;  -- Mt 21:5
 UPDATE "CEI2008" SET text = 'La folla che lo precedeva e quella che lo seguiva, gridava:
@@ -48986,11 +48986,11 @@ UPDATE "CEI2008" SET text = '"Maestro, Mosè disse: <i>Se uno muore senza figli,
 UPDATE "CEI2008" SET text = '<i>Io sono il Dio di Abramo, il Dio di Isacco e il Dio di Giacobbe </i>? Non è il Dio dei morti, ma dei viventi!".', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27959 AND text = 'Io sono il Dio di Abramo, il Dio di Isacco e il Dio di Giacobbe ? Non è il Dio dei morti, ma dei viventi!".' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Io sono il Dio di Abramo, il Dio di Isacco e il Dio di Giacobbe </i>? Non è il Dio dei morti, ma dei viventi!".') = text_plain;  -- Mt 22:32
 UPDATE "CEI2008" SET text = 'Gli rispose: " <i>Amerai il Signore tuo Dio con tutto il tuo cuore, con tutta la tua anima</i> <i>e con tutta la tua mente</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27964 AND text = 'Gli rispose: " Amerai il Signore tuo Dio con tutto il tuo cuore, con tutta la tua anima e con tutta la tua mente.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Gli rispose: " <i>Amerai il Signore tuo Dio con tutto il tuo cuore, con tutta la tua anima</i> <i>e con tutta la tua mente</i>.') = text_plain;  -- Mt 22:37
 UPDATE "CEI2008" SET text = 'Il secondo poi è simile a quello: <i>Amerai il tuo prossimo come te stesso</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27966 AND text = 'Il secondo poi è simile a quello: Amerai il tuo prossimo come te stesso.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Il secondo poi è simile a quello: <i>Amerai il tuo prossimo come te stesso</i>.') = text_plain;  -- Mt 22:39
-UPDATE "CEI2008" SET text = '<i>Disse il Signore al mio Signore:</i>
-<pof><i>Siedi alla mia destra</i></pof>
+UPDATE "CEI2008" SET text = '<pof><i>Disse il Signore al mio Signore:</i></pof>
+<po><i>Siedi alla mia destra</i></po>
 <po><i>finché io ponga i tuoi nemici</i></po>
-<pol><i>sotto i tuoi piedi </i>?</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27971 AND text = 'Disse il Signore al mio Signore: Siedi alla mia destra finché io ponga i tuoi nemici sotto i tuoi piedi ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Disse il Signore al mio Signore:</i>
-<pof><i>Siedi alla mia destra</i></pof>
+<pol><i>sotto i tuoi piedi </i>?</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 27971 AND text = 'Disse il Signore al mio Signore: Siedi alla mia destra finché io ponga i tuoi nemici sotto i tuoi piedi ?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Disse il Signore al mio Signore:</i></pof>
+<po><i>Siedi alla mia destra</i></po>
 <po><i>finché io ponga i tuoi nemici</i></po>
 <pol><i>sotto i tuoi piedi </i>?</pol>') = text_plain;  -- Mt 22:44
 UPDATE "CEI2008" SET text = 'Vi dico infatti che non mi vedrete più, fino a quando non direte:
@@ -49037,27 +49037,27 @@ UPDATE "CEI2008" SET text = 'Impossibile! Sia chiaro invece che Dio è veritiero
 UPDATE "CEI2008" SET text = 'come sta scritto:
 <pof><i>Non c''è nessun giusto, nemmeno uno,</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32055 AND text = 'come sta scritto: Non c''è nessun giusto, nemmeno uno,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('come sta scritto:
 <pof><i>Non c''è nessun giusto, nemmeno uno,</i></pof>') = text_plain;  -- Rm 3:10
-UPDATE "CEI2008" SET text = '<i>non c''è chi comprenda,</i>
-<pof><i>non c''è nessuno che cerchi Dio</i> !</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32056 AND text = 'non c''è chi comprenda, non c''è nessuno che cerchi Dio !' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>non c''è chi comprenda,</i>
-<pof><i>non c''è nessuno che cerchi Dio</i> !</pof>') = text_plain;  -- Rm 3:11
-UPDATE "CEI2008" SET text = '<i>Tutti hanno smarrito la via, insieme si sono corrotti;</i>
-<pof><i>non c''è chi compia il bene, non ce n''è neppure uno.</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32057 AND text = 'Tutti hanno smarrito la via, insieme si sono corrotti; non c''è chi compia il bene, non ce n''è neppure uno.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Tutti hanno smarrito la via, insieme si sono corrotti;</i>
-<pof><i>non c''è chi compia il bene, non ce n''è neppure uno.</i></pof>') = text_plain;  -- Rm 3:12
-UPDATE "CEI2008" SET text = '<i>La loro gola è un sepolcro spalancato,</i>
-<pof><i>tramavano inganni con la loro lingua,</i></pof>
-<pol><i>veleno di serpenti è sotto le loro labbra,</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32058 AND text = 'La loro gola è un sepolcro spalancato, tramavano inganni con la loro lingua, veleno di serpenti è sotto le loro labbra,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>La loro gola è un sepolcro spalancato,</i>
-<pof><i>tramavano inganni con la loro lingua,</i></pof>
-<pol><i>veleno di serpenti è sotto le loro labbra,</i></pol>') = text_plain;  -- Rm 3:13
-UPDATE "CEI2008" SET text = '<i>la loro bocca è piena di maledizione e di amarezza.</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32059 AND text = 'la loro bocca è piena di maledizione e di amarezza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>la loro bocca è piena di maledizione e di amarezza.</i>') = text_plain;  -- Rm 3:14
+UPDATE "CEI2008" SET text = '<po><i>non c''è chi comprenda,</i></po>
+<po><i>non c''è nessuno che cerchi Dio</i> !</po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32056 AND text = 'non c''è chi comprenda, non c''è nessuno che cerchi Dio !' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>non c''è chi comprenda,</i></po>
+<po><i>non c''è nessuno che cerchi Dio</i> !</po>') = text_plain;  -- Rm 3:11
+UPDATE "CEI2008" SET text = '<po><i>Tutti hanno smarrito la via, insieme si sono corrotti;</i></po>
+<po><i>non c''è chi compia il bene, non ce n''è neppure uno.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32057 AND text = 'Tutti hanno smarrito la via, insieme si sono corrotti; non c''è chi compia il bene, non ce n''è neppure uno.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Tutti hanno smarrito la via, insieme si sono corrotti;</i></po>
+<po><i>non c''è chi compia il bene, non ce n''è neppure uno.</i></po>') = text_plain;  -- Rm 3:12
+UPDATE "CEI2008" SET text = '<po><i>La loro gola è un sepolcro spalancato,</i></po>
+<po><i>tramavano inganni con la loro lingua,</i></po>
+<po><i>veleno di serpenti è sotto le loro labbra,</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32058 AND text = 'La loro gola è un sepolcro spalancato, tramavano inganni con la loro lingua, veleno di serpenti è sotto le loro labbra,' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>La loro gola è un sepolcro spalancato,</i></po>
+<po><i>tramavano inganni con la loro lingua,</i></po>
+<po><i>veleno di serpenti è sotto le loro labbra,</i></po>') = text_plain;  -- Rm 3:13
+UPDATE "CEI2008" SET text = '<pol><i>la loro bocca è piena di maledizione e di amarezza.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32059 AND text = 'la loro bocca è piena di maledizione e di amarezza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>la loro bocca è piena di maledizione e di amarezza.</i></pol>') = text_plain;  -- Rm 3:14
 UPDATE "CEI2008" SET text = '<i>I loro piedi corrono a versare sangue;</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32060 AND text = 'I loro piedi corrono a versare sangue;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>I loro piedi corrono a versare sangue;</i>') = text_plain;  -- Rm 3:15
 UPDATE "CEI2008" SET text = '<i>rovina e sciagura è sul loro cammino</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32061 AND text = 'rovina e sciagura è sul loro cammino' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>rovina e sciagura è sul loro cammino</i>') = text_plain;  -- Rm 3:16
 UPDATE "CEI2008" SET text = '<i>e la via della pace non l''hanno conosciuta.</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32062 AND text = 'e la via della pace non l''hanno conosciuta.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>e la via della pace non l''hanno conosciuta.</i>') = text_plain;  -- Rm 3:17
 UPDATE "CEI2008" SET text = '<i>Non c''è timore di Dio davanti ai loro occhi</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32063 AND text = 'Non c''è timore di Dio davanti ai loro occhi.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Non c''è timore di Dio davanti ai loro occhi</i>.') = text_plain;  -- Rm 3:18
 UPDATE "CEI2008" SET text = 'Ora, che cosa dice la Scrittura? <i>Abramo credette a Dio e ciò gli fu accreditato come giustizia</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32079 AND text = 'Ora, che cosa dice la Scrittura? Abramo credette a Dio e ciò gli fu accreditato come giustizia.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Ora, che cosa dice la Scrittura? <i>Abramo credette a Dio e ciò gli fu accreditato come giustizia</i>.') = text_plain;  -- Rm 4:3
-UPDATE "CEI2008" SET text = '<i>Beati quelli le cui iniquità sono state perdonate</i>
-<pof><i>e i peccati sono stati ricoperti;</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32083 AND text = 'Beati quelli le cui iniquità sono state perdonate e i peccati sono stati ricoperti;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Beati quelli le cui iniquità sono state perdonate</i>
-<pof><i>e i peccati sono stati ricoperti;</i></pof>') = text_plain;  -- Rm 4:7
-UPDATE "CEI2008" SET text = '<i>beato l''uomo al quale il Signore non mette in conto il peccato!</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32084 AND text = 'beato l''uomo al quale il Signore non mette in conto il peccato!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>beato l''uomo al quale il Signore non mette in conto il peccato!</i>') = text_plain;  -- Rm 4:8
+UPDATE "CEI2008" SET text = '<pof><i>Beati quelli le cui iniquità sono state perdonate</i></pof>
+<po><i>e i peccati sono stati ricoperti;</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32083 AND text = 'Beati quelli le cui iniquità sono state perdonate e i peccati sono stati ricoperti;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof><i>Beati quelli le cui iniquità sono state perdonate</i></pof>
+<po><i>e i peccati sono stati ricoperti;</i></po>') = text_plain;  -- Rm 4:7
+UPDATE "CEI2008" SET text = '<pol><i>beato l''uomo al quale il Signore non mette in conto il peccato!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32084 AND text = 'beato l''uomo al quale il Signore non mette in conto il peccato!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pol><i>beato l''uomo al quale il Signore non mette in conto il peccato!</i></pol>') = text_plain;  -- Rm 4:8
 UPDATE "CEI2008" SET text = 'Eredi dunque si diventa in virtù della fede, perché sia secondo la grazia, e in tal modo la promessa sia sicura per tutta la discendenza: non soltanto per quella che deriva dalla Legge, ma anche per quella che deriva dalla fede di Abramo, il quale è padre di tutti noi <i>-</i>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32092 AND text = 'Eredi dunque si diventa in virtù della fede, perché sia secondo la grazia, e in tal modo la promessa sia sicura per tutta la discendenza: non soltanto per quella che deriva dalla Legge, ma anche per quella che deriva dalla fede di Abramo, il quale è padre di tutti noi -' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Eredi dunque si diventa in virtù della fede, perché sia secondo la grazia, e in tal modo la promessa sia sicura per tutta la discendenza: non soltanto per quella che deriva dalla Legge, ma anche per quella che deriva dalla fede di Abramo, il quale è padre di tutti noi <i>-</i>') = text_plain;  -- Rm 4:16
 UPDATE "CEI2008" SET text = 'come sta scritto: <i>Ti ho costituito padre di molti popoli -</i> davanti al Dio nel quale credette, che dà vita ai morti e chiama all''esistenza le cose che non esistono.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32093 AND text = 'come sta scritto: Ti ho costituito padre di molti popoli - davanti al Dio nel quale credette, che dà vita ai morti e chiama all''esistenza le cose che non esistono.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('come sta scritto: <i>Ti ho costituito padre di molti popoli -</i> davanti al Dio nel quale credette, che dà vita ai morti e chiama all''esistenza le cose che non esistono.') = text_plain;  -- Rm 4:17
 UPDATE "CEI2008" SET text = 'Egli credette, saldo nella speranza contro ogni speranza, e così divenne <i>padre di molti popoli,</i> come gli era stato detto: <i>Così sarà la tua discendenza</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32094 AND text = 'Egli credette, saldo nella speranza contro ogni speranza, e così divenne padre di molti popoli, come gli era stato detto: Così sarà la tua discendenza.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Egli credette, saldo nella speranza contro ogni speranza, e così divenne <i>padre di molti popoli,</i> come gli era stato detto: <i>Così sarà la tua discendenza</i>.') = text_plain;  -- Rm 4:18
@@ -49095,13 +49095,13 @@ UPDATE "CEI2008" SET text = '<po><i>E avverrà che, nel luogo stesso dove fu det
 UPDATE "CEI2008" SET text = '<pof>E quanto a Israele, Isaia esclama:</pof>
 <pof><i>Se anche il numero dei figli d''Israele</i></pof>
 <po><i>fosse come la sabbia del mare,</i></po>
-<pol><i>solo il resto sarà salvato;</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32236 AND text = 'E quanto a Israele, Isaia esclama: Se anche il numero dei figli d''Israele fosse come la sabbia del mare, solo il resto sarà salvato;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>E quanto a Israele, Isaia esclama:</pof>
+<po><i>solo il resto sarà salvato;</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32236 AND text = 'E quanto a Israele, Isaia esclama: Se anche il numero dei figli d''Israele fosse come la sabbia del mare, solo il resto sarà salvato;' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>E quanto a Israele, Isaia esclama:</pof>
 <pof><i>Se anche il numero dei figli d''Israele</i></pof>
 <po><i>fosse come la sabbia del mare,</i></po>
-<pol><i>solo il resto sarà salvato;</i></pol>') = text_plain;  -- Rm 9:27
-UPDATE "CEI2008" SET text = '<i>perché con pienezza e rapidità</i>
-<pof><i>il Signore compirà la sua parola sulla terra</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32237 AND text = 'perché con pienezza e rapidità il Signore compirà la sua parola sulla terra.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>perché con pienezza e rapidità</i>
-<pof><i>il Signore compirà la sua parola sulla terra</i>.</pof>') = text_plain;  -- Rm 9:28
+<po><i>solo il resto sarà salvato;</i></po>') = text_plain;  -- Rm 9:27
+UPDATE "CEI2008" SET text = '<po><i>perché con pienezza e rapidità</i></po>
+<pol><i>il Signore compirà la sua parola sulla terra</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32237 AND text = 'perché con pienezza e rapidità il Signore compirà la sua parola sulla terra.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>perché con pienezza e rapidità</i></po>
+<pol><i>il Signore compirà la sua parola sulla terra</i>.</pol>') = text_plain;  -- Rm 9:28
 UPDATE "CEI2008" SET text = '<pof>E come predisse Isaia:</pof>
 <pof><i>Se il Signore degli eserciti</i></pof>
 <po><i>non ci avesse lasciato una discendenza,</i></po>
@@ -49162,28 +49162,28 @@ UPDATE "CEI2008" SET text = 'come sta scritto:
 <pol><i>fino al giorno d''oggi</i>.</pol>') = text_plain;  -- Rm 11:8
 UPDATE "CEI2008" SET text = '<pof>E Davide dice:</pof>
 <pof><i>Diventi la loro mensa un laccio,</i> un tranello,</pof>
-<pol><i>un inciampo e un giusto castigo!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32272 AND text = 'E Davide dice: Diventi la loro mensa un laccio, un tranello, un inciampo e un giusto castigo!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>E Davide dice:</pof>
+<po><i>un inciampo e un giusto castigo!</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32272 AND text = 'E Davide dice: Diventi la loro mensa un laccio, un tranello, un inciampo e un giusto castigo!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>E Davide dice:</pof>
 <pof><i>Diventi la loro mensa un laccio,</i> un tranello,</pof>
-<pol><i>un inciampo e un giusto castigo!</i></pol>') = text_plain;  -- Rm 11:9
-UPDATE "CEI2008" SET text = '<i>Siano accecati i loro occhi in modo che non vedano</i>
-<pof><i>e fa'' loro curvare la schiena per sempre!</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32273 AND text = 'Siano accecati i loro occhi in modo che non vedano e fa'' loro curvare la schiena per sempre!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Siano accecati i loro occhi in modo che non vedano</i>
-<pof><i>e fa'' loro curvare la schiena per sempre!</i></pof>') = text_plain;  -- Rm 11:10
+<po><i>un inciampo e un giusto castigo!</i></po>') = text_plain;  -- Rm 11:9
+UPDATE "CEI2008" SET text = '<po><i>Siano accecati i loro occhi in modo che non vedano</i></po>
+<pol><i>e fa'' loro curvare la schiena per sempre!</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32273 AND text = 'Siano accecati i loro occhi in modo che non vedano e fa'' loro curvare la schiena per sempre!' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Siano accecati i loro occhi in modo che non vedano</i></po>
+<pol><i>e fa'' loro curvare la schiena per sempre!</i></pol>') = text_plain;  -- Rm 11:10
 UPDATE "CEI2008" SET text = 'Allora tutto Israele sarà salvato, come sta scritto:
 <pof><i>Da Sion uscirà il liberatore,</i></pof>
-<pol><i>egli toglierà l''empietà da Giacobbe.</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32289 AND text = 'Allora tutto Israele sarà salvato, come sta scritto: Da Sion uscirà il liberatore, egli toglierà l''empietà da Giacobbe.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Allora tutto Israele sarà salvato, come sta scritto:
+<po><i>egli toglierà l''empietà da Giacobbe.</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32289 AND text = 'Allora tutto Israele sarà salvato, come sta scritto: Da Sion uscirà il liberatore, egli toglierà l''empietà da Giacobbe.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Allora tutto Israele sarà salvato, come sta scritto:
 <pof><i>Da Sion uscirà il liberatore,</i></pof>
-<pol><i>egli toglierà l''empietà da Giacobbe.</i></pol>') = text_plain;  -- Rm 11:26
-UPDATE "CEI2008" SET text = '<i>Sarà questa la mia alleanza con loro</i>
-<pof><i>quando distruggerò i loro peccati</i>.</pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32290 AND text = 'Sarà questa la mia alleanza con loro quando distruggerò i loro peccati.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>Sarà questa la mia alleanza con loro</i>
-<pof><i>quando distruggerò i loro peccati</i>.</pof>') = text_plain;  -- Rm 11:27
+<po><i>egli toglierà l''empietà da Giacobbe.</i></po>') = text_plain;  -- Rm 11:26
+UPDATE "CEI2008" SET text = '<po><i>Sarà questa la mia alleanza con loro</i></po>
+<pol><i>quando distruggerò i loro peccati</i>.</pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32290 AND text = 'Sarà questa la mia alleanza con loro quando distruggerò i loro peccati.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>Sarà questa la mia alleanza con loro</i></po>
+<pol><i>quando distruggerò i loro peccati</i>.</pol>') = text_plain;  -- Rm 11:27
 UPDATE "CEI2008" SET text = '<pof>Infatti,</pof>
 <pof><i>chi mai ha conosciuto il pensiero del Signore?</i></pof>
-<pol><i>O chi mai è stato suo consigliere?</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32297 AND text = 'Infatti, chi mai ha conosciuto il pensiero del Signore? O chi mai è stato suo consigliere?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Infatti,</pof>
+<po><i>O chi mai è stato suo consigliere?</i></po>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32297 AND text = 'Infatti, chi mai ha conosciuto il pensiero del Signore? O chi mai è stato suo consigliere?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<pof>Infatti,</pof>
 <pof><i>chi mai ha conosciuto il pensiero del Signore?</i></pof>
-<pol><i>O chi mai è stato suo consigliere?</i></pol>') = text_plain;  -- Rm 11:34
-UPDATE "CEI2008" SET text = '<i>O chi gli ha dato qualcosa per primo</i>
-<pof><i>tanto da riceverne il contraccambio?</i></pof>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32298 AND text = 'O chi gli ha dato qualcosa per primo tanto da riceverne il contraccambio?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<i>O chi gli ha dato qualcosa per primo</i>
-<pof><i>tanto da riceverne il contraccambio?</i></pof>') = text_plain;  -- Rm 11:35
+<po><i>O chi mai è stato suo consigliere?</i></po>') = text_plain;  -- Rm 11:34
+UPDATE "CEI2008" SET text = '<po><i>O chi gli ha dato qualcosa per primo</i></po>
+<pol><i>tanto da riceverne il contraccambio?</i></pol>', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32298 AND text = 'O chi gli ha dato qualcosa per primo tanto da riceverne il contraccambio?' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('<po><i>O chi gli ha dato qualcosa per primo</i></po>
+<pol><i>tanto da riceverne il contraccambio?</i></pol>') = text_plain;  -- Rm 11:35
 UPDATE "CEI2008" SET text = 'Non fatevi giustizia da voi stessi, carissimi, ma lasciate fare all''ira divina. Sta scritto infatti: <i>Spetta a me fare giustizia,</i> io <i>darò a ciascuno il suo </i>, dice il Signore.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32318 AND text = 'Non fatevi giustizia da voi stessi, carissimi, ma lasciate fare all''ira divina. Sta scritto infatti: Spetta a me fare giustizia, io darò a ciascuno il suo , dice il Signore.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Non fatevi giustizia da voi stessi, carissimi, ma lasciate fare all''ira divina. Sta scritto infatti: <i>Spetta a me fare giustizia,</i> io <i>darò a ciascuno il suo </i>, dice il Signore.') = text_plain;  -- Rm 12:19
 UPDATE "CEI2008" SET text = 'Al contrario, <i>se il tuo nemico ha fame, dagli da mangiare; se ha sete, dagli da bere: facendo questo, infatti, accumulerai carboni ardenti sopra il suo capo</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32319 AND text = 'Al contrario, se il tuo nemico ha fame, dagli da mangiare; se ha sete, dagli da bere: facendo questo, infatti, accumulerai carboni ardenti sopra il suo capo.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Al contrario, <i>se il tuo nemico ha fame, dagli da mangiare; se ha sete, dagli da bere: facendo questo, infatti, accumulerai carboni ardenti sopra il suo capo</i>.') = text_plain;  -- Rm 12:20
 UPDATE "CEI2008" SET text = 'Infatti: <i>Non commetterai adulterio, non ucciderai, non ruberai, non desidererai </i>, e qualsiasi altro comandamento, si ricapitola in questa parola: <i>Amerai il tuo prossimo come te stesso</i>.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32329 AND text = 'Infatti: Non commetterai adulterio, non ucciderai, non ruberai, non desidererai , e qualsiasi altro comandamento, si ricapitola in questa parola: Amerai il tuo prossimo come te stesso.' AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' AND coalesce(title3, '') = '' AND bibleget_plain_text('Infatti: <i>Non commetterai adulterio, non ucciderai, non ruberai, non desidererai </i>, e qualsiasi altro comandamento, si ricapitola in questa parola: <i>Amerai il tuo prossimo come te stesso</i>.') = text_plain;  -- Rm 13:9

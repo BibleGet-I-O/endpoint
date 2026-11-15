@@ -382,8 +382,11 @@ WORDING_HEADER = """-- Migration: correct CEI2008 wording to the published text 
 -- 025 and Esther are not touched here. Each UPDATE is keyed on the verse's
 -- identity (book, chapter, verse, verseequiv, verseorigin -- not "verseID",
 -- which 025 renumbers) and guarded on its text_plain before the change
--- (idempotent). text_plain/text_hash change, so
--- re-run compute_embeddings.py for both columns afterwards.
+-- (idempotent). text_plain/text_hash change: the changed rows' LaBSE
+-- embeddings become stale. Their MiniLM `embedding` is refilled only where
+-- NULL, so before re-embedding set embedding = NULL WHERE text_hash IS
+-- DISTINCT FROM embedded_text_hash, then run compute_embeddings.py for both
+-- columns (--column embedding as well as the default).
 
 """
 
