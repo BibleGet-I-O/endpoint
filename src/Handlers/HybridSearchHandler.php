@@ -238,23 +238,10 @@ class HybridSearchHandler extends AbstractHandler
         }
 
         $entries = array_values($fused);
-        usort($entries, static function (array $a, array $b) use ($versionOrder): int {
-            $cmp = $b['fused'] <=> $a['fused'];
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-            $cmp = $a['bestRank'] <=> $b['bestRank'];
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-            $va  = is_string($a['row']['version'] ?? null) ? $a['row']['version'] : '';
-            $vb  = is_string($b['row']['version'] ?? null) ? $b['row']['version'] : '';
-            $cmp = ( $versionOrder[$va] ?? 0 ) <=> ( $versionOrder[$vb] ?? 0 );
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-            return ( $a['row']['verseID'] ?? 0 ) <=> ( $b['row']['verseID'] ?? 0 );
-        });
+        usort(
+            $entries,
+            static fn(array $a, array $b): int => self::compareFused($a, $b, $versionOrder)
+        );
         $entries = array_slice($entries, 0, $limit);
 
         $results    = [];
@@ -266,6 +253,22 @@ class HybridSearchHandler extends AbstractHandler
             $components[] = $entry['components'];
         }
         return [$results, $components];
+    }
+
+    /**
+     * Fused-list order: higher fused score, then better best-rank across
+     * legs, then requested version order, then verseID (canonical order).
+     *
+     * @param array{row: array<string, mixed>, fused: float, bestRank: int} $a
+     * @param array{row: array<string, mixed>, fused: float, bestRank: int} $b
+     * @param array<string, int> $versionOrder
+     */
+    private static function compareFused(array $a, array $b, array $versionOrder): int
+    {
+        $va = is_string($a['row']['version'] ?? null) ? $a['row']['version'] : '';
+        $vb = is_string($b['row']['version'] ?? null) ? $b['row']['version'] : '';
+        return [$b['fused'], $a['bestRank'], $versionOrder[$va] ?? 0, $a['row']['verseID'] ?? 0]
+            <=> [$a['fused'], $b['bestRank'], $versionOrder[$vb] ?? 0, $b['row']['verseID'] ?? 0];
     }
 
     /**
