@@ -34,7 +34,8 @@ BEGIN
     GET DIAGNOSTICS n = ROW_COUNT;
     IF n <> 1 THEN RAISE EXCEPTION 'guard failed: NABRE Num 26:19 "After the plague" (% rows)', n; END IF;
 
-    SELECT "verseID" INTO v2618 FROM "NABRE" WHERE book = 4 AND chapter = 26 AND verse = 18;
+    -- STRICT: a missing 26:18 must abort, not leave v2618 NULL and insert nothing.
+    SELECT "verseID" INTO STRICT v2618 FROM "NABRE" WHERE book = 4 AND chapter = 26 AND verse = 18;
     INSERT INTO "NABRE" (testament, section, book, chapter, verse, text, title1, title2, title3)
     SELECT testament, section, 4, 26, 19,
            'The sons of Judah were Er and Onan. Er and Onan died in the land of Canaan.', '', '', ''
