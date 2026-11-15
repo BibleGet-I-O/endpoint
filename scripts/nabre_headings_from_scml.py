@@ -189,12 +189,12 @@ def place(text, following):
     AMBIGUOUS when more than one line begins that way. Whitespace is ignored
     (a removed tag can leave a space: stored "M , How" for the SCML's "M, How")."""
     probe = re.sub(r"\s+", "", following or "")[:PROBE_LEN]
-    offset, hits = 0, []
-    for line in text.split("\n"):
-        vis = re.sub(r"\s+", "", visible(line))
-        if vis.startswith(probe) or (len(vis) < len(probe) and vis and probe.startswith(vis)):
-            hits.append(offset)
-        offset += len(line) + 1
+    lines = text.split("\n")
+    vis = [re.sub(r"\s+", "", visible(line)) for line in lines]
+    starts = [sum(len(x) + 1 for x in lines[:i]) for i in range(len(lines))]
+    # The probe may run on past a short line: match it against the visible
+    # text from each line to the end of the verse.
+    hits = [starts[i] for i in range(len(lines)) if vis[i] and "".join(vis[i:]).startswith(probe)]
     if len(hits) > 1:
         return AMBIGUOUS, None
     if hits:
@@ -228,12 +228,12 @@ def collect(events, rows, order, report):
 
 
 def search_book(order, book, following):
-    for row in order:
-        if row["key"][0] == book:
-            found, position = place(row["text"], following)
-            if found:
-                return row, found, position
-    return None, False, None
+    """The one row of `book` holding the line; AMBIGUOUS if several do."""
+    matches = [(row, *place(row["text"], following)) for row in order if row["key"][0] == book]
+    matches = [m for m in matches if m[1]]
+    if len(matches) > 1:
+        return None, AMBIGUOUS, None
+    return matches[0] if matches else (None, False, None)
 
 
 notes = []  # headings applied, but moved to before the verse
