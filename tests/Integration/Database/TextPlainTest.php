@@ -40,6 +40,8 @@ class TextPlainTest extends DatabaseTestCase
             'whitespace collapsed + trimmed' => ["  a \t b\n\nc  ", 'a b c'],
             'unknown tags are left alone'    => ['<Aleph> Beati immaculati', '<Aleph> Beati immaculati'],
             'prose lead-in before a poem'    => ["Then he said:\n<pof>Come</pof>", 'Then he said: Come'],
+            'variant signs dropped'          => ['Egli era ⌈un Giudeo di Susa⌉, un uomo', 'Egli era un Giudeo di Susa, un uomo'],
+            'sign before a space dropped'    => ['⌈ Tu conosci tutto⊥.', 'Tu conosci tutto.'],
         ];
     }
 

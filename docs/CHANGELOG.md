@@ -209,10 +209,14 @@ Deprecated / Fixed / Removed / Security where applicable.
   `[ ]` or `*`. `format_cei2008_from_source.py --adopt-signs` adopts the
   site's text for the 31 Esther rows whose wording differs only in these
   marks (and « » for the site's straight quotes, and spacing).
-- **Variant signs left out of embeddings** (migration `034`).
-  `bibleget_embedding_text()` now removes `⌈ ⌉ ⊥`; they stay in `text`
-  and `text_plain`. They shifted short verses' vectors (cosine down to
-  0.84 under MiniLM). The 207 CEI2008 rows with signs are marked stale.
+- **Variant signs left out of `text_plain`** (migration `034`).
+  `bibleget_plain_text()` (and its Python mirrors) now drops `⌈ ⌉ ⊥`, so
+  keyword search, `text_hash` and the embeddings work on the words alone;
+  `text` keeps the signs for quotes. They had shifted short verses'
+  vectors (cosine down to 0.84 under MiniLM) and broken exact-phrase
+  matches across a sign. The 207 CEI2008 rows with signs are re-derived
+  and marked stale. The CEI2008 generators compare wording on the visible
+  text, signs included, so sign-only differences stay detectable.
 - **CEI2008 Esther formatting** (migration `032`). bibbiaedu.it prints
   each Esther chapter twice under the same verse labels, Greek text first
   and then Hebrew, and `scripts/format_cei2008_from_source.py` kept only

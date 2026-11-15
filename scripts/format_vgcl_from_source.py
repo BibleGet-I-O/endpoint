@@ -73,7 +73,8 @@ BLOCK_TAGS = r"</?(po|pof|pol|poi|poil|poif|pos|po3|po3l|pr|bq|bqf|bql|speaker)>
 
 def plain_text(text):
     """Python mirror of the SQL bibleget_plain_text()."""
-    s = re.sub(r"</?(sm|i|sup)>", "", text)
+    s = re.sub(r"[⌈⌉⊥]", "", text)  # CEI 2008 variant signs (migration 034)
+    s = re.sub(r"</?(sm|i|sup)>", "", s)
     s = re.sub(BLOCK_TAGS, " ", s)
     s = re.sub(r"<br\s*/?>", " ", s, flags=re.I)
     return re.sub(r"\s+", " ", s).strip()

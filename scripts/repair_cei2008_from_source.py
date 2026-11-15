@@ -360,13 +360,13 @@ def F_chapters(source, book):
 
 
 def wording_update(row, label, text, skip, key):
-    site_plain = F.plain_text(text)
-    if row["vid"] in skip or site_plain == row["plain"]:
+    site_plain = F.visible(text)  # signs included: 026 adopts them
+    if row["vid"] in skip or site_plain == row["visible"]:
         return
-    if difflib.SequenceMatcher(None, site_plain, row["plain"], autojunk=False).ratio() < F.TRANSPLANT_MIN_RATIO:
+    if difflib.SequenceMatcher(None, site_plain, row["visible"], autojunk=False).ratio() < F.TRANSPLANT_MIN_RATIO:
         return
-    wording = corrected_wording(row["plain"], site_plain)
-    if wording == row["plain"]:
+    wording = corrected_wording(row["visible"], site_plain)
+    if wording == row["visible"]:
         return  # accents only: ours is kept
     formatted = F.transplant(text, wording) or wording
     require_markup_ok(formatted, f"{F.SLUGS[key[0] - 1]} {key[1]}:{label}")

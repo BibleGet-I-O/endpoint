@@ -100,12 +100,22 @@ EVENT_RE = re.compile(
 
 # ---------------------------------------------------------------- mirrors
 
-def plain_text(formatted):
-    """Python mirror of SQL bibleget_plain_text() (migration 019)."""
-    text = re.sub(INLINE_TAGS, "", formatted)
+def plain_text(formatted, keep_signs=False):
+    """Python mirror of SQL bibleget_plain_text() (migrations 019, 034:
+    CEI 2008's variant signs are dropped). keep_signs keeps them, for
+    comparing wording that differs in the signs alone (--adopt-signs)."""
+    text = formatted if keep_signs else re.sub(r"[⌈⌉⊥]", "", formatted)
+    text = re.sub(INLINE_TAGS, "", text)
     text = re.sub(BLOCK_TAGS, " ", text)
     text = re.sub(r"<br\s*/?>", " ", text, flags=re.I)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def visible(formatted):
+    """The verse as read, signs included: what wording is compared on.
+    text_plain (plain_text) drops CEI 2008's variant signs since 034, so
+    comparing on it would make a sign-only difference invisible."""
+    return plain_text(formatted, keep_signs=True)
 
 
 def valid_title_position(text, pos):
@@ -459,7 +469,7 @@ def load_dump(path):
             label = f[3] if not f[4] or f[4].startswith("(") else f[4]
             rows[(int(f[1]), int(f[2]))][label].append({
                 "vid": int(f[0]), "verse": int(f[3]), "equiv": f[4], "text": f[7], "plain": f[8],
-                "titles": f[9:12], "position": f[12], "origin": f[6],
+                "titles": f[9:12], "position": f[12], "origin": f[6], "visible": visible(f[7]),
             })
     return rows
 
@@ -485,7 +495,7 @@ def merge_lettered(site, db_labels):
 
 
 def visible_map(formatted):
-    """Characters of plain_text(formatted) with, for each, the index in
+    """Characters of visible(formatted) with, for each, the index in
     `formatted` it comes from (-1 for a separator that a tag or a line break
     became)."""
     out, i = [], 0
@@ -511,7 +521,7 @@ def visible_map(formatted):
 
 
 def transplant(formatted, target, position=None):
-    """Rewrite `formatted` so that plain_text() gives exactly `target` (our
+    """Rewrite `formatted` so that visible() gives exactly `target` (our
     stored wording), keeping the site's tags and line breaks. Only for small
     differences (spacing, accents, editorial marks); None otherwise. With a
     title_position into `formatted`, return (text, position rebased onto it)."""
@@ -521,7 +531,7 @@ def transplant(formatted, target, position=None):
     moved = formatted
     for start, end, repl in sorted(edits, reverse=True):
         moved = moved[:start] + repl + moved[end:]
-    if plain_text(moved) != target:
+    if visible(moved) != target:
         return None
     if position is None:
         return moved
@@ -567,10 +577,10 @@ def match_row(candidates, text, position):
     an exact match first, else the closest row with our wording transplanted
     (and title_position rebased onto the transplanted text)."""
     for row in candidates:
-        if plain_text(text) == row["plain"]:
+        if visible(text) == row["visible"]:
             return row, text, position
     for row in candidates:
-        moved = transplant(text, row["plain"], position)
+        moved = transplant(text, row["visible"], position)
         if moved is None:
             continue
         return (row, moved, None) if position is None else (row, *moved)
@@ -664,24 +674,24 @@ def process_chapter(path, rows, report, wording, stats, seen, adopt_signs=False)
             row, text, position = match_row(candidates, site_text, position)
             if row is None:
                 stats["unmatched (site)"] += 1
-                report.append((book, chapter, where, "site", plain_text(site_text)))
+                report.append((book, chapter, where, "site", visible(site_text)))
                 continue
             seen.add(row["vid"])
             require_markup_ok(text, f"{book} {chapter}:{where}")
             problem = check_titles(titles, position, text)
             if problem:
                 stats[problem] += 1
-                report.append((book, chapter, where, problem, plain_text(text)))
+                report.append((book, chapter, where, problem, visible(text)))
                 continue
             if adopt_signs:
-                if not titles and differs_only_in_signs(plain_text(site_text), row["plain"]):
+                if not titles and differs_only_in_signs(visible(site_text), row["visible"]):
                     require_markup_ok(site_text, f"{book} {chapter}:{where}")
                     updates.append(f"{build_sign_update(row, site_text)}  -- {book} {chapter}:{where}")
                     stats["signs restored"] += 1
                 continue
-            if plain_text(site_text) != row["plain"]:
+            if visible(site_text) != row["visible"]:
                 stats["wording kept (layout only)"] += 1
-                wording.append((book, chapter, where, plain_text(site_text), row["plain"]))
+                wording.append((book, chapter, where, visible(site_text), row["visible"]))
             update = build_update(row, text, titles, position)
             if update:
                 updates.append(f"{update}  -- {book} {chapter}:{where}")
@@ -707,7 +717,7 @@ def process(archive, db, report, wording, books=None, adopt_signs=False):
                 if row["vid"] not in seen:
                     stats["unmatched (db)"] += 1
                     where = f"{label} {row['origin']}" if row["origin"] else label
-                    report.append((SLUGS[key[0] - 1], key[1], where, "db", row["plain"]))
+                    report.append((SLUGS[key[0] - 1], key[1], where, "db", row["visible"]))
     return updates, stats
 
 

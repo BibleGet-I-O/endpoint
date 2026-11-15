@@ -134,10 +134,11 @@ CREATE TABLE IF NOT EXISTS embedding_metadata (
     PRIMARY KEY (version_sigla, column_name)
 );
 
--- Plain-text normalizer (mirror of migrations/019-add-text-plain-and-title-position.sql)
+-- Plain-text normalizer (mirror of migrations/019, with 034's removal of CEI 2008's variant signs)
 CREATE OR REPLACE FUNCTION bibleget_plain_text(src TEXT) RETURNS TEXT
 LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
-    SELECT btrim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(src,
+    SELECT btrim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(src,
+        '[⌈⌉⊥]', '', 'g'),
         '</?(sm|i|sup)>', '', 'g'),
         '</?(po|pof|pol|poi|poil|poif|pos|po3|po3l|pr|bq|bqf|bql|speaker)>', ' ', 'g'),
         '<br\s*/?>', ' ', 'gi'),
