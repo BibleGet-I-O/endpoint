@@ -62,6 +62,7 @@ where cei.copy is produced on the database with
 
 import argparse
 import collections
+import csv
 import difflib
 import html
 import re
@@ -652,6 +653,16 @@ HEADER = """-- Migration: CEI2008 formatted text and section headings from bibbi
 """
 
 
+def write_tsv(path, header, rows):
+    """Tab-separated with standard quoting: a field containing a quote mark
+    (verses often start with one) is quoted, its quotes doubled, so GitHub
+    and spreadsheets parse it."""
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, dialect="excel-tab", lineterminator="\n")
+        writer.writerow(header)
+        writer.writerows(rows)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--archive", required=True, help="CEI2008-bibbiaedu checkout")
@@ -663,12 +674,8 @@ def main():
 
     report, wording = [], []
     updates, stats = process(args.archive, load_dump(args.dump), report, wording)
-    with open(args.report, "w", encoding="utf-8") as fh:
-        fh.write("book\tchapter\tlabel\tside\ttext\n")
-        fh.writelines("\t".join(str(x) for x in r) + "\n" for r in report)
-    with open(args.wording_report, "w", encoding="utf-8") as fh:
-        fh.write("book\tchapter\tlabel\tsite_wording\tour_wording\n")
-        fh.writelines("\t".join(str(x) for x in r) + "\n" for r in wording)
+    write_tsv(args.report, ("book", "chapter", "label", "side", "text"), report)
+    write_tsv(args.wording_report, ("book", "chapter", "label", "site_wording", "our_wording"), wording)
     out = sys.stdout
     out.write(HEADER)
     out.write(f"-- {len(updates)} rows: {dict(sorted(stats.items()))}\n\nBEGIN;\n\n")
