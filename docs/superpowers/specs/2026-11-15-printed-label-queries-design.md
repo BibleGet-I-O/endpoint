@@ -24,6 +24,7 @@ Today `Wis12:1` returns nothing, `Job10:1` returns only the second part, `Job9:3
 - No change to the stored rows (`chapter`, `verse`, `verseequiv` of the two NABRE rows stay as they are). Placement columns are step 2.
 - No print mode, no client changes. The only response change besides the remapped numbers is `verseequiv` added to search results (see Search).
 - John 7:53 (NABRE prints it at the start of chapter 8, stored in chapter 7): its row is untouched, but its index bound is fixed (see migration 035).
+- Index verse counts of other editions (BLPD, NVBSE) that don't match their rows: tracked in #187; 035 changes only NABRE.
 - The frozen v3 API on MariaDB is out of scope (porting the index fix there can be a follow-up).
 
 ## Anti-goals
