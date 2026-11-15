@@ -223,3 +223,39 @@ jobs:
       - name: Clean up SSH key
         if: always() && steps.shape.outputs.skip != 'true'
         run: rm -f ~/.ssh/deploy_key
+
+  live-tests:
+    # Runs the Live suite (tests/Live) against staging once the deploy job has
+    # put the code there. The code is already live when this runs: a failure
+    # turns the run red as the signal, it does not roll anything back.
+    # Migrations are applied by hand; apply a PR's migration to staging before
+    # deploying its code, or the tests that depend on it fail here.
+    name: Live tests (staging)
+    needs: deploy
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: development
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: json, intl
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies (with dev)
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run the Live suite against staging
+        env:
+          BIBLEGET_LIVE_URL: ${{ vars.STAGING_BASE_URL || 'https://query.bibleget.io/dev' }}
+        run: composer test:live

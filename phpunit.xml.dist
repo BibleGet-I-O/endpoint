@@ -15,6 +15,10 @@
         <testsuite name="Server">
             <directory suffix="Test.php">tests/Server</directory>
         </testsuite>
+        <!-- Queries a deployed API (BIBLEGET_LIVE_URL); run with composer test:live. -->
+        <testsuite name="Live">
+            <directory suffix="Test.php">tests/Live</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

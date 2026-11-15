@@ -44,8 +44,9 @@
     },
     "scripts": {
         "analyse": "phpstan analyse",
-        "test": "phpunit --testdox --display-warnings",
-        "test:quick": "phpunit --testdox --display-warnings --exclude-group slow",
+        "test": "phpunit --testdox --display-warnings --exclude-testsuite Live",
+        "test:live": "phpunit --testsuite Live --testdox --display-warnings",
+        "test:quick": "phpunit --testdox --display-warnings --exclude-group slow --exclude-testsuite Live",
         "test:coverage": "phpunit --testdox --display-warnings --coverage-text --coverage-html=coverage",
         "start": "./start-server.sh",
         "stop": "./stop-server.sh",
