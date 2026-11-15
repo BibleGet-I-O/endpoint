@@ -53,6 +53,35 @@ final class PrintedLabelHttpTest extends ServerTestCase
         self::assertSame($expected, $rows);
     }
 
+    /**
+     * @return array<string, array{string, list<int>}>
+     */
+    public static function estherTexts(): array
+    {
+        return [
+            'Hebrew text has 9:30'   => ['HEBREW', [29, 30, 31]],
+            'Greek text has no 9:30' => ['GREEK', [29, 31]],
+        ];
+    }
+
+    /**
+     * @param list<int> $verses
+     */
+    #[DataProvider('estherTexts')]
+    public function testEstherRangeStaysWithinOneText(string $origin, array $verses): void
+    {
+        $r = self::httpGet('/v3/quote?query=Est9,29-31&version=TEST3&preferorigin=' . $origin);
+        self::assertSame(200, $r['status']);
+        $body = self::jsonBody($r['body']);
+        self::assertSame([], $body['errors']);
+        $got = [];
+        foreach ($body['results'] as $row) {
+            self::assertSame($origin, $row['verseorigin']);
+            $got[] = (int) $row['verse'];
+        }
+        self::assertSame($verses, $got);
+    }
+
     public function testVersionIndexReportsNumberedBounds(): void
     {
         $r = self::httpGet('/v3/metadata/versionindex?versions=TEST3');
