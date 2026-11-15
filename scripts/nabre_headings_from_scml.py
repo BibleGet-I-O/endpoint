@@ -183,23 +183,31 @@ PROBE_LEN = 40
 AMBIGUOUS = "ambiguous"
 
 
+def line_starts(text, probe):
+    """Offsets of the lines of `text` whose visible text, run on to the end
+    of the verse (the probe may continue past a short line), begins with
+    `probe`. Whitespace is ignored."""
+    lines = text.split("\n")
+    vis = [re.sub(r"\s+", "", visible(line)) for line in lines]
+    hits, offset = [], 0
+    for i, line in enumerate(lines):
+        if vis[i] and "".join(vis[i:]).startswith(probe):
+            hits.append(offset)
+        offset += len(line) + 1
+    return hits
+
+
 def place(text, following):
     """(found, title_position): position None = before the verse, else the
     offset of the line of `text` that begins with `following`. found is
     AMBIGUOUS when more than one line begins that way. Whitespace is ignored
     (a removed tag can leave a space: stored "M , How" for the SCML's "M, How")."""
-    probe = re.sub(r"\s+", "", following or "")[:PROBE_LEN]
-    lines = text.split("\n")
-    vis = [re.sub(r"\s+", "", visible(line)) for line in lines]
-    starts = [sum(len(x) + 1 for x in lines[:i]) for i in range(len(lines))]
-    # The probe may run on past a short line: match it against the visible
-    # text from each line to the end of the verse.
-    hits = [starts[i] for i in range(len(lines)) if vis[i] and "".join(vis[i:]).startswith(probe)]
+    hits = line_starts(text, re.sub(r"\s+", "", following or "")[:PROBE_LEN])
     if len(hits) > 1:
         return AMBIGUOUS, None
-    if hits:
-        return True, (hits[0] if hits[0] > 0 else None)
-    return False, None
+    if not hits:
+        return False, None
+    return True, hits[0] or None
 
 
 def lit(value):
