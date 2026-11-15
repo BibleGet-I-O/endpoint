@@ -1181,12 +1181,6 @@
         "CEI2008": {
           "28 41": "1-22"
         }
-      },
-      "known_issue": {
-        "issue": "#185",
-        "wrong": [
-          "NABRE 28 41"
-        ]
       }
     },
     {
@@ -1254,17 +1248,11 @@
     {
       "id": "nabre-sir-33-20",
       "kind": "split-verse",
-      "summary": "NABRE prints Sir 33:20a, 21, 20b; the rows are stored as 20a, 20b, 21.",
+      "summary": "NABRE prints Sir 33:20a, 21, 20b (verse 21 between the two halves of 20).",
       "expect": {
         "NABRE": {
           "28 33": "1-19,20a,21,20b,22-33"
         }
-      },
-      "known_issue": {
-        "issue": "#185",
-        "wrong": [
-          "NABRE 28 33"
-        ]
       }
     },
     {
