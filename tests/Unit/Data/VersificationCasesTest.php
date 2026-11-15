@@ -84,8 +84,12 @@ final class VersificationCasesTest extends TestCase
         $this->assertIsString($knownIssue['issue'] ?? null);
         $this->assertIsArray($knownIssue['wrong'] ?? null);
         $this->assertNotEmpty($knownIssue['wrong']);
-        $documented = array_values(array_map('strval', $knownIssue['wrong']));
-        $verdict    = self::knownIssueVerdict(array_keys($mismatches), $documented);
+        $documented = [];
+        foreach ($knownIssue['wrong'] as $entry) {
+            $this->assertIsString($entry);
+            $documented[] = $entry;
+        }
+        $verdict = self::knownIssueVerdict(array_keys($mismatches), $documented);
 
         $unexpected = array_map(static fn (string $k): string => $mismatches[$k], $verdict['unexpected']);
         $this->assertSame([], $unexpected, 'Mismatch not covered by known_issue ' . $knownIssue['issue']);
