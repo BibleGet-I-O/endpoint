@@ -4,8 +4,11 @@
 -- script for every case and its evidence. Requires 019, 023 and 024
 -- (bibleget_rebuild_in_order). 52 rows are inserted; afterwards the
 -- table has 35720 rows, "verseID" 1..35720 in reading order. New rows have
--- no embeddings and changed rows are stale: run compute_embeddings.py for both
--- columns afterwards.
+-- no embeddings and changed rows' LaBSE embeddings are stale. Their MiniLM
+-- `embedding` is refilled only where NULL, so before re-embedding set
+-- embedding = NULL WHERE text_hash IS DISTINCT FROM embedded_text_hash, then
+-- run compute_embeddings.py for both columns (--column embedding as well as
+-- the default).
 
 BEGIN;
 
@@ -348,13 +351,13 @@ BEGIN
     GET DIAGNOSTICS n = ROW_COUNT;
     IF n <> 1 THEN RAISE EXCEPTION 'guard failed: Gb 30:4 -> 4 (% rows)', n; END IF;
 
-    UPDATE "CEI2008" SET verse = 2, verseequiv = NULL, text = 'infatti sapete bene che il giorno del Signore verrà come un ladro di notte.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 33676 AND text_plain = 'infatti sapete bene che il giorno del Signore verrà come un ladro di notte.';
+    UPDATE "CEI2008" SET verse = 2, verseequiv = NULL, text = 'Le vostre ricchezze sono marce, i vostri vestiti sono mangiati dalle tarme.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34409 AND text_plain = 'Le vostre ricchezze sono marce,';
     GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 1 THEN RAISE EXCEPTION 'guard failed: 1Ts 5:2 -> 2 (% rows)', n; END IF;
+    IF n <> 1 THEN RAISE EXCEPTION 'guard failed: Gc 5:2 -> 2 (% rows)', n; END IF;
 
-    UPDATE "CEI2008" SET verse = 3, verseequiv = NULL, text = 'E quando la gente dirà: "C''è pace e sicurezza!", allora d''improvviso la rovina li colpirà, come le doglie una donna incinta; e non potranno sfuggire.', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 33677 AND text_plain = 'E quando la gente dirà: "C''è pace e sicurezza!", allora d''improvviso la rovina li colpirà, come le doglie una donna incinta; e non potranno sfuggire.';
+    UPDATE "CEI2008" SET verse = 3, verseequiv = NULL, text = 'Il vostro oro e il vostro argento sono consumati dalla ruggine, la loro ruggine si alzerà ad accusarvi e divorerà le vostre carni come un fuoco. Avete accumulato tesori per gli ultimi giorni!', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 34410 AND text_plain = 'i vostri vestiti sono mangiati dalle tarme. Il vostro oro e il vostro argento sono consumati dalla ruggine, la loro ruggine si alzerà ad accusarvi e divorerà le vostre carni come un fuoco. Avete accumulato tesori per gli ultimi giorni!';
     GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 1 THEN RAISE EXCEPTION 'guard failed: 1Ts 5:3 -> 3 (% rows)', n; END IF;
+    IF n <> 1 THEN RAISE EXCEPTION 'guard failed: Gc 5:3 -> 3 (% rows)', n; END IF;
 
     UPDATE "CEI2008" SET verse = 11, verseequiv = NULL, text = 'quando essi non erano ancora nati e nulla avevano fatto di bene o di male - perché rimanesse fermo il disegno divino fondato sull''elezione,', title1 = '', title2 = '', title3 = '', title_position = NULL WHERE "verseID" = 32220 AND text_plain = 'quando essi non erano ancora nati e nulla avevano fatto di bene o di male - perché rimanesse fermo il disegno divino fondato sull''elezione, non in base alle opere, ma alla volontà di colui che chiama -,';
     GET DIAGNOSTICS n = ROW_COUNT;
@@ -394,7 +397,7 @@ BEGIN
     FROM (
         SELECT book, string_agg(d::text, ',' ORDER BY chapter) AS cnt, string_agg(m::text, ',' ORDER BY chapter) AS last
         FROM (SELECT book, chapter, count(DISTINCT verse) AS d, max(verse) AS m FROM "CEI2008"
-              WHERE book IN (4, 9, 13, 19, 22, 23, 28, 29, 32, 52, 59, 73) AND book <> 19 GROUP BY book, chapter) per_chapter
+              WHERE book IN (4, 9, 13, 19, 22, 23, 28, 29, 32, 52, 66, 73) AND book <> 19 GROUP BY book, chapter) per_chapter
         GROUP BY book
     ) x
     WHERE i.book = x.book;

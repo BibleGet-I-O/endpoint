@@ -136,7 +136,7 @@ STRUCTURE = [
     # Verse boundaries moved by the import: words belonging to v.3 / v.2 /
     # v.12 had been attached to the neighbouring verse.
     *[("set", vid, (b, c, lab), int(lab), None) for vid, b, c, lab in (
-        (None, 22, 30, "3"), (None, 22, 30, "4"), (None, 59, 5, "2"), (None, 59, 5, "3"),
+        (None, 22, 30, "3"), (None, 22, 30, "4"), (None, 66, 5, "2"), (None, 66, 5, "3"),
         (None, 52, 9, "11"), (None, 52, 9, "12"))],
     # Baruch 5:9 / 6:1: the superscription of the Letter of Jeremiah ("Copia
     # della lettera ...", unnumbered at the head of ch. 6 in CEI 2008) had been
@@ -256,8 +256,11 @@ STRUCTURE_SQL = """-- Migration: restore CEI2008 verses lost or merged on import
 -- script for every case and its evidence. Requires 019, 023 and 024
 -- (bibleget_rebuild_in_order). {inserts} rows are inserted; afterwards the
 -- table has {total} rows, "verseID" 1..{total} in reading order. New rows have
--- no embeddings and changed rows are stale: run compute_embeddings.py for both
--- columns afterwards.
+-- no embeddings and changed rows' LaBSE embeddings are stale. Their MiniLM
+-- `embedding` is refilled only where NULL, so before re-embedding set
+-- embedding = NULL WHERE text_hash IS DISTINCT FROM embedded_text_hash, then
+-- run compute_embeddings.py for both columns (--column embedding as well as
+-- the default).
 
 BEGIN;
 
