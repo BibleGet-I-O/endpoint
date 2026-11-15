@@ -15,7 +15,7 @@ text on vatican.va was used as an independent witness for *structure* (which
 verses exist, what each one contains) wherever the site and our table
 disagree; wording follows the site.
 
-Structure (024)
+Structure (025)
 ---------------
 Restores and re-divides verses that the original import lost or merged
 (see STRUCTURE below for each case and its evidence), then rebuilds the
@@ -30,7 +30,7 @@ changed rows get the site's formatted text; their embeddings are left NULL
 or stale for compute_embeddings.py. CEI2008_idx is recomputed for the
 affected books (verses_count = distinct verse numbers, verses_last = max).
 
-Wording (025)
+Wording (026)
 -------------
 For every row lined up with a site verse whose wording differs, the site's
 wording is adopted -- different words, editorial marks (⌈ ⌉ ⊥), dashes,

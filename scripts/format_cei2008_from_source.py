@@ -37,7 +37,9 @@ Stored as:
 
 Verses are matched to rows by chapter and label (verse number, or
 verseequiv letter label such as "1a"; Psalm verseequiv "(9,22)" cross-
-numbers are ignored), Esther's HEBREW/GREEK rows by matching text. A row is
+numbers are ignored). Each Esther page holds the Greek text, then the
+Hebrew (labels repeat), so it is split where the numbering starts over and
+each block is matched only to rows of that verseorigin. A row is
 updated only when the formatted text normalizes (bibleget_plain_text) to
 exactly its current text_plain, so no wording, hash or embedding changes.
 Where the wording differs only slightly (difflib ratio >= 0.9: spacing,
@@ -602,40 +604,81 @@ def build_update(row, text, titles, position):
             f"AND coalesce(title3, '') = '' AND bibleget_plain_text({sql_str(text)}) = text_plain;")
 
 
-def process(archive, db, report, wording):
-    updates, stats, seen = [], collections.Counter(), set()
-    for path in sorted(Path(archive, "html").glob("*/*/*.html")):
-        key = (BOOK[path.parent.name], int(path.stem))
-        rows = db.get(key, {})
-        site = merge_lettered(format_chapter(path), set(rows))
+def esther_blocks(verses):
+    """bibbiaedu.it prints each Esther chapter twice: first the Greek text
+    (with the lettered additions, e.g. 1a-1r before 1-22), then the Hebrew.
+    Labels repeat, so split the page where the verse number starts over:
+    [("GREEK", [...]), ("HEBREW", [...])], or the whole page as GREEK when a
+    chapter has no second block."""
+    numbers = [int(re.match(r"\d+", label)[0]) for label, _ in verses]
+    cut = next((i for i in range(1, len(numbers)) if numbers[i] < numbers[i - 1]), len(numbers))
+    blocks = [("GREEK", verses[:cut])]
+    if cut < len(verses):
+        blocks.append(("HEBREW", verses[cut:]))
+    return blocks
+
+
+def site_blocks(path, rows):
+    """[(verseorigin or None, {label: rendered})] for a chapter page: one
+    block, or Esther's GREEK and HEBREW blocks matched to rows of that origin."""
+    verses = format_chapter_list(path)
+    if path.parent.name != "Est":
+        return [(None, merge_lettered(dict(verses), set(rows)))]
+    out = []
+    for origin, block in esther_blocks(verses):
+        labels = {label for label, candidates in rows.items() if any(r["origin"] == origin for r in candidates)}
+        out.append((origin, merge_lettered(dict(block), labels)))
+    return out
+
+
+def process_chapter(path, rows, report, wording, stats, seen):
+    """Updates for one chapter page; fills report, wording, stats and seen."""
+    updates, book, chapter = [], path.parent.name, int(path.stem)
+    for origin, site in site_blocks(path, rows):
         for label, (site_text, titles, position) in site.items():
-            row, text, position = match_row(rows.get(label, []), site_text, position)
+            where = label if origin is None else f"{label} {origin}"
+            candidates = [r for r in rows.get(label, []) if origin is None or r["origin"] == origin]
+            row, text, position = match_row(candidates, site_text, position)
             if row is None:
                 stats["unmatched (site)"] += 1
-                report.append((path.parent.name, key[1], label, "site", plain_text(site_text)))
+                report.append((book, chapter, where, "site", plain_text(site_text)))
                 continue
             seen.add(row["vid"])
-            require_markup_ok(text, f"{path.parent.name} {key[1]}:{label}")
+            require_markup_ok(text, f"{book} {chapter}:{where}")
             problem = check_titles(titles, position, text)
             if problem:
                 stats[problem] += 1
-                report.append((path.parent.name, key[1], label, problem, plain_text(text)))
+                report.append((book, chapter, where, problem, plain_text(text)))
                 continue
             if plain_text(site_text) != row["plain"]:
                 stats["wording kept (layout only)"] += 1
-                wording.append((path.parent.name, key[1], label, plain_text(site_text), row["plain"]))
+                wording.append((book, chapter, where, plain_text(site_text), row["plain"]))
             update = build_update(row, text, titles, position)
             if update:
-                updates.append(f"{update}  -- {path.parent.name} {key[1]}:{label}")
+                updates.append(f"{update}  -- {book} {chapter}:{where}")
                 stats["headings" if titles else "formatted"] += 1
             else:
                 stats["unchanged"] += 1
+    return updates
+
+
+def process(archive, db, report, wording, books=None):
+    """All updates, optionally only for the given book slugs (e.g. {"Est"})."""
+    updates, stats, seen = [], collections.Counter(), set()
+    for path in sorted(Path(archive, "html").glob("*/*/*.html")):
+        if books and path.parent.name not in books:
+            continue
+        key = (BOOK[path.parent.name], int(path.stem))
+        updates += process_chapter(path, db.get(key, {}), report, wording, stats, seen)
     for key, labels in db.items():
+        if books and SLUGS[key[0] - 1] not in books:
+            continue
         for label, rows in labels.items():
             for row in rows:
                 if row["vid"] not in seen:
                     stats["unmatched (db)"] += 1
-                    report.append((SLUGS[key[0] - 1], key[1], label, "db", row["plain"]))
+                    where = f"{label} {row['origin']}" if row["origin"] else label
+                    report.append((SLUGS[key[0] - 1], key[1], where, "db", row["plain"]))
     return updates, stats
 
 
@@ -671,16 +714,23 @@ def main():
     ap.add_argument("--archive", required=True, help="CEI2008-bibbiaedu checkout")
     ap.add_argument("--dump", required=True, help="COPY dump of CEI2008 (see docstring)")
     ap.add_argument("--report", required=True, help="TSV of rows not formatted (contains copyrighted text: keep private)")
+    ap.add_argument("--books", help="comma-separated book slugs to process (e.g. Est); default all")
     ap.add_argument("--wording-report", required=True,
                     help="TSV of rows formatted with our wording where the site's differs (keep private)")
     args = ap.parse_args()
 
     report, wording = [], []
-    updates, stats = process(args.archive, load_dump(args.dump), report, wording)
+    books = set(args.books.split(",")) if args.books else None
+    unknown = (books or set()) - set(SLUGS)
+    if unknown:
+        ap.error(f"unknown book slugs: {', '.join(sorted(unknown))}")
+    updates, stats = process(args.archive, load_dump(args.dump), report, wording, books)
     write_tsv(args.report, ("book", "chapter", "label", "side", "text"), report)
     write_tsv(args.wording_report, ("book", "chapter", "label", "site_wording", "our_wording"), wording)
     out = sys.stdout
     out.write(HEADER)
+    if books:
+        out.write(f"-- Only these books (--books): {', '.join(sorted(books))}\n")
     out.write(f"-- {len(updates)} rows: {dict(sorted(stats.items()))}\n\nBEGIN;\n\n")
     out.write("\n".join(updates))
     out.write("\n\nCOMMIT;\n")
