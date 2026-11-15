@@ -289,7 +289,8 @@ CREATE TABLE IF NOT EXISTS "TEST3_idx" (
 );
 INSERT INTO "TEST3_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Jb', 'Job', 10, '1,1,1,1,1,1,1,1,35,2', 22),
-('Wis', 'Wisdom', 12, '1,1,1,1,1,1,1,1,1,1,26,5', 27)
+('Wis', 'Wisdom', 12, '1,1,1,1,1,1,1,1,1,1,26,5', 27),
+('Est', 'Esther', 1, '2', 19)
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS "TEST3" (
@@ -336,3 +337,14 @@ SELECT * FROM (VALUES
     (27, 12, 5, NULL, NULL, 'Wis 12:5 placeholder', 1, 5)
 ) AS v(book, chapter, verse, verseequiv, versedescr, text, testament, section)
 WHERE NOT EXISTS (SELECT 1 FROM "TEST3");
+
+-- Esther: the Hebrew and the Greek text share chapter:verse, told apart by
+-- verseorigin (similar search must start from one of them, not a blend).
+INSERT INTO "TEST3" (book, chapter, verse, verseorigin, text, testament, section)
+SELECT * FROM (VALUES
+    (19, 1, 1, 'HEBREW', 'Est 1:1 hebrew placeholder', 1, 4),
+    (19, 1, 1, 'GREEK', 'Est 1:1 greek placeholder', 1, 4),
+    (19, 1, 2, 'HEBREW', 'Est 1:2 hebrew placeholder', 1, 4),
+    (19, 1, 2, 'GREEK', 'Est 1:2 greek placeholder', 1, 4)
+) AS v(book, chapter, verse, verseorigin, text, testament, section)
+WHERE NOT EXISTS (SELECT 1 FROM "TEST3" WHERE book = 19);

@@ -229,13 +229,18 @@ class SimilarSearchHandler extends AbstractHandler
 
         // By cited number (PrintedLabel). A verse split across rows (NABRE
         // Job 10:1, printed partly after 9:35) starts from the average of
-        // its parts' embeddings.
-        $stmt = $pdo->prepare(
+        // its parts' embeddings. Rows of different texts sharing the number
+        // (Esther's Hebrew and Greek) are not blended: only one origin is
+        // averaged, GREEK first as in quotes, then the first in reading order.
+        $match = 'book = ? AND ' . PrintedLabel::sqlChapter() . ' = ? AND ' . PrintedLabel::sqlVerse() . ' = ?'
+            . ' AND ' . $column . ' IS NOT NULL';
+        $stmt  = $pdo->prepare(
             'SELECT avg(' . $column . ')::text AS embedding FROM "' . $version . '" '
-            . 'WHERE book = ? AND ' . PrintedLabel::sqlChapter() . ' = ? AND ' . PrintedLabel::sqlVerse() . ' = ?'
-            . ' AND ' . $column . ' IS NOT NULL'
+            . 'WHERE ' . $match . ' AND verseorigin = ('
+            . 'SELECT verseorigin FROM "' . $version . '" WHERE ' . $match
+            . ' ORDER BY (verseorigin = \'GREEK\') DESC, "verseID" LIMIT 1)'
         );
-        $stmt->execute([$bookNum, $chapter, $verse]);
+        $stmt->execute([$bookNum, $chapter, $verse, $bookNum, $chapter, $verse]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!is_array($row) || !isset($row['embedding'])) {

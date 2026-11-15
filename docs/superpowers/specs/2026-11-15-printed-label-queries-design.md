@@ -86,7 +86,7 @@ Step 2 replaces both halves with the new columns; nothing else should parse `ver
 ### Search
 
 - **Keyword, semantic, hybrid:** the row builders (`KeywordSearchService`, `SemanticSearchService`, `SimilarSearchHandler::mapResults`) report the cited chapter and verse through the helper, and add `verseequiv` to each result (my call: search results then carry the printed label, as quote results do; it's an additive field, documented in `openapi.json`). Filters and ranking are unchanged.
-- **Similar (`/search/similar`):** the starting verse is looked up by cited chapter and verse. When that matches more than one row (NABRE Job 10:1: the `10:1a` row and the rest), the starting embedding is the average of their embeddings (pgvector `avg`), so "similar to Job 10:1" means the whole verse (my call). All the matched rows are excluded from the results, replacing today's `NOT (book, chapter, verse)` exclusion. A reference that matches no row still answers 404.
+- **Similar (`/search/similar`):** the starting verse is looked up by cited chapter and verse. When that matches more than one row (NABRE Job 10:1: the `10:1a` row and the rest), the starting embedding is the average of their embeddings (pgvector `avg`), so "similar to Job 10:1" means the whole verse (my call). Rows of different texts that share the number (Esther's Hebrew and Greek, told apart by `verseorigin`) are not blended: only one origin is averaged, GREEK first as in quotes (added after the final review). All the matched rows are excluded from the results, replacing today's `NOT (book, chapter, verse)` exclusion. A reference that matches no row still answers 404.
 
 ### Index (`NABRE_idx`) — migration `035`
 

@@ -59,6 +59,12 @@ final class SimilarSearchPrintedLabelTest extends DatabaseTestCase
         $set("verseequiv = '10:1a'", self::vec([1.0, 0.0]));
         $set('chapter = 10 AND verse = 1', self::vec([0.0, 1.0]));
         $set('chapter = 9 AND verse = 34', self::vec([0.5, 0.5]));
+        // Esther 1:1 in two texts; 1:2 GREEK is near the Greek 1:1, 1:2 HEBREW
+        // equals the blend of the two 1:1 rows.
+        $set("book = 19 AND verse = 1 AND verseorigin = 'HEBREW'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
+        $set("book = 19 AND verse = 1 AND verseorigin = 'GREEK'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
+        $set("book = 19 AND verse = 2 AND verseorigin = 'GREEK'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.1]));
+        $set("book = 19 AND verse = 2 AND verseorigin = 'HEBREW'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.6, 0.6]));
         // Wis 12:1, and a row close to it.
         $set("verseequiv = '12:1'", self::vec([0.0, 0.0, 1.0]));
         $set('chapter = 12 AND verse = 3', self::vec([0.0, 0.0, 0.9, 0.1]));
@@ -101,6 +107,13 @@ final class SimilarSearchPrintedLabelTest extends DatabaseTestCase
         foreach ($results as $r) {
             self::assertNotSame([10, 1], [$r['chapter'], $r['verse']], 'both parts of Job 10:1 must be excluded');
         }
+    }
+
+    public function testSimilarFromEstherStartsFromTheGreekTextOnly(): void
+    {
+        $results = $this->similar('Est1:1');
+        self::assertNotEmpty($results);
+        self::assertSame('Est 1:2 greek placeholder', $results[0]['text']);
     }
 
     public function testSimilarUnknownVerseIs404(): void
