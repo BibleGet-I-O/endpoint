@@ -183,23 +183,31 @@ PROBE_LEN = 40
 AMBIGUOUS = "ambiguous"
 
 
+def line_starts(text, probe):
+    """Offsets of the lines of `text` whose visible text, run on to the end
+    of the verse (the probe may continue past a short line), begins with
+    `probe`. Whitespace is ignored."""
+    lines = text.split("\n")
+    vis = [re.sub(r"\s+", "", visible(line)) for line in lines]
+    hits, offset = [], 0
+    for i, line in enumerate(lines):
+        if vis[i] and "".join(vis[i:]).startswith(probe):
+            hits.append(offset)
+        offset += len(line) + 1
+    return hits
+
+
 def place(text, following):
     """(found, title_position): position None = before the verse, else the
     offset of the line of `text` that begins with `following`. found is
     AMBIGUOUS when more than one line begins that way. Whitespace is ignored
     (a removed tag can leave a space: stored "M , How" for the SCML's "M, How")."""
-    probe = re.sub(r"\s+", "", following or "")[:PROBE_LEN]
-    offset, hits = 0, []
-    for line in text.split("\n"):
-        vis = re.sub(r"\s+", "", visible(line))
-        if vis.startswith(probe) or (len(vis) < len(probe) and vis and probe.startswith(vis)):
-            hits.append(offset)
-        offset += len(line) + 1
+    hits = line_starts(text, re.sub(r"\s+", "", following or "")[:PROBE_LEN])
     if len(hits) > 1:
         return AMBIGUOUS, None
-    if hits:
-        return True, (hits[0] if hits[0] > 0 else None)
-    return False, None
+    if not hits:
+        return False, None
+    return True, hits[0] or None
 
 
 def lit(value):
@@ -228,12 +236,12 @@ def collect(events, rows, order, report):
 
 
 def search_book(order, book, following):
-    for row in order:
-        if row["key"][0] == book:
-            found, position = place(row["text"], following)
-            if found:
-                return row, found, position
-    return None, False, None
+    """The one row of `book` holding the line; AMBIGUOUS if several do."""
+    matches = [(row, *place(row["text"], following)) for row in order if row["key"][0] == book]
+    matches = [m for m in matches if m[1]]
+    if len(matches) > 1:
+        return None, AMBIGUOUS, None
+    return matches[0] if matches else (None, False, None)
 
 
 notes = []  # headings applied, but moved to before the verse
