@@ -1,0 +1,1292 @@
+{
+  "description": "Documented verse-structure edge cases; each expected value is the verse labels of that chapter as written in the edition's snapshot (null: the edition has no such chapter). See scripts/versification_snapshot.py and the wiki page Versification-Differences.",
+  "cases": [
+    {
+      "id": "gen-31-32",
+      "kind": "chapter-boundary",
+      "summary": "Gen 31:55 in the Vulgate/English numbering (VGCL, DRB, LUZZI) is 32:1 in the Hebrew numbering (NABRE, CEI2008, NVBSE, BLPD).",
+      "expect": {
+        "NABRE": {
+          "1 31": "1-54",
+          "1 32": "1-33"
+        },
+        "CEI2008": {
+          "1 31": "1-54",
+          "1 32": "1-33"
+        },
+        "NVBSE": {
+          "1 31": "1-54",
+          "1 32": "1-33"
+        },
+        "BLPD": {
+          "1 31": "1-54",
+          "1 32": "1-33"
+        },
+        "VGCL": {
+          "1 31": "1-55",
+          "1 32": "1-32"
+        },
+        "DRB": {
+          "1 31": "1-55",
+          "1 32": "1-32"
+        },
+        "LUZZI": {
+          "1 31": "1-55",
+          "1 32": "1-32"
+        }
+      }
+    },
+    {
+      "id": "ex-7-8",
+      "kind": "chapter-boundary",
+      "summary": "Ex 7:26-29 (Hebrew) are 8:1-4 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "2 7": "1-29",
+          "2 8": "1-28"
+        },
+        "CEI2008": {
+          "2 7": "1-29",
+          "2 8": "1-28"
+        },
+        "NVBSE": {
+          "2 7": "1-29",
+          "2 8": "1-28"
+        },
+        "BLPD": {
+          "2 7": "1-29",
+          "2 8": "1-28"
+        },
+        "VGCL": {
+          "2 7": "1-25",
+          "2 8": "1-32"
+        },
+        "DRB": {
+          "2 7": "1-25",
+          "2 8": "1-32"
+        },
+        "LUZZI": {
+          "2 7": "1-25",
+          "2 8": "1-32"
+        }
+      }
+    },
+    {
+      "id": "lv-5-6",
+      "kind": "chapter-boundary",
+      "summary": "Lv 5:20-26 (Hebrew) are 6:1-7 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "3 5": "1-26",
+          "3 6": "1-23"
+        },
+        "CEI2008": {
+          "3 5": "1-26",
+          "3 6": "1-23"
+        },
+        "NVBSE": {
+          "3 5": "1-26",
+          "3 6": "1-23"
+        },
+        "BLPD": {
+          "3 5": "1-26",
+          "3 6": "1-23"
+        },
+        "VGCL": {
+          "3 5": "1-19",
+          "3 6": "1-30"
+        },
+        "DRB": {
+          "3 5": "1-19",
+          "3 6": "1-30"
+        },
+        "LUZZI": {
+          "3 5": "1-19",
+          "3 6": "1-30"
+        }
+      }
+    },
+    {
+      "id": "nm-16-17",
+      "kind": "chapter-boundary",
+      "summary": "Nm 17:1-15 (Hebrew) are 16:36-50 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "4 16": "1-35",
+          "4 17": "1-28"
+        },
+        "CEI2008": {
+          "4 16": "1-35",
+          "4 17": "1-28"
+        },
+        "NVBSE": {
+          "4 16": "1-35",
+          "4 17": "1-28"
+        },
+        "BLPD": {
+          "4 16": "1-35",
+          "4 17": "1-28"
+        },
+        "VGCL": {
+          "4 16": "1-50",
+          "4 17": "1-13"
+        },
+        "DRB": {
+          "4 16": "1-50",
+          "4 17": "1-13"
+        },
+        "LUZZI": {
+          "4 16": "1-50",
+          "4 17": "1-13"
+        }
+      }
+    },
+    {
+      "id": "dt-12-13",
+      "kind": "chapter-boundary",
+      "summary": "Dt 13:1 (Hebrew) is 12:32 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "5 12": "1-31",
+          "5 13": "1-19"
+        },
+        "CEI2008": {
+          "5 12": "1-31",
+          "5 13": "1-19"
+        },
+        "NVBSE": {
+          "5 12": "1-31",
+          "5 13": "1-19"
+        },
+        "BLPD": {
+          "5 12": "1-31",
+          "5 13": "1-19"
+        },
+        "VGCL": {
+          "5 12": "1-32",
+          "5 13": "1-18"
+        },
+        "DRB": {
+          "5 12": "1-32",
+          "5 13": "1-18"
+        },
+        "LUZZI": {
+          "5 12": "1-32",
+          "5 13": "1-18"
+        }
+      }
+    },
+    {
+      "id": "dt-22-23",
+      "kind": "chapter-boundary",
+      "summary": "Dt 23:1 (Hebrew) is 22:30 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "5 22": "1-29",
+          "5 23": "1-26"
+        },
+        "CEI2008": {
+          "5 22": "1-29",
+          "5 23": "1-26"
+        },
+        "NVBSE": {
+          "5 22": "1-29",
+          "5 23": "1-26"
+        },
+        "BLPD": {
+          "5 22": "1-29",
+          "5 23": "1-26"
+        },
+        "VGCL": {
+          "5 22": "1-30",
+          "5 23": "1-25"
+        },
+        "DRB": {
+          "5 22": "1-30",
+          "5 23": "1-25"
+        },
+        "LUZZI": {
+          "5 22": "1-30",
+          "5 23": "1-25"
+        }
+      }
+    },
+    {
+      "id": "dt-28-29",
+      "kind": "chapter-boundary",
+      "summary": "Dt 28:69 (Hebrew) is 29:1 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "5 28": "1-69",
+          "5 29": "1-28"
+        },
+        "CEI2008": {
+          "5 28": "1-69",
+          "5 29": "1-28"
+        },
+        "NVBSE": {
+          "5 28": "1-69",
+          "5 29": "1-28"
+        },
+        "BLPD": {
+          "5 28": "1-69",
+          "5 29": "1-28"
+        },
+        "VGCL": {
+          "5 28": "1-68",
+          "5 29": "1-29"
+        },
+        "DRB": {
+          "5 28": "1-68",
+          "5 29": "1-29"
+        },
+        "LUZZI": {
+          "5 28": "1-68",
+          "5 29": "1-29"
+        }
+      }
+    },
+    {
+      "id": "1sm-20-21",
+      "kind": "chapter-boundary",
+      "summary": "1 Sm 21:1 (Hebrew) is 20:43 in the Vulgate (VGCL, DRB) and LUZZI.",
+      "expect": {
+        "NABRE": {
+          "9 20": "1-42",
+          "9 21": "1-16"
+        },
+        "CEI2008": {
+          "9 20": "1-42",
+          "9 21": "1-16"
+        },
+        "NVBSE": {
+          "9 20": "1-42",
+          "9 21": "1-16"
+        },
+        "BLPD": {
+          "9 20": "1-42",
+          "9 21": "1-16"
+        },
+        "VGCL": {
+          "9 20": "1-43",
+          "9 21": "1-15"
+        },
+        "DRB": {
+          "9 20": "1-43",
+          "9 21": "1-15"
+        },
+        "LUZZI": {
+          "9 20": "1-43",
+          "9 21": "1-15"
+        }
+      }
+    },
+    {
+      "id": "2sm-18-19",
+      "kind": "chapter-boundary",
+      "summary": "2 Sm 19:1 (Hebrew) is 18:33 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "10 18": "1-32",
+          "10 19": "1-44"
+        },
+        "CEI2008": {
+          "10 18": "1-32",
+          "10 19": "1-44"
+        },
+        "NVBSE": {
+          "10 18": "1-32",
+          "10 19": "1-44"
+        },
+        "BLPD": {
+          "10 18": "1-32",
+          "10 19": "1-44"
+        },
+        "VGCL": {
+          "10 18": "1-33",
+          "10 19": "1-43"
+        },
+        "DRB": {
+          "10 18": "1-33",
+          "10 19": "1-43"
+        },
+        "LUZZI": {
+          "10 18": "1-33",
+          "10 19": "1-43"
+        }
+      }
+    },
+    {
+      "id": "1kgs-4-5",
+      "kind": "chapter-boundary",
+      "summary": "1 Kgs 5:1-14 (Hebrew) are 4:21-34 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "11 4": "1-20",
+          "11 5": "1-32"
+        },
+        "CEI2008": {
+          "11 4": "1-20",
+          "11 5": "1-32"
+        },
+        "NVBSE": {
+          "11 4": "1-20",
+          "11 5": "1-32"
+        },
+        "BLPD": {
+          "11 4": "1-20",
+          "11 5": "1-32"
+        },
+        "VGCL": {
+          "11 4": "1-34",
+          "11 5": "1-18"
+        },
+        "DRB": {
+          "11 4": "1-34",
+          "11 5": "1-18"
+        },
+        "LUZZI": {
+          "11 4": "1-34",
+          "11 5": "1-18"
+        }
+      }
+    },
+    {
+      "id": "2kgs-11-12",
+      "kind": "chapter-boundary",
+      "summary": "2 Kgs 12:1 (Hebrew) is 11:21 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "12 11": "1-20",
+          "12 12": "1-22"
+        },
+        "CEI2008": {
+          "12 11": "1-20",
+          "12 12": "1-22"
+        },
+        "NVBSE": {
+          "12 11": "1-20",
+          "12 12": "1-22"
+        },
+        "BLPD": {
+          "12 11": "1-20",
+          "12 12": "1-22"
+        },
+        "VGCL": {
+          "12 11": "1-21",
+          "12 12": "1-21"
+        },
+        "DRB": {
+          "12 11": "1-21",
+          "12 12": "1-21"
+        },
+        "LUZZI": {
+          "12 11": "1-21",
+          "12 12": "1-21"
+        }
+      }
+    },
+    {
+      "id": "1chr-5-6",
+      "kind": "chapter-boundary",
+      "summary": "1 Chr 5:27-41 (Hebrew) are 6:1-15 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "13 5": "1-41",
+          "13 6": "1-45,49-50,46-48,51-66"
+        },
+        "CEI2008": {
+          "13 5": "1-41",
+          "13 6": "1-66"
+        },
+        "NVBSE": {
+          "13 5": "1-41",
+          "13 6": "1-66"
+        },
+        "BLPD": {
+          "13 5": "1-41",
+          "13 6": "1-66"
+        },
+        "VGCL": {
+          "13 5": "1-26",
+          "13 6": "1-81"
+        },
+        "DRB": {
+          "13 5": "1-26",
+          "13 6": "1-81"
+        },
+        "LUZZI": {
+          "13 5": "1-26",
+          "13 6": "1-81"
+        }
+      }
+    },
+    {
+      "id": "2chr-1-2",
+      "kind": "chapter-boundary",
+      "summary": "2 Chr 1:18 (Hebrew) is 2:1 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "14 1": "1-18",
+          "14 2": "1-17"
+        },
+        "CEI2008": {
+          "14 1": "1-18",
+          "14 2": "1-17"
+        },
+        "NVBSE": {
+          "14 1": "1-18",
+          "14 2": "1-17"
+        },
+        "BLPD": {
+          "14 1": "1-18",
+          "14 2": "1-17"
+        },
+        "VGCL": {
+          "14 1": "1-17",
+          "14 2": "1-18"
+        },
+        "DRB": {
+          "14 1": "1-17",
+          "14 2": "1-18"
+        },
+        "LUZZI": {
+          "14 1": "1-17",
+          "14 2": "1-18"
+        }
+      }
+    },
+    {
+      "id": "2chr-13-14",
+      "kind": "chapter-boundary",
+      "summary": "2 Chr 13:23 (Hebrew, also LUZZI) is 14:1 in the Vulgate (VGCL, DRB).",
+      "expect": {
+        "NABRE": {
+          "14 13": "1-23",
+          "14 14": "1-14"
+        },
+        "CEI2008": {
+          "14 13": "1-23",
+          "14 14": "1-14"
+        },
+        "NVBSE": {
+          "14 13": "1-23",
+          "14 14": "1-14"
+        },
+        "BLPD": {
+          "14 13": "1-23",
+          "14 14": "1-14"
+        },
+        "VGCL": {
+          "14 13": "1-22",
+          "14 14": "1-15"
+        },
+        "DRB": {
+          "14 13": "1-22",
+          "14 14": "1-15"
+        },
+        "LUZZI": {
+          "14 13": "1-23",
+          "14 14": "1-14"
+        }
+      }
+    },
+    {
+      "id": "neh-3-4",
+      "kind": "chapter-boundary",
+      "summary": "Neh 3:33-38 (Hebrew) are 4:1-6 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "16 3": "1-38",
+          "16 4": "1-17"
+        },
+        "CEI2008": {
+          "16 3": "1-38",
+          "16 4": "1-17"
+        },
+        "NVBSE": {
+          "16 3": "1-38",
+          "16 4": "1-17"
+        },
+        "BLPD": {
+          "16 3": "1-27,27-38",
+          "16 4": "1-17"
+        },
+        "VGCL": {
+          "16 3": "1-31",
+          "16 4": "1-23"
+        },
+        "DRB": {
+          "16 3": "1-31",
+          "16 4": "1-23"
+        },
+        "LUZZI": {
+          "16 3": "1-32",
+          "16 4": "1-23"
+        }
+      }
+    },
+    {
+      "id": "neh-9-10",
+      "kind": "chapter-boundary",
+      "summary": "Neh 10:1 (Hebrew) is 9:38 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "16 9": "1-37",
+          "16 10": "1-40"
+        },
+        "CEI2008": {
+          "16 9": "1-37",
+          "16 10": "1-40"
+        },
+        "NVBSE": {
+          "16 9": "1-37",
+          "16 10": "1-40"
+        },
+        "BLPD": {
+          "16 9": "1-37",
+          "16 10": "1-40"
+        },
+        "VGCL": {
+          "16 9": "1-38",
+          "16 10": "1-39"
+        },
+        "DRB": {
+          "16 9": "1-38",
+          "16 10": "1-39"
+        },
+        "LUZZI": {
+          "16 9": "1-38",
+          "16 10": "1-39"
+        }
+      }
+    },
+    {
+      "id": "eccl-4-5",
+      "kind": "chapter-boundary",
+      "summary": "Eccl 4:17 (Hebrew, also the Vulgate) is 5:1 in LUZZI (English numbering).",
+      "expect": {
+        "NABRE": {
+          "25 4": "1-17",
+          "25 5": "1-19"
+        },
+        "CEI2008": {
+          "25 4": "1-17",
+          "25 5": "1-19"
+        },
+        "NVBSE": {
+          "25 4": "1-17",
+          "25 5": "1-19"
+        },
+        "BLPD": {
+          "25 4": "1-17",
+          "25 5": "1-19"
+        },
+        "VGCL": {
+          "25 4": "1-17",
+          "25 5": "1-19"
+        },
+        "DRB": {
+          "25 4": "1-17",
+          "25 5": "1-19"
+        },
+        "LUZZI": {
+          "25 4": "1-16",
+          "25 5": "1-20"
+        }
+      }
+    },
+    {
+      "id": "is-8-9",
+      "kind": "chapter-boundary",
+      "summary": "Is 8:23 (Hebrew, also LUZZI) is 9:1 in the Vulgate (VGCL, DRB).",
+      "expect": {
+        "NABRE": {
+          "29 8": "1-23",
+          "29 9": "1-20"
+        },
+        "CEI2008": {
+          "29 8": "1-23",
+          "29 9": "1-20"
+        },
+        "NVBSE": {
+          "29 8": "1-23",
+          "29 9": "1-20"
+        },
+        "BLPD": {
+          "29 8": "1-23",
+          "29 9": "1-20"
+        },
+        "VGCL": {
+          "29 8": "1-22",
+          "29 9": "1-21"
+        },
+        "DRB": {
+          "29 8": "1-22",
+          "29 9": "1-21"
+        },
+        "LUZZI": {
+          "29 8": "1-23",
+          "29 9": "1-20"
+        }
+      }
+    },
+    {
+      "id": "jer-8-9",
+      "kind": "chapter-boundary",
+      "summary": "Jer 8:23 (Hebrew) is 9:1 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "30 8": "1-23",
+          "30 9": "1-25"
+        },
+        "CEI2008": {
+          "30 8": "1-23",
+          "30 9": "1-25"
+        },
+        "NVBSE": {
+          "30 8": "1-23",
+          "30 9": "1-25"
+        },
+        "BLPD": {
+          "30 8": "1-23",
+          "30 9": "1-25"
+        },
+        "VGCL": {
+          "30 8": "1-22",
+          "30 9": "1-26"
+        },
+        "DRB": {
+          "30 8": "1-22",
+          "30 9": "1-26"
+        },
+        "LUZZI": {
+          "30 8": "1-22",
+          "30 9": "1-26"
+        }
+      }
+    },
+    {
+      "id": "ez-20-21",
+      "kind": "chapter-boundary",
+      "summary": "Ez 21:1-5 (Hebrew, also LUZZI) are 20:45-49 in the Vulgate (VGCL, DRB).",
+      "expect": {
+        "NABRE": {
+          "33 20": "1-44",
+          "33 21": "1-37"
+        },
+        "CEI2008": {
+          "33 20": "1-44",
+          "33 21": "1-37"
+        },
+        "NVBSE": {
+          "33 20": "1-44",
+          "33 21": "1-37"
+        },
+        "BLPD": {
+          "33 20": "1-44",
+          "33 21": "1-37"
+        },
+        "VGCL": {
+          "33 20": "1-49",
+          "33 21": "1-32"
+        },
+        "DRB": {
+          "33 20": "1-49",
+          "33 21": "1-32"
+        },
+        "LUZZI": {
+          "33 20": "1-44",
+          "33 21": "1-37"
+        }
+      }
+    },
+    {
+      "id": "dn-5-6",
+      "kind": "chapter-boundary",
+      "summary": "Dn 6:1 (Hebrew/Aramaic) is 5:31 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "34 5": "1-30",
+          "34 6": "1-29"
+        },
+        "CEI2008": {
+          "34 5": "1-30",
+          "34 6": "1-29"
+        },
+        "NVBSE": {
+          "34 5": "1-30",
+          "34 6": "1-29"
+        },
+        "BLPD": {
+          "34 5": "1-30",
+          "34 6": "1-29"
+        },
+        "VGCL": {
+          "34 5": "1-31",
+          "34 6": "1-28"
+        },
+        "DRB": {
+          "34 5": "1-31",
+          "34 6": "1-28"
+        },
+        "LUZZI": {
+          "34 5": "1-31",
+          "34 6": "1-28"
+        }
+      }
+    },
+    {
+      "id": "hos-1-2",
+      "kind": "chapter-boundary",
+      "summary": "Hos 2:1-2 (Hebrew) are 1:10-11 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "35 1": "1-9",
+          "35 2": "1-25"
+        },
+        "CEI2008": {
+          "35 1": "1-9",
+          "35 2": "1-25"
+        },
+        "NVBSE": {
+          "35 1": "1-9",
+          "35 2": "1-26"
+        },
+        "BLPD": {
+          "35 1": "1-9",
+          "35 2": "1-25"
+        },
+        "VGCL": {
+          "35 1": "1-11",
+          "35 2": "1-24"
+        },
+        "DRB": {
+          "35 1": "1-11",
+          "35 2": "1-24"
+        },
+        "LUZZI": {
+          "35 1": "1-11",
+          "35 2": "1-23"
+        }
+      }
+    },
+    {
+      "id": "hos-11-12",
+      "kind": "chapter-boundary",
+      "summary": "Hos 12:1 (Hebrew, also LUZZI) is 11:12 in the Vulgate (VGCL, DRB).",
+      "expect": {
+        "NABRE": {
+          "35 11": "1-11",
+          "35 12": "1-15"
+        },
+        "CEI2008": {
+          "35 11": "1-11",
+          "35 12": "1-15"
+        },
+        "NVBSE": {
+          "35 11": "1-11",
+          "35 12": "1-15"
+        },
+        "BLPD": {
+          "35 11": "1-11",
+          "35 12": "1-15"
+        },
+        "VGCL": {
+          "35 11": "1-12",
+          "35 12": "1-14"
+        },
+        "DRB": {
+          "35 11": "1-12",
+          "35 12": "1-14"
+        },
+        "LUZZI": {
+          "35 11": "1-11",
+          "35 12": "1-15"
+        }
+      }
+    },
+    {
+      "id": "hos-13-14",
+      "kind": "chapter-boundary",
+      "summary": "Hos 14:1 (Hebrew, also the Vulgate) is 13:16 in LUZZI (English numbering).",
+      "expect": {
+        "NABRE": {
+          "35 13": "1-15",
+          "35 14": "1-10"
+        },
+        "CEI2008": {
+          "35 13": "1-15",
+          "35 14": "1-10"
+        },
+        "NVBSE": {
+          "35 13": "1-15",
+          "35 14": "1-10"
+        },
+        "BLPD": {
+          "35 13": "1-15",
+          "35 14": "1-10"
+        },
+        "VGCL": {
+          "35 13": "1-15",
+          "35 14": "1-10"
+        },
+        "DRB": {
+          "35 13": "1-15",
+          "35 14": "1-10"
+        },
+        "LUZZI": {
+          "35 13": "1-16",
+          "35 14": "1-9"
+        }
+      }
+    },
+    {
+      "id": "na-1-2",
+      "kind": "chapter-boundary",
+      "summary": "Na 2:1 (Hebrew) is 1:15 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "41 1": "1-14",
+          "41 2": "1-14"
+        },
+        "CEI2008": {
+          "41 1": "1-14",
+          "41 2": "1-14"
+        },
+        "NVBSE": {
+          "41 1": "1-14",
+          "41 2": "1-14"
+        },
+        "BLPD": {
+          "41 1": "1-14",
+          "41 2": "1-14"
+        },
+        "VGCL": {
+          "41 1": "1-15",
+          "41 2": "1-13"
+        },
+        "DRB": {
+          "41 1": "1-15",
+          "41 2": "1-13"
+        },
+        "LUZZI": {
+          "41 1": "1-15",
+          "41 2": "1-13"
+        }
+      }
+    },
+    {
+      "id": "zec-1-2",
+      "kind": "chapter-boundary",
+      "summary": "Zec 2:1-4 (Hebrew) are 1:18-21 (Vulgate/English).",
+      "expect": {
+        "NABRE": {
+          "45 1": "1-17",
+          "45 2": "1-17"
+        },
+        "CEI2008": {
+          "45 1": "1-17",
+          "45 2": "1-17"
+        },
+        "NVBSE": {
+          "45 1": "1-17",
+          "45 2": "1-17"
+        },
+        "BLPD": {
+          "45 1": "1-17",
+          "45 2": "1-17"
+        },
+        "VGCL": {
+          "45 1": "1-21",
+          "45 2": "1-13"
+        },
+        "DRB": {
+          "45 1": "1-21",
+          "45 2": "1-13"
+        },
+        "LUZZI": {
+          "45 1": "1-21",
+          "45 2": "1-13"
+        }
+      }
+    },
+    {
+      "id": "jl-chapters",
+      "kind": "chapter-count",
+      "summary": "Joel has 4 chapters in the Hebrew numbering and 3 in the Vulgate/English: Jl 3:1-5 (Hebrew) are 2:28-32, and Jl 4 is chapter 3.",
+      "expect": {
+        "NABRE": {
+          "36 2": "1-27",
+          "36 3": "1-5",
+          "36 4": "1-21"
+        },
+        "CEI2008": {
+          "36 2": "1-27",
+          "36 3": "1-5",
+          "36 4": "1-21"
+        },
+        "NVBSE": {
+          "36 2": "1-27",
+          "36 3": "1-5",
+          "36 4": "1-21"
+        },
+        "BLPD": {
+          "36 2": "1-27",
+          "36 3": "1-5",
+          "36 4": "1-21"
+        },
+        "VGCL": {
+          "36 2": "1-32",
+          "36 3": "1-21",
+          "36 4": null
+        },
+        "DRB": {
+          "36 2": "1-32",
+          "36 3": "1-21",
+          "36 4": null
+        },
+        "LUZZI": {
+          "36 2": "1-32",
+          "36 3": "1-21",
+          "36 4": null
+        }
+      }
+    },
+    {
+      "id": "mal-chapters",
+      "kind": "chapter-count",
+      "summary": "Malachi has 3 chapters in the Hebrew numbering and 4 in the Vulgate/English: Mal 3:19-24 (Hebrew) are 4:1-6.",
+      "expect": {
+        "NABRE": {
+          "46 3": "1-24",
+          "46 4": null
+        },
+        "CEI2008": {
+          "46 3": "1-24",
+          "46 4": null
+        },
+        "NVBSE": {
+          "46 3": "1-24",
+          "46 4": null
+        },
+        "BLPD": {
+          "46 3": "1-24",
+          "46 4": null
+        },
+        "VGCL": {
+          "46 3": "1-18",
+          "46 4": "1-6"
+        },
+        "DRB": {
+          "46 3": "1-11,13-18",
+          "46 4": "1-6"
+        },
+        "LUZZI": {
+          "46 3": "1-18",
+          "46 4": "1-6"
+        }
+      }
+    },
+    {
+      "id": "dn-3-additions",
+      "kind": "text-tradition",
+      "summary": "Catholic editions number the Greek additions inside Dn 3 (3:24-90, so 3:1-100 with 3:91-100 = Hebrew 3:24-33); LUZZI has only the Hebrew/Aramaic text, where 3:31-33 are 4:1-3.",
+      "expect": {
+        "NABRE": {
+          "34 3": "1-100",
+          "34 4": "1-34"
+        },
+        "CEI2008": {
+          "34 3": "1-100",
+          "34 4": "1-34"
+        },
+        "NVBSE": {
+          "34 3": "1-100",
+          "34 4": "1-34"
+        },
+        "BLPD": {
+          "34 3": "1-100",
+          "34 4": "1-34"
+        },
+        "VGCL": {
+          "34 3": "1-100",
+          "34 4": "1-34"
+        },
+        "DRB": {
+          "34 3": "1-100",
+          "34 4": "1-34"
+        },
+        "LUZZI": {
+          "34 3": "1-30",
+          "34 4": "1-37"
+        }
+      }
+    },
+    {
+      "id": "3jn-14-15",
+      "kind": "chapter-boundary",
+      "summary": "3 Jn 14 (Vulgate) is split into 14 and 15 in most modern editions.",
+      "expect": {
+        "NABRE": {
+          "71 1": "1-15"
+        },
+        "CEI2008": {
+          "71 1": "1-15"
+        },
+        "NVBSE": {
+          "71 1": "1-15"
+        },
+        "BLPD": {
+          "71 1": "1-15"
+        },
+        "VGCL": {
+          "71 1": "1-14"
+        },
+        "DRB": {
+          "71 1": "1-14"
+        },
+        "LUZZI": {
+          "71 1": "1-15"
+        }
+      }
+    },
+    {
+      "id": "acts-19-40-41",
+      "kind": "chapter-boundary",
+      "summary": "The end of Acts 19:40 is numbered 19:41 in LUZZI (as in the KJV).",
+      "expect": {
+        "NABRE": {
+          "51 19": "1-40"
+        },
+        "CEI2008": {
+          "51 19": "1-40"
+        },
+        "NVBSE": {
+          "51 19": "1-40"
+        },
+        "BLPD": {
+          "51 19": "1-40"
+        },
+        "VGCL": {
+          "51 19": "1-40"
+        },
+        "DRB": {
+          "51 19": "1-40"
+        },
+        "LUZZI": {
+          "51 19": "1-41"
+        }
+      }
+    },
+    {
+      "id": "cei-is-10-18",
+      "kind": "split-verse",
+      "summary": "CEI 2008 prints Is 10:18 in two parts around 10:19 (17, 18a, 19, 18b), following its reconstruction of the text.",
+      "expect": {
+        "CEI2008": {
+          "29 10": "1-17,18a,19,18b,20-34"
+        },
+        "NABRE": {
+          "29 10": "1-34"
+        }
+      }
+    },
+    {
+      "id": "cei-jb-31-40",
+      "kind": "split-verse",
+      "summary": "CEI 2008 prints Job 31:38-40a before 31:35-37, then 40b.",
+      "expect": {
+        "CEI2008": {
+          "22 31": "1-34,38-39,40a,35-37,40b"
+        },
+        "NABRE": {
+          "22 31": "1-40"
+        }
+      }
+    },
+    {
+      "id": "cei-sir-28-24-25",
+      "kind": "split-verse",
+      "summary": "CEI 2008 interleaves the halves of Sir 28:24-25 (24a, 25b, 24b, 25a).",
+      "expect": {
+        "CEI2008": {
+          "28 28": "1-23,24a,25b,24b,25a,26"
+        },
+        "NABRE": {
+          "28 28": "1-26"
+        }
+      }
+    },
+    {
+      "id": "cei-sir-43-17",
+      "kind": "split-verse",
+      "summary": "CEI 2008 prints Sir 43:16 between the halves of 43:17 (17a, 16, 17b).",
+      "expect": {
+        "CEI2008": {
+          "28 43": "1-15,17a,16,17b,18-33"
+        },
+        "NABRE": {
+          "28 43": "1-33"
+        }
+      }
+    },
+    {
+      "id": "nabre-1chr-6",
+      "kind": "reordered",
+      "summary": "NABRE prints 1 Chr 6:49-50 before 6:46-48.",
+      "expect": {
+        "NABRE": {
+          "13 6": "1-45,49-50,46-48,51-66"
+        },
+        "CEI2008": {
+          "13 6": "1-66"
+        }
+      }
+    },
+    {
+      "id": "nabre-sir-31",
+      "kind": "reordered",
+      "summary": "NABRE prints Sir 31:15 before 31:14.",
+      "expect": {
+        "NABRE": {
+          "28 31": "1-13,15,14,16-31"
+        },
+        "CEI2008": {
+          "28 31": "1-31"
+        }
+      }
+    },
+    {
+      "id": "am-5-7",
+      "kind": "reordered",
+      "summary": "NABRE prints Am 5:7 after 5:8-9 (its outline: III. 3:1-5:9, IV. Three Woes 5:7-6:14).",
+      "expect": {
+        "NABRE": {
+          "37 5": "1-6,8-9,7,10-27"
+        },
+        "CEI2008": {
+          "37 5": "1-27"
+        }
+      }
+    },
+    {
+      "id": "nabre-sir-41",
+      "kind": "split-verse",
+      "summary": "NABRE prints Sir 41:14b, 15, 14a, then 16a, 16b, and 41:21 between 20a/21c and 20b.",
+      "expect": {
+        "NABRE": {
+          "28 41": "1-13,14b,15,14a,16a,16b,17-19,21,20a,21c,20b,22"
+        },
+        "CEI2008": {
+          "28 41": "1-22"
+        }
+      },
+      "known_issue": {
+        "issue": "#185",
+        "wrong": [
+          "NABRE 28 41"
+        ]
+      }
+    },
+    {
+      "id": "nabre-sir-47",
+      "kind": "split-verse",
+      "summary": "NABRE prints Sir 47:9b and 47:10b after 47:10.",
+      "expect": {
+        "NABRE": {
+          "28 47": "1-10,9b,10b,11-25"
+        },
+        "CEI2008": {
+          "28 47": "1-25"
+        }
+      }
+    },
+    {
+      "id": "est-greek-hebrew",
+      "kind": "text-tradition",
+      "summary": "Editions with both texts of Esther store a HEBREW and a GREEK run per chapter; the Greek additions are lettered (1a-1r before 1:1).",
+      "expect": {
+        "NABRE": {
+          "19 1 HEBREW": "1-22",
+          "19 1 GREEK": "1a,1b,1c,1d,1e,1f,1g,1h,1i,1k,1l,1m,1n,1o,1p,1q,1r,1-22"
+        },
+        "CEI2008": {
+          "19 1 HEBREW": "1-22",
+          "19 1 GREEK": "1a,1b,1c,1d,1e,1f,1g,1h,1i,1k,1l,1m,1n,1o,1p,1q,1r,1-22"
+        },
+        "NVBSE": {
+          "19 1 HEBREW": "1-22",
+          "19 1 GREEK": "1a,1b,1c,1d,1e,1f,1g,1h,1i,1k,1-22"
+        }
+      }
+    },
+    {
+      "id": "nabre-wis-12-1",
+      "kind": "chapter-boundary",
+      "summary": "NABRE prints Wis 12:1 at the end of chapter 11, after 11:26, and starts chapter 12 at verse 2. The row is stored as printed: chapter 11, verse 26, verseequiv '12:1'. Deliberate, not a defect.",
+      "expect": {
+        "NABRE": {
+          "27 11": "1-26,12:1",
+          "27 12": "2-27"
+        },
+        "CEI2008": {
+          "27 11": "1-26",
+          "27 12": "1-27"
+        }
+      }
+    },
+    {
+      "id": "nabre-job-10-1a",
+      "kind": "chapter-boundary",
+      "summary": "NABRE prints the first words of Job 10:1 ('I loathe my life.') at the end of chapter 9, labelled 10:1; chapter 10 opens with the rest of verse 1. Stored as chapter 9, verse 35, verseequiv '10:1a', then 10:1. Deliberate, not a defect.",
+      "expect": {
+        "NABRE": {
+          "22 9": "1-35,10:1a",
+          "22 10": "1-22"
+        },
+        "CEI2008": {
+          "22 9": "1-35",
+          "22 10": "1-22"
+        }
+      }
+    },
+    {
+      "id": "nabre-sir-33-20",
+      "kind": "split-verse",
+      "summary": "NABRE prints Sir 33:20a, 21, 20b; the rows are stored as 20a, 20b, 21.",
+      "expect": {
+        "NABRE": {
+          "28 33": "1-19,20a,21,20b,22-33"
+        }
+      },
+      "known_issue": {
+        "issue": "#185",
+        "wrong": [
+          "NABRE 28 33"
+        ]
+      }
+    },
+    {
+      "id": "cei-est-8-2-9-30",
+      "kind": "text-tradition",
+      "summary": "CEI 2008 prints Est 8:2 in both the Greek and the Hebrew text, and Hebrew 9:30 (the Greek has no 9:30); our rows lack them (8:1 GREEK holds 8:2's text).",
+      "expect": {
+        "CEI2008": {
+          "19 8 HEBREW": "1-17",
+          "19 8 GREEK": "1-12,12a,12b,12c,12d,12e,12f,12g,12h,12i,12k,12l,12m,12n,12o,12p,12q,12r,12s,12t,12u,12v,13-17",
+          "19 9 HEBREW": "1-32",
+          "19 9 GREEK": "1-29,31-32"
+        }
+      },
+      "known_issue": {
+        "issue": "#185",
+        "wrong": [
+          "CEI2008 19 8 HEBREW",
+          "CEI2008 19 8 GREEK",
+          "CEI2008 19 9 HEBREW"
+        ]
+      }
+    }
+  ]
+}
