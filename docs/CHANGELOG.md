@@ -252,11 +252,14 @@ Deprecated / Fixed / Removed / Security where applicable.
     Ps 119:82–176, Rev 15:4 and Esther, which had been appended after
     Revelation, are back in place. `verseID` now runs 1–35,720.
     `CEI2008_idx` is recomputed for the affected books.
-  - **Wording (`026`, 374 rows):** the site's words, editorial marks
+  - **Wording (`026`, 373 rows):** the site's words, editorial marks
     (`⌈ ⌉`, `⊥`), dashes and spacing are adopted, e.g. Iedaèl → Iediaèl,
     Chelem → Elem, Bersabea → Betsabea, "Elia ?" → "Elia?". Stress accents
     are kept where they are the only difference ("séminano"; "È" for a
-    typed "E'"). Esther is left for a separate review.
+    typed "E'"). Esther is left for a separate review. The site types
+    Ps 25:5's acrostic letter "Vau" as a word of the verse; it is read as
+    a letter instead, and dropped because the verse already has "He" as
+    its heading (one heading position per verse, see #177).
 - **Editions rebuilt in reading order** (`024`, `027`). A scan of every
   edition found blocks appended after Revelation:
   - NABRE, VGCL, NVBSE and DRB each had part of Esther there;
@@ -274,7 +277,9 @@ Deprecated / Fixed / Removed / Security where applicable.
   been imported as flat text. 10,751 verses now carry the site's poetic
   layout in the NABRE tag set: `<po>`/`<poi>` by indentation, the
   `f`/`l` variants at stanza starts and ends, and untagged lead-ins and
-  psalm superscriptions. 444 verses get section headings in
+  psalm superscriptions (a wholly italic first line is a superscription
+  only in the Psalms; elsewhere, e.g. Sirach's Greek additions and the Old
+  Testament quotations in the New, it is verse). 444 verses get section headings in
   `title1`-`title3`; the site has them for Gen, Ex, Lv, Nm and Psalms
   only, and psalm acrostic letters are included. Gen 2:4 gets a mid-verse
   `title_position`. Verses are lined up by chapter and label, so the
