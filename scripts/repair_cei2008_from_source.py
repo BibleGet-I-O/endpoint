@@ -54,6 +54,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import format_cei2008_from_source as F  # noqa: E402
+from markup import require_markup_ok  # noqa: E402
 
 
 # --------------------------------------------------------------- inputs
@@ -163,8 +164,11 @@ def resolve_ids(source, ops):
 
 def site_text(source, spec):
     if spec[0] == "text":
+        require_markup_ok(spec[1], f"literal text {spec[1][:40]!r}")
         return spec[1], [], None
-    return source.verse(*spec)
+    text, titles, position = source.verse(*spec)
+    require_markup_ok(text, f"site verse {spec}")
+    return text, titles, position
 
 
 # --------------------------------------------------------------- SQL helpers
@@ -365,6 +369,7 @@ def wording_update(row, label, text, skip, key):
     if wording == row["plain"]:
         return  # accents only: ours is kept
     formatted = F.transplant(text, wording) or wording
+    require_markup_ok(formatted, f"{F.SLUGS[key[0] - 1]} {key[1]}:{label}")
     # Keyed on the verse's identity, not "verseID": 025 renumbers the table.
     yield (f'UPDATE "CEI2008" SET text = {lit(formatted)} WHERE book = {key[0]} AND chapter = {key[1]} '
            f"AND verse = {row['verse']} AND coalesce(verseequiv, '') = {lit(row['equiv'])} "

@@ -42,6 +42,14 @@
 #
 # Native mode requires the `mariadb` and `psql` CLI clients in PATH.
 #
+# After the copy: production-schema.sql is the MariaDB-era baseline. The
+# numbered migrations (migrations/0NN-*.sql: embeddings, text_plain and
+# title_position, the markup validator and its per-edition constraints, the
+# edition data repairs) are NOT part of it. Apply them in numeric order once
+# this script has finished, since several of them change or check the copied
+# data:
+#   for f in migrations/0[0-9][0-9]-*.sql; do psql -v ON_ERROR_STOP=1 ... -f "$f"; done
+#
 # =============================================================================
 set -euo pipefail
 
@@ -456,4 +464,4 @@ for T in $YEARLY_TABLES; do
 done
 
 log ""
-log "Done!"
+log "Done! Next: apply migrations/0NN-*.sql in numeric order (see the header)."

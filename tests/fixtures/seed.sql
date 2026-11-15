@@ -68,6 +68,7 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'TEST1_title_position_check') THEN
         ALTER TABLE "TEST1" ADD CONSTRAINT "TEST1_title_position_check"
             CHECK (bibleget_title_position_ok(text, title_position));
+        ALTER TABLE "TEST1" ADD CONSTRAINT "TEST1_markup_check" CHECK (bibleget_markup_ok(text));
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS "TEST1_text_fts" ON "TEST1" USING gin(to_tsvector('english', text));
