@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Util\IndexList;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -362,7 +363,7 @@ class QuoteContext
                 $abbreviations[] = StringUtils::asString($row['abbrev']);
                 $bbbooks[]       = StringUtils::asString($row['fullname']);
                 $chapter_limit[] = StringUtils::asInt($row['chapters']);
-                $verse_limit[]   = array_map('intval', explode(',', StringUtils::asString($row['verses_last'])));
+                $verse_limit[]   = IndexList::parse(StringUtils::asString($row['verses_last']), $this->logger, $variant . '_idx book ' . StringUtils::asString($row['book']));
                 $book_num[]      = StringUtils::asInt($row['book']);
             }
             $indexes[$variant]['abbreviations'] = $abbreviations;

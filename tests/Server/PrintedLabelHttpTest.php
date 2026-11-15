@@ -53,6 +53,17 @@ final class PrintedLabelHttpTest extends ServerTestCase
         self::assertSame($expected, $rows);
     }
 
+    public function testVersionIndexReportsNumberedBounds(): void
+    {
+        $r = self::httpGet('/v3/metadata/versionindex?versions=TEST3');
+        self::assertSame(200, $r['status']);
+        $idx = self::jsonBody($r['body'])['indexes']['TEST3'];
+        $wis = array_search(27, $idx['book_num'], true);
+        self::assertIsInt($wis);
+        self::assertSame(26, $idx['verse_limit'][$wis][10]);
+        self::assertSame(5, $idx['verse_limit'][$wis][11]);
+    }
+
     public function testHtmlPutsPrintedLabelUnderItsOwnChapter(): void
     {
         $r = self::httpGet('/v3/quote?query=Wis12,1-5&version=TEST3&return=html');

@@ -9,6 +9,7 @@ use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
+use BibleGet\Api\Util\IndexList;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -223,7 +224,7 @@ class MetadataHandler extends AbstractHandler
                 $abbreviations[] = $row['abbrev'];
                 $bbbooks[]       = $row['fullname'];
                 $chapter_limit[] = StringUtils::asInt($row['chapters']);
-                $verse_limit[]   = array_map('intval', explode(',', StringUtils::asString($row['verses_last'])));
+                $verse_limit[]   = IndexList::parse(StringUtils::asString($row['verses_last']), $this->logger, $variant . '_idx book ' . StringUtils::asString($row['book']));
                 $book_num[]      = StringUtils::asInt($row['book']);
             }
             $indexes[$variant] = [
