@@ -6,6 +6,7 @@ namespace BibleGet\Api\Services;
 
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
+use BibleGet\Api\Util\PrintedLabel;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
 
@@ -103,6 +104,7 @@ class SemanticSearchService
                 ? (float) $row['score']
                 : null;
 
+            $cited     = PrintedLabel::cited($row);
             $entry     = [
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
@@ -113,8 +115,11 @@ class SemanticSearchService
                 'univbooknum' => $row['book'],
                 'book'        => $bookidx !== false ? ( $versionIndex['books'][$bookidx] ?? '' ) : '',
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
-                'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
-                'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
+                // Cited numbers: a verse printed under a chapter:verse label
+                // in another chapter is reported by that label (PrintedLabel).
+                'chapter'     => $cited['chapter'],
+                'verse'       => $cited['verse'],
+                'verseequiv'  => is_string($row['verseequiv'] ?? null) ? $row['verseequiv'] : null,
                 'score'       => $exact === null ? null : round($exact, 4),
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder
