@@ -1182,7 +1182,12 @@
           "28 41": "1-22"
         }
       },
-      "known_issue": "#185"
+      "known_issue": {
+        "issue": "#185",
+        "wrong": [
+          "NABRE 28 41"
+        ]
+      }
     },
     {
       "id": "nabre-sir-47",
@@ -1255,7 +1260,12 @@
           "28 33": "1-19,20a,21,20b,22-33"
         }
       },
-      "known_issue": "#185"
+      "known_issue": {
+        "issue": "#185",
+        "wrong": [
+          "NABRE 28 33"
+        ]
+      }
     },
     {
       "id": "cei-est-8-2-9-30",
@@ -1269,7 +1279,14 @@
           "19 9 GREEK": "1-29,31-32"
         }
       },
-      "known_issue": "#185"
+      "known_issue": {
+        "issue": "#185",
+        "wrong": [
+          "CEI2008 19 8 HEBREW",
+          "CEI2008 19 8 GREEK",
+          "CEI2008 19 9 HEBREW"
+        ]
+      }
     }
   ]
 }

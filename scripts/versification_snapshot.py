@@ -20,7 +20,8 @@ ignored. Consecutive numbers are written as ranges.
 The snapshots are what tests/Unit/Data/VersificationCasesTest.php checks
 the documented edge cases (tests/fixtures/versification/cases.json)
 against, so CI catches a case whose data changed. --check compares a
-database with the committed snapshots: run it after applying a migration
+database with the committed snapshots (and, without --version, reports a
+committed snapshot whose edition is no longer in the database): run it after applying a migration
 that touches verse rows, and regenerate (without --check) only when the
 change is intended; the diff then shows exactly what moved.
 
@@ -113,6 +114,11 @@ def snapshot(edition, data):
     return "\n".join(lines) + "\n"
 
 
+def stale_snapshots(out_dir, names):
+    """Committed snapshot files whose edition is not in `names` (e.g. a removed edition)."""
+    return [p for p in sorted(out_dir.glob("*.txt")) if p.stem not in names]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="compare with the committed snapshots; exit 1 on a difference")
@@ -122,7 +128,8 @@ def main():
 
     conn = get_connection()
     failed = False
-    for edition in [args.version] if args.version else editions(conn):
+    names = [args.version] if args.version else editions(conn)
+    for edition in names:
         text = snapshot(edition, rows(conn, edition))
         path = args.out_dir / f"{edition}.txt"
         if not args.check:
@@ -136,6 +143,10 @@ def main():
                 old.splitlines(True), text.splitlines(True), f"{edition}.txt (committed)", f"{edition} (database)"))
         else:
             print(f"{edition}: matches", file=sys.stderr)
+    if args.check and not args.version:
+        for path in stale_snapshots(args.out_dir, names):
+            failed = True
+            print(f"{path.name}: committed snapshot, but {path.stem} is not in versions_available")
     sys.exit(1 if failed else 0)
 
 

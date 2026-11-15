@@ -68,19 +68,69 @@ final class VersificationCasesTest extends TestCase
             foreach ($chapters as $key => $expected) {
                 $actual = isset($snapshot[$key]) ? implode(' | ', $snapshot[$key]) : null;
                 if ($actual !== $expected) {
-                    $mismatches[] = sprintf('%s %s: expected %s, snapshot has %s', $edition, $key, json_encode($expected), json_encode($actual));
+                    $mismatches[$edition . ' ' . $key] = sprintf('%s %s: expected %s, snapshot has %s', $edition, $key, json_encode($expected), json_encode($actual));
                 }
             }
         }
 
+        // A known issue excuses exactly the entries it lists ("NABRE 28 41"):
+        // any other mismatch fails, and so does a listed entry that now matches.
         $knownIssue = $case['known_issue'] ?? null;
-        if (is_string($knownIssue)) {
-            if ($mismatches !== []) {
-                $this->markTestIncomplete("Known data defect ({$knownIssue}):\n" . implode("\n", $mismatches));
-            }
-            $this->fail("Case is fixed in the data: remove its known_issue ({$knownIssue}) from cases.json.");
+        if ($knownIssue === null) {
+            $this->assertSame([], array_values($mismatches), (string) $case['summary']);
+            return;
         }
-        $this->assertSame([], $mismatches, (string) $case['summary']);
+        $this->assertIsArray($knownIssue);
+        $this->assertIsString($knownIssue['issue'] ?? null);
+        $this->assertIsArray($knownIssue['wrong'] ?? null);
+        $this->assertNotEmpty($knownIssue['wrong']);
+        $documented = array_values(array_map('strval', $knownIssue['wrong']));
+        $verdict    = self::knownIssueVerdict(array_keys($mismatches), $documented);
+
+        $unexpected = array_map(static fn (string $k): string => $mismatches[$k], $verdict['unexpected']);
+        $this->assertSame([], $unexpected, 'Mismatch not covered by known_issue ' . $knownIssue['issue']);
+        $this->assertSame([], $verdict['stale'], 'Fixed in the data: remove these from known_issue.wrong (' . $knownIssue['issue'] . ')');
+        $this->markTestIncomplete('Known data defect (' . $knownIssue['issue'] . "):\n" . implode("\n", $mismatches));
+    }
+
+    /**
+     * Compares the mismatching entries of a case with those its known_issue lists.
+     *
+     * @param list<string> $mismatched Entries ("EDITION chapter-key") whose snapshot differs.
+     * @param list<string> $documented Entries the known_issue says are wrong.
+     * @return array{unexpected: list<string>, stale: list<string>}
+     */
+    private static function knownIssueVerdict(array $mismatched, array $documented): array
+    {
+        return [
+            'unexpected' => array_values(array_diff($mismatched, $documented)),
+            'stale'      => array_values(array_diff($documented, $mismatched)),
+        ];
+    }
+
+    /**
+     * @return array<string, array{list<string>, list<string>, list<string>, list<string>}>
+     */
+    public static function verdicts(): array
+    {
+        return [
+            'only the documented mismatch' => [['NABRE 28 41'], ['NABRE 28 41'], [], []],
+            'a new mismatch beside it'     => [['NABRE 28 41', 'CEI2008 28 41'], ['NABRE 28 41'], ['CEI2008 28 41'], []],
+            'documented one now matches'   => [[], ['NABRE 28 41'], [], ['NABRE 28 41']],
+            'one of two fixed'             => [['CEI2008 19 8 HEBREW'], ['CEI2008 19 8 HEBREW', 'CEI2008 19 9 HEBREW'], [], ['CEI2008 19 9 HEBREW']],
+        ];
+    }
+
+    /**
+     * @param list<string> $mismatched
+     * @param list<string> $documented
+     * @param list<string> $unexpected
+     * @param list<string> $stale
+     */
+    #[DataProvider('verdicts')]
+    public function testKnownIssueVerdict(array $mismatched, array $documented, array $unexpected, array $stale): void
+    {
+        $this->assertSame(['unexpected' => $unexpected, 'stale' => $stale], self::knownIssueVerdict($mismatched, $documented));
     }
 
     public function testEverySnapshotLineIsWellFormed(): void
