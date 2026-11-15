@@ -9,6 +9,13 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Changed
 
+- **Complexity gates.** `phpcs.xml` now fails any PHP function with
+  cyclomatic complexity above 20 (largest today: 18) or nesting deeper
+  than 5, so `composer lint`, the pre-commit hook and CI enforce it. Python
+  code (`scripts/`, `services/embedding/`) is checked by xenon at the same
+  limit: `composer lint:python` (via `uvx`), a pre-push hook action
+  (skipped with a notice when `uv` isn't installed) and a new
+  `Python complexity (xenon)` CI job.
 - **Psalm superscriptions left out of embeddings** (migration `022`).
   `scripts/compute_embeddings.py` now embeds
   `bibleget_embedding_text(book, text)`: `text_plain`, except that a
