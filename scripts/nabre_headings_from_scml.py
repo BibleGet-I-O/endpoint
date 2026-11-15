@@ -283,7 +283,7 @@ def build_updates(placed, report):
         t = (heads + ["", "", ""])[:3]
         # A mid-verse offset is only valid for the exact text it was computed
         # on: a markup-only change leaves text_plain alone but moves offsets.
-        same_text = "" if position is None else f" AND md5(text) = '{hashlib.md5(row['text'].encode()).hexdigest()}'"
+        same_text = "" if position is None else f" AND md5(text) = '{hashlib.md5(row['text'].encode(), usedforsecurity=False).hexdigest()}'"
         applied.add(key)
         updates.append(
             f'UPDATE "NABRE" SET title1 = {lit(t[0])}, title2 = {lit(t[1])}, title3 = {lit(t[2])}, '
