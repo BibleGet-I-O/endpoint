@@ -1219,18 +1219,32 @@
     {
       "id": "nabre-wis-12-1",
       "kind": "chapter-boundary",
-      "summary": "Wis 12:1 belongs to chapter 12 (NABRE prints 12:1); NABRE's row is stored as a second 11:26.",
+      "summary": "NABRE prints Wis 12:1 at the end of chapter 11, after 11:26, and starts chapter 12 at verse 2. The row is stored as printed: chapter 11, verse 26, verseequiv '12:1'. Deliberate, not a defect.",
       "expect": {
         "NABRE": {
-          "27 11": "1-26",
-          "27 12": "1-27"
+          "27 11": "1-26,12:1",
+          "27 12": "2-27"
         },
         "CEI2008": {
           "27 11": "1-26",
           "27 12": "1-27"
         }
-      },
-      "known_issue": "#185"
+      }
+    },
+    {
+      "id": "nabre-job-10-1a",
+      "kind": "chapter-boundary",
+      "summary": "NABRE prints the first words of Job 10:1 ('I loathe my life.') at the end of chapter 9, labelled 10:1; chapter 10 opens with the rest of verse 1. Stored as chapter 9, verse 35, verseequiv '10:1a', then 10:1. Deliberate, not a defect.",
+      "expect": {
+        "NABRE": {
+          "22 9": "1-35,10:1a",
+          "22 10": "1-22"
+        },
+        "CEI2008": {
+          "22 9": "1-35",
+          "22 10": "1-22"
+        }
+      }
     },
     {
       "id": "nabre-sir-33-20",

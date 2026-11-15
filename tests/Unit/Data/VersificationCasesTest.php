@@ -96,7 +96,7 @@ final class VersificationCasesTest extends TestCase
                     continue;
                 }
                 $this->assertMatchesRegularExpression(
-                    '/^\d+ \d+(?: (?:HEBREW|GREEK))?: (?:\d+[a-z]*(?:-\d+)?)(?:,\d+[a-z]*(?:-\d+)?)*$/',
+                    '/^\d+ \d+(?: (?:HEBREW|GREEK))?: (?:(?:\d+:)?\d+[a-z]*(?:-\d+)?)(?:,(?:\d+:)?\d+[a-z]*(?:-\d+)?)*$/',
                     $line,
                     basename($file) . ':' . ( $n + 1 )
                 );

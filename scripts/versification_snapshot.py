@@ -12,8 +12,10 @@ verseorigin:
     19 1 GREEK: 1a,1b,...,1r,1-22
 
 A label is the printed sub-verse in verseequiv ("18a") when there is one,
-else the verse number; CEI2008's psalm cross-numbers in verseequiv
-("(9,22)") are ignored. Consecutive numbers are written as ranges.
+or the chapter:verse label of a verse printed at the end of the previous
+chapter (NABRE "12:1" after Wis 11:26, "10:1a" after Job 9:35), else the
+verse number; CEI2008's psalm cross-numbers in verseequiv ("(9,22)") are
+ignored. Consecutive numbers are written as ranges.
 
 The snapshots are what tests/Unit/Data/VersificationCasesTest.php checks
 the documented edge cases (tests/fixtures/versification/cases.json)
@@ -38,7 +40,7 @@ import sys
 from pathlib import Path
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "versification"
-LETTERED = re.compile(r"^\d+[a-z]+$")
+LABELLED = re.compile(r"^(?:\d+[a-z]+|\d+:\d+[a-z]*)$")
 
 
 def get_connection():
@@ -80,7 +82,7 @@ def rows(conn, table):
 
 
 def label(verse, equiv):
-    return equiv if LETTERED.match(equiv) else str(verse)
+    return equiv if LABELLED.match(equiv) else str(verse)
 
 
 def compress(labels):
