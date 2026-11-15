@@ -35,7 +35,8 @@ A verse with headings both before it and inside it keeps the ones before it
 NAB book ids skip 35, so NAB 1-34 are BibleGet books 1-34 and NAB 36-74 are
 35-73. Rows are matched by (book, chapter, verse), first row of the verse;
 updates are keyed on identity, need empty titles, and are guarded on
-text_plain (idempotent; no text changes, so embeddings are unaffected).
+text_plain, plus md5(text) where a title_position is set (idempotent; no text
+changes, so embeddings are unaffected).
 
 Usage:
     python3 scripts/nabre_headings_from_scml.py --scml ../NABRE-source/scml --dump nabre.copy \\
@@ -47,6 +48,7 @@ with nabre.copy from:
 """
 
 import argparse
+import hashlib
 import html
 import re
 import sys
@@ -84,11 +86,20 @@ TOKEN = re.compile(
 )
 
 
+def continuation(s, start):
+    """The visible text from `start`, across inline tags (<i>, <sm>, <sup>,
+    and the Song of Songs' <speaker> labels), up to the next structural tag:
+    enough of the line to identify it."""
+    run = re.sub(INLINE_TAGS + r"|</?speaker>", "", s[start:start + 400])
+    return clean(run.split("<", 1)[0])
+
+
 def scan_book(s):
     """Yield (verse id, headings, following text): the headings, the verse in
     effect when the next text appears, and that text (to place them)."""
     pending, current, started = [], None, False
-    for m in TOKEN.finditer(strip_notes(s)):
+    s = strip_notes(s)
+    for m in TOKEN.finditer(s):
         if m["ch"]:
             started, current = True, None
         elif not started and m["htag"] != "bksect":
@@ -101,7 +112,7 @@ def scan_book(s):
         elif m["vid"] and m["vtag"] != "xref" and not m["vid"][:8].endswith("000"):
             current = m["vid"]
         elif m["text"] is not None and m["text"].strip() and pending and current:
-            yield current, pending, clean(m["text"])
+            yield current, pending, continuation(s, m.start())
             pending = []
     if pending:
         yield current, pending, None
@@ -143,11 +154,14 @@ def target_keys(vid):
 
 
 def find_row(rows, order, vid):
-    for key in target_keys(vid):
+    keys = target_keys(vid)
+    for key in keys:
         if key in rows:
             return rows[key]
+    if not keys:
+        return None  # an Esther addition verse beyond the letter range: no row
     # No such row (e.g. NABRE has no Num 25:19): the next row in reading order.
-    book, chapter, verse = target_keys(vid)[-1][:3]
+    book, chapter, verse = keys[-1][:3]
     following = [r for r in order if r["key"][:3] > (book, chapter, verse) and r["key"][0] == book]
     return following[0] if following else None
 
@@ -165,15 +179,26 @@ def valid_title_position(text, pos):
     return not (visible(text[:pos])[-1:].isalnum() and visible(text[pos:])[:1].isalnum())
 
 
+PROBE_LEN = 40
+AMBIGUOUS = "ambiguous"
+
+
 def place(text, following):
     """(found, title_position): position None = before the verse, else the
-    offset of the line of `text` that begins with `following`."""
-    probe = re.sub(r"\s+", " ", following or "").strip()[:20]
-    offset = 0
+    offset of the line of `text` that begins with `following`. found is
+    AMBIGUOUS when more than one line begins that way. Whitespace is ignored
+    (a removed tag can leave a space: stored "M , How" for the SCML's "M, How")."""
+    probe = re.sub(r"\s+", "", following or "")[:PROBE_LEN]
+    offset, hits = 0, []
     for line in text.split("\n"):
-        if re.sub(r"\s+", " ", visible(line)).strip().startswith(probe):
-            return True, (offset if offset > 0 else None)
+        vis = re.sub(r"\s+", "", visible(line))
+        if vis.startswith(probe) or (len(vis) < len(probe) and vis and probe.startswith(vis)):
+            hits.append(offset)
         offset += len(line) + 1
+    if len(hits) > 1:
+        return AMBIGUOUS, None
+    if hits:
+        return True, (hits[0] if hits[0] > 0 else None)
     return False, None
 
 
@@ -190,12 +215,13 @@ def collect(events, rows, order, report):
             report.append(f"{vid}: no verse to attach {heads}")
             continue
         found, position = place(row["text"], following)
-        if not found:
+        if found is False:
             # The computed row is not it (Esther's additions use their own
             # verse/letter scheme): the row of this book holding that line.
             row, found, position = search_book(order, row["key"][0], following)
-        if not found:
-            report.append(f"{vid}: line '{following[:30]}' not found for {heads}")
+        if found is not True:
+            what = "matches more than one line" if found == AMBIGUOUS else "not found"
+            report.append(f"{vid}: line '{following[:30]}' {what} for {heads}")
             continue
         merge_placement(placed, row, heads, position, report)
     return placed
@@ -206,7 +232,7 @@ def search_book(order, book, following):
         if row["key"][0] == book:
             found, position = place(row["text"], following)
             if found:
-                return row, True, position
+                return row, found, position
     return None, False, None
 
 
@@ -236,7 +262,9 @@ def merge_placement(placed, row, heads, position, report):
 
 
 def build_updates(placed, report):
-    updates = []
+    """The UPDATEs, and the keys they apply to (rejected placements are
+    reported, and left out of both)."""
+    updates, applied = [], set()
     for key, (row, heads, position) in sorted(placed.items()):
         if len(heads) > 3 or any(len(h) > TITLE_MAX for h in heads):
             report.append(f"{key}: too many or too long headings {heads}")
@@ -245,13 +273,17 @@ def build_updates(placed, report):
             report.append(f"{key}: title_position {position} fails the guard")
             continue
         t = (heads + ["", "", ""])[:3]
+        # A mid-verse offset is only valid for the exact text it was computed
+        # on: a markup-only change leaves text_plain alone but moves offsets.
+        same_text = "" if position is None else f" AND md5(text) = '{hashlib.md5(row['text'].encode()).hexdigest()}'"
+        applied.add(key)
         updates.append(
             f'UPDATE "NABRE" SET title1 = {lit(t[0])}, title2 = {lit(t[1])}, title3 = {lit(t[2])}, '
             f"title_position = {lit(position)} WHERE book = {key[0]} AND chapter = {key[1]} AND verse = {key[2]} "
             f"AND coalesce(verseequiv, '') = {lit(row['equiv'])} AND coalesce(verseorigin, '') = {lit(row['origin'])} "
-            f"AND text_plain = {lit(row['plain'])} AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' "
+            f"AND text_plain = {lit(row['plain'])}{same_text} AND coalesce(title1, '') = '' AND coalesce(title2, '') = '' "
             f"AND coalesce(title3, '') = '';  -- {key[0]} {key[1]}:{key[3] or key[2]}")
-    return updates
+    return updates, applied
 
 
 HEADER = """-- Migration: NABRE section headings from the publisher's SCML sources
@@ -260,7 +292,9 @@ HEADER = """-- Migration: NABRE section headings from the publisher's SCML sourc
 -- import dropped every heading; this restores {n} verses' title1-title3
 -- ({mid} with a mid-verse title_position). Titles only: text, text_plain and
 -- embeddings are unchanged. Each UPDATE is keyed on the verse's identity, needs
--- empty titles and the expected text_plain (idempotent). Requires 028 (Num 25:19).
+-- empty titles and the expected text_plain, and, for a mid-verse title_position,
+-- the md5 of the exact text the offset was computed on (idempotent). Requires
+-- 028 (Num 25:19).
 --
 -- {moved} psalms have a subtitle before verse 1 and a stanza numeral ("I") or
 -- acrostic letter after its superscription: one title_position per verse (#177),
@@ -278,12 +312,14 @@ BOOK_ABBR = ("Gn Ex Lv Nm Dt Jos Jgs Ru 1Sm 2Sm 1Kgs 2Kgs 1Chr 2Chr Ezr Neh Tb J
              "Jude Rev").split()
 
 
-def write_report(path, placed):
-    """One row per verse that gets headings, for review (heading text is
-    copyrighted: keep the file private)."""
+def write_report(path, placed, applied):
+    """One row per verse that the migration gives headings, for review
+    (heading text is copyrighted: keep the file private)."""
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("book\tchapter\tverse\treference\tplacement\ttitle_position\ttitle1\ttitle2\ttitle3\tnote\n")
         for key, (row, heads, position) in sorted(placed.items()):
+            if key not in applied:
+                continue
             label = key[3] or str(key[2])
             placement = "before the verse" if position is None else "inside the verse"
             note = ("stanza numeral/letter found after the superscription, stored before the verse (#177)"
@@ -305,9 +341,9 @@ def main():
         events.extend(scan_book(path.read_text(encoding="utf-8", errors="replace")))
     report = []
     placed = collect(events, rows, order, report)
-    updates = build_updates(placed, report)
+    updates, applied = build_updates(placed, report)
     if args.report:
-        write_report(args.report, placed)
+        write_report(args.report, placed, applied)
     mid = sum("title_position = NULL" not in u for u in updates)
     skipped = "; ".join(report) if report else "none"
     sys.stdout.write(HEADER.format(n=len(updates), mid=mid, moved=len(notes), skipped=skipped.replace("\n", " ")))
