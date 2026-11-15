@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline\Compiler;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
+use BibleGet\Api\Util\PrintedLabel;
 
 /**
  * Walks the BibleQuery AST to produce SQL WHERE clauses.
@@ -17,6 +18,11 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * - preferorigin annotation for Psalms
  * - Copyright-limited verse count (LIMIT 30)
  * - ORDER BY verseID
+ *
+ * A reference selects verses by the number the edition prints: a row that
+ * carries a chapter:verse label printed in another chapter (NABRE Wis 12:1
+ * after 11:26) is matched by that label, not by where it is stored. See
+ * PrintedLabel.
  */
 final class SqlCompiler
 {
@@ -48,10 +54,8 @@ final class SqlCompiler
         foreach ($query->segments as $i => $segment) {
             $sql = $sqlBase;
 
-            if ($segment instanceof VerseRange) {
-                $sql .= $this->compileVerseRange($segment);
-            } elseif ($segment instanceof VerseRef) {
-                $sql .= $this->compileVerseRef($segment);
+            if ($segment instanceof VerseRange || $segment instanceof VerseRef) {
+                $sql .= ' AND ' . $this->compileBothPlacements($segment);
             }
 
             $segmentOrigin = is_array($preferOrigin)
@@ -70,57 +74,77 @@ final class SqlCompiler
         return $queries;
     }
 
-    private function compileVerseRef(VerseRef $ref): string
+    /**
+     * Rows stored at the selected place (unless labelled elsewhere), or rows
+     * labelled elsewhere whose printed chapter:verse is selected. Wrapped in
+     * parentheses so clauses appended after it (preferorigin) bind to both.
+     */
+    private function compileBothPlacements(VerseRange|VerseRef $segment): string
+    {
+        $labelled = PrintedLabel::sqlLabelled();
+        $stored   = $this->compileSegment($segment, 'chapter', 'verse');
+        $cited    = $this->compileSegment($segment, PrintedLabel::sqlChapter(), PrintedLabel::sqlVerse());
+        return '( ( ' . $stored . ' AND NOT ' . $labelled . ' ) OR ( ' . $labelled . ' AND ' . $cited . ' ) )';
+    }
+
+    private function compileSegment(VerseRange|VerseRef $segment, string $c, string $v): string
+    {
+        return $segment instanceof VerseRange
+            ? $this->compileVerseRange($segment, $c, $v)
+            : $this->compileVerseRef($segment, $c, $v);
+    }
+
+    private function compileVerseRef(VerseRef $ref, string $c, string $v): string
     {
         if ($ref->verse === null) {
             // Whole chapter
-            return ' AND chapter = ' . $ref->chapter;
+            return $c . ' = ' . $ref->chapter;
         }
-        return ' AND chapter = ' . $ref->chapter . ' AND verse = ' . $ref->verse;
+        return $c . ' = ' . $ref->chapter . ' AND ' . $v . ' = ' . $ref->verse;
     }
 
-    private function compileVerseRange(VerseRange $range): string
+    private function compileVerseRange(VerseRange $range, string $c, string $v): string
     {
         $from = $range->from;
         $to   = $range->to;
 
         // Chapter range (no verses specified)
         if ($from->verse === null && $to->verse === null) {
-            return ' AND chapter >= ' . $from->chapter . ' AND chapter <= ' . $to->chapter;
+            return $c . ' >= ' . $from->chapter . ' AND ' . $c . ' <= ' . $to->chapter;
         }
 
         // Same chapter verse range
         if ($from->chapter === $to->chapter) {
-            $sql = ' AND chapter = ' . $from->chapter;
+            $sql = $c . ' = ' . $from->chapter;
             if ($from->verse !== null) {
-                $sql .= ' AND verse >= ' . $from->verse;
+                $sql .= ' AND ' . $v . ' >= ' . $from->verse;
             }
             if ($to->verse !== null) {
-                $sql .= ' AND verse <= ' . $to->verse;
+                $sql .= ' AND ' . $v . ' <= ' . $to->verse;
             }
             return $sql;
         }
 
         // Cross-chapter range
-        return $this->compileCrossChapterRange($from, $to);
+        return $this->compileCrossChapterRange($from, $to, $c, $v);
     }
 
-    private function compileCrossChapterRange(VerseRef $from, VerseRef $to): string
+    private function compileCrossChapterRange(VerseRef $from, VerseRef $to, string $c, string $v): string
     {
-        $sql = ' AND ( ( chapter = ' . $from->chapter;
+        $sql = '( ( ' . $c . ' = ' . $from->chapter;
         if ($from->verse !== null) {
-            $sql .= ' AND verse >= ' . $from->verse;
+            $sql .= ' AND ' . $v . ' >= ' . $from->verse;
         }
         $sql .= ' )';
 
         // Intermediate chapters (full chapters between from and to)
         for ($ch = $from->chapter + 1; $ch < $to->chapter; $ch++) {
-            $sql .= ' OR ( chapter = ' . $ch . ' )';
+            $sql .= ' OR ( ' . $c . ' = ' . $ch . ' )';
         }
 
-        $sql .= ' OR ( chapter = ' . $to->chapter;
+        $sql .= ' OR ( ' . $c . ' = ' . $to->chapter;
         if ($to->verse !== null) {
-            $sql .= ' AND verse <= ' . $to->verse;
+            $sql .= ' AND ' . $v . ' <= ' . $to->verse;
         }
         $sql .= ' ) )';
 

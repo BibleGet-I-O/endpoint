@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Util\PrintedLabel;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
 
@@ -396,7 +397,11 @@ class QueryExecutor
         // QuoteHandler after the pipeline runs) can rank rows; it is unset
         // by the helper before the row leaves the API boundary.
         unset($row['embedding'], $row['text_hash'], $row['embedded_text_hash']);
-        $row['chapter']       = is_numeric($row['chapter']) ? (int) $row['chapter'] : 0;
+        // A verse printed under a chapter:verse label in another chapter is
+        // reported by that label (PrintedLabel); verseequiv keeps the label.
+        $cited                = PrintedLabel::cited($row);
+        $row['chapter']       = $cited['chapter'];
+        $row['verse']         = $cited['verse'];
         $row['originalquery'] = $this->ctx->originalQueries[$this->i] ?? '';
 
         return $row;
