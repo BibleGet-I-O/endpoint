@@ -91,6 +91,20 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Added
 
+- **Verse-structure snapshots and versification test cases.**
+  `scripts/versification_snapshot.py` writes each edition's verse labels
+  in reading order, without text, to
+  `tests/fixtures/versification/<EDITION>.txt`; `--check` compares a
+  database with them, so run it after any migration that touches verse
+  rows. `tests/fixtures/versification/cases.json` documents 44 cases
+  (verses across chapter boundaries such as Gen 31:55 / 32:1, Joel's and
+  Malachi's chapter counts, verses printed split or out of order such as
+  CEI 2008's Is 10:17, 18a, 19, 18b), and
+  `tests/Unit/Data/VersificationCasesTest.php` checks them against the
+  snapshots in CI. Four cases are data defects verified against the
+  sources (NABRE Wis 12:1, Sir 33, Sir 41; CEI2008 Est 8:2, 9:30) and are
+  reported as incomplete until fixed (#185). See the wiki page
+  *Versification Differences*.
 - **`/v3/search/hybrid` — keyword + semantic search fused with Reciprocal
   Rank Fusion** (#112). One request runs the keyword leg (`match=fulltext`)
   and the semantic leg on the same `query=` and fuses the two ranked lists:
