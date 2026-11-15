@@ -91,6 +91,17 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Added
 
+- **Live test suite against staging.** `tests/Live` queries a deployed API
+  (`BIBLEGET_LIVE_URL`, skipped when unset) with the real data, checking
+  structure and an md5 of the text only (copyrighted editions' text stays
+  out of the repo). `composer test:live` runs it; `composer test` and
+  `test:quick` leave it out. The deploy workflow runs it after every
+  staging deploy (`live-tests` job).
+- **`verseequiv` in search results.** Keyword, semantic, similar and
+  hybrid results now carry it, as quote results do; `openapi.json`
+  documents it as a string (it was listed as an integer) and explains the
+  `chapter:verse` labels.
+
 - **`/v3/search/hybrid` — keyword + semantic search fused with Reciprocal
   Rank Fusion** (#112). One request runs the keyword leg (`match=fulltext`)
   and the semantic leg on the same `query=` and fuses the two ranked lists:
@@ -201,6 +212,27 @@ Deprecated / Fixed / Removed / Security where applicable.
   `docs/future-migrations/README.md` for the promotion-back procedure.
 
 ### Fixed
+
+- **References select verses by the number the edition prints, on every
+  endpoint.** NABRE prints Wis 12:1 at the end of chapter 11 and the first
+  words of Job 10:1 at the end of chapter 9; the rows stay where they are
+  printed, with the label in `verseequiv` (`12:1`, `10:1a`). `Wis12:1` used
+  to return nothing and `Job10:1` only the second part; now a reference
+  matches such a row by its label and leaves it out of the chapter where it
+  is stored (`Wis11:26` and `Job9:35` return one row each), and results
+  report its own chapter and verse (12, 1) while `verseequiv` keeps the
+  label. The same rule applies to keyword, semantic, hybrid and similar
+  search; `/search/similar` from a verse split across rows starts from the
+  average of its parts and excludes them all. One helper,
+  `src/Util/PrintedLabel.php`, holds the rule. See
+  `docs/superpowers/specs/2026-11-15-printed-label-queries-design.md`.
+- **`Wis11:26` and `John7:53` in NABRE no longer fail as out of bounds**
+  (migration `035`). `NABRE_idx` stored `12:1` as Wis 11's last verse
+  (read as 12) and counted John 7:53 under chapter 8, where NABRE prints
+  it. 035 recomputes NABRE's index by verse number (books 17, 22, 27, 28,
+  50 change; Esther left alone) and aborts if any `*_idx` token is not a
+  whole number; the API now logs such a token instead of silently using it
+  as a bound. Other editions' counts are #187.
 
 - **CEI 2008's variant signs restored in Esther** (migration `033`).
   CEI 2008 marks where the Nova Vulgata differs from the Greek text it
