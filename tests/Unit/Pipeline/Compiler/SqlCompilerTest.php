@@ -8,6 +8,7 @@ use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
 use BibleGet\Api\Pipeline\Compiler\SqlCompiler;
+use BibleGet\Api\Util\PrintedLabel;
 use PHPUnit\Framework\TestCase;
 
 final class SqlCompilerTest extends TestCase
@@ -27,6 +28,20 @@ final class SqlCompilerTest extends TestCase
         return $this->compiler->compile($query, $version, $preferOrigin, [], []);
     }
 
+    /**
+     * The WHERE fragment for one segment: rows stored at the place selected
+     * (and not labelled elsewhere), or rows labelled elsewhere whose printed
+     * chapter:verse is in the selection. `{c}`/`{v}` stand for the chapter
+     * and verse expressions.
+     */
+    private static function where(string $cond): string
+    {
+        $stored = str_replace(['{c}', '{v}'], ['chapter', 'verse'], $cond);
+        $cited  = str_replace(['{c}', '{v}'], [PrintedLabel::sqlChapter(), PrintedLabel::sqlVerse()], $cond);
+        return ' AND ( ( ' . $stored . ' AND NOT ' . PrintedLabel::sqlLabelled() . ' ) OR ( '
+            . PrintedLabel::sqlLabelled() . ' AND ' . $cited . ' ) )';
+    }
+
     // ── Single verse ──────────────────────────────────────────────
 
     public function testSingleVerse(): void
@@ -36,7 +51,7 @@ final class SqlCompilerTest extends TestCase
 
         $this->assertCount(1, $result);
         $this->assertSame(
-            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter = 3 AND verse = 16 ORDER BY "verseID"',
+            'SELECT * FROM "CEI2008" WHERE book = 1' . self::where('{c} = 3 AND {v} = 16') . ' ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -49,7 +64,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter = 5 ORDER BY "verseID"',
+            'SELECT * FROM "CEI2008" WHERE book = 1' . self::where('{c} = 5') . ' ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -64,7 +79,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter = 3 AND verse >= 1 AND verse <= 10 ORDER BY "verseID"',
+            'SELECT * FROM "CEI2008" WHERE book = 1' . self::where('{c} = 3 AND {v} >= 1 AND {v} <= 10') . ' ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -79,7 +94,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM "CEI2008" WHERE book = 1 AND chapter >= 1 AND chapter <= 3 ORDER BY "verseID"',
+            'SELECT * FROM "CEI2008" WHERE book = 1' . self::where('{c} >= 1 AND {c} <= 3') . ' ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -94,7 +109,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM "CEI2008" WHERE book = 1 AND ( ( chapter = 1 AND verse >= 5 ) OR ( chapter = 2 AND verse <= 3 ) ) ORDER BY "verseID"',
+            'SELECT * FROM "CEI2008" WHERE book = 1' . self::where('( ( {c} = 1 AND {v} >= 5 ) OR ( {c} = 2 AND {v} <= 3 ) )') . ' ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -109,7 +124,7 @@ final class SqlCompilerTest extends TestCase
         $result = $this->compile($query);
 
         $this->assertSame(
-            'SELECT * FROM "CEI2008" WHERE book = 1 AND ( ( chapter = 1 AND verse >= 5 ) OR ( chapter = 2 ) OR ( chapter = 3 ) OR ( chapter = 4 AND verse <= 3 ) ) ORDER BY "verseID"',
+            'SELECT * FROM "CEI2008" WHERE book = 1' . self::where('( ( {c} = 1 AND {v} >= 5 ) OR ( {c} = 2 ) OR ( {c} = 3 ) OR ( {c} = 4 AND {v} <= 3 ) )') . ' ORDER BY "verseID"',
             $result[0]
         );
     }
@@ -133,6 +148,27 @@ final class SqlCompilerTest extends TestCase
     }
 
     // ── preferOrigin annotation ───────────────────────────────────
+
+    public function testPreferOriginBindsToWholeCondition(): void
+    {
+        $query  = new BibleQuery(23, [new VerseRef(23, 51, null, 3)]);
+        $result = $this->compile($query, 'TEST3', " AND verseorigin = 'HEBREW'");
+
+        $this->assertSame(
+            'SELECT * FROM "TEST3" WHERE book = 23' . self::where('{c} = 51 AND {v} = 3')
+            . " AND verseorigin = 'HEBREW' ORDER BY \"verseID\"",
+            $result[0]
+        );
+    }
+
+    public function testSingleVerseMatchesPrintedLabel(): void
+    {
+        $query  = new BibleQuery(27, [new VerseRef(27, 12, null, 1)]);
+        $result = $this->compile($query, 'TEST3');
+
+        $this->assertStringContainsString('chapter = 12 AND verse = 1 AND NOT ' . PrintedLabel::sqlLabelled(), $result[0]);
+        $this->assertStringContainsString(PrintedLabel::sqlChapter() . ' = 12 AND ' . PrintedLabel::sqlVerse() . ' = 1', $result[0]);
+    }
 
     public function testPreferOrigin(): void
     {

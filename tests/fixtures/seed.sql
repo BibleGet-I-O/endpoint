@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
     text_hash           BYTEA,
@@ -130,6 +131,7 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
     text_hash           BYTEA,
@@ -181,6 +183,7 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
     text_hash           BYTEA,
@@ -236,6 +239,7 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
     text_hash           BYTEA,
@@ -258,3 +262,91 @@ INSERT INTO "DRB" (book, chapter, verse, text, testament, section) VALUES
 (23, 50, 5, 'For I know my iniquity, and my sin is always before me.', 1, 7),
 (23, 50, 6, 'To thee only have I sinned, and have done evil before thee.', 1, 7)
 ON CONFLICT DO NOTHING;
+
+-- Databases seeded before verseequiv was added to the test tables.
+ALTER TABLE "TEST1" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
+ALTER TABLE "TEST2" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
+ALTER TABLE "VGCL" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
+ALTER TABLE "DRB" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
+
+-- ── TEST3: verses printed under a label in another chapter ────────────
+-- Mirrors NABRE's layout with placeholder text: NABRE prints Wis 12:1 after
+-- 11:26 (chapter 12 starts at verse 2) and the first words of Job 10:1 after
+-- 9:35 (chapter 10 opens with the rest of verse 1, unnumbered). The rows sit
+-- where they are printed, with the printed label in verseequiv; insertion
+-- order is reading order ("verseID"). The index is by verse number. Wis 12:3
+-- and 12:4 carry other verseequiv shapes ('' and a lettered '4a'), which
+-- must not be read as a label.
+INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type, ts_language) VALUES
+('TEST3', 'Test Bible Version 3', '2026', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Printed labels', 0, 'BIBLE', 'english')
+ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS "TEST3_idx" (
+    abbrev     VARCHAR(20) NOT NULL DEFAULT '',
+    fullname   VARCHAR(100) NOT NULL DEFAULT '',
+    chapters   INT NOT NULL DEFAULT 0,
+    verses_last VARCHAR(500) NOT NULL DEFAULT '',
+    book       INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (book)
+);
+INSERT INTO "TEST3_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
+('Jb', 'Job', 10, '1,1,1,1,1,1,1,1,35,2', 22),
+('Wis', 'Wisdom', 12, '1,1,1,1,1,1,1,1,1,1,26,5', 27),
+('Est', 'Esther', 1, '2', 19)
+ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS "TEST3" (
+    "verseID"     SERIAL PRIMARY KEY,
+    book        INT NOT NULL,
+    chapter     INT NOT NULL,
+    verse       INT NOT NULL,
+    text        TEXT NOT NULL,
+    text_plain    TEXT NOT NULL DEFAULT '',
+    title_position SMALLINT,
+    title1      VARCHAR(255) NOT NULL DEFAULT '',
+    title2      VARCHAR(255) NOT NULL DEFAULT '',
+    title3      VARCHAR(255) NOT NULL DEFAULT '',
+    testament   SMALLINT NOT NULL DEFAULT 1,
+    section     INT NOT NULL DEFAULT 0,
+    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseequiv  VARCHAR(10) DEFAULT NULL,
+    versedescr  VARCHAR(10) DEFAULT NULL,
+    embedding           vector(384),
+    embedding_labse     vector(768),
+    text_hash           BYTEA,
+    embedded_text_hash  BYTEA
+);
+CREATE INDEX IF NOT EXISTS "TEST3_text_fts" ON "TEST3" USING gin(to_tsvector('english', text));
+CREATE INDEX IF NOT EXISTS "TEST3_text_plain_fts" ON "TEST3" USING gin(to_tsvector('english', text_plain));
+DO $$ BEGIN
+    CREATE OR REPLACE TRIGGER "TEST3_text_hash_trigger" BEFORE INSERT OR UPDATE OF text, text_plain, text_hash ON "TEST3"
+        FOR EACH ROW EXECUTE FUNCTION update_text_hash();
+END $$;
+
+INSERT INTO "TEST3" (book, chapter, verse, verseequiv, versedescr, text, testament, section)
+SELECT * FROM (VALUES
+    (22, 9, 34, NULL, NULL, 'Job 9:34 placeholder', 1, 5),
+    (22, 9, 35, NULL, NULL, 'Job 9:35 placeholder', 1, 5),
+    (22, 9, 35, '10:1a', '10:1a', 'Job 10:1 first part labelmark placeholder', 1, 5),
+    (22, 10, 1, NULL, NULL, 'Job 10:1 rest placeholder', 1, 5),
+    (22, 10, 2, NULL, NULL, 'Job 10:2 placeholder', 1, 5),
+    (27, 11, 25, NULL, NULL, 'Wis 11:25 placeholder', 1, 5),
+    (27, 11, 26, NULL, NULL, 'Wis 11:26 placeholder', 1, 5),
+    (27, 11, 26, '12:1', '12:1', 'Wis 12:1 labelmark placeholder', 1, 5),
+    (27, 12, 2, NULL, NULL, 'Wis 12:2 placeholder', 1, 5),
+    (27, 12, 3, '', NULL, 'Wis 12:3 placeholder', 1, 5),
+    (27, 12, 4, '4a', NULL, 'Wis 12:4 placeholder', 1, 5),
+    (27, 12, 5, NULL, NULL, 'Wis 12:5 placeholder', 1, 5)
+) AS v(book, chapter, verse, verseequiv, versedescr, text, testament, section)
+WHERE NOT EXISTS (SELECT 1 FROM "TEST3");
+
+-- Esther: the Hebrew and the Greek text share chapter:verse, told apart by
+-- verseorigin (similar search must start from one of them, not a blend).
+INSERT INTO "TEST3" (book, chapter, verse, verseorigin, text, testament, section)
+SELECT * FROM (VALUES
+    (19, 1, 1, 'HEBREW', 'Est 1:1 hebrew placeholder', 1, 4),
+    (19, 1, 1, 'GREEK', 'Est 1:1 greek placeholder', 1, 4),
+    (19, 1, 2, 'HEBREW', 'Est 1:2 hebrew placeholder', 1, 4),
+    (19, 1, 2, 'GREEK', 'Est 1:2 greek placeholder', 1, 4)
+) AS v(book, chapter, verse, verseorigin, text, testament, section)
+WHERE NOT EXISTS (SELECT 1 FROM "TEST3" WHERE book = 19);

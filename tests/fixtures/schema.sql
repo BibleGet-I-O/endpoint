@@ -102,7 +102,7 @@ BEGIN
             "WHO_WHERE_JSON" TEXT,
             "HEADERS_JSON" TEXT,
             "ORIGIN" VARCHAR(255) NOT NULL DEFAULT %L,
-            "QUERY" TEXT,
+            "QUERY" VARCHAR(255) NOT NULL DEFAULT %L,
             "ORIGINALQUERY" TEXT,
             "REQUEST_METHOD" VARCHAR(10) NOT NULL DEFAULT %L,
             "HTTP_CLIENT_IP" VARCHAR(45) NOT NULL DEFAULT %L,
@@ -113,7 +113,7 @@ BEGIN
             "DOMAIN" VARCHAR(255) NOT NULL DEFAULT %L,
             "PLUGINVERSION" VARCHAR(50) NOT NULL DEFAULT %L,
             "WHO_WHEN" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )', log_table, '', '', '', '', '', '', '', '', ''
+        )', log_table, '', '', '', '', '', '', '', '', '', ''
     );
 END $$;
 

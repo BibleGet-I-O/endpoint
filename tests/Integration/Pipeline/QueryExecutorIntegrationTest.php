@@ -42,6 +42,23 @@ class QueryExecutorIntegrationTest extends DatabaseTestCase
         parent::tearDown();
     }
 
+    // -- Request log --
+
+    public function testRequestLogHoldsTheFullCompiledSql(): void
+    {
+        // The compiled SQL of one verse is longer than 255 characters (the
+        // printed-label condition), and it is what the request log stores.
+        $ctx = $this->executePipeline('Wis12,1', 'TEST3');
+        self::assertCount(1, $ctx->results);
+
+        $row = $this->getConnection()
+            ->query('SELECT "QUERY" FROM requests_log__' . date('Y') . ' ORDER BY "WHO_WHEN" DESC LIMIT 1')
+            ->fetch();
+        self::assertIsArray($row);
+        self::assertGreaterThan(255, strlen((string) $row['QUERY']));
+        self::assertStringContainsString('"TEST3"', (string) $row['QUERY']);
+    }
+
     // -- Result retrieval --
 
     public function testExecuteSingleVerse(): void

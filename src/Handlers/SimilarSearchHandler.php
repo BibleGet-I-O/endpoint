@@ -10,6 +10,7 @@ use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Util\SearchUtils;
+use BibleGet\Api\Util\PrintedLabel;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -226,11 +227,20 @@ class SimilarSearchHandler extends AbstractHandler
     {
         $this->assertValidColumn($column);
 
-        $stmt = $pdo->prepare(
-            'SELECT ' . $column . '::text AS embedding FROM "' . $version . '" '
-            . 'WHERE book = ? AND chapter = ? AND verse = ?'
+        // By cited number (PrintedLabel). A verse split across rows (NABRE
+        // Job 10:1, printed partly after 9:35) starts from the average of
+        // its parts' embeddings. Rows of different texts sharing the number
+        // (Esther's Hebrew and Greek) are not blended: only one origin is
+        // averaged, GREEK first as in quotes, then the first in reading order.
+        $match = 'book = ? AND ' . PrintedLabel::sqlChapter() . ' = ? AND ' . PrintedLabel::sqlVerse() . ' = ?'
+            . ' AND ' . $column . ' IS NOT NULL';
+        $stmt  = $pdo->prepare(
+            'SELECT avg(' . $column . ')::text AS embedding FROM "' . $version . '" '
+            . 'WHERE ' . $match . ' AND verseorigin = ('
+            . 'SELECT verseorigin FROM "' . $version . '" WHERE ' . $match
+            . ' ORDER BY (verseorigin = \'GREEK\') DESC, "verseID" LIMIT 1)'
         );
-        $stmt->execute([$bookNum, $chapter, $verse]);
+        $stmt->execute([$bookNum, $chapter, $verse, $bookNum, $chapter, $verse]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!is_array($row) || !isset($row['embedding'])) {
@@ -265,7 +275,7 @@ class SimilarSearchHandler extends AbstractHandler
         $sql = 'SELECT *, 1 - (' . $column . ' <=> ?::vector) AS score '
              . 'FROM "' . $version . '" '
              . 'WHERE ' . $column . ' IS NOT NULL '
-             . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
+             . 'AND NOT (book = ? AND ' . PrintedLabel::sqlChapter() . ' = ? AND ' . PrintedLabel::sqlVerse() . ' = ?) '
              . 'ORDER BY ' . $column . ' <=> ?::vector '
              . 'LIMIT ?';
 
@@ -297,6 +307,7 @@ class SimilarSearchHandler extends AbstractHandler
                 ? (float) $row['score']
                 : null;
 
+            $cited     = PrintedLabel::cited($row);
             $entry     = [
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
@@ -307,8 +318,11 @@ class SimilarSearchHandler extends AbstractHandler
                 'univbooknum' => $row['book'],
                 'book'        => $bookidx !== false ? ( $versionIndex['books'][$bookidx] ?? '' ) : '',
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
-                'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
-                'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
+                // Cited numbers: a verse printed under a chapter:verse label
+                // in another chapter is reported by that label (PrintedLabel).
+                'chapter'     => $cited['chapter'],
+                'verse'       => $cited['verse'],
+                'verseequiv'  => is_string($row['verseequiv'] ?? null) ? $row['verseequiv'] : null,
                 'score'       => $exact === null ? null : round($exact, 4),
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder

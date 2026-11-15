@@ -1244,8 +1244,8 @@
                                     "example": "7"
                                 },
                                 "verseequiv": {
-                                    "type": "integer",
-                                    "description": "I'm not actually sure if this is currently being used or not, I believe the idea was to have a number value for those verses that have a letter in the verse number... Will mostly return a `null` value.",
+                                    "type": "string",
+                                    "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses.",
                                     "nullable": true,
                                     "xml": {
                                         "attribute": true
@@ -1593,8 +1593,8 @@
                         "example": "7"
                     },
                     "verseequiv": {
-                        "type": "integer",
-                        "description": "I'm not actually sure if this is currently being used or not, I believe the idea was to have a number value for those verses that have a letter in the verse number... Will mostly return a `null` value.",
+                        "type": "string",
+                        "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses.",
                         "nullable": true,
                         "xml": {
                             "attribute": true
@@ -14471,8 +14471,8 @@
                                     }
                                 },
                                 "verseequiv": {
-                                    "type": "integer",
-                                    "description": "I'm not actually sure if this is currently being used or not, I believe the idea was to have a number value for those verses that have a letter in the verse number... Will mostly return a `null` value.",
+                                    "type": "string",
+                                    "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses.",
                                     "nullable": true,
                                     "xml": {
                                         "attribute": true
@@ -14885,6 +14885,11 @@
                     "verse": {
                         "type": "integer"
                     },
+                    "verseequiv": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses."
+                    },
                     "text": {
                         "type": "string",
                         "description": "The verse text"
@@ -14994,6 +14999,11 @@
                     },
                     "verse": {
                         "type": "integer"
+                    },
+                    "verseequiv": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses."
                     },
                     "text": {
                         "type": "string",

@@ -95,6 +95,8 @@ jobs:
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/schema.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/seed.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -f tests/fixtures/biblebooks.sql
+          # Migrations that change shared tables the fixtures create in production's shape.
+          PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/036-requests-log-query-text.sql
 
       - name: Run unit tests
         run: vendor/bin/phpunit --testsuite Unit --testdox --display-warnings

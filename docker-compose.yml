@@ -15,6 +15,7 @@ services:
       - ./tests/fixtures/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./tests/fixtures/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
       - ./tests/fixtures/biblebooks.sql:/docker-entrypoint-initdb.d/03-biblebooks.sql
+      - ./migrations/036-requests-log-query-text.sql:/docker-entrypoint-initdb.d/04-036-requests-log-query-text.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bibleget"]
       interval: 10s
