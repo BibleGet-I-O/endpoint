@@ -43,6 +43,7 @@ Response emission is handled by [laminas/laminas-httphandlerrunner](https://gith
 | `/v3/search/keyword` | `KeywordSearchHandler` | Full-text keyword search with stemming |
 | `/v3/search/semantic` | `SemanticSearchHandler` | Natural-language semantic search via verse embeddings |
 | `/v3/search/similar` | `SimilarSearchHandler` | Find verses similar to a given reference |
+| `/v3/search/hybrid` | `HybridSearchHandler` | Keyword + semantic search fused with Reciprocal Rank Fusion |
 
 ### Testing & CI
 
@@ -103,9 +104,11 @@ An example of data returned from the query `https://query.bibleget.io/v3/quote?q
   * **`verseequiv`**: I'm not actually sure if this is currently being used or not, I believe the idea was to have a number value for those verses that have a letter in the verse number... Will mostly return a `null` value.
   * **`text`**: contains the actual text of the verse being quoted. May contain newline characters that may need to be dealt with. The `NABRE` version will contain it's own formatting tags that need to be dealt with, whether that means producing the proper formatting associated with these tags, or removing them to have a basic formatting. The legal requirements for usage of the `NABRE` version require the proper formatting to be used where possible. Please contact [the project author](mailto:admin@bibleget.io) for information on how to deal with these tags and their formatting.
   * **`version`**: the acronym of the Bible version being quoted from. To have information about the Bible version, the `/v3/metadata` API endpoint can be used.
-  * **`title1`**: not currently used. The original idea (which may yet be implemented) was for this to contain any first-level title text preceding the given verse in the version of the Bible being quoted from.
-  * **`title2`**: not currently used. The original idea (which may yet be implemented) was for this to contain any second-level title text preceding the given verse in the version of the Bible being quoted from.
-  * **`title3`**: not currently used. The original idea (which may yet be implemented) was for this to contain any third-level title text preceding the given verse in the version of the Bible being quoted from.
+  * **`text_plain`**: the same verse text with all formatting markup removed (derived from `text`). This is what keyword and semantic search operate on; use it where only the words are wanted, and `text` where the verse should be rendered with its formatting.
+  * **`title1`**: the first-level section heading that precedes the verse, in editions that carry headings (e.g. LUZZI); empty when there is none.
+  * **`title2`**: a second-level section heading under `title1`; empty when there is none.
+  * **`title3`**: a third-level section heading under `title2`; empty when there is none.
+  * **`title_position`**: `null` when the headings precede the verse (the usual case). When a heading falls in the middle of a verse, the 0-based character offset into `text` at which `title1`-`title3` are inserted: render `text[0:title_position]`, the headings, then `text[title_position:]`. Offsets count Unicode characters (formatting tags included) and always fall between tokens.
   * **`originalquery`**: the original query (Bible reference indicated in the `query` parameter of the sent request) that the endpoint received, which produced this result.
   * **`canonical_order`**: a per-response 1-based integer rank, partitioned per `version`, derived from the server's internal subverse-aware canonical-order key. When `version` is comma-separated, each version's results restart at `1`. Sort by this field client-side to recover canonical order — useful when results from a parallel `/v3/search/*` call have been re-sorted by relevance and you want to fold them back into a canonical-ordered display without a second request.
 * **`errors`**: an array which may contain strings with any error messages that may have been produced, for example for badly formed Bible quotes or for unrecognized Bible versions. An application should always check if the array is not empty, and in that case have a way of displaying the errors to the end user so the end user can understand what is happening. In any case, if the application does a good job of filtering requests in order to send only valid requests to the server, the `errors` array should be empty.
@@ -271,14 +274,17 @@ The data is structured in a similar manner to the main API endpoint (`/v3/quote`
     * **`version`**: just echoes back the acronym of the Bible version that the search was performed against
 
 
-## /v3/search/keyword, /v3/search/semantic, /v3/search/similar
+## /v3/search/keyword, /v3/search/semantic, /v3/search/similar, /v3/search/hybrid
 
-Three sibling search endpoints share a coherent response shape (`score`, `canonical_order`, comma-separated `version`):
+Four sibling search endpoints share a coherent response shape (`score`, `canonical_order`, comma-separated `version`):
 
 | Endpoint | Source | Score |
 |---|---|---|
 | `/v3/search/keyword` | full-text + stemming via PostgreSQL `to_tsvector` | `ts_rank_cd` cover-density (raw, query-relative; `null` for `match=exact`) |
 | `/v3/search/semantic` | natural-language query embedded into a vector via the embedding microservice | `1 - cosine_distance` against pre-computed verse embeddings (in `[0,1]`, query-relative) |
 | `/v3/search/similar` | a verse reference's pre-computed embedding | `1 - cosine_distance` against the rest of the version (or any additional listed versions) |
+| `/v3/search/hybrid` | the same `query=` run through the keyword (`match=fulltext`) and semantic retrievers | Reciprocal Rank Fusion `Σ w_i / (k + rank_i)` (raw, small, relative ordering only) |
+
+`/v3/search/hybrid` takes `query`, `version`, `limit` (default 20, max 100), `k` (RRF constant, default 60), `keyword_weight` / `semantic_weight` (default 1.0 each; `0` skips that leg, not both 0), and `/v3/search/semantic`'s `model` and `threshold`. Each leg fetches `min(300, max(limit × 3, 50))` candidates before fusion. Every row adds a `components` object with each leg's `{rank, score}`, or `null` when that leg did not retrieve the row. Queries shorter than 4 characters run the semantic leg only; an unavailable embedding service returns 503 (use `semantic_weight=0` for keyword-only).
 
 `/v3/search` is preserved as a backward-compat alias for `/v3/search/keyword` (with `exactmatch=true` mapping to `match=exact`). The full per-endpoint parameter and response schema is in [`openapi.json`](./openapi.json).

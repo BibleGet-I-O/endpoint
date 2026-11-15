@@ -16,6 +16,15 @@ Deprecated / Fixed / Removed / Security where applicable.
   limit: `composer lint:python` (via `uvx`), a pre-push hook action
   (skipped with a notice when `uv` isn't installed) and a new
   `Python complexity (xenon)` CI job.
+- **Psalm superscriptions left out of embeddings** (migration `022`).
+  `scripts/compute_embeddings.py` now embeds
+  `bibleget_embedding_text(book, text)`: `text_plain`, except that a
+  Psalms verse whose superscription stands on its own line before the
+  poem (NABRE, LUZZI, VGCL) is embedded without it. "the LORD is my
+  shepherd" ranked NABRE Ps 23:1 11th (LaBSE) / 6th (MiniLM); it is now
+  1st in both. Quotes and keyword search still include the
+  superscription. 022 marks the 256 affected rows stale (NABRE 60,
+  LUZZI 114, VGCL 82).
 
 - **Minimum PHP raised to 8.4.1; PHPUnit 11 → 13.** Production already
   runs Plesk PHP 8.4. PHPUnit 13 requires PHP ≥ 8.4.1, which is why
@@ -82,8 +91,85 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Added
 
+- **`/v3/search/hybrid` — keyword + semantic search fused with Reciprocal
+  Rank Fusion** (#112). One request runs the keyword leg (`match=fulltext`)
+  and the semantic leg on the same `query=` and fuses the two ranked lists:
+  `score = Σ w_i / (k + rank_i)`.
+  - Parameters: `query`, `version` (comma-separated; same single-`ts_language`
+    constraint as `/search/keyword`), `limit` (default 20, max 100), `k`
+    (default 60, positive integer), `keyword_weight` / `semantic_weight`
+    (default 1.0, non-negative, not both 0; a weight of 0 skips that leg),
+    plus `/search/semantic`'s `model` (default `labse`) and `threshold`.
+  - Each leg fetches `min(300, max(limit × 3, 50))` candidates, ranked
+    globally across versions; the fused list is trimmed to `limit`. Ties
+    break on best per-leg rank, then requested version order, then
+    canonical order.
+  - Global leg ranks are assigned on the unrounded scores. The same applies
+    to the merged multi-version lists of `/search/semantic` and
+    `/search/similar`: two scores that round to the same 4 decimals are
+    ordered by their real values (`score` itself is still rounded).
+  - Rows keep the sibling shape (`text`, `text_plain`, per-version
+    `canonical_order`); `score` is the raw RRF sum, and a new `components`
+    object gives each leg's `{rank, score}` (or `null` when that leg did not
+    retrieve the row). `info` echoes `model`, `k`, the weights, the
+    candidate depth and the `legs` that ran.
+  - A query shorter than the keyword leg's 4-character minimum runs the
+    semantic leg only. An unavailable embedding service is a 503, as on
+    `/search/semantic`; `semantic_weight=0` gives an explicit keyword-only
+    request that needs no embedding service.
+  - Internally, the keyword and semantic query logic moved out of their
+    handlers into `KeywordSearchService` and `SemanticSearchService`, shared
+    with the new handler. The existing endpoints' behaviour is unchanged.
+
+- **`text_plain` and `title_position` on every edition table** (#123,
+  `migrations/019-add-text-plain-and-title-position.sql`).
+  - `text` stays the formatted, markup-bearing text for rendering.
+    `text_plain` is derived from it by the new `bibleget_plain_text()`, a
+    whitelist normalizer. It removes inline tags (`L<sm>ORD</sm>` → `LORD`),
+    turns line/block tags and `<br/>` into spaces, collapses whitespace, and
+    leaves unknown angle-bracket content (VGCL's `<Aleph>`) alone.
+  - The `text_hash` trigger now sets `text_plain` and hashes it, so the two
+    columns cannot drift. It also fires on a direct write to `text_plain` or
+    `text_hash`, which is recomputed from `text`.
+  - Keyword search (all three modes) now matches against `text_plain`, with a
+    new `<T>_text_plain_fts` index. Words split by markup are now found, and
+    tag names are no longer searchable.
+  - `compute_embeddings.py` embeds `text_plain`.
+  - Keyword, semantic and similar search results gain a `text_plain` field.
+    Quote results gain `text_plain` and `title_position`.
+  - `title_position` places a verse's headings inside the verse: a 0-based
+    character offset into `text` (tags count), or NULL for before the verse.
+    A `<T>_title_position_check` constraint (`bibleget_title_position_ok()`)
+    keeps it on a token boundary: never splitting a word (judged on the
+    visible characters, so `L<sm>|ORD</sm>` is rejected), never inside a
+    tag, never at either end.
+  - Embedding freshness carries over where `text` and `text_plain` differ
+    only in whitespace. MiniLM and LaBSE produce bit-identical vectors for
+    those, as verified. Only rows whose markup changes the words go stale,
+    in practice NABRE's tagged verses.
+- **HTML quote output renders formatted text.** `return=html` used to
+  escape the whole verse, so NABRE's (and now LUZZI's and CEI2008's)
+  `<pof>`, `<sm>` and other tags showed literally. Production v3 did the
+  same. `FormattedText::toHtml()` now escapes the text, then turns matched
+  pairs of the known tags back into markup: line tags and `<sm>` become
+  `<span class="…">`, `<i>` and `<sup>` are kept, and line breaks become
+  `<br>`. Unknown or unmatched tags stay escaped.
+- **LUZZI formatted text** (`migrations/020-luzzi-formatted-text.sql`,
+  2,847 verses). `luzzi.txt`'s line breaks and `<i>` are restored into
+  `text` in the NABRE tag set the clients already render. Only the Psalms
+  are laid out line by line in the source, so only they get
+  `<pof>`/`<po>`/`<pol>` lines (joined by `\n`, with untagged
+  superscriptions and lead-ins). Elsewhere the source is laid out in prose
+  paragraphs: a trailing `<br />` only ends a paragraph and is dropped, and
+  the ~40 inner `<br />` (lead-ins, the end of a quoted song: Josh 10:13,
+  Lk 1:46) become untagged line breaks. The 4 mid-verse headings get their
+  `title_position`. Every UPDATE asserts that
+  the formatted text normalizes back to exactly the current plain text, so
+  LUZZI's `text_plain`, hashes and embeddings are unchanged.
 - `scripts/compute_embeddings.py` is now column-aware via a `--column` flag
-  (default `embedding`), so the same script can fill an A/B column without
+  (default `embedding_labse`), and the column picks its model and pinned
+  revision (`--column embedding` loads MiniLM) unless `EMBEDDING_MODEL` /
+  `EMBEDDING_MODEL_REVISION` override it, so the same script can fill an A/B column without
   touching the primary one. Stale-row detection (text_hash watermarking)
   only applies to the primary column; non-primary columns recompute on
   NULL or `--force`.
@@ -115,6 +201,25 @@ Deprecated / Fixed / Removed / Security where applicable.
   `docs/future-migrations/README.md` for the promotion-back procedure.
 
 ### Fixed
+
+- **VGCL: Clementine Vulgate Project markup stored like the other
+  editions** (migration `021`, generated from the
+  [BibleGet-I-O/Clementine-Vulgate](https://github.com/BibleGet-I-O/Clementine-Vulgate)
+  mirror by `scripts/format_vgcl_from_source.py`; PostgreSQL only).
+  The source's `[`…`]` poetry delimiters were left in 943 verses as
+  literal brackets. They are now NABRE line tags (`<pof>`/`<po>`/`<pol>`),
+  with prose lead-ins kept as untagged lines. The other markers are
+  stored as follows:
+  - Song of Songs speakers (`<Sponsa>`, `<Chorus>`, …) are
+    `<speaker>…</speaker>`.
+  - Acrostic letters (Ps 118, Lam 1-4) and the headings `Prologus`,
+    `Oratio Jeremiæ prophetæ` and `Exemplar epistolæ…` (Bar 6:1) are in
+    `title1`: 157 verses. Ps 118:1 uses `title_position`.
+  - **Sir 1:1** had been truncated at 900 characters, losing the end of
+    the Prologue and all of verse 1. It is now complete, and `text`/`text_plain`
+    are widened to `VARCHAR(2000)` in every edition.
+  - Lam 1:1 keeps `Prologus` as its heading; its mid-verse `Aleph`
+    can't be stored with a single `title_position`.
 
 - **LUZZI verses truncated by the original import** (2,494 rows). The
   importer of the original source `luzzi.txt` split each verse on its

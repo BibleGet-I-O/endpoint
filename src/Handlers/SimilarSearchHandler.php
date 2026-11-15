@@ -119,20 +119,7 @@ class SimilarSearchHandler extends AbstractHandler
         // limit. Null scores (computation failures) sort to the bottom so a
         // genuine 0.0 still outranks them.
         if (count($validatedVersions) > 1) {
-            usort($allResults, static function (array $a, array $b): int {
-                $sa = $a['score'] ?? null;
-                $sb = $b['score'] ?? null;
-                if ($sa === null && $sb === null) {
-                    return 0;
-                }
-                if ($sa === null) {
-                    return 1;
-                }
-                if ($sb === null) {
-                    return -1;
-                }
-                return $sb <=> $sa;
-            });
+            SearchUtils::sortByScoreDesc($allResults);
             $allResults = array_slice($allResults, 0, $limit);
         }
 
@@ -304,14 +291,17 @@ class SimilarSearchHandler extends AbstractHandler
             // genuine score of 0.0 — orthogonal verses — is distinguishable
             // from "no score". Comparators that order results must treat
             // null as worse than any numeric score.
-            $score = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
-                ? round((float) $row['score'], 4)
+            // Unrounded score, carried as `score_exact` so cross-version sorts
+            // (SearchUtils::sortByScoreDesc) do not tie on the rounded value.
+            $exact = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
+                ? (float) $row['score']
                 : null;
 
             $entry     = [
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
                 'text'        => StringUtils::asString($row['text'] ?? ''),
+                'text_plain'  => StringUtils::asString($row['text_plain'] ?? ''),
                 'bookabbrev'  => $bookidx !== false ? ( $versionIndex['abbreviations'][$bookidx] ?? '' ) : '',
                 'booknum'     => $bookidx !== false ? (int) $bookidx : 0,
                 'univbooknum' => $row['book'],
@@ -319,7 +309,8 @@ class SimilarSearchHandler extends AbstractHandler
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
                 'chapter'     => is_numeric($row['chapter']) ? (int) $row['chapter'] : 0,
                 'verse'       => is_numeric($row['verse']) ? (int) $row['verse'] : 0,
-                'score'       => $score,
+                'score'       => $exact === null ? null : round($exact, 4),
+                'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder
                 // can rank rows; unset before the row leaves the handler.
                 'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,

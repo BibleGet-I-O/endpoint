@@ -144,6 +144,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         self::assertArrayNotHasKey('similarity', $first, 'similarity field renamed to score (issue #110)');
         self::assertGreaterThan(0.0, $first['score']);
         self::assertArrayHasKey('text', $first);
+        self::assertArrayHasKey('text_plain', $first);
         self::assertArrayHasKey('version', $first);
         self::assertArrayHasKey('canonical_order', $first);
         self::assertIsInt($first['canonical_order']);

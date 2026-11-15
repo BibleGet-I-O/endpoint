@@ -6,6 +6,7 @@ namespace BibleGet\Api;
 
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
+use BibleGet\Api\Handlers\HybridSearchHandler;
 use BibleGet\Api\Handlers\KeywordSearchHandler;
 use BibleGet\Api\Handlers\SearchHandler;
 use BibleGet\Api\Handlers\SemanticSearchHandler;
@@ -86,6 +87,9 @@ class Router
                         break;
                     case 'semantic':
                         $this->handler = new SemanticSearchHandler($this->psr17Factory, $subPathParts);
+                        break;
+                    case 'hybrid':
+                        $this->handler = new HybridSearchHandler($this->psr17Factory, $subPathParts);
                         break;
                     case 'similar':
                         $this->handler = new SimilarSearchHandler($this->psr17Factory, $subPathParts);

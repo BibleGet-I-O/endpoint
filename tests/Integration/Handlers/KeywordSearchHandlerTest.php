@@ -124,6 +124,54 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         self::assertEmpty($body['results'], 'Exact mode should not stem: "create" should not match "created"');
     }
 
+    // ── Search runs on text_plain, not on markup (#123) ─────
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function allMatchModes(): array
+    {
+        return ['fulltext' => ['fulltext'], 'exact' => ['exact'], 'boolean' => ['boolean']];
+    }
+
+    /**
+     * Gen 3:1 in TEST1 is stored as NABRE-style markup with "L<sm>ORD</sm>":
+     * the word LORD only exists in text_plain.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('allMatchModes')]
+    public function testSearchMatchesWordsSplitByMarkup(string $mode): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'LORD', 'version' => 'TEST1', 'match' => $mode]);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        $hits = array_values(array_filter(
+            $body['results'],
+            static fn(array $v): bool => $v['chapter'] === 3 && $v['verse'] === 1
+        ));
+        self::assertCount(1, $hits, 'the marked-up verse must be found via text_plain (' . $mode . ')');
+        self::assertStringContainsString('<sm>', $hits[0]['text'], 'text keeps the markup');
+        self::assertSame(
+            'Now the serpent was the most cunning of all the animals that the LORD God had made.',
+            $hits[0]['text_plain']
+        );
+    }
+
+    public function testSearchDoesNotMatchMarkupTokens(): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'pof', 'version' => 'TEST1', 'match' => 'exact']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertEmpty($body['results'], 'tag names must not be searchable');
+    }
+
     // ── Boolean mode ────────────────────────────────────────
 
     public function testBooleanSearchAndOperator(): void
@@ -253,6 +301,7 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         self::assertArrayHasKey('chapter', $verse);
         self::assertArrayHasKey('verse', $verse);
         self::assertArrayHasKey('text', $verse);
+        self::assertArrayHasKey('text_plain', $verse);
         self::assertArrayHasKey('version', $verse);
         self::assertArrayHasKey('bookabbrev', $verse);
         self::assertSame('TEST1', $verse['version']);

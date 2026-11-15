@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Batch-compute verse embeddings for BibleGet semantic search.
 
-Connects to PostgreSQL, loads verse texts per Bible version,
+Connects to PostgreSQL, loads each verse's embedding text
+(bibleget_embedding_text(book, text): text_plain, minus a leading psalm
+superscription — see migration 022) per Bible version,
 computes embeddings via sentence-transformers, and writes them
 back to the chosen embedding column.
 
@@ -22,10 +24,12 @@ Modes:
 
 Environment variables:
     DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
-    EMBEDDING_MODEL          - sentence-transformers model name
-                               (default: sentence-transformers/LaBSE)
+    EMBEDDING_MODEL          - sentence-transformers model name. Default: the
+                               model that belongs to --column (COLUMN_MODELS:
+                               LaBSE for embedding_labse, MiniLM for embedding),
+                               so `--column embedding` alone loads MiniLM.
     EMBEDDING_MODEL_REVISION - pinned Hugging Face commit for reproducibility
-                               (default: see MODEL_REVISION constant — see #71)
+                               (default: the --column model's pin, see #71)
     EMBEDDING_MODEL_VERSION  - free-form version tag stored in metadata
                                (default: 1.0)
     EMBEDDING_DIM            - vector dimensionality; if unset, derived from
@@ -53,11 +57,17 @@ try:
 except ImportError:
     pass
 
+# Model + pinned revision per embedding column, matching the two services'
+# unit files (services/embedding/bibleget-embedding{,-labse}.service). The
+# column decides the model unless EMBEDDING_MODEL / EMBEDDING_MODEL_REVISION
+# override it; a dimension mismatch with the column still fails at startup.
+COLUMN_MODELS = {
+    "embedding_labse": ("sentence-transformers/LaBSE", "836121a0533e5664b21c7aacc5d22951f2b8b25b"),
+    "embedding": ("paraphrase-multilingual-MiniLM-L12-v2", "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"),
+}
+# Resolved in main() once --column is known.
 MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/LaBSE")
-MODEL_REVISION = os.environ.get(
-    "EMBEDDING_MODEL_REVISION",
-    "836121a0533e5664b21c7aacc5d22951f2b8b25b",
-)
+MODEL_REVISION = os.environ.get("EMBEDDING_MODEL_REVISION", COLUMN_MODELS["embedding_labse"][1])
 MODEL_VERSION = os.environ.get("EMBEDDING_MODEL_VERSION", "1.0")
 _EMBEDDING_DIM_ENV = os.environ.get("EMBEDDING_DIM")
 EMBEDDING_DIM_OVERRIDE = int(_EMBEDDING_DIM_ENV) if _EMBEDDING_DIM_ENV else None
@@ -118,6 +128,15 @@ def get_versions(conn, single_version=None):
 def load_verses(conn, version, column, force=False):
     """Load verses that need embeddings computed for the given column.
 
+    Embeds `bibleget_embedding_text(book, text)`: the plain text (markup
+    stripped, migration 019 / #123) without a psalm superscription that
+    precedes the poem on its own line (migration 022) — e.g. NABRE Ps 23:1
+    is embedded as "The LORD is my shepherd; ..." without "A psalm of
+    David.", which otherwise drowns the verse's own content in short
+    queries. The superscription stays in `text`/`text_plain` and in keyword
+    search. text_hash is still md5(text_plain); if the embedding rule ever
+    changes, null embedded_text_hash on the affected rows (as 022 does).
+
     Default mode (primary column only): verses with no embedding OR whose
     text changed since last embedding.
     For non-primary columns (e.g. embedding_labse): only NULL rows are
@@ -129,10 +148,10 @@ def load_verses(conn, version, column, force=False):
     col_ident = sql.Identifier(column)
 
     if force:
-        query = sql.SQL('SELECT "verseID", text FROM {} ORDER BY "verseID"').format(table_ident)
+        query = sql.SQL('SELECT "verseID", bibleget_embedding_text(book, text) FROM {} ORDER BY "verseID"').format(table_ident)
     elif track_hash:
         query = sql.SQL(
-            'SELECT "verseID", text FROM {table} '
+            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} '
             "WHERE {col} IS NULL "
             "OR embedded_text_hash IS NULL "
             "OR text_hash != embedded_text_hash "
@@ -140,7 +159,7 @@ def load_verses(conn, version, column, force=False):
         ).format(table=table_ident, col=col_ident)
     else:
         query = sql.SQL(
-            'SELECT "verseID", text FROM {table} WHERE {col} IS NULL ORDER BY "verseID"'
+            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} WHERE {col} IS NULL ORDER BY "verseID"'
         ).format(table=table_ident, col=col_ident)
 
     with conn.cursor() as cur:
@@ -368,7 +387,14 @@ def main():
                 print("\nAll versions are up to date.")
             return
 
-        print(f"Loading model: {MODEL_NAME} @ {MODEL_REVISION[:8]}")
+        global MODEL_NAME, MODEL_REVISION
+        default_name, default_revision = COLUMN_MODELS.get(args.column, COLUMN_MODELS[DEFAULT_COLUMN])
+        MODEL_NAME = os.environ.get("EMBEDDING_MODEL", default_name)
+        MODEL_REVISION = os.environ.get(
+            "EMBEDDING_MODEL_REVISION",
+            default_revision if MODEL_NAME == default_name else "",
+        ) or None
+        print(f"Loading model: {MODEL_NAME} @ {(MODEL_REVISION or 'unpinned')[:8]}")
         start = time.time()
         model = SentenceTransformer(MODEL_NAME, revision=MODEL_REVISION)
         load_secs = time.time() - start
