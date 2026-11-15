@@ -136,7 +136,7 @@ STRUCTURE = [
     # Verse boundaries moved by the import: words belonging to v.3 / v.2 /
     # v.12 had been attached to the neighbouring verse.
     *[("set", vid, (b, c, lab), int(lab), None) for vid, b, c, lab in (
-        (None, 22, 30, "3"), (None, 22, 30, "4"), (None, 59, 5, "2"), (None, 59, 5, "3"),
+        (None, 22, 30, "3"), (None, 22, 30, "4"), (None, 66, 5, "2"), (None, 66, 5, "3"),
         (None, 52, 9, "11"), (None, 52, 9, "12"))],
     # Baruch 5:9 / 6:1: the superscription of the Letter of Jeremiah ("Copia
     # della lettera ...", unnumbered at the head of ch. 6 in CEI 2008) had been
