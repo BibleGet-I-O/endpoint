@@ -3,7 +3,8 @@
 
 Connects to PostgreSQL, loads each verse's embedding text
 (bibleget_embedding_text(book, text): text_plain, minus a leading psalm
-superscription — see migration 022) per Bible version,
+superscription — see migration 022 — and CEI 2008's variant signs ⌈ ⌉ ⊥,
+migration 034) per Bible version,
 computes embeddings via sentence-transformers, and writes them
 back to the chosen embedding column.
 
@@ -133,8 +134,9 @@ def load_verses(conn, version, column, force=False):
     precedes the poem on its own line (migration 022) — e.g. NABRE Ps 23:1
     is embedded as "The LORD is my shepherd; ..." without "A psalm of
     David.", which otherwise drowns the verse's own content in short
-    queries. The superscription stays in `text`/`text_plain` and in keyword
-    search. text_hash is still md5(text_plain); if the embedding rule ever
+    queries — and without CEI 2008's variant signs ⌈ ⌉ ⊥ (migration 034),
+    which shift the vectors of short verses. Both stay in `text`/`text_plain`
+    and in keyword search. text_hash is still md5(text_plain); if the embedding rule ever
     changes, null embedded_text_hash on the affected rows (as 022 does).
 
     Default mode (primary column only): verses with no embedding OR whose

@@ -202,6 +202,17 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Fixed
 
+- **CEI 2008's variant signs restored in Esther** (migration `033`).
+  CEI 2008 marks where the Nova Vulgata differs from the Greek text it
+  translates: words between `⌈` and `⌉` are changed or left out there,
+  `⊥` marks where it adds words. The 2015 import dropped them or wrote
+  `[ ]` or `*`. `format_cei2008_from_source.py --adopt-signs` adopts the
+  site's text for the 31 Esther rows whose wording differs only in these
+  marks (and « » for the site's straight quotes, and spacing).
+- **Variant signs left out of embeddings** (migration `034`).
+  `bibleget_embedding_text()` now removes `⌈ ⌉ ⊥`; they stay in `text`
+  and `text_plain`. They shifted short verses' vectors (cosine down to
+  0.84 under MiniLM). The 207 CEI2008 rows with signs are marked stale.
 - **CEI2008 Esther formatting** (migration `032`). bibbiaedu.it prints
   each Esther chapter twice under the same verse labels, Greek text first
   and then Hebrew, and `scripts/format_cei2008_from_source.py` kept only
