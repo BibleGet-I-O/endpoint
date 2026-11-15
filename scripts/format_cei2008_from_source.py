@@ -76,7 +76,7 @@ SLUGS = ("Gen Es Lv Nm Dt Gs Gdc Rt 1Sam 2Sam 1Re 2Re 1Cr 2Cr Esd Ne Tb Gdt Est 
          "1Gv 2Gv 3Gv Gd Ap").split()
 BOOK = {slug: n for n, slug in enumerate(SLUGS, 1)}  # BibleGet universal book number
 PROSE_LINE_MAX = 90
-TEXT_MAX = 900
+TEXT_MAX = 2000  # text/text_plain are VARCHAR(2000) since migration 021
 TITLE_MAX = 255
 INLINE_TAGS = r"</?(sm|i|sup)>"
 BLOCK_TAGS = r"</?(po|pof|pol|poi|poil|poif|pos|po3|po3l|pr|bq|bqf|bql|speaker)>"
@@ -283,13 +283,14 @@ def single_line_is_poetic(verses, i):
     )
 
 
-def is_plain_line(verse, k, prev_poetic):
+def is_plain_line(verse, k, prev_poetic, psalms):
     """A poetic verse's first line stays untagged when it is a psalm
-    superscription or a ':' lead-in introducing the poem."""
+    superscription (Psalms only: elsewhere a wholly italic line is verse) or
+    a ':' lead-in introducing the poem."""
     if k != 0:
         return False
     line = verse["lines"][0]
-    return is_superscription(line) or (is_lead_in(line) and not prev_poetic and len(verse["lines"]) > 1)
+    return (psalms and is_superscription(line)) or (is_lead_in(line) and not prev_poetic and len(verse["lines"]) > 1)
 
 
 class PoemTracker:
@@ -312,7 +313,7 @@ class PoemTracker:
             line["last"] = True
 
 
-def line_roles(verses):
+def line_roles(verses, psalms):
     """For every poetic verse, mark each line as "plain" (lead-in or
     superscription) or poetic, and flag stanza/poem starts and ends."""
     poem = PoemTracker()
@@ -322,7 +323,7 @@ def line_roles(verses):
             continue
         prev_poetic = i > 0 and verses[i - 1]["poetic"]
         for k, line in enumerate(verse["lines"]):
-            if is_plain_line(verse, k, prev_poetic):
+            if is_plain_line(verse, k, prev_poetic, psalms):
                 line["role"] = "plain"
                 poem.close()
                 continue
@@ -356,6 +357,28 @@ def half_line_acrostic(verses):
     none. One or two such verses (Ps 145:13 Mem + Nun) only lose their
     extra letters (see keep_first_letter)."""
     return sum(has_several_letters(verse) for verse in verses) > 2
+
+
+def recover_bare_letters(verses):
+    """bibbiaedu.it once types an acrostic letter as plain text instead of a
+    "qa" span (Ps 25:5 "Vau io spero in te"). A line starting with the name of
+    the letter that comes next after the last one seen is that letter; the
+    sequence rule keeps Italian words ("Sin dall'infanzia") as text."""
+    last = None
+    for verse in verses:
+        if verse["letters_before"]:
+            last = verse["titles"][-1]
+        for line in verse["lines"]:
+            if line["letters"]:
+                last = line["letters"][-1]
+                continue
+            if last not in LETTER_NAMES or last == LETTER_NAMES[-1]:
+                continue
+            following = LETTER_NAMES[LETTER_NAMES.index(last) + 1]
+            m = re.match(rf"{following}\s+(?=\S)", line["text"])
+            if m:
+                line["text"], line["letters"], line["letter_mid"] = line["text"][m.end():], [following], False
+                last = following
 
 
 def drop_letters(verses):
@@ -406,12 +429,13 @@ def format_chapter(path):
 def format_chapter_list(path):
     """[(label, (text, titles, title_position))] in page order (labels may repeat on the site)."""
     verses = attach_headings(parse_chapter(path))
+    recover_bare_letters(verses)
     if half_line_acrostic(verses):
         drop_letters(verses)
     else:
         keep_first_letter(verses)
     mark_poetic(verses)
-    line_roles(verses)
+    line_roles(verses, path.parent.name == "Sal")
     indents = [line["indent"] for v in verses if v["poetic"] for line in v["lines"] if line.get("role") == "poem"]
     base = min(indents) if indents else 0
     return [(verse["label"], render_verse(verse, base)) for verse in verses]
@@ -483,10 +507,27 @@ def visible_map(formatted):
     return collapsed
 
 
-def transplant(formatted, target):
+def transplant(formatted, target, position=None):
     """Rewrite `formatted` so that plain_text() gives exactly `target` (our
     stored wording), keeping the site's tags and line breaks. Only for small
-    differences (spacing, accents, editorial marks); None otherwise."""
+    differences (spacing, accents, editorial marks); None otherwise. With a
+    title_position into `formatted`, return (text, position rebased onto it)."""
+    edits = transplant_edits(formatted, target)
+    if edits is None:
+        return None
+    moved = formatted
+    for start, end, repl in sorted(edits, reverse=True):
+        moved = moved[:start] + repl + moved[end:]
+    if plain_text(moved) != target:
+        return None
+    if position is None:
+        return moved
+    shift = sum(len(repl) - (end - start) for start, end, repl in edits if start < position)
+    return moved, position + shift
+
+
+def transplant_edits(formatted, target):
+    """The (start, end, replacement) edits of transplant(), or None."""
     vis = visible_map(formatted)
     source = "".join(ch for ch, _ in vis)
     matcher = difflib.SequenceMatcher(None, source, target, autojunk=False)
@@ -515,22 +556,22 @@ def transplant(formatted, target):
             if anchor < 0:
                 return None
             edits.append((anchor, anchor, target[j1:j2]))
-    for start, end, repl in sorted(edits, reverse=True):
-        formatted = formatted[:start] + repl + formatted[end:]
-    return formatted if plain_text(formatted) == target else None
+    return edits
 
 
-def match_row(candidates, text):
-    """(row, text) where text normalizes to the row's text_plain: an exact
-    match first, else the closest row with our wording transplanted."""
+def match_row(candidates, text, position):
+    """(row, text, position) where text normalizes to the row's text_plain:
+    an exact match first, else the closest row with our wording transplanted
+    (and title_position rebased onto the transplanted text)."""
     for row in candidates:
         if plain_text(text) == row["plain"]:
-            return row, text
+            return row, text, position
     for row in candidates:
-        moved = transplant(text, row["plain"])
-        if moved is not None:
-            return row, moved
-    return None, None
+        moved = transplant(text, row["plain"], position)
+        if moved is None:
+            continue
+        return (row, moved, None) if position is None else (row, *moved)
+    return None, None, None
 
 
 def check_titles(titles, position, text):
@@ -567,8 +608,7 @@ def process(archive, db, report, wording):
         rows = db.get(key, {})
         site = merge_lettered(format_chapter(path), set(rows))
         for label, (site_text, titles, position) in site.items():
-            text = site_text
-            row, text = match_row(rows.get(label, []), text)
+            row, text, position = match_row(rows.get(label, []), site_text, position)
             if row is None:
                 stats["unmatched (site)"] += 1
                 report.append((path.parent.name, key[1], label, "site", plain_text(site_text)))

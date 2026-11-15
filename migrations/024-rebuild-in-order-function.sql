@@ -39,6 +39,10 @@ DECLARE
     rec      RECORD;
     renames  TEXT[] := '{}';
 BEGIN
+    -- SHARE: reads continue, but no write can commit between the copy and
+    -- the swap (it would be lost with the old table). Held to the end of
+    -- the transaction; writers waiting on it must be rerun afterwards.
+    EXECUTE format('LOCK TABLE %I IN SHARE MODE', tbl);
     EXECUTE format('SELECT count(*) FROM %I', tbl) INTO n_old;
     EXECUTE format('SELECT count(*) FROM %I t JOIN %I o ON o.vid = t."verseID"', tbl, ord_table) INTO n_ord;
     IF n_ord <> n_old THEN
@@ -90,7 +94,9 @@ BEGIN
     seq := pg_get_serial_sequence(format('public.%I', tbl), 'verseID');
     IF seq IS NOT NULL THEN
         EXECUTE format('ALTER SEQUENCE %s OWNED BY %I."verseID"', seq, new_tbl);
-        EXECUTE format('SELECT setval(%L, %s)', seq, n_new);
+        -- ALTER SEQUENCE is transactional (setval is not): a rollback
+        -- restores the sequence along with the old table.
+        EXECUTE format('ALTER SEQUENCE %s RESTART WITH %s', seq, n_new + 1);
     END IF;
 
     EXECUTE format('DROP TABLE %I', tbl);
