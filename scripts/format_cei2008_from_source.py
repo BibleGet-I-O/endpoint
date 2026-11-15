@@ -37,7 +37,9 @@ Stored as:
 
 Verses are matched to rows by chapter and label (verse number, or
 verseequiv letter label such as "1a"; Psalm verseequiv "(9,22)" cross-
-numbers are ignored), Esther's HEBREW/GREEK rows by matching text. A row is
+numbers are ignored). Each Esther page holds the Greek text, then the
+Hebrew (labels repeat), so it is split where the numbering starts over and
+each block is matched only to rows of that verseorigin. A row is
 updated only when the formatted text normalizes (bibleget_plain_text) to
 exactly its current text_plain, so no wording, hash or embedding changes.
 Where the wording differs only slightly (difflib ratio >= 0.9: spacing,
@@ -98,12 +100,22 @@ EVENT_RE = re.compile(
 
 # ---------------------------------------------------------------- mirrors
 
-def plain_text(formatted):
-    """Python mirror of SQL bibleget_plain_text() (migration 019)."""
-    text = re.sub(INLINE_TAGS, "", formatted)
+def plain_text(formatted, keep_signs=False):
+    """Python mirror of SQL bibleget_plain_text() (migrations 019, 034:
+    CEI 2008's variant signs are dropped). keep_signs keeps them, for
+    comparing wording that differs in the signs alone (--adopt-signs)."""
+    text = formatted if keep_signs else re.sub(r"[⌈⌉⊥]", "", formatted)
+    text = re.sub(INLINE_TAGS, "", text)
     text = re.sub(BLOCK_TAGS, " ", text)
     text = re.sub(r"<br\s*/?>", " ", text, flags=re.I)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def visible(formatted):
+    """The verse as read, signs included: what wording is compared on.
+    text_plain (plain_text) drops CEI 2008's variant signs since 034, so
+    comparing on it would make a sign-only difference invisible."""
+    return plain_text(formatted, keep_signs=True)
 
 
 def valid_title_position(text, pos):
@@ -457,7 +469,7 @@ def load_dump(path):
             label = f[3] if not f[4] or f[4].startswith("(") else f[4]
             rows[(int(f[1]), int(f[2]))][label].append({
                 "vid": int(f[0]), "verse": int(f[3]), "equiv": f[4], "text": f[7], "plain": f[8],
-                "titles": f[9:12], "position": f[12], "origin": f[6],
+                "titles": f[9:12], "position": f[12], "origin": f[6], "visible": visible(f[7]),
             })
     return rows
 
@@ -483,7 +495,7 @@ def merge_lettered(site, db_labels):
 
 
 def visible_map(formatted):
-    """Characters of plain_text(formatted) with, for each, the index in
+    """Characters of visible(formatted) with, for each, the index in
     `formatted` it comes from (-1 for a separator that a tag or a line break
     became)."""
     out, i = [], 0
@@ -509,7 +521,7 @@ def visible_map(formatted):
 
 
 def transplant(formatted, target, position=None):
-    """Rewrite `formatted` so that plain_text() gives exactly `target` (our
+    """Rewrite `formatted` so that visible() gives exactly `target` (our
     stored wording), keeping the site's tags and line breaks. Only for small
     differences (spacing, accents, editorial marks); None otherwise. With a
     title_position into `formatted`, return (text, position rebased onto it)."""
@@ -519,7 +531,7 @@ def transplant(formatted, target, position=None):
     moved = formatted
     for start, end, repl in sorted(edits, reverse=True):
         moved = moved[:start] + repl + moved[end:]
-    if plain_text(moved) != target:
+    if visible(moved) != target:
         return None
     if position is None:
         return moved
@@ -565,10 +577,10 @@ def match_row(candidates, text, position):
     an exact match first, else the closest row with our wording transplanted
     (and title_position rebased onto the transplanted text)."""
     for row in candidates:
-        if plain_text(text) == row["plain"]:
+        if visible(text) == row["visible"]:
             return row, text, position
     for row in candidates:
-        moved = transplant(text, row["plain"], position)
+        moved = transplant(text, row["visible"], position)
         if moved is None:
             continue
         return (row, moved, None) if position is None else (row, *moved)
@@ -602,40 +614,110 @@ def build_update(row, text, titles, position):
             f"AND coalesce(title3, '') = '' AND bibleget_plain_text({sql_str(text)}) = text_plain;")
 
 
-def process(archive, db, report, wording):
-    updates, stats, seen = [], collections.Counter(), set()
-    for path in sorted(Path(archive, "html").glob("*/*/*.html")):
-        key = (BOOK[path.parent.name], int(path.stem))
-        rows = db.get(key, {})
-        site = merge_lettered(format_chapter(path), set(rows))
+def esther_blocks(verses):
+    """bibbiaedu.it prints each Esther chapter twice: first the Greek text
+    (with the lettered additions, e.g. 1a-1r before 1-22), then the Hebrew.
+    Labels repeat, so split the page where the verse number starts over:
+    [("GREEK", [...]), ("HEBREW", [...])], or the whole page as GREEK when a
+    chapter has no second block."""
+    numbers = [int(re.match(r"\d+", label)[0]) for label, _ in verses]
+    cut = next((i for i in range(1, len(numbers)) if numbers[i] < numbers[i - 1]), len(numbers))
+    blocks = [("GREEK", verses[:cut])]
+    if cut < len(verses):
+        blocks.append(("HEBREW", verses[cut:]))
+    return blocks
+
+
+def site_blocks(path, rows):
+    """[(verseorigin or None, {label: rendered})] for a chapter page: one
+    block, or Esther's GREEK and HEBREW blocks matched to rows of that origin."""
+    verses = format_chapter_list(path)
+    if path.parent.name != "Est":
+        return [(None, merge_lettered(dict(verses), set(rows)))]
+    out = []
+    for origin, block in esther_blocks(verses):
+        labels = {label for label, candidates in rows.items() if any(r["origin"] == origin for r in candidates)}
+        out.append((origin, merge_lettered(dict(block), labels)))
+    return out
+
+
+SIGNS = "⌈⌉⊥"  # CEI 2008's marks for Nova Vulgata variants (see the apparatus note at Est 1:1a)
+
+
+def differs_only_in_signs(site, ours):
+    """True when our wording differs from the site's only in how the 2015
+    import rendered CEI 2008's variant signs: dropped, written as [ ] or *
+    (or [ ] left where the site prints none), plus « » for the site's
+    straight quotes, and spacing."""
+    def strip(t):
+        return re.sub(r'[\s\[\]*«»"' + SIGNS + "]", "", t)
+    return site != ours and strip(site) == strip(ours)
+
+
+def build_sign_update(row, text):
+    """Adopt the site's text (wording included) for a row whose wording only
+    lacks the variant signs: guarded on the row's current text_plain."""
+    return (f'UPDATE "CEI2008" SET text = {sql_str(text)} WHERE "verseID" = {row["vid"]} '
+            f"AND text_plain = {sql_str(row['plain'])} AND coalesce(title1, '') = '' "
+            f"AND coalesce(title2, '') = '' AND coalesce(title3, '') = '';")
+
+
+def process_chapter(path, rows, report, wording, stats, seen, adopt_signs=False):
+    """Updates for one chapter page; fills report, wording, stats and seen.
+    With adopt_signs, only rows whose wording lacks the variant signs are
+    updated, to the site's text."""
+    updates, book, chapter = [], path.parent.name, int(path.stem)
+    for origin, site in site_blocks(path, rows):
         for label, (site_text, titles, position) in site.items():
-            row, text, position = match_row(rows.get(label, []), site_text, position)
+            where = label if origin is None else f"{label} {origin}"
+            candidates = [r for r in rows.get(label, []) if origin is None or r["origin"] == origin]
+            row, text, position = match_row(candidates, site_text, position)
             if row is None:
                 stats["unmatched (site)"] += 1
-                report.append((path.parent.name, key[1], label, "site", plain_text(site_text)))
+                report.append((book, chapter, where, "site", visible(site_text)))
                 continue
             seen.add(row["vid"])
-            require_markup_ok(text, f"{path.parent.name} {key[1]}:{label}")
+            require_markup_ok(text, f"{book} {chapter}:{where}")
             problem = check_titles(titles, position, text)
             if problem:
                 stats[problem] += 1
-                report.append((path.parent.name, key[1], label, problem, plain_text(text)))
+                report.append((book, chapter, where, problem, visible(text)))
                 continue
-            if plain_text(site_text) != row["plain"]:
+            if adopt_signs:
+                if not titles and differs_only_in_signs(visible(site_text), row["visible"]):
+                    require_markup_ok(site_text, f"{book} {chapter}:{where}")
+                    updates.append(f"{build_sign_update(row, site_text)}  -- {book} {chapter}:{where}")
+                    stats["signs restored"] += 1
+                continue
+            if visible(site_text) != row["visible"]:
                 stats["wording kept (layout only)"] += 1
-                wording.append((path.parent.name, key[1], label, plain_text(site_text), row["plain"]))
+                wording.append((book, chapter, where, visible(site_text), row["visible"]))
             update = build_update(row, text, titles, position)
             if update:
-                updates.append(f"{update}  -- {path.parent.name} {key[1]}:{label}")
+                updates.append(f"{update}  -- {book} {chapter}:{where}")
                 stats["headings" if titles else "formatted"] += 1
             else:
                 stats["unchanged"] += 1
+    return updates
+
+
+def process(archive, db, report, wording, books=None, adopt_signs=False):
+    """All updates, optionally only for the given book slugs (e.g. {"Est"})."""
+    updates, stats, seen = [], collections.Counter(), set()
+    for path in sorted(Path(archive, "html").glob("*/*/*.html")):
+        if books and path.parent.name not in books:
+            continue
+        key = (BOOK[path.parent.name], int(path.stem))
+        updates += process_chapter(path, db.get(key, {}), report, wording, stats, seen, adopt_signs)
     for key, labels in db.items():
+        if books and SLUGS[key[0] - 1] not in books:
+            continue
         for label, rows in labels.items():
             for row in rows:
                 if row["vid"] not in seen:
                     stats["unmatched (db)"] += 1
-                    report.append((SLUGS[key[0] - 1], key[1], label, "db", row["plain"]))
+                    where = f"{label} {row['origin']}" if row["origin"] else label
+                    report.append((SLUGS[key[0] - 1], key[1], where, "db", row["visible"]))
     return updates, stats
 
 
@@ -656,6 +738,25 @@ HEADER = """-- Migration: CEI2008 formatted text and section headings from bibbi
 """
 
 
+SIGNS_HEADER = """-- Migration: restore CEI 2008's variant signs (⌈ ⌉ ⊥) from bibbiaedu.it
+--
+-- Generated by scripts/format_cei2008_from_source.py --adopt-signs from the
+-- private archive BibleGet-I-O/CEI2008-bibbiaedu (downloaded 2026-11-14).
+-- CEI 2008 marks where the Nova Vulgata differs from the critical text it
+-- translates: words between ⌈ and ⌉ are changed or left out in the Nova
+-- Vulgata, and ⊥ marks where it adds words (the variants are given in the
+-- edition's notes). The 2015 import dropped the signs, wrote [ ] or * for
+-- them, left [ ] where the site prints nothing, or used « » for the site's
+-- straight quotes. Only rows whose wording differs from the site's in these
+-- marks and spacing alone are updated, to the site's text; each UPDATE is guarded
+-- on the row's current text_plain (idempotent). text_plain/text_hash change,
+-- so the rows' LaBSE embeddings become stale; as in 026, set embedding = NULL
+-- WHERE text_hash IS DISTINCT FROM embedded_text_hash and run
+-- compute_embeddings.py for both columns.
+--
+"""
+
+
 def write_tsv(path, header, rows):
     """Tab-separated with standard quoting: a field containing a quote mark
     (verses often start with one) is quoted, its quotes doubled, so GitHub
@@ -671,16 +772,25 @@ def main():
     ap.add_argument("--archive", required=True, help="CEI2008-bibbiaedu checkout")
     ap.add_argument("--dump", required=True, help="COPY dump of CEI2008 (see docstring)")
     ap.add_argument("--report", required=True, help="TSV of rows not formatted (contains copyrighted text: keep private)")
+    ap.add_argument("--adopt-signs", action="store_true",
+                    help="instead of layout, emit the rows whose wording differs from the site's only in CEI 2008's variant signs (⌈ ⌉ ⊥)")
+    ap.add_argument("--books", help="comma-separated book slugs to process (e.g. Est); default all")
     ap.add_argument("--wording-report", required=True,
                     help="TSV of rows formatted with our wording where the site's differs (keep private)")
     args = ap.parse_args()
 
     report, wording = [], []
-    updates, stats = process(args.archive, load_dump(args.dump), report, wording)
+    books = set(args.books.split(",")) if args.books else None
+    unknown = (books or set()) - set(SLUGS)
+    if unknown:
+        ap.error(f"unknown book slugs: {', '.join(sorted(unknown))}")
+    updates, stats = process(args.archive, load_dump(args.dump), report, wording, books, args.adopt_signs)
     write_tsv(args.report, ("book", "chapter", "label", "side", "text"), report)
     write_tsv(args.wording_report, ("book", "chapter", "label", "site_wording", "our_wording"), wording)
     out = sys.stdout
-    out.write(HEADER)
+    out.write(SIGNS_HEADER if args.adopt_signs else HEADER)
+    if books:
+        out.write(f"-- Only these books (--books): {', '.join(sorted(books))}\n")
     out.write(f"-- {len(updates)} rows: {dict(sorted(stats.items()))}\n\nBEGIN;\n\n")
     out.write("\n".join(updates))
     out.write("\n\nCOMMIT;\n")

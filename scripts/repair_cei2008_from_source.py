@@ -15,7 +15,7 @@ text on vatican.va was used as an independent witness for *structure* (which
 verses exist, what each one contains) wherever the site and our table
 disagree; wording follows the site.
 
-Structure (024)
+Structure (025)
 ---------------
 Restores and re-divides verses that the original import lost or merged
 (see STRUCTURE below for each case and its evidence), then rebuilds the
@@ -30,7 +30,7 @@ changed rows get the site's formatted text; their embeddings are left NULL
 or stale for compute_embeddings.py. CEI2008_idx is recomputed for the
 affected books (verses_count = distinct verse numbers, verses_last = max).
 
-Wording (025)
+Wording (026)
 -------------
 For every row lined up with a site verse whose wording differs, the site's
 wording is adopted -- different words, editorial marks (⌈ ⌉ ⊥), dashes,
@@ -360,13 +360,13 @@ def F_chapters(source, book):
 
 
 def wording_update(row, label, text, skip, key):
-    site_plain = F.plain_text(text)
-    if row["vid"] in skip or site_plain == row["plain"]:
+    site_plain = F.visible(text)  # signs included: 026 adopts them
+    if row["vid"] in skip or site_plain == row["visible"]:
         return
-    if difflib.SequenceMatcher(None, site_plain, row["plain"], autojunk=False).ratio() < F.TRANSPLANT_MIN_RATIO:
+    if difflib.SequenceMatcher(None, site_plain, row["visible"], autojunk=False).ratio() < F.TRANSPLANT_MIN_RATIO:
         return
-    wording = corrected_wording(row["plain"], site_plain)
-    if wording == row["plain"]:
+    wording = corrected_wording(row["visible"], site_plain)
+    if wording == row["visible"]:
         return  # accents only: ours is kept
     formatted = F.transplant(text, wording) or wording
     require_markup_ok(formatted, f"{F.SLUGS[key[0] - 1]} {key[1]}:{label}")

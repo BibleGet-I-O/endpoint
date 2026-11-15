@@ -13,6 +13,13 @@
 -- (reports/unmatched.tsv). Idempotent.
 --
 -- 10906 rows: {'formatted': 10354, 'headings': 552, 'unchanged': 24556, 'unmatched (db)': 206, 'unmatched (site)': 90, 'wording kept (layout only)': 410}
+--
+-- Reading the counts: the 10906 UPDATEs are 10354 rows without and 552 with
+-- headings ("formatted"/"headings"); 10741 of them gain line breaks or tags,
+-- 37 only lose a trailing space, 128 only get headings. 410 keep our
+-- wording (a subset of the 10906). 296 rows
+-- were not lined up: 206 of ours and 90 of the site's. Esther, skipped
+-- here, was formatted later by 032.
 
 BEGIN;
 

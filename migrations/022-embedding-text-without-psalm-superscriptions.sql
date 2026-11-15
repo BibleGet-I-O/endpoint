@@ -20,8 +20,9 @@
 -- are unchanged. Verse rows that are only a superscription (no poetry, e.g.
 -- NABRE Ps 51:1-2) are embedded as they are.
 --
--- Editions without poetic markup (CEI2008, BLPD, DRB, DIVCOM, NVBSE) cannot
--- be split reliably and are not affected.
+-- Editions without poetic markup (BLPD, DRB, DIVCOM, NVBSE) cannot be split
+-- reliably and are not affected. CEI2008 had none when this ran; 023 later
+-- gave it superscription lines, and 031 marks those 53 rows stale.
 --
 -- The rows whose embedding text now differs from text_plain get
 -- embedded_text_hash = NULL, which makes them stale for embedding_labse (the
@@ -29,7 +30,7 @@
 -- also NULL MiniLM `embedding` on those rows (WHERE embedded_text_hash IS
 -- NULL), since that column is only filled where NULL; then run it for both
 -- columns (default, and --column embedding). As of 2026-11-14:
--- NABRE 60, LUZZI 114, VGCL (after 021) ~150 rows.
+-- NABRE 60, LUZZI 114, VGCL (after 021) 82 rows.
 
 BEGIN;
 

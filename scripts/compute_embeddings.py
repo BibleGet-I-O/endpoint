@@ -134,7 +134,8 @@ def load_verses(conn, version, column, force=False):
     is embedded as "The LORD is my shepherd; ..." without "A psalm of
     David.", which otherwise drowns the verse's own content in short
     queries. The superscription stays in `text`/`text_plain` and in keyword
-    search. text_hash is still md5(text_plain); if the embedding rule ever
+    search. (CEI 2008's variant signs ⌈ ⌉ ⊥ are already left out of
+    text_plain, migration 034.) text_hash is still md5(text_plain); if the embedding rule ever
     changes, null embedded_text_hash on the affected rows (as 022 does).
 
     Default mode (primary column only): verses with no embedding OR whose
