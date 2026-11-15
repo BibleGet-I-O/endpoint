@@ -274,7 +274,9 @@ ALTER TABLE "DRB" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
 -- 11:26 (chapter 12 starts at verse 2) and the first words of Job 10:1 after
 -- 9:35 (chapter 10 opens with the rest of verse 1, unnumbered). The rows sit
 -- where they are printed, with the printed label in verseequiv; insertion
--- order is reading order ("verseID"). The index is by verse number.
+-- order is reading order ("verseID"). The index is by verse number. Wis 12:3
+-- and 12:4 carry other verseequiv shapes ('' and a lettered '4a'), which
+-- must not be read as a label.
 INSERT INTO versions_available (sigla, fullname, year, language, imprimatur, canon, copyright_holder, notes, copyright, type, ts_language) VALUES
 ('TEST3', 'Test Bible Version 3', '2026', 'English', 'Yes', 'CATHOLIC', 'Test Publisher', 'Printed labels', 0, 'BIBLE', 'english')
 ON CONFLICT DO NOTHING;
@@ -332,8 +334,8 @@ SELECT * FROM (VALUES
     (27, 11, 26, NULL, NULL, 'Wis 11:26 placeholder', 1, 5),
     (27, 11, 26, '12:1', '12:1', 'Wis 12:1 labelmark placeholder', 1, 5),
     (27, 12, 2, NULL, NULL, 'Wis 12:2 placeholder', 1, 5),
-    (27, 12, 3, NULL, NULL, 'Wis 12:3 placeholder', 1, 5),
-    (27, 12, 4, NULL, NULL, 'Wis 12:4 placeholder', 1, 5),
+    (27, 12, 3, '', NULL, 'Wis 12:3 placeholder', 1, 5),
+    (27, 12, 4, '4a', NULL, 'Wis 12:4 placeholder', 1, 5),
     (27, 12, 5, NULL, NULL, 'Wis 12:5 placeholder', 1, 5)
 ) AS v(book, chapter, verse, verseequiv, versedescr, text, testament, section)
 WHERE NOT EXISTS (SELECT 1 FROM "TEST3");

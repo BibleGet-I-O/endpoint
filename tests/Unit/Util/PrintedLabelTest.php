@@ -25,6 +25,8 @@ final class PrintedLabelTest extends TestCase
             'psalm cross-number'           => [['chapter' => 10, 'verse' => 1, 'verseequiv' => '(9,22)'], ['chapter' => 10, 'verse' => 1]],
             'no verseequiv key'            => [['chapter' => 1, 'verse' => 1], ['chapter' => 1, 'verse' => 1]],
             'numeric strings'              => [['chapter' => '7', 'verse' => '53', 'verseequiv' => null], ['chapter' => 7, 'verse' => 53]],
+            'trailing newline'             => [['chapter' => 11, 'verse' => 26, 'verseequiv' => "12:1\n"], ['chapter' => 11, 'verse' => 26]],
+            'chapter of four digits'       => [['chapter' => 5, 'verse' => 6, 'verseequiv' => '1234:1'], ['chapter' => 5, 'verse' => 6]],
         ];
     }
 
@@ -36,6 +38,11 @@ final class PrintedLabelTest extends TestCase
     public function testCited(array $row, array $expected): void
     {
         self::assertSame($expected, PrintedLabel::cited($row));
+    }
+
+    public function testPatternBoundsTheNumbersSoTheIntCastCannotOverflow(): void
+    {
+        self::assertSame('^[0-9]{1,3}:[0-9]{1,3}[a-z]*$', PrintedLabel::PATTERN);
     }
 
     public function testSqlLabelledHandlesNull(): void

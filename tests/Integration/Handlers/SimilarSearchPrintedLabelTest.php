@@ -70,6 +70,17 @@ final class SimilarSearchPrintedLabelTest extends DatabaseTestCase
         $set('chapter = 12 AND verse = 3', self::vec([0.0, 0.0, 0.9, 0.1]));
     }
 
+    protected function tearDown(): void
+    {
+        // The embeddings set in setUp would otherwise stay in the shared test DB.
+        try {
+            $this->getConnection()->exec('UPDATE "TEST3" SET embedding = NULL');
+        } catch (\Throwable) {
+            // DB not available (test was skipped)
+        }
+        parent::tearDown();
+    }
+
     /**
      * @return list<array<string, mixed>>
      */

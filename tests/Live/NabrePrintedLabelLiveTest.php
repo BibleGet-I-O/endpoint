@@ -93,8 +93,10 @@ final class NabrePrintedLabelLiveTest extends LiveTestCase
         self::assertSame(200, $r['status']);
         $rows = self::labels($r['body']);
         self::assertNotEmpty($rows);
-        foreach ($rows as [$c, $v]) {
+        foreach ($rows as [$c, $v, $equiv]) {
             self::assertNotSame([$chapter, $verse], [$c, $v]);
+            // The old code reported Job's 10:1a row as 9:35: catch it by label too.
+            self::assertNotSame($reference === 'Job10:1' ? '10:1a' : '12:1', $equiv);
         }
     }
 

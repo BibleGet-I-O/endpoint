@@ -19,8 +19,12 @@ namespace BibleGet\Api\Util;
  */
 final class PrintedLabel
 {
-    /** POSIX regex (PostgreSQL `~`) for a `chapter:verse` label, optionally lettered. */
-    public const string PATTERN = '^[0-9]+:[0-9]+[a-z]*$';
+    /**
+     * POSIX regex (PostgreSQL `~`) for a `chapter:verse` label, optionally
+     * lettered. At most three digits each (150 chapters, 176 verses), so the
+     * ::int casts below can never overflow.
+     */
+    public const string PATTERN = '^[0-9]{1,3}:[0-9]{1,3}[a-z]*$';
 
     /** True for a row whose printed label names another chapter:verse. */
     public static function sqlLabelled(): string
@@ -49,7 +53,7 @@ final class PrintedLabel
     public static function cited(array $row): array
     {
         $equiv = $row['verseequiv'] ?? null;
-        if (is_string($equiv) && preg_match('/^(\d+):(\d+)[a-z]*$/', $equiv, $m) === 1) {
+        if (is_string($equiv) && preg_match('/^(\d{1,3}):(\d{1,3})[a-z]*\z/', $equiv, $m) === 1) {
             return ['chapter' => (int) $m[1], 'verse' => (int) $m[2]];
         }
         return [

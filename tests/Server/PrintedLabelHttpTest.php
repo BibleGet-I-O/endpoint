@@ -20,7 +20,7 @@ final class PrintedLabelHttpTest extends ServerTestCase
      */
     public static function references(): array
     {
-        $wis12 = [[12, 1, '12:1'], [12, 2, null], [12, 3, null], [12, 4, null], [12, 5, null]];
+        $wis12 = [[12, 1, '12:1'], [12, 2, null], [12, 3, ''], [12, 4, '4a'], [12, 5, null]];
         return [
             'Wis 12:1 printed after 11:26' => ['Wis12,1', [[12, 1, '12:1']]],
             'Wis 12:1-5'                   => ['Wis12,1-5', $wis12],
@@ -28,7 +28,7 @@ final class PrintedLabelHttpTest extends ServerTestCase
             'Wis 11 excludes 12:1'         => ['Wis11', [[11, 25, null], [11, 26, null]]],
             'Wis 11:26 alone'              => ['Wis11,26', [[11, 26, null]]],
             'Wis 11:25-12:2'               => ['Wis11,25-12,2', [[11, 25, null], [11, 26, null], [12, 1, '12:1'], [12, 2, null]]],
-            'non-consecutive Wis 12:1.3'   => ['Wis12,1.3', [[12, 1, '12:1'], [12, 3, null]]],
+            'non-consecutive Wis 12:1.3'   => ['Wis12,1.3', [[12, 1, '12:1'], [12, 3, '']]],
             'Job 9:35 alone'               => ['Job9,35', [[9, 35, null]]],
             'Job 10:1 both parts'          => ['Job10,1', [[10, 1, '10:1a'], [10, 1, null]]],
             'Job 9:35-10:2'                => ['Job9,35-10,2', [[9, 35, null], [10, 1, '10:1a'], [10, 1, null], [10, 2, null]]],
