@@ -4,8 +4,11 @@
 -- script for every case and its evidence. Requires 019, 023 and 024
 -- (bibleget_rebuild_in_order). 52 rows are inserted; afterwards the
 -- table has 35720 rows, "verseID" 1..35720 in reading order. New rows have
--- no embeddings and changed rows are stale: run compute_embeddings.py for both
--- columns afterwards.
+-- no embeddings and changed rows' LaBSE embeddings are stale. Their MiniLM
+-- `embedding` is refilled only where NULL, so before re-embedding set
+-- embedding = NULL WHERE text_hash IS DISTINCT FROM embedded_text_hash, then
+-- run compute_embeddings.py for both columns (--column embedding as well as
+-- the default).
 
 BEGIN;
 

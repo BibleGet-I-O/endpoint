@@ -256,7 +256,7 @@ Deprecated / Fixed / Removed / Security where applicable.
   `f`/`l` variants at stanza starts and ends, and untagged lead-ins and
   psalm superscriptions (a wholly italic first line is a superscription
   only in the Psalms; elsewhere, e.g. Sirach's Greek additions and the Old
-  Testament quotations in the New, it is verse). 444 verses get section headings in
+  Testament quotations in the New, it is verse). 552 verses get section headings in
   `title1`-`title3`; the site has them for Gen, Ex, Lv, Nm and Psalms
   only, and psalm acrostic letters are included. Gen 2:4 gets a mid-verse
   `title_position`. Verses are lined up by chapter and label, so the
