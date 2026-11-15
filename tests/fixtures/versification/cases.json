@@ -1258,7 +1258,7 @@
     {
       "id": "cei-est-8-2-9-30",
       "kind": "text-tradition",
-      "summary": "CEI 2008 prints Est 8:2 in both the Greek and the Hebrew text, and Hebrew 9:30 (the Greek has no 9:30); our rows lack them (8:1 GREEK holds 8:2's text).",
+      "summary": "CEI 2008 prints Est 8:2 in both the Greek and the Hebrew text, and Hebrew 9:30 (the Greek has no 9:30). Restored by migration 038.",
       "expect": {
         "CEI2008": {
           "19 8 HEBREW": "1-17",
@@ -1266,14 +1266,6 @@
           "19 9 HEBREW": "1-32",
           "19 9 GREEK": "1-29,31-32"
         }
-      },
-      "known_issue": {
-        "issue": "#185",
-        "wrong": [
-          "CEI2008 19 8 HEBREW",
-          "CEI2008 19 8 GREEK",
-          "CEI2008 19 9 HEBREW"
-        ]
       }
     }
   ]
