@@ -31,6 +31,9 @@ jobs:
     environment: ${{ github.event_name == 'release' && 'production' || inputs.target }}
     permissions:
       contents: read
+    outputs:
+      # The commit deployed, so live-tests runs the tests of that commit.
+      sha: ${{ steps.deployed.outputs.sha }}
 
     steps:
       - name: Resolve ref and deploy path
@@ -90,6 +93,10 @@ jobs:
         with:
           ref: ${{ steps.params.outputs.ref }}
           persist-credentials: false
+
+      - name: Record the deployed commit
+        id: deployed
+        run: echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
 
       - name: Verify modern codebase shape
         # The legacy /v3 codebase on master predates the PSR-based rewrite
@@ -238,10 +245,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
+      - name: Checkout the deployed commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: development
+          ref: ${{ needs.deploy.outputs.sha }}
           persist-credentials: false
 
       - name: Set up PHP

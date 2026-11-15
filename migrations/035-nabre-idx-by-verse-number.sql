@@ -27,7 +27,8 @@
 --
 -- Other editions' counts that don't match their rows (BLPD, NVBSE) are #187.
 -- Finally every *_idx table is checked: a non-integer token in verses_last or
--- verses_count aborts the migration.
+-- verses_count aborts the migration, an empty field ('26,,27') included. A
+-- wholly empty or NULL list yields no tokens (none exist on staging).
 
 BEGIN;
 
@@ -83,7 +84,7 @@ BEGIN
         EXECUTE format(
             'SELECT string_agg(DISTINCT book || '':'' || tok, '', '') FROM %I, '
             || 'unnest(string_to_array(verses_last, '','') || string_to_array(coalesce(verses_count, ''''), '','')) AS tok '
-            || 'WHERE tok <> '''' AND tok !~ ''^[0-9]+$''',
+            || 'WHERE tok !~ ''^[0-9]+$''',
             t || '_idx') INTO bad;
         IF bad IS NOT NULL THEN
             RAISE EXCEPTION '%_idx has non-integer index tokens (book:token): %', t, bad;

@@ -241,6 +241,14 @@ Deprecated / Fixed / Removed / Security where applicable.
   average of its parts and excludes them all. One helper,
   `src/Util/PrintedLabel.php`, holds the rule. See
   `docs/superpowers/specs/2026-11-15-printed-label-queries-design.md`.
+- **Request log `"QUERY"` widened to `TEXT`** (migration `036`). The log
+  stores each quote's compiled SQL, which since the printed-label rule is
+  longer than 255 characters even for one verse; the INSERT would have
+  failed every request that isn't whitelisted. 036 widens the column on
+  all `requests_log*` tables and in `create_yearly_log_table()` (also in
+  `production-schema.sql`); CI and docker-compose apply it after the
+  fixtures, which create the log table in production's old shape. Apply it
+  before deploying this change.
 - **`Wis11:26` and `John7:53` in NABRE no longer fail as out of bounds**
   (migration `035`). `NABRE_idx` stored `12:1` as Wis 11's last verse
   (read as 12) and counted John 7:53 under chapter 8, where NABRE prints
