@@ -228,6 +228,14 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Fixed
 
+- **NABRE Sir 33:20-21 and 41:14-15 in printed order** (migration `037`,
+  #185). NABRE prints 33:20a, 21, 20b and 41:14b, 15, 14a; the rows were
+  stored in numeric order. Checked against the publisher's SCML (each row
+  already had the right text for its label); 037 hands the rows' own
+  `"verseID"`s out in printed order, found by label so it works on any
+  copy of NABRE. The two versification cases no longer carry a
+  `known_issue`.
+
 - **References select verses by the number the edition prints, on every
   endpoint.** NABRE prints Wis 12:1 at the end of chapter 11 and the first
   words of Job 10:1 at the end of chapter 9; the rows stay where they are
