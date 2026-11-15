@@ -164,6 +164,7 @@ def resolve_ids(source, ops):
 
 def site_text(source, spec):
     if spec[0] == "text":
+        require_markup_ok(spec[1], f"literal text {spec[1][:40]!r}")
         return spec[1], [], None
     text, titles, position = source.verse(*spec)
     require_markup_ok(text, f"site verse {spec}")
