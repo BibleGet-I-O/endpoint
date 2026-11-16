@@ -65,6 +65,8 @@ class QuoteContext
     public array $queries = [];
     /** @var array<int, string> */
     public array $validatedQueries = [];
+    /** @var array<int, string> The book of each validated query as the user wrote it (or inherited it). */
+    public array $validatedBookNames = [];
     /** @var array<int, array<int, string>> */
     public array $validatedVariants = [];
     /** @var array<int, string> */

@@ -73,7 +73,7 @@ class QueryFormulator
                 $originalQuery = $this->ctx->validatedQueries[$i];
                 $segments      = $this->compiler->segmentRefs(
                     $remappedQuery,
-                    self::bookAsWritten($originalQuery),
+                    $this->ctx->validatedBookNames[$i] ?? '',
                     $this->ctx->detectedNotation
                 );
 
@@ -90,12 +90,6 @@ class QueryFormulator
         $this->ctx->formulatedQueries  = $this->sqlQueries;
         $this->ctx->originalQueries    = $this->originalQueries;
         $this->ctx->formulatedVariants = $this->queriesVersions;
-    }
-
-    /** The leading book token of a query as the user wrote it ("Mk9:44" → "Mk", "1Cor13" → "1Cor"). */
-    private static function bookAsWritten(string $query): string
-    {
-        return preg_match('/^\s*(\d?\s*[^\d\s,:.;-][^\d,:.;]*?)\s*\d/u', $query, $m) === 1 ? trim($m[1]) : trim($query);
     }
 
     private const ESTHER_BOOK_NUM = 19;

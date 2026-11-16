@@ -124,9 +124,12 @@ class QueryValidator
         $this->previousBookName = $bookName ?? $this->previousBookName;
 
         // Populate context outputs (same as old implementation)
-        $this->ctx->validatedQueries[]  = $query;
-        $this->ctx->validatedVariants[] = $validator->getValidatedVariants();
-        $this->ctx->parsedQueries[]     = $validated;
+        $this->ctx->validatedQueries[] = $query;
+        // The book as the user wrote it, inherited from the previous query when
+        // this one names none (notices display it).
+        $this->ctx->validatedBookNames[] = $bookName ?? $this->previousBookName;
+        $this->ctx->validatedVariants[]  = $validator->getValidatedVariants();
+        $this->ctx->parsedQueries[]      = $validated;
     }
 
     /**

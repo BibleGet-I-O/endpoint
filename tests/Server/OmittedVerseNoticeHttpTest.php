@@ -52,6 +52,13 @@ final class OmittedVerseNoticeHttpTest extends ServerTestCase
         self::assertSame([46, 46], [$body['notices'][1]['verse_from'], $body['notices'][1]['verse_to']]);
     }
 
+    public function testInheritedBookInReference(): void
+    {
+        // The second reference takes its book from the first.
+        $body = self::jsonBody(self::quote('Mk9:43;9:44')['body']);
+        self::assertSame(['Mk 9:44'], array_column($body['notices'], 'reference'));
+    }
+
     public function testEuropeanNotationInReference(): void
     {
         $body = self::jsonBody(self::quote('Mk9,44')['body']);

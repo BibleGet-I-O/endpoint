@@ -309,10 +309,14 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
 
     verses = load_verses(conn, version, column, force=force)
     if not verses:
-        # Every embedded verse matches its text; the content may still have changed
-        # where nothing is embedded (an omitted verse emptied, migration 045), so
-        # record the current content, or --check would report it stale forever.
-        update_metadata(conn, version, column, MODEL_NAME, dim, compute_content_xor(conn, version), MODEL_VERSION)
+        # For the hash-tracked column, "nothing to embed" proves every embedded verse
+        # matches its text; the content may still have changed where nothing is
+        # embedded (an omitted verse emptied, migration 045), so record the current
+        # content, or --check would report it stale forever. Not for the other
+        # columns: there an xor mismatch is the only staleness signal (see "Known
+        # asymmetry" below), and refreshing it would hide stale vectors.
+        if column == DEFAULT_COLUMN and has_text_hash_column(conn, version):
+            update_metadata(conn, version, column, MODEL_NAME, dim, compute_content_xor(conn, version), MODEL_VERSION)
         print(f"  {version}: no verses to process (all up to date)")
         return 0
 
