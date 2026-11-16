@@ -56,6 +56,9 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -131,6 +134,9 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -184,6 +190,9 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -243,6 +252,9 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -313,6 +325,9 @@ CREATE TABLE IF NOT EXISTS "TEST3" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     versedescr  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),

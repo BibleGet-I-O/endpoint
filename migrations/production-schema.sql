@@ -470,3 +470,19 @@ $$ LANGUAGE plpgsql;
 -- The helper function is kept for runtime use (creating future yearly tables on demand).
 SELECT create_yearly_log_table(y::TEXT, y >= 2020)
 FROM generate_series(2014, EXTRACT(YEAR FROM NOW())::INT + 1) AS y;
+
+-- ── Placement columns (migration 044) on every edition table ─────────────────
+-- printed_chapter / verse_label: how the edition prints a row, when it differs
+-- from (chapter, verse); omitted: the number is printed without text.
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN SELECT sigla FROM versions_available LOOP
+        CONTINUE WHEN to_regclass(format('public.%I', rec.sigla)) IS NULL;
+        EXECUTE format('ALTER TABLE public.%I '
+                       'ADD COLUMN IF NOT EXISTS printed_chapter INT, '
+                       'ADD COLUMN IF NOT EXISTS verse_label VARCHAR(16), '
+                       'ADD COLUMN IF NOT EXISTS omitted BOOLEAN NOT NULL DEFAULT false', rec.sigla);
+    END LOOP;
+END $$;
