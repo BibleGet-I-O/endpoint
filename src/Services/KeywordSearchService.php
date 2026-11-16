@@ -180,13 +180,18 @@ class KeywordSearchService
 
         switch ($matchMode) {
             case 'exact':
-                // Escape PostgreSQL regex metacharacters so the keyword is matched literally.
+                // Fold the keyword as the text is folded (unaccent), then escape the
+                // folded keyword's regex metacharacters so it is matched literally:
+                // unaccent maps some symbols to metacharacters ('×' → '*').
                 // No relevance signal in regex matches → score is null per row.
-                $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $keyword) ?? $keyword;
                 try {
-                    $stmt = $this->pdo->prepare(
+                    $fold = $this->pdo->prepare('SELECT unaccent(?)');
+                    $fold->execute([$keyword]);
+                    $folded         = StringUtils::asString($fold->fetchColumn());
+                    $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $folded) ?? $folded;
+                    $stmt           = $this->pdo->prepare(
                         'SELECT *, NULL::float8 AS score FROM "' . $version . '" '
-                        . 'WHERE unaccent(text_plain) ~* (\'\y\' || unaccent(?) || \'\y\') ORDER BY "verseID"'
+                        . 'WHERE unaccent(text_plain) ~* (\'\y\' || ? || \'\y\') ORDER BY "verseID"'
                     );
                     $stmt->execute([$escapedKeyword]);
                 } catch (\PDOException) {

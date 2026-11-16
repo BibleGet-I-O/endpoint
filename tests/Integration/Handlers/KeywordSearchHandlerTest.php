@@ -106,6 +106,20 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         }
     }
 
+    public function testExactModeKeepsFoldedRegexCharactersLiteral(): void
+    {
+        // unaccent folds '×' to '*': escaped before folding, 'God×' would become the
+        // regex 'God*' and match every 'God'.
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => 'God×', 'version' => 'TEST1', 'match' => 'exact']);
+        $response = $handler->handle($request);
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertSame([], $body['results'] ?? [], (string) $response->getBody());
+    }
+
     public function testFulltextSimpleFallbackNoStemming(): void
     {
         $handler = $this->createHandler();
