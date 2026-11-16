@@ -8,7 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * CEI 2008 prints Esther twice, the Greek text and the Hebrew, told apart by
- * verseorigin. Migration 038 restored 8:2 (both texts) and Hebrew 9:30; the
+ * text_tradition. Migration 038 restored 8:2 (both texts) and Hebrew 9:30; the
  * Greek text has no 9:30. A range stays within the text asked for.
  */
 final class Cei2008EstherLiveTest extends LiveTestCase
@@ -39,7 +39,7 @@ final class Cei2008EstherLiveTest extends LiveTestCase
         $got = [];
         foreach ($r['body']['results'] as $row) {
             self::assertIsArray($row);
-            self::assertSame($origin, $row['verseorigin']);
+            self::assertSame($origin, $row['text_tradition']);
             $got[] = [(int) $row['chapter'], (int) $row['verse']];
         }
         self::assertSame($expected, $got);

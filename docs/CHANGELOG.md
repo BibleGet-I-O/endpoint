@@ -9,6 +9,25 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Changed
 
+- **Verse-identity fields renamed and sorted by what they hold** (#184,
+  migration `046`). Responses (quotes and search, JSON/XML/HTML) no longer
+  carry `verseequiv`, `versedescr`, `verseorigin`; they carry:
+  - `verse_segment`: the printed letter only (`a` for 2:4a; was `'4a'` in
+    `verseequiv`);
+  - `alt_ref`: the position in another numbering (CEI 2008's Greek psalm
+    number `(9,22)`, the Hebrew number of Dan 3:91-100, DRB/VGCL's Vulgate
+    position of Greek Esther `11:2`);
+  - `acrostic`: the Hebrew letter an acrostic verse falls under, in the
+    edition's spelling, in CEI 2008, BLPD, LUZZI, NABRE and VGCL (the
+    letter headings stay as they are);
+  - `text_tradition`: `HEBREW` / `GREEK` (was `verseorigin`).
+  NABRE's printed Esther labels (`A:1` …) are now in `verse_label`.
+  `verseID` is `sort_order` internally (never returned). Each edition table
+  gets a unique key on (book, chapter, verse, verse_segment, text_tradition,
+  printed_chapter). `/metadata/biblebooks` adds `codes`: the USFM and OSIS
+  code of each book (new table `biblebooks_codes`). No client reads `/dev`;
+  the frozen v3 API is unchanged. Apply `046` and deploy together.
+
 - **Keyword search ignores accents, diaereses and ligatures** (#196,
   migration `043`). "Israel" now finds VGCL's "Israël", "caelum" finds
   "cælum", "perche" finds CEI 2008's "perché", "Josue" finds "Josué"; an

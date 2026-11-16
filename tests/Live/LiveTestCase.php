@@ -84,7 +84,9 @@ abstract class LiveTestCase extends TestCase
     }
 
     /**
-     * The [chapter, verse, verseequiv] of each result row, in order.
+     * The [chapter, verse, lettered label] of each result row, in order: the
+     * label is the verse number with its printed letter ("5a", from
+     * verse_segment, migration 046), null for an unlettered verse.
      *
      * @param array<string, mixed> $body
      * @return list<array{int, int, ?string}>
@@ -94,8 +96,8 @@ abstract class LiveTestCase extends TestCase
         $rows = [];
         foreach (is_array($body['results'] ?? null) ? $body['results'] : [] as $row) {
             self::assertIsArray($row);
-            $equiv  = $row['verseequiv'] ?? null;
-            $rows[] = [(int) $row['chapter'], (int) $row['verse'], is_string($equiv) ? $equiv : null];
+            $segment = $row['verse_segment'] ?? null;
+            $rows[]  = [(int) $row['chapter'], (int) $row['verse'], is_string($segment) ? ( (int) $row['verse'] ) . $segment : null];
         }
         return $rows;
     }
