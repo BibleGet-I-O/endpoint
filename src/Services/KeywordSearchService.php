@@ -170,6 +170,9 @@ class KeywordSearchService
         if (!preg_match('/^[a-z]+$/', $tsLanguage)) {
             $tsLanguage = 'simple';
         }
+        // The language's configuration with accents, diaereses and ligatures folded
+        // (migration 043, #196): "Israel" finds "Israël", "caelum" finds "cælum".
+        $tsConfig = 'bibleget_' . $tsLanguage;
 
         if ($limit !== null && $matchMode !== 'fulltext') {
             throw new \InvalidArgumentException('A ranked limit is only supported for match=fulltext.');
@@ -177,13 +180,18 @@ class KeywordSearchService
 
         switch ($matchMode) {
             case 'exact':
-                // Escape PostgreSQL regex metacharacters so the keyword is matched literally.
+                // Fold the keyword as the text is folded (unaccent), then escape the
+                // folded keyword's regex metacharacters so it is matched literally:
+                // unaccent maps some symbols to metacharacters ('×' → '*').
                 // No relevance signal in regex matches → score is null per row.
-                $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $keyword) ?? $keyword;
                 try {
-                    $stmt = $this->pdo->prepare(
+                    $fold = $this->pdo->prepare('SELECT unaccent(?)');
+                    $fold->execute([$keyword]);
+                    $folded         = StringUtils::asString($fold->fetchColumn());
+                    $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $folded) ?? $folded;
+                    $stmt           = $this->pdo->prepare(
                         'SELECT *, NULL::float8 AS score FROM "' . $version . '" '
-                        . 'WHERE text_plain ~* (\'\y\' || ? || \'\y\') ORDER BY "verseID"'
+                        . 'WHERE unaccent(text_plain) ~* (\'\y\' || ? || \'\y\') ORDER BY "verseID"'
                     );
                     $stmt->execute([$escapedKeyword]);
                 } catch (\PDOException) {
@@ -201,9 +209,9 @@ class KeywordSearchService
                 try {
                     $stmt = $this->pdo->prepare(
                         'SELECT *, '
-                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text_plain), to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
+                        . 'ts_rank_cd(to_tsvector(\'' . $tsConfig . '\', text_plain), to_tsquery(\'' . $tsConfig . '\', ?)) AS score '
                         . 'FROM "' . $version . '" '
-                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text_plain) @@ to_tsquery(\'' . $tsLanguage . '\', ?) '
+                        . 'WHERE to_tsvector(\'' . $tsConfig . '\', text_plain) @@ to_tsquery(\'' . $tsConfig . '\', ?) '
                         . 'ORDER BY "verseID"'
                     );
                     $stmt->execute([$keyword, $keyword]);
@@ -229,9 +237,9 @@ class KeywordSearchService
                 try {
                     $stmt = $this->pdo->prepare(
                         'SELECT *, '
-                        . 'ts_rank_cd(to_tsvector(\'' . $tsLanguage . '\', text_plain), websearch_to_tsquery(\'' . $tsLanguage . '\', ?)) AS score '
+                        . 'ts_rank_cd(to_tsvector(\'' . $tsConfig . '\', text_plain), websearch_to_tsquery(\'' . $tsConfig . '\', ?)) AS score '
                         . 'FROM "' . $version . '" '
-                        . 'WHERE to_tsvector(\'' . $tsLanguage . '\', text_plain) @@ websearch_to_tsquery(\'' . $tsLanguage . '\', ?) '
+                        . 'WHERE to_tsvector(\'' . $tsConfig . '\', text_plain) @@ websearch_to_tsquery(\'' . $tsConfig . '\', ?) '
                         . $orderBy
                     );
                     $stmt->execute($bind);

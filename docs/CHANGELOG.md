@@ -9,6 +9,17 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Changed
 
+- **Keyword search ignores accents, diaereses and ligatures** (#196,
+  migration `043`). "Israel" now finds VGCL's "Israël", "caelum" finds
+  "cælum", "perche" finds CEI 2008's "perché", "Josue" finds "Josué"; an
+  accented keyword still matches. Migration `043` installs the `unaccent`
+  extension and creates `bibleget_<cfg>` text search configurations (each
+  built-in configuration with `unaccent` in front of its dictionary), then
+  rebuilds every edition's `*_text_plain_fts` index on them;
+  `/search/keyword` (all three modes) and the hybrid search's keyword leg
+  query them. The returned text keeps the edition's spelling. Apply `043`
+  before deploying this code.
+
 - **Complexity gates.** `phpcs.xml` now fails any PHP function with
   cyclomatic complexity above 20 (largest today: 18) or nesting deeper
   than 5, so `composer lint`, the pre-commit hook and CI enforce it. Python
