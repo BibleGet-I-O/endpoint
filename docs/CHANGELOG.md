@@ -228,6 +228,24 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Fixed
 
+- **BLPD checked against vatican.va and corrected** (migration `039`, #185).
+  BLPD was compared verse by verse with vatican.va (archive/ESL0506), the
+  source it was imported from, in the private archive
+  `BibleGet-I-O/BLPD-vatican`, where every decision is recorded with its
+  reason. 300 verses take vatican.va's wording (typos, agreement, dropped or
+  duplicated words, verses cut short in the 2015 import); 18 chapters follow
+  its verse division and printed displacements (lettered half-lines such as
+  Gen 47:5a, 6b, 5b and Ps 37:14c, 34b, 40b); Job 42, Isaiah 65-66 and
+  Jeremiah 51-52, missing since the import, are added; and BLPD gains a
+  Greek text of Esther stored like NABRE and NVBSE (1:1a-1r, 3:13a-g, 4:8b,
+  4:17a-ff, 5:1-2 with 5:1a-1k and 5:2a-2d, 8:12a-v, 10:3a-l). vatican.va's
+  own errors (leaked parallel-passage references, displacement markers,
+  misplaced speaker labels) are not copied. The text is licensed, not
+  public, so the data half of 039 is in the private archive; the public
+  `039` checks the result (row count and md5) and rebuilds `BLPD_idx`.
+  Open: Mk 8:29 (#191), and the order of Job 24/26/29/31 and Is 38, which
+  vatican.va doesn't confirm (#192).
+
 - **NABRE Sir 33:20-21 and 41:14-15 in printed order** (migration `037`,
   #185). NABRE prints 33:20a, 21, 20b and 41:14b, 15, 14a; the rows were
   stored in numeric order. Checked against the publisher's SCML (each row
