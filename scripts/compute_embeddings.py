@@ -148,21 +148,24 @@ def load_verses(conn, version, column, force=False):
     track_hash = column == DEFAULT_COLUMN and has_text_hash_column(conn, version)
     table_ident = sql.Identifier(version)
     col_ident = sql.Identifier(column)
+    # An omitted verse (migration 044, #180) has no text: never embedded.
+    present = sql.SQL("NOT omitted" if has_column(conn, version, "omitted") else "true")
 
     if force:
-        query = sql.SQL('SELECT "verseID", bibleget_embedding_text(book, text) FROM {} ORDER BY "verseID"').format(table_ident)
+        query = sql.SQL('SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} WHERE {present} ORDER BY "verseID"').format(
+            table=table_ident, present=present)
     elif track_hash:
         query = sql.SQL(
             'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} '
-            "WHERE {col} IS NULL "
+            "WHERE {present} AND ({col} IS NULL "
             "OR embedded_text_hash IS NULL "
-            "OR text_hash != embedded_text_hash "
+            "OR text_hash != embedded_text_hash) "
             'ORDER BY "verseID"'
-        ).format(table=table_ident, col=col_ident)
+        ).format(table=table_ident, col=col_ident, present=present)
     else:
         query = sql.SQL(
-            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} WHERE {col} IS NULL ORDER BY "verseID"'
-        ).format(table=table_ident, col=col_ident)
+            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} WHERE {present} AND {col} IS NULL ORDER BY "verseID"'
+        ).format(table=table_ident, col=col_ident, present=present)
 
     with conn.cursor() as cur:
         cur.execute(query)
@@ -237,14 +240,16 @@ def check_staleness(conn, versions, column):
             continue
 
         track_hash = column == DEFAULT_COLUMN and has_text_hash_column(conn, version)
+        # Omitted verses (no text) are never embedded, so they are never stale.
+        present = sql.SQL("NOT omitted" if has_column(conn, version, "omitted") else "true")
         if not track_hash:
             count_query = sql.SQL(
                 "SELECT "
                 "  COUNT(*) FILTER (WHERE {col} IS NULL) AS new_verses, "
                 "  0 AS changed_verses, "
                 "  COUNT(*) AS total "
-                "FROM {table}"
-            ).format(table=sql.Identifier(version), col=sql.Identifier(column))
+                "FROM {table} WHERE {present}"
+            ).format(table=sql.Identifier(version), col=sql.Identifier(column), present=present)
         else:
             count_query = sql.SQL(
                 "SELECT "
@@ -252,8 +257,8 @@ def check_staleness(conn, versions, column):
                 "  COUNT(*) FILTER (WHERE {col} IS NOT NULL AND "
                 "    (embedded_text_hash IS NULL OR text_hash != embedded_text_hash)) AS changed_verses, "
                 "  COUNT(*) AS total "
-                "FROM {table}"
-            ).format(table=sql.Identifier(version), col=sql.Identifier(column))
+                "FROM {table} WHERE {present}"
+            ).format(table=sql.Identifier(version), col=sql.Identifier(column), present=present)
 
         with conn.cursor() as cur:
             cur.execute(count_query)
