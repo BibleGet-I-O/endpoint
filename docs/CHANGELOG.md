@@ -240,6 +240,25 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Fixed
 
+- **Verses merged into the verse before, split out** (migration `042`,
+  #185). Reviewing #185's remaining items against each edition's source
+  turned up verses stored inside the previous verse's row. vatican.va
+  prints some verse numbers inline, before a lowercase word ("... ad bella
+  procedere, 46 sescenta ..."), so the archive comparisons of 039/041 saw
+  the same merge on both sides; a scan of every edition for the next
+  verse's number found them all. NVBSE: Num 1:46, 2 Reg 9:31, Esd 1:11 and
+  2:5, Neh 12:29, 2 Macc 14:36, Ps 130:6, Ps 140:10, Is 30:16, Ez 13:16,
+  Act 4:30, Act 15:18, Rom 14:8, plus 1 Par 11:40 stored as verse 0
+  (vatican.va prints "0"). BLPD: Esd 1:11, Act 28:2. DRB, checked against
+  drbo.org wherever its numbering differs from VGCL's: Prov 28:25, Mal 3:12
+  (the existing `mal-chapters` case had recorded the gap as expected) and
+  Wis 18:25, numbered 26. Only the rows concerned change, so BLPD's
+  headings and the other embeddings stay. The rest of #185's list is as the
+  editions print it and is now documented as cases (`nabre-omitted-verses`,
+  `nvbse-omitted-verses`, `blpd-omitted-verses`, `verse-0-superscription`,
+  `drb-psalm-115-147`; new case kinds `omitted-verse` and
+  `superscription`).
+
 - **NVBSE checked against vatican.va and corrected** (migration `041`,
   #185, #187). The Nova Vulgata was compared verse by verse with
   vatican.va in the private archive `BibleGet-I-O/NVBSE-vatican`. 21

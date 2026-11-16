@@ -979,7 +979,7 @@
           "46 4": "1-6"
         },
         "DRB": {
-          "46 3": "1-11,13-18",
+          "46 3": "1-18",
           "46 4": "1-6"
         },
         "LUZZI": {
@@ -1269,6 +1269,143 @@
           "19 8 GREEK": "1-12,12a,12b,12c,12d,12e,12f,12g,12h,12i,12k,12l,12m,12n,12o,12p,12q,12r,12s,12t,12u,12v,13-17",
           "19 9 HEBREW": "1-32",
           "19 9 GREEK": "1-29,31-32"
+        }
+      }
+    },
+    {
+      "id": "nabre-omitted-verses",
+      "kind": "omitted-verse",
+      "summary": "NABRE leaves out verses it judges secondary (in Sirach, the expansions of later Greek manuscripts; Wis 4:15, which repeats 3:9) and keeps the traditional numbering, so the numbers are skipped; a note explains each. Checked against the SCML source (#185). As printed, not a defect.",
+      "expect": {
+        "NABRE": {
+          "27 4": "1-14,16-20",
+          "28 1": "1-4,6,8-30",
+          "28 3": "1-18,20-31",
+          "28 10": "1-20,22-31",
+          "28 11": "1-14,17-34",
+          "28 12": "1-6,8-18",
+          "28 13": "1-13,15-26",
+          "28 16": "1-14,17-30",
+          "28 17": "1-4,6-15,17,19-20,22-32",
+          "28 18": "1-2,4-33",
+          "28 19": "1-17,20,22-30",
+          "28 22": "1-6,9-27",
+          "28 24": "1-17,19-23,25-33",
+          "28 25": "1-11,13-26",
+          "28 26": "1-18,28-29",
+          "28 36": "1-13,16-31",
+          "28 37": "1-20,22-31"
+        }
+      }
+    },
+    {
+      "id": "nvbse-omitted-verses",
+      "kind": "omitted-verse",
+      "summary": "The Nova Vulgata leaves out verses its critical text omits (Mt 17:21, Act 8:37, ...) and prints the number in parentheses at the end of the verse before, e.g. '(21)' or '(10. 11)'. Checked against vatican.va (#185). As printed, not a defect.",
+      "expect": {
+        "NVBSE": {
+          "11 15": "1-5,7-34",
+          "28 1": "1-18,21-40",
+          "28 9": "1-9,12-25",
+          "28 19": "1-5,7-28",
+          "28 22": "1-22,24-33",
+          "28 27": "1-2,4-33",
+          "28 29": "1-15,18-20,22,24-35",
+          "28 32": "1-22,24-28",
+          "28 34": "1-10,12-31",
+          "28 35": "1-2,4-26",
+          "28 43": "1-32,34-37",
+          "33 40": "1-13,16-29,31-41,42a,42b,43a,43b,44-49",
+          "47 17": "1-20,22-27",
+          "47 18": "1-10,12-35",
+          "47 23": "1-13,15-39",
+          "48 7": "1-15,17-37",
+          "48 9": "1-43,45,47-50",
+          "48 11": "1-25,27-33",
+          "48 15": "1-27,29-47",
+          "49 17": "1-35,37",
+          "49 23": "1-16,18-56",
+          "50 5": "1-3,5-47",
+          "51 8": "1-36,38-40",
+          "51 15": "1-33,35-41",
+          "51 24": "1-6,9-27",
+          "51 28": "1-28,30-31",
+          "52 16": "1-23,25-27"
+        }
+      }
+    },
+    {
+      "id": "blpd-omitted-verses",
+      "kind": "omitted-verse",
+      "summary": "BLPD leaves out Sir 26:19-27 and Mk 9:44, 9:46 (not in its base text), and prints 1 Kgs 15:6 and 15:32 as a number with a footnote only (in the row of the verse before: '6i', see #180). As on vatican.va (#185). As printed, not a defect.",
+      "expect": {
+        "BLPD": {
+          "11 15": "1-5,7-31,33-34",
+          "28 26": "1-18,28-29",
+          "48 9": "1-43,45,47-50"
+        }
+      }
+    },
+    {
+      "id": "verse-0-superscription",
+      "kind": "superscription",
+      "summary": "An unnumbered line printed before verse 1 is stored as verse 0: the heading of the Letter of Jeremiah (Bar 6, NVBSE and BLPD) and BLPD's 'Aleluya' before Ps 114. As printed (#185).",
+      "expect": {
+        "NVBSE": {
+          "32 6": "0-72"
+        },
+        "BLPD": {
+          "32 6": "0-72",
+          "23 114": "0-8"
+        }
+      }
+    },
+    {
+      "id": "drb-psalm-115-147",
+      "kind": "split-verse",
+      "summary": "Psalms 115 and 147 are halves of Hebrew 116 and 147. The Douay-Rheims keeps the Hebrew verse numbers (115:10-19, 147:12-20, as on drbo.org); the Clementine Vulgate restarts at 1.",
+      "expect": {
+        "DRB": {
+          "23 115": "10-19",
+          "23 147": "12-20"
+        },
+        "VGCL": {
+          "23 115": "1-10",
+          "23 147": "1-9"
+        }
+      }
+    },
+    {
+      "id": "blpd-printed-order",
+      "kind": "reordered",
+      "summary": "BLPD (El Libro del Pueblo de Dios) moves verses or repeats them where its translators restored the order of the original or a parallel (e.g. Gn 47:5-6, 1 Sam 9:9, Is 7:8-9). Stored in the order vatican.va prints them (#185, checked in migration 039). Job 24, 26, 29, 31 and Is 38, where vatican.va's order is in question, are tracked in #192.",
+      "expect": {
+        "BLPD": {
+          "1 47": "1-4,5a,6b,5b,7-31",
+          "7 20": "1-35,36b,37-44,36a,45-48",
+          "9 9": "1-8,10-11,9,12-27",
+          "11 9": "1-15,17b,18-24,16,17a,25-28",
+          "11 11": "1-22,25b,23-24,25a,26-43",
+          "22 14": "1-10,14a,11-22",
+          "23 22": "1-17,16c,18-32",
+          "23 37": "1-7,14c,8-34,40b,34b,35-40",
+          "23 49": "1-8,10,9,11-21",
+          "23 81": "1-6,11c,7-17",
+          "23 91": "1-7,4c,8-16",
+          "23 102": "1-21,29,22-28",
+          "23 146": "1-9,8c,10",
+          "28 43": "1-15,16a,17a,16b,17b,18-33",
+          "29 7": "1-7,8a,9a,8b,9b,10-25",
+          "29 33": "1-21,23,22,23d,24",
+          "29 38": "1-6,22,7-8,21,9-20",
+          "30 5": "1-14,13b,14c,15-31",
+          "30 15": "1-11,15a,12-21",
+          "30 29": "1-14,16-20,15,21-32",
+          "37 5": "1-6,8-9,7,10-27",
+          "40 6": "1-9,12,10-11,13-16",
+          "41 3": "1-17,16b,17b,18-19",
+          "42 2": "1-17,19,18,20",
+          "44 1": "1-6,7a,8,7b,9-15"
         }
       }
     }
