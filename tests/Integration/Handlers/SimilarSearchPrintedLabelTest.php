@@ -56,8 +56,8 @@ final class SimilarSearchPrintedLabelTest extends DatabaseTestCase
         };
         $set('true', self::vec([0.0, 0.0, 0.0, 0.0, 1.0]));
         // The two parts of Job 10:1, and a row equal to their average.
-        $set("verseequiv = '10:1a'", self::vec([1.0, 0.0]));
-        $set('chapter = 10 AND verse = 1', self::vec([0.0, 1.0]));
+        $set("verse_label = '10:1'", self::vec([1.0, 0.0]));
+        $set("chapter = 10 AND verse = 1 AND verse_label = ''", self::vec([0.0, 1.0]));
         $set('chapter = 9 AND verse = 34', self::vec([0.5, 0.5]));
         // Esther 1:1 in two texts; 1:2 GREEK is near the Greek 1:1, 1:2 HEBREW
         // equals the blend of the two 1:1 rows.
@@ -66,7 +66,10 @@ final class SimilarSearchPrintedLabelTest extends DatabaseTestCase
         $set("book = 19 AND verse = 2 AND verseorigin = 'GREEK'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.1]));
         $set("book = 19 AND verse = 2 AND verseorigin = 'HEBREW'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.6, 0.6]));
         // Wis 12:1, and a row close to it.
-        $set("verseequiv = '12:1'", self::vec([0.0, 0.0, 1.0]));
+        $set("verse_label = '12:1'", self::vec([0.0, 0.0, 1.0]));
+        // Mk 9:44 is omitted (no text); give it Mk 9:43's embedding anyway, so a
+        // search that forgot to exclude omitted rows would rank it first.
+        $set('book = 48 AND chapter = 9 AND verse IN (43, 44)', self::vec([0.0, 0.0, 0.0, 1.0]));
         $set('chapter = 12 AND verse = 3', self::vec([0.0, 0.0, 0.9, 0.1]));
     }
 
@@ -106,6 +109,31 @@ final class SimilarSearchPrintedLabelTest extends DatabaseTestCase
         foreach ($results as $r) {
             self::assertNotSame([12, 1], [$r['chapter'], $r['verse']], 'Wis 12:1 itself must be excluded');
         }
+    }
+
+    public function testOmittedRowsNeverReturned(): void
+    {
+        $results = $this->similar('Mk9:43');
+        foreach ($results as $r) {
+            self::assertNotSame([9, 44], [$r['chapter'], $r['verse']], 'an omitted verse must never be returned');
+            self::assertFalse($r['omitted']);
+        }
+    }
+
+    public function testOmittedSourceVerseIs404(): void
+    {
+        $request = ( new ServerRequest('GET', '/v3/search/similar') )
+            ->withQueryParams(['reference' => 'Mk9:44', 'version' => 'TEST3', 'model' => 'minilm']);
+        try {
+            $response = $this->createHandler()->handle($request);
+            $status   = $response->getStatusCode();
+            $detail   = (string) $response->getBody();
+        } catch (\BibleGet\Api\Http\Exception\ApiException $e) {
+            $status = $e->getCode();
+            $detail = $e->getMessage();
+        }
+        self::assertSame(404, $status);
+        self::assertStringContainsString('omitted in this edition', $detail);
     }
 
     public function testSimilarFromSplitVerseAveragesAndExcludesBoth(): void

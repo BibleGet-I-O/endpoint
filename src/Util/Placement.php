@@ -17,6 +17,23 @@ namespace BibleGet\Api\Util;
 final class Placement
 {
     /**
+     * A search result row's verse identity and placement: chapter, verse,
+     * verseequiv (the printed letter, or CEI 2008's psalm cross-number), and
+     * the three placement fields.
+     *
+     * @param array<string, mixed> $row A fetched verse row.
+     * @return array{chapter: int, verse: int, verseequiv: ?string, printed_chapter: ?int, verse_label: ?string, omitted: bool}
+     */
+    public static function verseFields(array $row): array
+    {
+        return [
+            'chapter'    => is_numeric($row['chapter'] ?? null) ? (int) $row['chapter'] : 0,
+            'verse'      => is_numeric($row['verse'] ?? null) ? (int) $row['verse'] : 0,
+            'verseequiv' => is_string($row['verseequiv'] ?? null) ? $row['verseequiv'] : null,
+        ] + self::fromRow($row);
+    }
+
+    /**
      * @param array<string, mixed> $row A fetched verse row.
      * @return array{printed_chapter: ?int, verse_label: ?string, omitted: bool}
      */

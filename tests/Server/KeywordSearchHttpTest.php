@@ -21,7 +21,7 @@ class KeywordSearchHttpTest extends ServerTestCase
         self::assertNotEmpty($body['results']);
     }
 
-    public function testPrintedLabelRowReportsCitedNumbers(): void
+    public function testPrintedLabelRowReportsPlacement(): void
     {
         $r = self::httpGet('/v3/search/keyword?keyword=labelmark&version=TEST3');
         self::assertSame(200, $r['status']);
@@ -29,9 +29,9 @@ class KeywordSearchHttpTest extends ServerTestCase
         $body = self::jsonBody($r['body']);
         $rows = [];
         foreach ($body['results'] as $row) {
-            $rows[] = [(int) $row['chapter'], (int) $row['verse'], $row['verseequiv'] ?? 'missing'];
+            $rows[] = [(int) $row['chapter'], (int) $row['verse'], $row['printed_chapter'] ?? 'missing', $row['verse_label'] ?? 'missing', $row['omitted'] ?? 'missing'];
         }
-        self::assertSame([[10, 1, '10:1a'], [12, 1, '12:1']], $rows);
+        self::assertSame([[10, 1, 9, '10:1', false], [12, 1, 11, '12:1', false]], $rows);
     }
 
     public function testKeywordRouteStemmingWorks(): void

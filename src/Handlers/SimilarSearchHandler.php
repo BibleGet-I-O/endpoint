@@ -10,7 +10,7 @@ use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Util\SearchUtils;
-use BibleGet\Api\Util\PrintedLabel;
+use BibleGet\Api\Util\Placement;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -227,15 +227,15 @@ class SimilarSearchHandler extends AbstractHandler
     {
         $this->assertValidColumn($column);
 
-        // By cited number (PrintedLabel). A verse split across rows (NABRE
+        // By number (rows are stored at their identity). A verse split across rows (NABRE
         // Job 10:1, printed partly after 9:35) starts from the average of
         // its parts' embeddings. Rows of different texts sharing the number
         // (Esther's Hebrew and Greek) are not blended: only one origin is
         // averaged, GREEK first as in quotes, then the first in reading order.
         // verseorigin is NULL outside Esther (production schema): compare with
         // IS NOT DISTINCT FROM, or a verse with no origin matches nothing.
-        $match = 'book = ? AND ' . PrintedLabel::sqlChapter() . ' = ? AND ' . PrintedLabel::sqlVerse() . ' = ?'
-            . ' AND ' . $column . ' IS NOT NULL';
+        $this->assertNotOmitted($pdo, $version, $bookNum, $chapter, $verse);
+        $match = 'book = ? AND chapter = ? AND verse = ? AND NOT omitted AND ' . $column . ' IS NOT NULL';
         $stmt  = $pdo->prepare(
             'SELECT avg(' . $column . ')::text AS embedding FROM "' . $version . '" '
             . 'WHERE ' . $match . ' AND verseorigin IS NOT DISTINCT FROM ('
@@ -254,6 +254,26 @@ class SimilarSearchHandler extends AbstractHandler
         }
 
         return StringUtils::asString($row['embedding']);
+    }
+
+    /**
+     * A verse the edition prints as a number without text (omitted, #180) has no
+     * text to start from: 404, rather than "not found or has no embedding".
+     *
+     * @throws NotFoundException
+     */
+    private function assertNotOmitted(\PDO $pdo, string $version, int $bookNum, int $chapter, int $verse): void
+    {
+        $stmt = $pdo->prepare(
+            'SELECT bool_and(omitted) FROM "' . $version . '" WHERE book = ? AND chapter = ? AND verse = ?'
+        );
+        $stmt->execute([$bookNum, $chapter, $verse]);
+        if ($stmt->fetchColumn() === true) {
+            throw new NotFoundException(
+                'Verse omitted in this edition (printed as a number without text): '
+                . $version . ' book=' . $bookNum . ' chapter=' . $chapter . ' verse=' . $verse
+            );
+        }
     }
 
     /**
@@ -276,8 +296,8 @@ class SimilarSearchHandler extends AbstractHandler
 
         $sql = 'SELECT *, 1 - (' . $column . ' <=> ?::vector) AS score '
              . 'FROM "' . $version . '" '
-             . 'WHERE ' . $column . ' IS NOT NULL '
-             . 'AND NOT (book = ? AND ' . PrintedLabel::sqlChapter() . ' = ? AND ' . PrintedLabel::sqlVerse() . ' = ?) '
+             . 'WHERE ' . $column . ' IS NOT NULL AND NOT omitted '
+             . 'AND NOT (book = ? AND chapter = ? AND verse = ?) '
              . 'ORDER BY ' . $column . ' <=> ?::vector '
              . 'LIMIT ?';
 
@@ -305,11 +325,9 @@ class SimilarSearchHandler extends AbstractHandler
             // null as worse than any numeric score.
             // Unrounded score, carried as `score_exact` so cross-version sorts
             // (SearchUtils::sortByScoreDesc) do not tie on the rounded value.
-            $exact = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
+            $exact     = isset($row['score']) && is_numeric($row['score']) && is_finite((float) $row['score'])
                 ? (float) $row['score']
                 : null;
-
-            $cited     = PrintedLabel::cited($row);
             $entry     = [
                 'version'     => $version,
                 'testament'   => is_numeric($row['testament']) ? (int) $row['testament'] : 0,
@@ -320,11 +338,8 @@ class SimilarSearchHandler extends AbstractHandler
                 'univbooknum' => $row['book'],
                 'book'        => $bookidx !== false ? ( $versionIndex['books'][$bookidx] ?? '' ) : '',
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
-                // Cited numbers: a verse printed under a chapter:verse label
-                // in another chapter is reported by that label (PrintedLabel).
-                'chapter'     => $cited['chapter'],
-                'verse'       => $cited['verse'],
-                'verseequiv'  => is_string($row['verseequiv'] ?? null) ? $row['verseequiv'] : null,
+                // Verse identity and how the edition prints it (Placement).
+                ...Placement::verseFields($row),
                 'score'       => $exact === null ? null : round($exact, 4),
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder
