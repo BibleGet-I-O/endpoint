@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS "TEST3_idx" (
 INSERT INTO "TEST3_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Jb', 'Job', 10, '1,1,1,1,1,1,1,1,35,2', 22),
 ('Wis', 'Wisdom', 12, '1,1,1,1,1,1,1,1,1,1,26,5', 27),
-('Est', 'Esther', 1, '2', 19)
+('Est', 'Esther', 9, '2,1,1,1,1,1,1,1,32', 19)
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS "TEST3" (
@@ -342,11 +342,17 @@ WHERE NOT EXISTS (SELECT 1 FROM "TEST3");
 
 -- Esther: the Hebrew and the Greek text share chapter:verse, told apart by
 -- verseorigin (similar search must start from one of them, not a blend).
+-- 9:29-31 as in CEI 2008: the Greek text has no 9:30.
 INSERT INTO "TEST3" (book, chapter, verse, verseorigin, text, testament, section)
 SELECT * FROM (VALUES
     (19, 1, 1, 'HEBREW', 'Est 1:1 hebrew placeholder', 1, 4),
     (19, 1, 1, 'GREEK', 'Est 1:1 greek placeholder', 1, 4),
     (19, 1, 2, 'HEBREW', 'Est 1:2 hebrew placeholder', 1, 4),
-    (19, 1, 2, 'GREEK', 'Est 1:2 greek placeholder', 1, 4)
+    (19, 1, 2, 'GREEK', 'Est 1:2 greek placeholder', 1, 4),
+    (19, 9, 29, 'HEBREW', 'Est 9:29 hebrew placeholder', 1, 4),
+    (19, 9, 30, 'HEBREW', 'Est 9:30 hebrew placeholder', 1, 4),
+    (19, 9, 31, 'HEBREW', 'Est 9:31 hebrew placeholder', 1, 4),
+    (19, 9, 29, 'GREEK', 'Est 9:29 greek placeholder', 1, 4),
+    (19, 9, 31, 'GREEK', 'Est 9:31 greek placeholder', 1, 4)
 ) AS v(book, chapter, verse, verseorigin, text, testament, section)
 WHERE NOT EXISTS (SELECT 1 FROM "TEST3" WHERE book = 19);
