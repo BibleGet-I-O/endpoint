@@ -149,7 +149,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         self::assertArrayHasKey('canonical_order', $first);
         self::assertIsInt($first['canonical_order']);
         self::assertGreaterThanOrEqual(1, $first['canonical_order']);
-        self::assertArrayNotHasKey('verseID', $first, 'verseID must never cross the API boundary');
+        self::assertArrayNotHasKey('sort_order', $first, 'sort_order must never cross the API boundary');
     }
 
     public function testThresholdFiltersResults(): void
@@ -251,9 +251,9 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         self::assertCount(2, $body['results']);
 
         // Array is in similarity-desc order (book 2 first, book 1 second),
-        // but canonical_order tracks verseID — so the second-array-position
-        // row (book 1, smaller verseID) has canonical_order = 1, and the
-        // first row (book 2, larger verseID) has canonical_order = 2.
+        // but canonical_order tracks sort_order — so the second-array-position
+        // row (book 1, smaller sort_order) has canonical_order = 1, and the
+        // first row (book 2, larger sort_order) has canonical_order = 2.
         self::assertSame(2, $body['results'][0]['canonical_order']);
         self::assertSame(1, $body['results'][1]['canonical_order']);
         self::assertGreaterThan(

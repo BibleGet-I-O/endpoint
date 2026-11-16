@@ -74,7 +74,7 @@ class QuoteHandler extends AbstractHandler
             $executor->executeSQLQueries();
         }
 
-        // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
+        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($ctx->results);
 
         // Build response body

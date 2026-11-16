@@ -101,7 +101,7 @@ class QueryFormulator
             $origin       = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true)
                 ? $preferOrigin
                 : 'GREEK';
-            return " AND verseorigin = '" . $origin . "'";
+            return " AND text_tradition = '" . $origin . "'";
         }
         return '';
     }

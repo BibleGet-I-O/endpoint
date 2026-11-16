@@ -72,28 +72,28 @@ final class SearchUtilsTest extends TestCase
     public function testAssignCanonicalOrderSingleVersionInOrder(): void
     {
         $rows = [
-            ['version' => 'NABRE', 'verseID' => 100, 'text' => 'a'],
-            ['version' => 'NABRE', 'verseID' => 200, 'text' => 'b'],
-            ['version' => 'NABRE', 'verseID' => 300, 'text' => 'c'],
+            ['version' => 'NABRE', 'sort_order' => 100, 'text' => 'a'],
+            ['version' => 'NABRE', 'sort_order' => 200, 'text' => 'b'],
+            ['version' => 'NABRE', 'sort_order' => 300, 'text' => 'c'],
         ];
         SearchUtils::assignCanonicalOrder($rows);
 
         $this->assertSame(1, $rows[0]['canonical_order']);
         $this->assertSame(2, $rows[1]['canonical_order']);
         $this->assertSame(3, $rows[2]['canonical_order']);
-        $this->assertArrayNotHasKey('verseID', $rows[0]);
-        $this->assertArrayNotHasKey('verseID', $rows[1]);
-        $this->assertArrayNotHasKey('verseID', $rows[2]);
+        $this->assertArrayNotHasKey('sort_order', $rows[0]);
+        $this->assertArrayNotHasKey('sort_order', $rows[1]);
+        $this->assertArrayNotHasKey('sort_order', $rows[2]);
     }
 
     public function testAssignCanonicalOrderRanksByVerseIDNotArrayPosition(): void
     {
         // Rows arrived in similarity-descending order; canonical_order must
-        // still rank by the underlying verseID.
+        // still rank by the underlying sort_order.
         $rows = [
-            ['version' => 'NABRE', 'verseID' => 300, 'similarity' => 0.99],
-            ['version' => 'NABRE', 'verseID' => 100, 'similarity' => 0.85],
-            ['version' => 'NABRE', 'verseID' => 200, 'similarity' => 0.72],
+            ['version' => 'NABRE', 'sort_order' => 300, 'similarity' => 0.99],
+            ['version' => 'NABRE', 'sort_order' => 100, 'similarity' => 0.85],
+            ['version' => 'NABRE', 'sort_order' => 200, 'similarity' => 0.72],
         ];
         SearchUtils::assignCanonicalOrder($rows);
 
@@ -101,20 +101,20 @@ final class SearchUtilsTest extends TestCase
         $this->assertSame(0.99, $rows[0]['similarity']);
         $this->assertSame(0.85, $rows[1]['similarity']);
         $this->assertSame(0.72, $rows[2]['similarity']);
-        // …but canonical_order tracks verseID rank.
-        $this->assertSame(3, $rows[0]['canonical_order']); // verseID 300 → rank 3
-        $this->assertSame(1, $rows[1]['canonical_order']); // verseID 100 → rank 1
-        $this->assertSame(2, $rows[2]['canonical_order']); // verseID 200 → rank 2
+        // …but canonical_order tracks sort_order rank.
+        $this->assertSame(3, $rows[0]['canonical_order']); // sort_order 300 → rank 3
+        $this->assertSame(1, $rows[1]['canonical_order']); // sort_order 100 → rank 1
+        $this->assertSame(2, $rows[2]['canonical_order']); // sort_order 200 → rank 2
     }
 
     public function testAssignCanonicalOrderPerVersionPartition(): void
     {
         $rows = [
-            ['version' => 'NABRE',   'verseID' => 50],
-            ['version' => 'CEI2008', 'verseID' => 9000],
-            ['version' => 'NABRE',   'verseID' => 70],
-            ['version' => 'CEI2008', 'verseID' => 9001],
-            ['version' => 'NABRE',   'verseID' => 60],
+            ['version' => 'NABRE',   'sort_order' => 50],
+            ['version' => 'CEI2008', 'sort_order' => 9000],
+            ['version' => 'NABRE',   'sort_order' => 70],
+            ['version' => 'CEI2008', 'sort_order' => 9001],
+            ['version' => 'NABRE',   'sort_order' => 60],
         ];
         SearchUtils::assignCanonicalOrder($rows);
 
@@ -132,11 +132,11 @@ final class SearchUtilsTest extends TestCase
     {
         $rows = [
             ['version' => 'NABRE'],
-            ['version' => 'NABRE', 'verseID' => 100],
+            ['version' => 'NABRE', 'sort_order' => 100],
         ];
         SearchUtils::assignCanonicalOrder($rows);
 
-        // Missing verseID coerces to 0; the row sorts before verseID 100.
+        // Missing sort_order coerces to 0; the row sorts before sort_order 100.
         $this->assertSame(1, $rows[0]['canonical_order']);
         $this->assertSame(2, $rows[1]['canonical_order']);
     }
@@ -155,9 +155,9 @@ final class SearchUtilsTest extends TestCase
         // since 8.0, so the row that appeared first in $rows must end up
         // ranked first; the second tied row gets the next rank.
         $rows = [
-            ['version' => 'NABRE', 'verseID' => 100, 'text' => 'first'],
-            ['version' => 'NABRE', 'verseID' => 100, 'text' => 'second'],
-            ['version' => 'NABRE', 'verseID' => 200, 'text' => 'third'],
+            ['version' => 'NABRE', 'sort_order' => 100, 'text' => 'first'],
+            ['version' => 'NABRE', 'sort_order' => 100, 'text' => 'second'],
+            ['version' => 'NABRE', 'sort_order' => 200, 'text' => 'third'],
         ];
         SearchUtils::assignCanonicalOrder($rows);
 
@@ -218,7 +218,7 @@ final class SearchUtilsTest extends TestCase
 
     public function testAssignCanonicalOrderStripsScoreExact(): void
     {
-        $rows = [['version' => 'X', 'verseID' => 1, 'score' => 0.8, 'score_exact' => 0.80001]];
+        $rows = [['version' => 'X', 'sort_order' => 1, 'score' => 0.8, 'score_exact' => 0.80001]];
         SearchUtils::assignCanonicalOrder($rows);
         $this->assertArrayNotHasKey('score_exact', $rows[0]);
         $this->assertSame(0.8, $rows[0]['score']);

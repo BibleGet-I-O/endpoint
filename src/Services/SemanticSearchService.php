@@ -119,7 +119,7 @@ class SemanticSearchService
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder
                 // can rank rows; unset before the row leaves the handler.
-                'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,
+                'sort_order'  => is_numeric($row['sort_order'] ?? null) ? (int) $row['sort_order'] : 0,
             ];
             $results[] = $entry;
         }

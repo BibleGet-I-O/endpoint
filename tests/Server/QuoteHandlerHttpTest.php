@@ -92,7 +92,32 @@ class QuoteHandlerHttpTest extends ServerTestCase
         self::assertArrayHasKey('version', $verse);
         self::assertArrayHasKey('bookabbrev', $verse);
         self::assertArrayHasKey('originalquery', $verse);
-        self::assertArrayNotHasKey('verseID', $verse);
+        self::assertArrayNotHasKey('sort_order', $verse);
+    }
+
+    /**
+     * Since migration 046 the verse-identity fields have their new names, and
+     * the old ones are gone from every format (a stale client fails visibly).
+     */
+    public function testResponsesCarryNoOldFieldNames(): void
+    {
+        $old = ['verseequiv', 'versedescr', 'verseorigin', 'verseID', 'sort_order'];
+        foreach (['json', 'xml', 'html'] as $format) {
+            $r = self::httpGet('/v3/quote?query=Est1,1-2&version=TEST3&return=' . $format);
+            self::assertSame(200, $r['status'], $format);
+            foreach ($old as $name) {
+                self::assertStringNotContainsString($name, $r['body'], $format . ' carries ' . $name);
+            }
+        }
+
+        $r    = self::httpGet('/v3/quote?query=Est1,1-2&version=TEST3');
+        $body = self::jsonBody($r['body']);
+        self::assertNotSame([], $body['results']);
+        foreach ($body['results'] as $row) {
+            foreach (['verse_segment', 'alt_ref', 'acrostic', 'text_tradition'] as $new) {
+                self::assertArrayHasKey($new, $row);
+            }
+        }
     }
 
     // ── POST with JSON body ────────────────────────────────

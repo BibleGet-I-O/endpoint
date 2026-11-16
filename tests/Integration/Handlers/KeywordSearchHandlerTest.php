@@ -466,7 +466,7 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
 
         $sorted = $orders;
         sort($sorted, SORT_NUMERIC);
-        self::assertSame($sorted, $orders, 'canonical_order is monotonically increasing under default ORDER BY verseID');
+        self::assertSame($sorted, $orders, 'canonical_order is monotonically increasing under default ORDER BY sort_order');
 
         // Single version → first row's canonical_order must be 1.
         self::assertSame(1, $body['results'][0]['canonical_order']);
@@ -482,7 +482,7 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         $body = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
         foreach ($body['results'] as $verse) {
-            self::assertArrayNotHasKey('verseID', $verse, 'verseID must never cross the API boundary');
+            self::assertArrayNotHasKey('sort_order', $verse, 'sort_order must never cross the API boundary');
         }
     }
 

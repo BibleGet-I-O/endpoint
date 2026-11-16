@@ -1227,15 +1227,6 @@
                                     },
                                     "example": 4
                                 },
-                                "versedescr": {
-                                    "type": "string",
-                                    "description": "Not currently used, comes back as a `null` value. Could possible be used in the future for scholarly notes associated with a Bible verse",
-                                    "nullable": true,
-                                    "xml": {
-                                        "attribute": true
-                                    },
-                                    "example": null
-                                },
                                 "verse": {
                                     "type": "string",
                                     "description": "Verse Number of the verse being quoted. *N.B. this is returned as a string because it will not always necessarily be a number value, there are verses that have letters in them. The value must be treated as a string and not as a number.*",
@@ -1244,9 +1235,27 @@
                                     },
                                     "example": "7"
                                 },
-                                "verseequiv": {
+                                "verse_segment": {
                                     "type": "string",
-                                    "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses.",
+                                    "description": "The letter(s) the edition prints after the verse number for a lettered verse (`a` for Gn 2:4a, `aa` for Greek Esther 4:17aa); `verse` holds the number. Null for an unlettered verse.",
+                                    "nullable": true,
+                                    "xml": {
+                                        "attribute": true
+                                    },
+                                    "example": null
+                                },
+                                "alt_ref": {
+                                    "type": "string",
+                                    "description": "The position of this verse in another numbering scheme, when the edition records one: the Greek/Vulgate psalm number in CEI 2008 (`(9,22)`), the Hebrew number of Dan 3:91-100 (`24`), the Vulgate position of a Greek Esther verse in DRB and VGCL (`11:2`). Null for most verses.",
+                                    "nullable": true,
+                                    "xml": {
+                                        "attribute": true
+                                    },
+                                    "example": null
+                                },
+                                "acrostic": {
+                                    "type": "string",
+                                    "description": "The Hebrew letter an acrostic verse falls under, spelled as the edition spells it (`Alef`, `Aleph`), in Psalms 9-10, 25, 34, 37, 111, 112, 119, 145, Proverbs 31, Lamentations, Nahum 1. The edition may also print it as a heading (`title1`-`title3`). Null for other verses.",
                                     "nullable": true,
                                     "xml": {
                                         "attribute": true
@@ -1254,12 +1263,17 @@
                                     "example": null
                                 },
                                 "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
                                 "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
-                                "verseorigin": {
+                                "text_tradition": {
                                     "type": "string",
-                                    "description": "Indicates the origin of the verse text (e.g. GREEK or HEBREW). Will mostly return a `null` value.",
+                                    "description": "Which text tradition the row belongs to, where an edition prints two (Esther: `HEBREW` or `GREEK`). Null for most verses.",
                                     "nullable": true,
+                                    "enum": [
+                                        "HEBREW",
+                                        "GREEK",
+                                        null
+                                    ],
                                     "xml": {
                                         "attribute": true
                                     },
@@ -1581,14 +1595,6 @@
                         },
                         "example": 4
                     },
-                    "versedescr": {
-                        "type": "string",
-                        "description": "Not currently used, comes back as a `null` value. Could possible be used in the future for scholarly notes associated with a Bible verse",
-                        "nullable": true,
-                        "xml": {
-                            "attribute": true
-                        }
-                    },
                     "verse": {
                         "type": "string",
                         "description": "Verse Number of the verse being quoted. *N.B. this is returned as a string because it will not always necessarily be a number value, there are verses that have letters in them. The value must be treated as a string and not as a number.*",
@@ -1597,9 +1603,27 @@
                         },
                         "example": "7"
                     },
-                    "verseequiv": {
+                    "verse_segment": {
                         "type": "string",
-                        "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses.",
+                        "description": "The letter(s) the edition prints after the verse number for a lettered verse (`a` for Gn 2:4a, `aa` for Greek Esther 4:17aa); `verse` holds the number. Null for an unlettered verse.",
+                        "nullable": true,
+                        "xml": {
+                            "attribute": true
+                        },
+                        "example": null
+                    },
+                    "alt_ref": {
+                        "type": "string",
+                        "description": "The position of this verse in another numbering scheme, when the edition records one: the Greek/Vulgate psalm number in CEI 2008 (`(9,22)`), the Hebrew number of Dan 3:91-100 (`24`), the Vulgate position of a Greek Esther verse in DRB and VGCL (`11:2`). Null for most verses.",
+                        "nullable": true,
+                        "xml": {
+                            "attribute": true
+                        },
+                        "example": null
+                    },
+                    "acrostic": {
+                        "type": "string",
+                        "description": "The Hebrew letter an acrostic verse falls under, spelled as the edition spells it (`Alef`, `Aleph`), in Psalms 9-10, 25, 34, 37, 111, 112, 119, 145, Proverbs 31, Lamentations, Nahum 1. The edition may also print it as a heading (`title1`-`title3`). Null for other verses.",
                         "nullable": true,
                         "xml": {
                             "attribute": true
@@ -1607,12 +1631,17 @@
                         "example": null
                     },
                     "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
                     "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
-                    "verseorigin": {
+                    "text_tradition": {
                         "type": "string",
-                        "description": "Indicates the origin of the verse text (e.g. GREEK or HEBREW). Will mostly return a `null` value.",
+                        "description": "Which text tradition the row belongs to, where an edition prints two (Esther: `HEBREW` or `GREEK`). Null for most verses.",
                         "nullable": true,
+                        "enum": [
+                            "HEBREW",
+                            "GREEK",
+                            null
+                        ],
                         "xml": {
                             "attribute": true
                         },
@@ -14463,14 +14492,6 @@
                                         "attribute": true
                                     }
                                 },
-                                "versedescr": {
-                                    "type": "string",
-                                    "description": "Not currently used, comes back as a `null` value. Could possible be used in the future for scholarly notes associated with a Bible verse",
-                                    "nullable": true,
-                                    "xml": {
-                                        "attribute": true
-                                    }
-                                },
                                 "verse": {
                                     "type": "string",
                                     "description": "Verse Number of the verse being quoted. *N.B. this is returned as a string because it will not always necessarily be a number value, there are verses that have letters in them. The value must be treated as a string and not as a number.*",
@@ -14478,24 +14499,49 @@
                                         "attribute": true
                                     }
                                 },
-                                "verseequiv": {
+                                "verse_segment": {
                                     "type": "string",
-                                    "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses.",
+                                    "description": "The letter(s) the edition prints after the verse number for a lettered verse (`a` for Gn 2:4a, `aa` for Greek Esther 4:17aa); `verse` holds the number. Null for an unlettered verse.",
                                     "nullable": true,
                                     "xml": {
                                         "attribute": true
-                                    }
+                                    },
+                                    "example": null
+                                },
+                                "alt_ref": {
+                                    "type": "string",
+                                    "description": "The position of this verse in another numbering scheme, when the edition records one: the Greek/Vulgate psalm number in CEI 2008 (`(9,22)`), the Hebrew number of Dan 3:91-100 (`24`), the Vulgate position of a Greek Esther verse in DRB and VGCL (`11:2`). Null for most verses.",
+                                    "nullable": true,
+                                    "xml": {
+                                        "attribute": true
+                                    },
+                                    "example": null
+                                },
+                                "acrostic": {
+                                    "type": "string",
+                                    "description": "The Hebrew letter an acrostic verse falls under, spelled as the edition spells it (`Alef`, `Aleph`), in Psalms 9-10, 25, 34, 37, 111, 112, 119, 145, Proverbs 31, Lamentations, Nahum 1. The edition may also print it as a heading (`title1`-`title3`). Null for other verses.",
+                                    "nullable": true,
+                                    "xml": {
+                                        "attribute": true
+                                    },
+                                    "example": null
                                 },
                                 "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
                                 "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
-                                "verseorigin": {
+                                "text_tradition": {
                                     "type": "string",
-                                    "description": "Indicates the origin of the verse text (e.g. GREEK or HEBREW). Will mostly return a `null` value.",
+                                    "description": "Which text tradition the row belongs to, where an edition prints two (Esther: `HEBREW` or `GREEK`). Null for most verses.",
                                     "nullable": true,
+                                    "enum": [
+                                        "HEBREW",
+                                        "GREEK",
+                                        null
+                                    ],
                                     "xml": {
                                         "attribute": true
-                                    }
+                                    },
+                                    "example": null
                                 },
                                 "text": {
                                     "type": "string",
@@ -14601,10 +14647,11 @@
                             "section": 2,
                             "book": "1Maccabees",
                             "chapter": 9,
-                            "versedescr": null,
                             "verse": "7",
-                            "verseequiv": null,
-                            "verseorigin": null,
+                            "verse_segment": null,
+                            "alt_ref": null,
+                            "acrostic": null,
+                            "text_tradition": null,
                             "text": "When Judas saw that his army was melting away just as the battle was imminent, he was brokenhearted, because he had no time to gather them together. ",
                             "title1": "",
                             "title2": "",
@@ -14622,10 +14669,11 @@
                             "section": 3,
                             "book": "Psalms",
                             "chapter": 34,
-                            "versedescr": null,
                             "verse": "19",
-                            "verseequiv": null,
-                            "verseorigin": null,
+                            "verse_segment": null,
+                            "alt_ref": null,
+                            "acrostic": null,
+                            "text_tradition": null,
                             "text": "<po>The L<sm>ORD</sm> is close to the brokenhearted,</po>\n<poi>saves those whose spirit is crushed.</poi>",
                             "title1": "",
                             "title2": "",
@@ -14643,10 +14691,11 @@
                             "section": 3,
                             "book": "Psalms",
                             "chapter": 109,
-                            "versedescr": null,
                             "verse": "16",
-                            "verseequiv": null,
-                            "verseorigin": null,
+                            "verse_segment": null,
+                            "alt_ref": null,
+                            "acrostic": null,
+                            "text_tradition": null,
                             "text": "<po>For he did not remember to show mercy,</po>\n<poi>but hounded the wretched poor</poi>\n<poi>and brought death to the brokenhearted.</poi>",
                             "title1": "",
                             "title2": "",
@@ -14664,10 +14713,11 @@
                             "section": 3,
                             "book": "Psalms",
                             "chapter": 147,
-                            "versedescr": null,
                             "verse": "3",
-                            "verseequiv": null,
-                            "verseorigin": null,
+                            "verse_segment": null,
+                            "alt_ref": null,
+                            "acrostic": null,
+                            "text_tradition": null,
                             "text": "<po>Healing the brokenhearted,</po>\n<poi>and binding up their wounds.</poi>",
                             "title1": "",
                             "title2": "",
@@ -14685,10 +14735,11 @@
                             "section": 4,
                             "book": "Isaiah",
                             "chapter": 61,
-                            "versedescr": null,
                             "verse": "1",
-                            "verseequiv": null,
-                            "verseorigin": null,
+                            "verse_segment": null,
+                            "alt_ref": null,
+                            "acrostic": null,
+                            "text_tradition": null,
                             "text": "<pof> The spirit of the Lord G<sm>OD</sm> is upon me,</pof>\n<poi>because the L<sm>ORD</sm> has anointed me;</poi>\n<po>He has sent me to bring good news to the afflicted,</po>\n<poi>to bind up the brokenhearted,</poi>\n<po>To proclaim liberty to the captives,</po>\n<poi>release to the prisoners,</poi>",
                             "title1": "",
                             "title2": "",
@@ -14896,13 +14947,18 @@
                     "verse": {
                         "type": "integer"
                     },
-                    "verseequiv": {
+                    "verse_segment": {
                         "type": "string",
-                        "nullable": true,
-                        "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses."
+                        "description": "The letter(s) the edition prints after the verse number for a lettered verse (`a` for Gn 2:4a, `aa` for Greek Esther 4:17aa); `verse` holds the number. Null for an unlettered verse.",
+                        "nullable": true
+                    },
+                    "alt_ref": {
+                        "type": "string",
+                        "description": "The position of this verse in another numbering scheme, when the edition records one: the Greek/Vulgate psalm number in CEI 2008 (`(9,22)`), the Hebrew number of Dan 3:91-100 (`24`), the Vulgate position of a Greek Esther verse in DRB and VGCL (`11:2`). Null for most verses.",
+                        "nullable": true
                     },
                     "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
                     "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
                     "text": {
                         "type": "string",
@@ -15014,13 +15070,18 @@
                     "verse": {
                         "type": "integer"
                     },
-                    "verseequiv": {
+                    "verse_segment": {
                         "type": "string",
-                        "nullable": true,
-                        "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses."
+                        "description": "The letter(s) the edition prints after the verse number for a lettered verse (`a` for Gn 2:4a, `aa` for Greek Esther 4:17aa); `verse` holds the number. Null for an unlettered verse.",
+                        "nullable": true
+                    },
+                    "alt_ref": {
+                        "type": "string",
+                        "description": "The position of this verse in another numbering scheme, when the edition records one: the Greek/Vulgate psalm number in CEI 2008 (`(9,22)`), the Hebrew number of Dan 3:91-100 (`24`), the Vulgate position of a Greek Esther verse in DRB and VGCL (`11:2`). Null for most verses.",
+                        "nullable": true
                     },
                     "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
                     "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
                     "text": {
                         "type": "string",

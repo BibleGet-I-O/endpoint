@@ -124,7 +124,7 @@ class SimilarSearchHandler extends AbstractHandler
             $allResults = array_slice($allResults, 0, $limit);
         }
 
-        // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
+        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($allResults);
 
         $body          = new \stdClass();
@@ -232,15 +232,15 @@ class SimilarSearchHandler extends AbstractHandler
         // its parts' embeddings. Rows of different texts sharing the number
         // (Esther's Hebrew and Greek) are not blended: only one origin is
         // averaged, GREEK first as in quotes, then the first in reading order.
-        // verseorigin is NULL outside Esther (production schema): compare with
+        // text_tradition is NULL outside Esther (production schema): compare with
         // IS NOT DISTINCT FROM, or a verse with no origin matches nothing.
         $this->assertNotOmitted($pdo, $version, $bookNum, $chapter, $verse);
         $match = 'book = ? AND chapter = ? AND verse = ? AND NOT omitted AND ' . $column . ' IS NOT NULL';
         $stmt  = $pdo->prepare(
             'SELECT avg(' . $column . ')::text AS embedding FROM "' . $version . '" '
-            . 'WHERE ' . $match . ' AND verseorigin IS NOT DISTINCT FROM ('
-            . 'SELECT verseorigin FROM "' . $version . '" WHERE ' . $match
-            . ' ORDER BY (verseorigin = \'GREEK\') IS TRUE DESC, "verseID" LIMIT 1)'
+            . 'WHERE ' . $match . ' AND text_tradition IS NOT DISTINCT FROM ('
+            . 'SELECT text_tradition FROM "' . $version . '" WHERE ' . $match
+            . ' ORDER BY (text_tradition = \'GREEK\') IS TRUE DESC, sort_order LIMIT 1)'
         );
         $stmt->execute([$bookNum, $chapter, $verse, $bookNum, $chapter, $verse]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -344,7 +344,7 @@ class SimilarSearchHandler extends AbstractHandler
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder
                 // can rank rows; unset before the row leaves the handler.
-                'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,
+                'sort_order'  => is_numeric($row['sort_order'] ?? null) ? (int) $row['sort_order'] : 0,
             ];
             $results[] = $entry;
         }

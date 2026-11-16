@@ -393,7 +393,7 @@ class QueryExecutor
         $row['book']        = $this->ctx->INDEXES[$currentVariant]['biblebooks'][$booknum];
 
         $row['section'] = is_numeric($row['section']) ? (int) $row['section'] : 0;
-        // verseID is kept here so SearchUtils::assignCanonicalOrder (called by
+        // sort_order is kept here so SearchUtils::assignCanonicalOrder (called by
         // QuoteHandler after the pipeline runs) can rank rows; it is unset
         // by the helper before the row leaves the API boundary.
         unset($row['embedding'], $row['text_hash'], $row['embedded_text_hash']);

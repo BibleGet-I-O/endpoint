@@ -188,14 +188,14 @@ class SearchUtils
 
     /**
      * Assign a per-version 1-based `canonical_order` to each row, derived
-     * from the row's `verseID` (the subverse-aware canonical-order key the
-     * server has always used internally). Removes `verseID` from each row
+     * from the row's `sort_order` (the subverse-aware canonical-order key the
+     * server has always used internally). Removes `sort_order` from each row
      * after ranking, so the column never leaves the API boundary; likewise the
      * internal `score_exact` sort key.
      *
      * Within each `version` partition rows are ranked 1..N in ascending
-     * `verseID` order. The original $rows order is preserved — only the
-     * `canonical_order` field is added (and `verseID` is removed).
+     * `sort_order` order. The original $rows order is preserved — only the
+     * `canonical_order` field is added (and `sort_order` is removed).
      *
      * @param array<int, array<string, mixed>> $rows
      */
@@ -206,8 +206,8 @@ class SearchUtils
 
         foreach ($rows as $i => $row) {
             $version                 = is_string($row['version'] ?? null) ? $row['version'] : '';
-            $verseID                 = is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0;
-            $byVersion[$version][$i] = $verseID;
+            $sortOrder               = is_numeric($row['sort_order'] ?? null) ? (int) $row['sort_order'] : 0;
+            $byVersion[$version][$i] = $sortOrder;
         }
 
         foreach ($byVersion as $verseIDsByIndex) {
@@ -220,7 +220,7 @@ class SearchUtils
 
         foreach ($rows as $i => &$row) {
             $row['canonical_order'] = $rankByIndex[$i] ?? 0;
-            unset($row['verseID'], $row['score_exact']);
+            unset($row['sort_order'], $row['score_exact']);
         }
     }
 }

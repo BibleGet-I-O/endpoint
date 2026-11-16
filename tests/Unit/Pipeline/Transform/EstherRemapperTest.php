@@ -111,9 +111,9 @@ final class EstherRemapperTest extends TestCase
     public function testDefaultPreferOriginPassedThrough(): void
     {
         $query          = new BibleQuery(19, [new VerseRef(19, 5, null, 1)]);
-        [$result, $pos] = $this->remapper->remap($query, 'VGCL', " AND verseorigin = 'HEBREW'");
+        [$result, $pos] = $this->remapper->remap($query, 'VGCL', " AND text_tradition = 'HEBREW'");
 
-        $this->assertSame([" AND verseorigin = 'HEBREW'"], $pos);
+        $this->assertSame([" AND text_tradition = 'HEBREW'"], $pos);
     }
 
     // ── Per-segment origins ────────────────────────────────────

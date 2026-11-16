@@ -16,7 +16,7 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * - Non-consecutive verses (multiple segments → multiple SQL queries)
  * - preferorigin annotation for Psalms
  * - Copyright-limited verse count (LIMIT 30)
- * - ORDER BY verseID
+ * - ORDER BY sort_order
  *
  * A reference selects verses by their number: every row is stored at its
  * identity (chapter, verse), and where the edition prints it is recorded
@@ -61,7 +61,7 @@ final class SqlCompiler
                 ? ( $preferOrigin[$i] ?? '' )
                 : $preferOrigin;
             $sql          .= $segmentOrigin;
-            $sql          .= ' ORDER BY "verseID"';
+            $sql          .= ' ORDER BY sort_order';
 
             if ($isCopied) {
                 $sql .= ' LIMIT 30';

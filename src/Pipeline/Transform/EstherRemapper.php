@@ -13,7 +13,7 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * VGCL and DRB Catholic versions (Greek additions to Esther).
  *
  * Book 19 = Esther in the Catholic canon. Chapters 10–16 contain the Greek
- * additions which require verseorigin filtering.
+ * additions which require text_tradition filtering.
  *
  * This is a pure function of the AST — no database access, no SQL.
  */
@@ -57,7 +57,7 @@ final class EstherRemapper
      * annotation to use. If no remapping applies, returns the query unchanged.
      *
      * Returns per-segment preferOrigin strings so each non-consecutive chunk
-     * gets the correct verseorigin filter (matching legacy per-chunk behavior).
+     * gets the correct text_tradition filter (matching legacy per-chunk behavior).
      *
      * @return array{BibleQuery, array<int, string>} [remappedQuery, perSegmentPreferOrigins]
      */
@@ -124,7 +124,7 @@ final class EstherRemapper
                     ? $verse === null
                     : $verse !== null && $verse >= $rngMin && $verse <= ( $rngMax ?? $rngMin );
                 if ($verseInRange) {
-                    return [$mapping['map'][0], $mapping['map'][1], " AND verseorigin = 'GREEK'"];
+                    return [$mapping['map'][0], $mapping['map'][1], " AND text_tradition = 'GREEK'"];
                 }
             }
         }
