@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -242,7 +242,7 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     title_position SMALLINT,
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -312,7 +312,7 @@ CREATE TABLE IF NOT EXISTS "TEST3" (
     title3      VARCHAR(255) NOT NULL DEFAULT '',
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
-    verseorigin VARCHAR(10) NOT NULL DEFAULT '',
+    verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
     verseequiv  VARCHAR(10) DEFAULT NULL,
     versedescr  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),

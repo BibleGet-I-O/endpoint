@@ -232,13 +232,15 @@ class SimilarSearchHandler extends AbstractHandler
         // its parts' embeddings. Rows of different texts sharing the number
         // (Esther's Hebrew and Greek) are not blended: only one origin is
         // averaged, GREEK first as in quotes, then the first in reading order.
+        // verseorigin is NULL outside Esther (production schema): compare with
+        // IS NOT DISTINCT FROM, or a verse with no origin matches nothing.
         $match = 'book = ? AND ' . PrintedLabel::sqlChapter() . ' = ? AND ' . PrintedLabel::sqlVerse() . ' = ?'
             . ' AND ' . $column . ' IS NOT NULL';
         $stmt  = $pdo->prepare(
             'SELECT avg(' . $column . ')::text AS embedding FROM "' . $version . '" '
-            . 'WHERE ' . $match . ' AND verseorigin = ('
+            . 'WHERE ' . $match . ' AND verseorigin IS NOT DISTINCT FROM ('
             . 'SELECT verseorigin FROM "' . $version . '" WHERE ' . $match
-            . ' ORDER BY (verseorigin = \'GREEK\') DESC, "verseID" LIMIT 1)'
+            . ' ORDER BY (verseorigin = \'GREEK\') IS TRUE DESC, "verseID" LIMIT 1)'
         );
         $stmt->execute([$bookNum, $chapter, $verse, $bookNum, $chapter, $verse]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
