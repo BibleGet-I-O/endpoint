@@ -1071,6 +1071,7 @@
                     "appid"
                 ]
             },
+            "QuoteNotice": {"type": "object", "description": "Informational, never an error. VERSE_OMITTED: every verse a requested segment asks for is omitted in this edition (the rows are still returned, with `omitted: true`). In HTML responses notices are only in a hidden input (`class=\"BibleGetNotices\"`) in the info block.", "required": ["code", "version", "book", "chapter", "verse_from", "verse_to", "reference", "message"], "properties": {"code": {"type": "string", "enum": ["VERSE_OMITTED"]}, "version": {"type": "string"}, "book": {"type": "integer", "description": "Universal book number"}, "chapter": {"type": "integer"}, "verse_from": {"type": "integer"}, "verse_to": {"type": "integer"}, "reference": {"type": "string", "description": "For display only (not to be parsed): the book as the user wrote it, chapter and verses in the user's notation, e.g. `Mk 9:44` or `Mc 9,44`."}, "message": {"type": "string", "description": "English message, e.g. `Mark 9:44 is not in the text of this edition: the critical text omits it; the number is printed without text.`"}}},
             "BibleQuoteResponseJSON": {
                 "type": "object",
                 "properties": {
@@ -1252,6 +1253,9 @@
                                     },
                                     "example": null
                                 },
+                                "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
+                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                                "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
                                 "verseorigin": {
                                     "type": "string",
                                     "description": "Indicates the origin of the verse text (e.g. GREEK or HEBREW). Will mostly return a `null` value.",
@@ -1335,6 +1339,7 @@
                             "type": "string"
                         }
                     },
+                    "notices": {"type": "array", "items": {"$ref": "#/components/schemas/QuoteNotice"}, "description": "Always present; empty when there are none."},
                     "info": {
                         "type": "object",
                         "description": "An object containing metadata about the API endpoint",
@@ -1601,6 +1606,9 @@
                         },
                         "example": null
                     },
+                    "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
+                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                    "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
                     "verseorigin": {
                         "type": "string",
                         "description": "Indicates the origin of the verse text (e.g. GREEK or HEBREW). Will mostly return a `null` value.",
@@ -14478,6 +14486,9 @@
                                         "attribute": true
                                     }
                                 },
+                                "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
+                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                                "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
                                 "verseorigin": {
                                     "type": "string",
                                     "description": "Indicates the origin of the verse text (e.g. GREEK or HEBREW). Will mostly return a `null` value.",
@@ -14890,6 +14901,9 @@
                         "nullable": true,
                         "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses."
                     },
+                    "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
+                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                    "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
                     "text": {
                         "type": "string",
                         "description": "The verse text"
@@ -15005,6 +15019,9 @@
                         "nullable": true,
                         "description": "The printed label of a verse when it differs from the verse number: a lettered segment the edition prints (`18a`), or a `chapter:verse` label printed in another chapter (NABRE prints Wis 12:1 after 11:26, labelled `12:1`, and the first words of Job 10:1 after 9:35, labelled `10:1`, stored as `10:1a`). In that case `chapter` and `verse` give the verse's own number (12, 1) and this field keeps the printed label. `null` for most verses."
                     },
+                    "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
+                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verseequiv`'s letter)."},
+                    "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
                     "text": {
                         "type": "string",
                         "description": "The verse text"
