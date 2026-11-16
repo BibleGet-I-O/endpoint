@@ -315,8 +315,10 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
         # content, or --check would report it stale forever. Not for the other
         # columns: there an xor mismatch is the only staleness signal (see "Known
         # asymmetry" below), and refreshing it would hide stale vectors.
+        # Only the checksum: no vector was computed, so the model metadata
+        # (name, version, dimensions) still describes the stored vectors.
         if column == DEFAULT_COLUMN and has_text_hash_column(conn, version):
-            update_metadata(conn, version, column, MODEL_NAME, dim, compute_content_xor(conn, version), MODEL_VERSION)
+            update_content_xor(conn, version, column, compute_content_xor(conn, version))
         print(f"  {version}: no verses to process (all up to date)")
         return 0
 
@@ -341,6 +343,17 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
 
     print(f"  {version}: done ({total_written} embeddings)")
     return total_written
+
+
+def update_content_xor(conn, version, column, content_xor):
+    """Record the current content checksum of an existing embedding_metadata row,
+    leaving the model fields alone (nothing was recomputed). No row: nothing to do."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE embedding_metadata SET content_xor = %s WHERE version_sigla = %s AND column_name = %s",
+            (content_xor, version, column),
+        )
+    conn.commit()
 
 
 def update_metadata(conn, version, column, model_name, dimensions, content_xor=None, model_version=""):

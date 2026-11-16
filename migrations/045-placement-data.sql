@@ -62,11 +62,22 @@ BEGIN
         GET DIAGNOSTICS n = ROW_COUNT;
         IF n <> 1 THEN RAISE EXCEPTION 'NABRE Job 10:1 (first part): % rows, expected 1', n; END IF;
     END IF;
+    -- Moved already, or never there: either way the rows must now be where 045 puts them.
+    IF (SELECT count(*) FROM "NABRE" WHERE book = 22 AND chapter = 10 AND verse = 1 AND printed_chapter = 9
+          AND verse_label = '10:1' AND verseequiv IS NULL AND md5(text) = 'c92a2696f8c8c3717482e39dc3c6ca7f') <> 1
+       OR (SELECT count(*) FROM "NABRE" WHERE book = 22 AND chapter = 10 AND verse = 1 AND printed_chapter IS NULL
+          AND verse_label = '' AND md5(text) = '58f52734e0e5f9cf6defb92da431afc9') <> 1 THEN
+        RAISE EXCEPTION 'NABRE Job 10:1: the two rows are not stored as expected (10:1 printed in 9 as "10:1", 10:1 unnumbered)';
+    END IF;
     IF EXISTS (SELECT 1 FROM "NABRE" WHERE book = 27 AND chapter = 11 AND verse = 26 AND verseequiv = '12:1') THEN
         UPDATE "NABRE" SET chapter = 12, verse = 1, verseequiv = NULL, printed_chapter = 11, verse_label = '12:1'
          WHERE book = 27 AND chapter = 11 AND verse = 26 AND verseequiv = '12:1' AND md5(text) = '84cc13c50de0013aaaa974a3c21ffb72';
         GET DIAGNOSTICS n = ROW_COUNT;
         IF n <> 1 THEN RAISE EXCEPTION 'NABRE Wis 12:1: % rows, expected 1', n; END IF;
+    END IF;
+    IF (SELECT count(*) FROM "NABRE" WHERE book = 27 AND chapter = 12 AND verse = 1 AND printed_chapter = 11
+          AND verse_label = '12:1' AND verseequiv IS NULL AND md5(text) = '84cc13c50de0013aaaa974a3c21ffb72') <> 1 THEN
+        RAISE EXCEPTION 'NABRE Wis 12:1: not stored as expected (12:1 printed in 11 as "12:1")';
     END IF;
     UPDATE "NABRE" SET printed_chapter = 8, verse_label = '7:53'
      WHERE book = 50 AND chapter = 7 AND verse = 53 AND md5(text) = 'b2ee6e036acc990fd149352e0edec2fa';
@@ -76,12 +87,23 @@ BEGIN
     -- NABRE Rom 16:24 held "]\n [" with the heading "Doxology" between: NABRE prints
     -- "[24]" (omitted), the heading, then "[25 ... 27 Amen.]". The heading and the
     -- opening bracket belong to 16:25 (16:27 holds the closing one).
-    UPDATE "NABRE" SET text = '[' || text, title1 = 'Doxology', title_position = NULL,
-                       embedding = NULL, embedding_labse = NULL, embedded_text_hash = NULL
-     WHERE book = 52 AND chapter = 16 AND verse = 25 AND md5(text) = '43831b25f040e46756d93285d538738b'
-       AND coalesce(title1, '') = '';
-    UPDATE "NABRE" SET title1 = '', title_position = NULL
-     WHERE book = 52 AND chapter = 16 AND verse = 24 AND md5(text) = '371153b633a031b525f6b6b54cff71b6';
+    IF NOT EXISTS (SELECT 1 FROM "NABRE" WHERE book = 52 AND chapter = 16 AND verse = 25 AND title1 = 'Doxology') THEN
+        UPDATE "NABRE" SET text = '[' || text, title1 = 'Doxology', title_position = NULL,
+                           embedding = NULL, embedding_labse = NULL, embedded_text_hash = NULL
+         WHERE book = 52 AND chapter = 16 AND verse = 25 AND md5(text) = '43831b25f040e46756d93285d538738b'
+           AND coalesce(title1, '') = '';
+        GET DIAGNOSTICS n = ROW_COUNT;
+        IF n <> 1 THEN RAISE EXCEPTION 'NABRE Rom 16:25: % rows, expected 1', n; END IF;
+        UPDATE "NABRE" SET title1 = '', title_position = NULL
+         WHERE book = 52 AND chapter = 16 AND verse = 24 AND md5(text) = '371153b633a031b525f6b6b54cff71b6';
+        GET DIAGNOSTICS n = ROW_COUNT;
+        IF n <> 1 THEN RAISE EXCEPTION 'NABRE Rom 16:24: % rows, expected 1', n; END IF;
+    END IF;
+    IF (SELECT count(*) FROM "NABRE" WHERE book = 52 AND chapter = 16 AND verse = 25 AND title1 = 'Doxology'
+          AND title_position IS NULL AND left(text, 1) = '[') <> 1
+       OR EXISTS (SELECT 1 FROM "NABRE" WHERE book = 52 AND chapter = 16 AND verse = 24 AND coalesce(title1, '') <> '') THEN
+        RAISE EXCEPTION 'NABRE Rom 16:24-25: the Doxology heading and bracket are not on 16:25';
+    END IF;
 
     -- Omitted verses: by key, and only where the text is a placeholder (or already done).
     -- CEI2008 Act 8:37 held bracketed text the edition does not print (see above).
