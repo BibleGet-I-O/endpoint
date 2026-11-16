@@ -99,6 +99,7 @@ jobs:
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/036-requests-log-query-text.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/043-keyword-search-unaccent.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/044-placement-columns.sql
+          PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/046-verse-identity-columns.sql
 
       - name: Run unit tests
         run: vendor/bin/phpunit --testsuite Unit --testdox --display-warnings
