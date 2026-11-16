@@ -309,6 +309,10 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
 
     verses = load_verses(conn, version, column, force=force)
     if not verses:
+        # Every embedded verse matches its text; the content may still have changed
+        # where nothing is embedded (an omitted verse emptied, migration 045), so
+        # record the current content, or --check would report it stale forever.
+        update_metadata(conn, version, column, MODEL_NAME, dim, compute_content_xor(conn, version), MODEL_VERSION)
         print(f"  {version}: no verses to process (all up to date)")
         return 0
 

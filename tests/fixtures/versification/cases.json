@@ -1222,7 +1222,7 @@
     {
       "id": "nabre-wis-12-1",
       "kind": "chapter-boundary",
-      "summary": "NABRE prints Wis 12:1 at the end of chapter 11, after 11:26, and starts chapter 12 at verse 2. The row is stored as printed: chapter 11, verse 26, verseequiv '12:1'. Deliberate, not a defect.",
+      "summary": "NABRE prints Wis 12:1 at the end of chapter 11, after 11:26, labelled 12:1, and starts chapter 12 at verse 2. Since migration 045 the row is stored as 12:1 (its identity) with printed_chapter 11 and verse_label '12:1'; snapshots show the printed layout. Deliberate, not a defect.",
       "expect": {
         "NABRE": {
           "27 11": "1-26,12:1",
@@ -1237,11 +1237,11 @@
     {
       "id": "nabre-job-10-1a",
       "kind": "chapter-boundary",
-      "summary": "NABRE prints the first words of Job 10:1 ('I loathe my life.') at the end of chapter 9, labelled 10:1; chapter 10 opens with the rest of verse 1. Stored as chapter 9, verse 35, verseequiv '10:1a', then 10:1. Deliberate, not a defect.",
+      "summary": "NABRE prints the first words of Job 10:1 (\"I loathe my life.\") at the end of chapter 9, labelled 10:1, and opens chapter 10 with the rest of the verse, unnumbered. Since migration 045 both rows are stored as 10:1 (their identity), the first with printed_chapter 9 and verse_label '10:1', the second with verse_label '' (written · in the snapshot). Deliberate, not a defect.",
       "expect": {
         "NABRE": {
-          "22 9": "1-35,10:1a",
-          "22 10": "1-22"
+          "22 9": "1-35,10:1",
+          "22 10": "·,2-22"
         },
         "CEI2008": {
           "22 9": "1-35",
@@ -1337,10 +1337,10 @@
     {
       "id": "blpd-omitted-verses",
       "kind": "omitted-verse",
-      "summary": "BLPD leaves out Sir 26:19-27 and Mk 9:44, 9:46 (not in its base text), and prints 1 Kgs 15:6 and 15:32 as a number with a footnote only (in the row of the verse before: '6i', see #180). As on vatican.va (#185). As printed, not a defect.",
+      "summary": "BLPD leaves out Sir 26:19-27 and Mk 9:44, 9:46 (not in its base text: no verse number printed). 1 Kgs 15:6 and 15:32 are printed as a bare number with a footnote: since migration 045 they are rows with omitted = true (#180). As on vatican.va (#185). As printed, not a defect.",
       "expect": {
         "BLPD": {
-          "11 15": "1-5,7-31,33-34",
+          "11 15": "1-34",
           "28 26": "1-18,28-29",
           "48 9": "1-43,45,47-50"
         }
@@ -1406,6 +1406,21 @@
           "41 3": "1-17,16b,17b,18-19",
           "42 2": "1-17,19,18,20",
           "44 1": "1-6,7a,8,7b,9-15"
+        }
+      }
+    },
+    {
+      "id": "nabre-john-7-53",
+      "kind": "chapter-boundary",
+      "summary": "NABRE prints John 7:53 under CHAPTER 8, before 8:1, labelled 7:53, so the story of the woman caught in adultery (7:53-8:11) reads as one unit. The row is stored as 7:53 (its identity) with printed_chapter 8 and verse_label '7:53' (migration 045); snapshots show the printed layout. Deliberate, not a defect.",
+      "expect": {
+        "NABRE": {
+          "50 7": "1-52",
+          "50 8": "7:53,1-59"
+        },
+        "CEI2008": {
+          "50 7": "1-53",
+          "50 8": "1-59"
         }
       }
     }

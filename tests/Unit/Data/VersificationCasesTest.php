@@ -157,8 +157,10 @@ final class VersificationCasesTest extends TestCase
                 if (str_starts_with($line, '#')) {
                     continue;
                 }
+                // A label: a number or range, a lettered verse, a chapter:verse label
+                // printed in another chapter, or · (printed without a number).
                 $this->assertMatchesRegularExpression(
-                    '/^\d+ \d+(?: (?:HEBREW|GREEK))?: (?:(?:\d+:)?\d+[a-z]*(?:-\d+)?)(?:,(?:\d+:)?\d+[a-z]*(?:-\d+)?)*$/',
+                    '/^\d+ \d+(?: (?:HEBREW|GREEK))?: (?:·|(?:\d+:)?\d+[a-z]*(?:-\d+)?)(?:,(?:·|(?:\d+:)?\d+[a-z]*(?:-\d+)?))*$/u',
                     $line,
                     basename($file) . ':' . ( $n + 1 )
                 );
