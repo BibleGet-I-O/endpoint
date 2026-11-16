@@ -618,7 +618,7 @@
         "/search/keyword": {
             "get": {
                 "summary": "Text-based keyword search with stemming support",
-                "description": "Search Bible verses by keyword with configurable match modes. The `fulltext` mode (default) uses language-aware stemming so that e.g. searching 'forgive' also matches 'forgiveness' and 'forgiven'. The `exact` mode uses regex word-boundary matching with no minimum keyword length. The `boolean` mode supports explicit operators like `&` (AND), `|` (OR), and `!` (NOT).",
+                "description": "Search Bible verses by keyword with configurable match modes. The `fulltext` mode (default) uses language-aware stemming so that e.g. searching 'forgive' also matches 'forgiveness' and 'forgiven'. The `exact` mode uses regex word-boundary matching with no minimum keyword length. The `boolean` mode supports explicit operators like `&` (AND), `|` (OR), and `!` (NOT). In every mode, accents, diaereses and ligatures are ignored on both sides: 'Israel' also finds 'Israël' and 'Isræl', 'caelum' finds 'cælum'; results keep the edition's spelling.",
                 "operationId": "keywordSearchByGET",
                 "tags": [
                     "SearchAPI"
