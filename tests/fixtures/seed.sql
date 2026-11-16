@@ -24,7 +24,8 @@ INSERT INTO "TEST1_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Gen', 'Genesis', 3, '10,8,5', 1),
 ('Exod', 'Exodus', 2, '7,5', 2),
 ('Lev', 'Leviticus', 2, '6,4', 3),
-('Ps', 'Psalms', 55, '6,12,8,8,12,10,17,9,21,18,7,8,6,7,5,11,15,10,21,18,7,8,6,10,12,12,10,17,9,3,5,16,8,8,10,13,18,7,14,11,19,17,8,4,3,13,14,7,13,12,19,6,12,8,6,12,5,4,8,3,11,11,8,10,13,6,5,17,9,14,10,17,7,13,20,6,10,7,13,7,18,6', 23)
+('Ps', 'Psalms', 55, '6,12,8,8,12,10,17,9,21,18,7,8,6,7,5,11,15,10,21,18,7,8,6,10,12,12,10,17,9,3,5,16,8,8,10,13,18,7,14,11,19,17,8,4,3,13,14,7,13,12,19,6,12,8,6,12,5,4,8,3,11,11,8,10,13,6,5,17,9,14,10,17,7,13,20,6,10,7,13,7,18,6', 23),
+('Mk', 'Mark', 9, '1,1,1,1,1,1,1,1,48', 48)
 ON CONFLICT DO NOTHING;
 
 -- Index tables for TEST2 (3 books)
@@ -120,6 +121,11 @@ ON CONFLICT DO NOTHING;
 INSERT INTO "TEST1" (book, chapter, verse, text, title1, title_position, testament, section) VALUES
 (1, 3, 1, E'<pof>Now the serpent was the most cunning</pof>\n<poi>of all the animals that the L<sm>ORD</sm> God had made.</poi>', '', NULL, 1, 1),
 (1, 3, 2, 'The woman answered the serpent. We may eat of the fruit of the trees in the garden.', 'The woman replies', 32, 1, 1)
+ON CONFLICT DO NOTHING;
+
+-- Mk 9:44 with its text (an edition that prints it), next to TEST3's omitted one.
+INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
+(48, 9, 44, 'Where their worm dieth not, and the fire is not quenched.', 2, 7)
 ON CONFLICT DO NOTHING;
 
 -- Bible text tables for TEST2 (same sample verses)

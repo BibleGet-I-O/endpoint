@@ -404,6 +404,34 @@ class QueryExecutor
         return $row;
     }
 
+    /**
+     * A segment that asked only for verses the edition omits (every row it
+     * returned is omitted) gets a VERSE_OMITTED notice; a segment that also
+     * returned other verses, or that has no SegmentRef (whole chapter), none.
+     *
+     * @param list<array<string, mixed>> $rows The rows this query returned.
+     */
+    private function noticeIfAllOmitted(array $rows): void
+    {
+        $segment = $this->ctx->formulatedSegments[$this->i] ?? null;
+        if ($segment === null || $rows === [] || in_array(false, array_column($rows, 'omitted'), true)) {
+            return;
+        }
+        $verses               = $segment->verseFrom . ( $segment->verseTo !== $segment->verseFrom ? '-' . $segment->verseTo : '' );
+        $book                 = is_string($rows[0]['book'] ?? null) ? $rows[0]['book'] : '';
+        $this->ctx->notices[] = [
+            'code'       => 'VERSE_OMITTED',
+            'version'    => $this->ctx->formulatedVariants[$this->i] ?? '',
+            'book'       => $segment->book,
+            'chapter'    => $segment->chapter,
+            'verse_from' => $segment->verseFrom,
+            'verse_to'   => $segment->verseTo,
+            'reference'  => $segment->reference,
+            'message'    => $book . ' ' . $segment->chapter . ':' . $verses
+                . ' is not in the text of this edition: the critical text omits it; the number is printed without text.',
+        ];
+    }
+
     private function currentOriginalQuery(): string
     {
         return $this->ctx->originalQueries[$this->i] ?? '';
@@ -446,12 +474,15 @@ class QueryExecutor
                     }
                 }
 
+                $rows = [];
                 while (is_array($fetchedRow = $result->fetch(\PDO::FETCH_ASSOC))) {
                     $prepared = $this->prepareResponse(StringUtils::toAssocArray($fetchedRow));
                     if ($prepared !== null) {
                         $this->ctx->results[] = $prepared;
+                        $rows[]               = $prepared;
                     }
                 }
+                $this->noticeIfAllOmitted($rows);
             } else {
                 $this->ctx->addErrorMessage(9, $this->currentOriginalQuery());
             }

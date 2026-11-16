@@ -103,6 +103,22 @@ class QuoteContext
     public array $results = [];
 
     /**
+     * Informational notices (never errors): a VERSE_OMITTED entry per requested
+     * segment whose rows are all omitted in an edition.
+     *
+     * @var list<array{code: string, version: string, book: int, chapter: int, verse_from: int, verse_to: int, reference: string, message: string}>
+     */
+    public array $notices = [];
+
+    /**
+     * Per compiled query (parallel to $formulatedQueries): the verses it asks
+     * for, when they lie in one chapter; null otherwise.
+     *
+     * @var array<int, ?SegmentRef>
+     */
+    public array $formulatedSegments = [];
+
+    /**
      * @param array<string, string> $params
      */
     public function __construct(array $params, ?LoggerInterface $logger = null, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')

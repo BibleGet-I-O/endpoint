@@ -74,6 +74,36 @@ final class SqlCompiler
     }
 
     /**
+     * What each compiled query asks for, in compile()'s order: a SegmentRef for a
+     * verse or a verse range within one chapter, null otherwise.
+     *
+     * @param string $bookAsWritten The book as the user wrote it ("Mk", "1Cor").
+     * @param string $notation      'EUROPEAN' (chapter,verse) or anything else (chapter:verse).
+     * @return array<int, ?\BibleGet\Api\Pipeline\SegmentRef>
+     */
+    public function segmentRefs(BibleQuery $query, string $bookAsWritten, string $notation): array
+    {
+        $sep  = $notation === 'EUROPEAN' ? ',' : ':';
+        $refs = [];
+        foreach ($query->segments as $segment) {
+            [$from, $to] = $segment instanceof VerseRange ? [$segment->from, $segment->to] : [$segment, $segment];
+            if ($from->verse === null || $to->verse === null || $from->chapter !== $to->chapter) {
+                $refs[] = null;
+                continue;
+            }
+            $refs[] = new \BibleGet\Api\Pipeline\SegmentRef(
+                $query->book,
+                $from->chapter,
+                $from->verse,
+                $to->verse,
+                $bookAsWritten . ' ' . $from->chapter . $sep . $from->verse
+                    . ( $to->verse !== $from->verse ? '-' . $to->verse : '' )
+            );
+        }
+        return $refs;
+    }
+
+    /**
      * The segment's condition on chapter and verse, parenthesised so clauses
      * appended after it (preferorigin) bind to all of it.
      */
