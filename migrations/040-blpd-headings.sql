@@ -7,9 +7,12 @@
 -- theirs). They go into title1-title3 in printed order, before the verse they
 -- introduce, or mid-verse with a title_position where the heading interrupts a
 -- verse (23 verses), as for NABRE in 029. Psalm numbers ("SALMO 119") and book
--- and chapter titles are left out. A few misprints in vatican.va's headings are
--- corrected (e.g. "Abrám" -> "Abram" as the verse text spells it, "ombre" ->
--- "hombre"); the list is in the archive's reports/heading-fixes.tsv.
+-- and chapter titles are left out. Misprints in vatican.va's headings are
+-- corrected ("ombre" -> "hombre", "Elseo" -> "Eliseo", ...), and a proper name a
+-- heading accents differently from the verse text takes the text's spelling
+-- ("Abrám" -> "Abram", as the text always has it; not certainly a misprint, since
+-- the edition accents some Hebrew names on the last syllable). Both lists are in
+-- the archive's reports/heading-fixes.tsv.
 --
 -- The headings are the edition's text (© Fundación Palabra de Vida / Editorial
 -- Verbo Divino), so the data half lives in the private archive

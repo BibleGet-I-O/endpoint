@@ -96,8 +96,9 @@ Deprecated / Fixed / Removed / Security where applicable.
   headings) and Psalm 119's 22 stanza letters (stored like NABRE's and CEI
   2008's, without brackets) on 1,245 verses, in `title1`-`title3` in
   printed order; 23 headings that interrupt a verse get a `title_position`.
-  vatican.va's misprints in headings are corrected (proper names with a
-  stray accent such as "Abrám", plus "ombre", "Elseo", "vicoria", ...). As
+  vatican.va's misprints in headings are corrected ("ombre", "Elseo",
+  "vicoria", ...), and proper names a heading accents differently from the
+  verse text take the text's spelling ("Abrám" -> "Abram"). As
   for 039, the data half is in the private BLPD-vatican archive and the
   public `040` checks the result. No re-embedding (headings aren't part of
   the embedded text).
