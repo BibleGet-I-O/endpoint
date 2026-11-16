@@ -46,17 +46,23 @@ class QueryExecutorIntegrationTest extends DatabaseTestCase
 
     public function testRequestLogHoldsTheFullCompiledSql(): void
     {
-        // The compiled SQL of one verse is longer than 255 characters (the
-        // printed-label condition), and it is what the request log stores.
-        $ctx = $this->executePipeline('Wis12,1', 'TEST3');
-        self::assertCount(1, $ctx->results);
+        // The request log stores the compiled SQL whole (migration 036 widened
+        // "QUERY" from VARCHAR(255) to TEXT): the logged query is exactly the
+        // compiled one, and the column has no length limit.
+        $ctx = $this->executePipeline('Wis11,25-12,2', 'TEST3');
+        self::assertNotEmpty($ctx->results);
 
-        $row = $this->getConnection()
-            ->query('SELECT "QUERY" FROM requests_log__' . date('Y') . ' ORDER BY "WHO_WHEN" DESC LIMIT 1')
+        $table = 'requests_log__' . date('Y');
+        $row   = $this->getConnection()
+            ->query('SELECT "QUERY" FROM ' . $table . ' ORDER BY "WHO_WHEN" DESC LIMIT 1')
             ->fetch();
         self::assertIsArray($row);
-        self::assertGreaterThan(255, strlen((string) $row['QUERY']));
-        self::assertStringContainsString('"TEST3"', (string) $row['QUERY']);
+        self::assertSame($ctx->formulatedQueries[0], (string) $row['QUERY']);
+
+        $type = $this->getConnection()
+            ->query("SELECT data_type FROM information_schema.columns WHERE table_name = '" . $table . "' AND column_name = 'QUERY'")
+            ->fetchColumn();
+        self::assertSame('text', $type);
     }
 
     // -- Result retrieval --

@@ -123,7 +123,9 @@ class QuoteHandler extends AbstractHandler
             foreach ($ctx->results as $row) {
                 $resultNode = $results->addChild('result');
                 foreach ($row as $key => $value) {
-                    $resultNode[$key] = is_scalar($value) ? (string) $value : '';
+                    $resultNode[$key] = is_bool($value)
+                        ? ( $value ? 'true' : 'false' )
+                        : ( is_scalar($value) ? (string) $value : '' );
                 }
             }
 
@@ -172,7 +174,7 @@ class QuoteHandler extends AbstractHandler
                 $html         .= '<p class="verses versesParagraph">';
                 $paragraphOpen = true;
             }
-            $html .= '<span class="sup verseNum">' . htmlspecialchars($rowVerse) . '</span>';
+            $html .= '<span class="sup verseNum"' . self::placementAttributes($row) . '>' . htmlspecialchars($rowVerse) . '</span>';
             // Formatted text (poetic lines, small caps, italics) as HTML, escaped otherwise.
             $html .= '<span class="text verseText">' . FormattedText::toHtml($rowText) . '</span>';
         }
@@ -181,6 +183,28 @@ class QuoteHandler extends AbstractHandler
         }
         $html .= '</div>';
         return $html;
+    }
+
+    /**
+     * Data attributes on the verse number for how the edition prints the row,
+     * only where it differs from the default (printed_chapter, verse_label,
+     * omitted). An omitted verse's text is empty, so its text span is too.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function placementAttributes(array $row): string
+    {
+        $attrs = '';
+        if (is_int($row['printed_chapter'] ?? null)) {
+            $attrs .= ' data-printed-chapter="' . $row['printed_chapter'] . '"';
+        }
+        if (is_string($row['verse_label'] ?? null)) {
+            $attrs .= ' data-verse-label="' . htmlspecialchars($row['verse_label']) . '"';
+        }
+        if (( $row['omitted'] ?? false ) === true) {
+            $attrs .= ' data-omitted="true"';
+        }
+        return $attrs;
     }
 
     /**
