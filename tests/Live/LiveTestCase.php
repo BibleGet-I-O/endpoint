@@ -66,6 +66,24 @@ abstract class LiveTestCase extends TestCase
     }
 
     /**
+     * [chapter, verse, verse_label] of each result row: the label the edition
+     * prints when it is not simply the number (migration 045).
+     *
+     * @param array<string, mixed> $body
+     * @return list<array{int, int, ?string}>
+     */
+    protected static function printedLabels(array $body): array
+    {
+        $rows = [];
+        foreach (is_array($body['results'] ?? null) ? $body['results'] : [] as $row) {
+            self::assertIsArray($row);
+            $label  = $row['verse_label'] ?? null;
+            $rows[] = [(int) $row['chapter'], (int) $row['verse'], is_string($label) ? $label : null];
+        }
+        return $rows;
+    }
+
+    /**
      * The [chapter, verse, verseequiv] of each result row, in order.
      *
      * @param array<string, mixed> $body

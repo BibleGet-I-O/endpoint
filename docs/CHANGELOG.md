@@ -102,6 +102,32 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Added
 
+- **Placement fields and omitted verses** (step 2 of the verse-rendering
+  plan, #184 in part, #180; migrations `044`, `045`). Every row is stored at
+  its identity (book, chapter, verse); how the edition prints it is recorded
+  in three new columns, returned on every row of `/quote` and `/search*`:
+  `printed_chapter` (the chapter it is printed under, when not its own),
+  `verse_label` (the label printed beside it, when not simply the number;
+  `""` = printed without a number) and `omitted` (the number is printed
+  without text). NABRE's Wis 12:1 and the first part of Job 10:1 move from
+  11:26 / 9:35 to 12:1 / 10:1 (their `verseequiv` labels `12:1` / `10:1a`
+  are cleared), John 7:53 is recorded as printed under chapter 8;
+  `PrintedLabel`'s parsing of `verseequiv` is gone. Omitted verses, which
+  each edition stored differently (`]`, `[]`, blank, nothing), are rows with
+  empty text and `omitted: true`: CEI 2008 (16, Acts 8:37 included: CEI 2008
+  prints only the number), NABRE (17), LUZZI (16), BLPD (1 Kgs 15:6, 15:32,
+  which had "6i"/"32ii" left in the verse before). They are never embedded
+  or searched; `/search/similar` from one answers 404. A reference that asks
+  only for omitted verses gets a `VERSE_OMITTED` entry in the new `notices`
+  array of `/quote` (JSON, XML; in HTML only in a hidden input, so pages that
+  embed the HTML show nothing new). XML writes `omitted` as `true`/`false`;
+  HTML marks the verse number with `data-printed-chapter`, `data-verse-label`,
+  `data-omitted`. Snapshots show the printed layout (`·` for a part printed
+  without a number). NABRE Rom 16:24's placeholder held the heading
+  "Doxology" and 16:25's opening bracket: both moved to 16:25.
+  `compute_embeddings.py` skips omitted rows and records the content
+  checksum even when nothing needs embedding.
+
 - **BLPD section headings and Psalm 119's stanza letters** (migration
   `040`). From vatican.va: 1,296 headings (higher-level and section
   headings) and Psalm 119's 22 stanza letters (stored like NABRE's and CEI

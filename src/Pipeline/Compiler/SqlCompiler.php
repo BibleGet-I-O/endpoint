@@ -7,7 +7,6 @@ namespace BibleGet\Api\Pipeline\Compiler;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
-use BibleGet\Api\Util\PrintedLabel;
 
 /**
  * Walks the BibleQuery AST to produce SQL WHERE clauses.
@@ -19,10 +18,10 @@ use BibleGet\Api\Util\PrintedLabel;
  * - Copyright-limited verse count (LIMIT 30)
  * - ORDER BY verseID
  *
- * A reference selects verses by the number the edition prints: a row that
- * carries a chapter:verse label printed in another chapter (NABRE Wis 12:1
- * after 11:26) is matched by that label, not by where it is stored. See
- * PrintedLabel.
+ * A reference selects verses by their number: every row is stored at its
+ * identity (chapter, verse), and where the edition prints it is recorded
+ * apart in printed_chapter / verse_label (migrations 044/045), which only
+ * matter to print mode, not to queries.
  */
 final class SqlCompiler
 {
@@ -55,7 +54,7 @@ final class SqlCompiler
             $sql = $sqlBase;
 
             if ($segment instanceof VerseRange || $segment instanceof VerseRef) {
-                $sql .= ' AND ' . $this->compileBothPlacements($segment);
+                $sql .= ' AND ' . $this->compileWhere($segment);
             }
 
             $segmentOrigin = is_array($preferOrigin)
@@ -75,16 +74,42 @@ final class SqlCompiler
     }
 
     /**
-     * Rows stored at the selected place (unless labelled elsewhere), or rows
-     * labelled elsewhere whose printed chapter:verse is selected. Wrapped in
-     * parentheses so clauses appended after it (preferorigin) bind to both.
+     * What each compiled query asks for, in compile()'s order: a SegmentRef for a
+     * verse or a verse range within one chapter, null otherwise.
+     *
+     * @param string $bookAsWritten The book as the user wrote it ("Mk", "1Cor").
+     * @param string $notation      'EUROPEAN' (chapter,verse) or anything else (chapter:verse).
+     * @return array<int, ?\BibleGet\Api\Pipeline\SegmentRef>
      */
-    private function compileBothPlacements(VerseRange|VerseRef $segment): string
+    public function segmentRefs(BibleQuery $query, string $bookAsWritten, string $notation): array
     {
-        $labelled = PrintedLabel::sqlLabelled();
-        $stored   = $this->compileSegment($segment, 'chapter', 'verse');
-        $cited    = $this->compileSegment($segment, PrintedLabel::sqlChapter(), PrintedLabel::sqlVerse());
-        return '( ( ' . $stored . ' AND NOT ' . $labelled . ' ) OR ( ' . $labelled . ' AND ' . $cited . ' ) )';
+        $sep  = $notation === 'EUROPEAN' ? ',' : ':';
+        $refs = [];
+        foreach ($query->segments as $segment) {
+            [$from, $to] = $segment instanceof VerseRange ? [$segment->from, $segment->to] : [$segment, $segment];
+            if ($from->verse === null || $to->verse === null || $from->chapter !== $to->chapter) {
+                $refs[] = null;
+                continue;
+            }
+            $refs[] = new \BibleGet\Api\Pipeline\SegmentRef(
+                $query->book,
+                $from->chapter,
+                $from->verse,
+                $to->verse,
+                $bookAsWritten . ' ' . $from->chapter . $sep . $from->verse
+                    . ( $to->verse !== $from->verse ? '-' . $to->verse : '' )
+            );
+        }
+        return $refs;
+    }
+
+    /**
+     * The segment's condition on chapter and verse, parenthesised so clauses
+     * appended after it (preferorigin) bind to all of it.
+     */
+    private function compileWhere(VerseRange|VerseRef $segment): string
+    {
+        return '( ' . $this->compileSegment($segment, 'chapter', 'verse') . ' )';
     }
 
     private function compileSegment(VerseRange|VerseRef $segment, string $c, string $v): string

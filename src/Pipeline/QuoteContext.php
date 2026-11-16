@@ -65,6 +65,8 @@ class QuoteContext
     public array $queries = [];
     /** @var array<int, string> */
     public array $validatedQueries = [];
+    /** @var array<int, string> The book of each validated query as the user wrote it (or inherited it). */
+    public array $validatedBookNames = [];
     /** @var array<int, array<int, string>> */
     public array $validatedVariants = [];
     /** @var array<int, string> */
@@ -101,6 +103,22 @@ class QuoteContext
     public array $errors = [];
     /** @var array<int, array<string, mixed>> */
     public array $results = [];
+
+    /**
+     * Informational notices (never errors): a VERSE_OMITTED entry per requested
+     * segment whose rows are all omitted in an edition.
+     *
+     * @var list<array{code: string, version: string, book: int, chapter: int, verse_from: int, verse_to: int, reference: string, message: string}>
+     */
+    public array $notices = [];
+
+    /**
+     * Per compiled query (parallel to $formulatedQueries): the verses it asks
+     * for, when they lie in one chapter; null otherwise.
+     *
+     * @var array<int, ?SegmentRef>
+     */
+    public array $formulatedSegments = [];
 
     /**
      * @param array<string, string> $params

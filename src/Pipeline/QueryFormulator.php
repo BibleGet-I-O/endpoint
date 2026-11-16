@@ -71,11 +71,17 @@ class QueryFormulator
                 );
 
                 $originalQuery = $this->ctx->validatedQueries[$i];
+                $segments      = $this->compiler->segmentRefs(
+                    $remappedQuery,
+                    $this->ctx->validatedBookNames[$i] ?? '',
+                    $this->ctx->detectedNotation
+                );
 
-                foreach ($sqls as $sql) {
-                    $this->sqlQueries[$nn]      = $sql;
-                    $this->queriesVersions[$nn] = $version;
-                    $this->originalQueries[$nn] = $originalQuery;
+                foreach ($sqls as $k => $sql) {
+                    $this->sqlQueries[$nn]              = $sql;
+                    $this->queriesVersions[$nn]         = $version;
+                    $this->originalQueries[$nn]         = $originalQuery;
+                    $this->ctx->formulatedSegments[$nn] = $segments[$k] ?? null;
                     $nn++;
                 }
             }

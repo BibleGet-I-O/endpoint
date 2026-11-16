@@ -95,6 +95,7 @@ class QuoteHandler extends AbstractHandler
             $body          = new \stdClass();
             $body->results = $ctx->results;
             $body->errors  = $ctx->errors;
+            $body->notices = $ctx->notices;
             $body->info    = [
                 'ENDPOINT_VERSION'  => QuoteContext::ENDPOINT_VERSION,
                 'detectedNotation'  => $ctx->detectedNotation,
@@ -107,6 +108,7 @@ class QuoteHandler extends AbstractHandler
             $root    = '<?xml version="1.0" encoding="UTF-8"?><BibleQuote/>';
             $xml     = new \SimpleXMLElement($root);
             $errors  = $xml->addChild('errors');
+            $notices = $xml->addChild('notices');
             $info    = $xml->addChild('info');
             $results = $xml->addChild('results');
 
@@ -120,10 +122,19 @@ class QuoteHandler extends AbstractHandler
                 $errNode->addAttribute('errNum', (string) $err['errNum']);
             }
 
+            foreach ($ctx->notices as $notice) {
+                $noticeNode = $notices->addChild('notice', htmlspecialchars($notice['message'], ENT_XML1, 'UTF-8'));
+                foreach (['code', 'version', 'book', 'chapter', 'verse_from', 'verse_to', 'reference'] as $key) {
+                    $noticeNode->addAttribute($key, (string) $notice[$key]);
+                }
+            }
+
             foreach ($ctx->results as $row) {
                 $resultNode = $results->addChild('result');
                 foreach ($row as $key => $value) {
-                    $resultNode[$key] = is_scalar($value) ? (string) $value : '';
+                    $resultNode[$key] = is_bool($value)
+                        ? ( $value ? 'true' : 'false' )
+                        : ( is_scalar($value) ? (string) $value : '' );
                 }
             }
 
@@ -172,7 +183,7 @@ class QuoteHandler extends AbstractHandler
                 $html         .= '<p class="verses versesParagraph">';
                 $paragraphOpen = true;
             }
-            $html .= '<span class="sup verseNum">' . htmlspecialchars($rowVerse) . '</span>';
+            $html .= '<span class="sup verseNum"' . self::placementAttributes($row) . '>' . htmlspecialchars($rowVerse) . '</span>';
             // Formatted text (poetic lines, small caps, italics) as HTML, escaped otherwise.
             $html .= '<span class="text verseText">' . FormattedText::toHtml($rowText) . '</span>';
         }
@@ -181,6 +192,28 @@ class QuoteHandler extends AbstractHandler
         }
         $html .= '</div>';
         return $html;
+    }
+
+    /**
+     * Data attributes on the verse number for how the edition prints the row,
+     * only where it differs from the default (printed_chapter, verse_label,
+     * omitted). An omitted verse's text is empty, so its text span is too.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function placementAttributes(array $row): string
+    {
+        $attrs = '';
+        if (is_int($row['printed_chapter'] ?? null)) {
+            $attrs .= ' data-printed-chapter="' . $row['printed_chapter'] . '"';
+        }
+        if (is_string($row['verse_label'] ?? null)) {
+            $attrs .= ' data-verse-label="' . htmlspecialchars($row['verse_label']) . '"';
+        }
+        if (( $row['omitted'] ?? false ) === true) {
+            $attrs .= ' data-omitted="true"';
+        }
+        return $attrs;
     }
 
     /**
@@ -205,15 +238,20 @@ class QuoteHandler extends AbstractHandler
 
     /**
      * @param array<string, string> $bibleVersionsInfo
+     * @param list<array<string, int|string>> $notices
      */
-    private function buildHtmlInfo(string $detectedNotation, array $bibleVersionsInfo): string
+    private function buildHtmlInfo(string $detectedNotation, array $bibleVersionsInfo, array $notices = []): string
     {
         $html         = '<div class="info bibleQuote">';
         $html        .= '<input type="hidden" name="ENDPOINT_VERSION" value="' . QuoteContext::ENDPOINT_VERSION . '" class="BibleGetInfo">';
         $html        .= '<input type="hidden" name="detectedNotation" value="' . htmlspecialchars($detectedNotation) . '" class="BibleGetInfo">';
         $versionsJson = json_encode($bibleVersionsInfo);
         $html        .= '<input type="hidden" name="bibleVersionsInfo" value="' . htmlspecialchars($versionsJson !== false ? $versionsJson : '{}') . '" class="BibleGetInfo">';
-        $html        .= '</div>';
+        // Notices are informational: hidden, like the info above, so the clients that
+        // insert this HTML into pages (WordPress, MediaWiki) show nothing new.
+        $noticesJson = json_encode($notices);
+        $html       .= '<input type="hidden" name="notices" value="' . htmlspecialchars($noticesJson !== false ? $noticesJson : '[]') . '" class="BibleGetNotices">';
+        $html       .= '</div>';
         return $html;
     }
 
@@ -224,7 +262,7 @@ class QuoteHandler extends AbstractHandler
     {
         return $this->buildHtmlResults($ctx->results)
             . $this->buildHtmlErrors($ctx->errors)
-            . $this->buildHtmlInfo($ctx->detectedNotation, $bibleVersionsInfo);
+            . $this->buildHtmlInfo($ctx->detectedNotation, $bibleVersionsInfo, $ctx->notices);
     }
 
     /**

@@ -8,7 +8,6 @@ use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
 use BibleGet\Api\Pipeline\Compiler\SqlCompiler;
-use BibleGet\Api\Util\PrintedLabel;
 use PHPUnit\Framework\TestCase;
 
 final class SqlCompilerTest extends TestCase
@@ -29,17 +28,13 @@ final class SqlCompilerTest extends TestCase
     }
 
     /**
-     * The WHERE fragment for one segment: rows stored at the place selected
-     * (and not labelled elsewhere), or rows labelled elsewhere whose printed
-     * chapter:verse is in the selection. `{c}`/`{v}` stand for the chapter
-     * and verse expressions.
+     * The WHERE fragment for one segment. Rows are stored at their identity
+     * (migration 045), so a segment selects by chapter and verse; parenthesised
+     * so a clause appended after it (preferorigin) binds to all of it.
      */
     private static function where(string $cond): string
     {
-        $stored = str_replace(['{c}', '{v}'], ['chapter', 'verse'], $cond);
-        $cited  = str_replace(['{c}', '{v}'], [PrintedLabel::sqlChapter(), PrintedLabel::sqlVerse()], $cond);
-        return ' AND ( ( ' . $stored . ' AND NOT ' . PrintedLabel::sqlLabelled() . ' ) OR ( '
-            . PrintedLabel::sqlLabelled() . ' AND ' . $cited . ' ) )';
+        return ' AND ( ' . str_replace(['{c}', '{v}'], ['chapter', 'verse'], $cond) . ' )';
     }
 
     // ── Single verse ──────────────────────────────────────────────
@@ -161,13 +156,12 @@ final class SqlCompilerTest extends TestCase
         );
     }
 
-    public function testSingleVerseMatchesPrintedLabel(): void
+    public function testNoQueryParsesVerseequiv(): void
     {
         $query  = new BibleQuery(27, [new VerseRef(27, 12, null, 1)]);
         $result = $this->compile($query, 'TEST3');
 
-        $this->assertStringContainsString('chapter = 12 AND verse = 1 AND NOT ' . PrintedLabel::sqlLabelled(), $result[0]);
-        $this->assertStringContainsString(PrintedLabel::sqlChapter() . ' = 12 AND ' . PrintedLabel::sqlVerse() . ' = 1', $result[0]);
+        $this->assertStringNotContainsString('verseequiv', $result[0]);
     }
 
     public function testPreferOrigin(): void

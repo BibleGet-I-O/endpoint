@@ -24,7 +24,8 @@ INSERT INTO "TEST1_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Gen', 'Genesis', 3, '10,8,5', 1),
 ('Exod', 'Exodus', 2, '7,5', 2),
 ('Lev', 'Leviticus', 2, '6,4', 3),
-('Ps', 'Psalms', 55, '6,12,8,8,12,10,17,9,21,18,7,8,6,7,5,11,15,10,21,18,7,8,6,10,12,12,10,17,9,3,5,16,8,8,10,13,18,7,14,11,19,17,8,4,3,13,14,7,13,12,19,6,12,8,6,12,5,4,8,3,11,11,8,10,13,6,5,17,9,14,10,17,7,13,20,6,10,7,13,7,18,6', 23)
+('Ps', 'Psalms', 55, '6,12,8,8,12,10,17,9,21,18,7,8,6,7,5,11,15,10,21,18,7,8,6,10,12,12,10,17,9,3,5,16,8,8,10,13,18,7,14,11,19,17,8,4,3,13,14,7,13,12,19,6,12,8,6,12,5,4,8,3,11,11,8,10,13,6,5,17,9,14,10,17,7,13,20,6,10,7,13,7,18,6', 23),
+('Mk', 'Mark', 9, '1,1,1,1,1,1,1,1,48', 48)
 ON CONFLICT DO NOTHING;
 
 -- Index tables for TEST2 (3 books)
@@ -56,6 +57,9 @@ CREATE TABLE IF NOT EXISTS "TEST1" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -119,6 +123,11 @@ INSERT INTO "TEST1" (book, chapter, verse, text, title1, title_position, testame
 (1, 3, 2, 'The woman answered the serpent. We may eat of the fruit of the trees in the garden.', 'The woman replies', 32, 1, 1)
 ON CONFLICT DO NOTHING;
 
+-- Mk 9:44 with its text (an edition that prints it), next to TEST3's omitted one.
+INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
+(48, 9, 44, 'Where their worm dieth not, and the fire is not quenched.', 2, 7)
+ON CONFLICT DO NOTHING;
+
 -- Bible text tables for TEST2 (same sample verses)
 CREATE TABLE IF NOT EXISTS "TEST2" (
     "verseID"     SERIAL PRIMARY KEY,
@@ -131,6 +140,9 @@ CREATE TABLE IF NOT EXISTS "TEST2" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -184,6 +196,9 @@ CREATE TABLE IF NOT EXISTS "VGCL" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -243,6 +258,9 @@ CREATE TABLE IF NOT EXISTS "DRB" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
     embedding_labse     vector(768),
@@ -296,7 +314,9 @@ CREATE TABLE IF NOT EXISTS "TEST3_idx" (
 INSERT INTO "TEST3_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Jb', 'Job', 10, '1,1,1,1,1,1,1,1,35,2', 22),
 ('Wis', 'Wisdom', 12, '1,1,1,1,1,1,1,1,1,1,26,5', 27),
-('Est', 'Esther', 9, '2,1,1,1,1,1,1,1,32', 19)
+('Est', 'Esther', 9, '2,1,1,1,1,1,1,1,32', 19),
+('Mk', 'Mark', 9, '1,1,1,1,1,1,1,1,47', 48),
+('Jn', 'John', 8, '1,1,1,1,1,1,53,2', 50)
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS "TEST3" (
@@ -313,6 +333,9 @@ CREATE TABLE IF NOT EXISTS "TEST3" (
     testament   SMALLINT NOT NULL DEFAULT 1,
     section     INT NOT NULL DEFAULT 0,
     verseorigin VARCHAR(10) DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW')),  -- as in production-schema.sql
+    printed_chapter INT,                                     -- migration 044
+    verse_label     VARCHAR(16),
+    omitted         BOOLEAN NOT NULL DEFAULT false,
     verseequiv  VARCHAR(10) DEFAULT NULL,
     versedescr  VARCHAR(10) DEFAULT NULL,
     embedding           vector(384),
@@ -327,21 +350,34 @@ DO $$ BEGIN
         FOR EACH ROW EXECUTE FUNCTION update_text_hash();
 END $$;
 
-INSERT INTO "TEST3" (book, chapter, verse, verseequiv, versedescr, text, testament, section)
+INSERT INTO "TEST3" (book, chapter, verse, verseequiv, versedescr, printed_chapter, verse_label, omitted, text, testament, section)
 SELECT * FROM (VALUES
-    (22, 9, 34, NULL, NULL, 'Job 9:34 placeholder', 1, 5),
-    (22, 9, 35, NULL, NULL, 'Job 9:35 placeholder', 1, 5),
-    (22, 9, 35, '10:1a', '10:1a', 'Job 10:1 first part labelmark placeholder', 1, 5),
-    (22, 10, 1, NULL, NULL, 'Job 10:1 rest placeholder', 1, 5),
-    (22, 10, 2, NULL, NULL, 'Job 10:2 placeholder', 1, 5),
-    (27, 11, 25, NULL, NULL, 'Wis 11:25 placeholder', 1, 5),
-    (27, 11, 26, NULL, NULL, 'Wis 11:26 placeholder', 1, 5),
-    (27, 11, 26, '12:1', '12:1', 'Wis 12:1 labelmark placeholder', 1, 5),
-    (27, 12, 2, NULL, NULL, 'Wis 12:2 placeholder', 1, 5),
-    (27, 12, 3, '', NULL, 'Wis 12:3 placeholder', 1, 5),
-    (27, 12, 4, '4a', NULL, 'Wis 12:4 placeholder', 1, 5),
-    (27, 12, 5, NULL, NULL, 'Wis 12:5 placeholder', 1, 5)
-) AS v(book, chapter, verse, verseequiv, versedescr, text, testament, section)
+    -- As NABRE stores them since migration 045: at their identity, with where and
+    -- how the edition prints them in printed_chapter / verse_label.
+    (22, 9, 34, NULL, NULL, NULL, NULL, false, 'Job 9:34 placeholder', 1, 5),
+    (22, 9, 35, NULL, NULL, NULL, NULL, false, 'Job 9:35 placeholder', 1, 5),
+    (22, 10, 1, NULL, NULL, 9, '10:1', false, 'Job 10:1 first part labelmark placeholder', 1, 5),
+    (22, 10, 1, NULL, NULL, NULL, '', false, 'Job 10:1 rest placeholder', 1, 5),
+    (22, 10, 2, NULL, NULL, NULL, NULL, false, 'Job 10:2 placeholder', 1, 5),
+    (27, 11, 25, NULL, NULL, NULL, NULL, false, 'Wis 11:25 placeholder', 1, 5),
+    (27, 11, 26, NULL, NULL, NULL, NULL, false, 'Wis 11:26 placeholder', 1, 5),
+    (27, 12, 1, NULL, NULL, 11, '12:1', false, 'Wis 12:1 labelmark placeholder', 1, 5),
+    (27, 12, 2, NULL, NULL, NULL, NULL, false, 'Wis 12:2 placeholder', 1, 5),
+    (27, 12, 3, '', NULL, NULL, NULL, false, 'Wis 12:3 placeholder', 1, 5),
+    (27, 12, 4, '4a', NULL, NULL, NULL, false, 'Wis 12:4 placeholder', 1, 5),
+    (27, 12, 5, NULL, NULL, NULL, NULL, false, 'Wis 12:5 placeholder', 1, 5),
+    -- Omitted verses: the number is printed, the text is not (#180).
+    (48, 9, 43, NULL, NULL, NULL, NULL, false, 'Mk 9:43 placeholder', 2, 7),
+    (48, 9, 44, NULL, NULL, NULL, NULL, true, '', 2, 7),
+    (48, 9, 45, NULL, NULL, NULL, NULL, false, 'Mk 9:45 placeholder', 2, 7),
+    (48, 9, 46, NULL, NULL, NULL, NULL, true, '', 2, 7),
+    (48, 9, 47, NULL, NULL, NULL, NULL, false, 'Mk 9:47 placeholder', 2, 7),
+    -- John 7:53, printed under chapter 8 before 8:1.
+    (50, 7, 52, NULL, NULL, NULL, NULL, false, 'Jn 7:52 placeholder', 2, 7),
+    (50, 7, 53, NULL, NULL, 8, '7:53', false, 'Jn 7:53 placeholder', 2, 7),
+    (50, 8, 1, NULL, NULL, NULL, NULL, false, 'Jn 8:1 placeholder', 2, 7),
+    (50, 8, 2, NULL, NULL, NULL, NULL, false, 'Jn 8:2 placeholder', 2, 7)
+) AS v(book, chapter, verse, verseequiv, versedescr, printed_chapter, verse_label, omitted, text, testament, section)
 WHERE NOT EXISTS (SELECT 1 FROM "TEST3");
 
 -- Esther: the Hebrew and the Greek text share chapter:verse, told apart by

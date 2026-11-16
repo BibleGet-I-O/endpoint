@@ -35,7 +35,7 @@ final class HybridSearchPrintedLabelTest extends DatabaseTestCase
         } catch (\PDOException $e) {
             self::markTestSkipped('Test table TEST3 not available: ' . $e->getMessage());
         }
-        $pdo->exec('UPDATE "TEST3" SET embedding = \'[' . implode(',', self::vector()) . ']\' WHERE verseequiv = \'12:1\'');
+        $pdo->exec('UPDATE "TEST3" SET embedding = \'[' . implode(',', self::vector()) . ']\' WHERE verse_label = \'12:1\' OR (book = 48 AND verse = 44)');
     }
 
     protected function tearDown(): void
@@ -68,7 +68,9 @@ final class HybridSearchPrintedLabelTest extends DatabaseTestCase
         $rows = [];
         foreach ($body['results'] as $row) {
             self::assertIsArray($row);
-            $rows[] = [(int) $row['chapter'], (int) $row['verse'], $row['verseequiv'] ?? 'missing'];
+            $rows[] = [(int) $row['chapter'], (int) $row['verse'], $row['verse_label'] ?? 'missing'];
+            self::assertArrayHasKey('printed_chapter', $row);
+            self::assertFalse($row['omitted'] ?? null, 'omitted rows are never searched');
         }
         return $rows;
     }
@@ -77,12 +79,14 @@ final class HybridSearchPrintedLabelTest extends DatabaseTestCase
     {
         $rows = $this->labels(['query' => 'labelmark', 'version' => 'TEST3', 'semantic_weight' => '0']);
         sort($rows);
-        self::assertSame([[10, 1, '10:1a'], [12, 1, '12:1']], $rows);
+        self::assertSame([[10, 1, '10:1'], [12, 1, '12:1']], $rows);
     }
 
     public function testSemanticLegReportsPrintedLabel(): void
     {
         $rows = $this->labels(['query' => 'labelmark', 'version' => 'TEST3', 'model' => 'minilm', 'keyword_weight' => '0']);
         self::assertSame([12, 1, '12:1'], $rows[0]);
+        // Mk 9:44 (omitted) has the same embedding as the query, but is never returned.
+        self::assertNotContains([9, 44, null], $rows);
     }
 }
