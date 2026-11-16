@@ -55,7 +55,15 @@ final class VersificationCasesTest extends TestCase
     #[DataProvider('cases')]
     public function testCaseMatchesSnapshot(array $case): void
     {
-        $this->assertContains($case['kind'] ?? null, ['chapter-boundary', 'chapter-count', 'split-verse', 'reordered', 'text-tradition']);
+        $this->assertContains($case['kind'] ?? null, [
+            'chapter-boundary',
+            'chapter-count',
+            'split-verse',
+            'reordered',
+            'text-tradition',
+            'omitted-verse',
+            'superscription',
+        ]);
         $this->assertIsString($case['summary'] ?? null);
         $this->assertIsArray($case['expect'] ?? null);
         $this->assertNotEmpty($case['expect']);
