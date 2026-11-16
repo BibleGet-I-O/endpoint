@@ -23,6 +23,10 @@
 -- embeddings stay. Re-embed the three editions afterwards (about 40 rows).
 -- Rerunning it is harmless: the DRB fixes check for themselves, the rest is
 -- a check and an index rebuild.
+-- The splits shift "verseID"s: don't run this (or the data halves) while
+-- compute_embeddings.py is running. Its writes now check that the row still
+-- holds the text it embedded, so an overlapping run skips the moved rows
+-- instead of storing their vectors on the wrong verse; run it again after.
 
 BEGIN;
 
@@ -81,6 +85,10 @@ BEGIN
     UPDATE "DRB" SET verse = 25
      WHERE book = 27 AND chapter = 18 AND verse = 26 AND md5(text) = 'd1309e79d715e6ea082c0f1764359207'
        AND NOT EXISTS (SELECT 1 FROM "DRB" WHERE book = 27 AND chapter = 18 AND verse = 25);
+    IF NOT EXISTS (SELECT 1 FROM "DRB" WHERE book = 27 AND chapter = 18 AND verse = 25)
+       OR EXISTS (SELECT 1 FROM "DRB" WHERE book = 27 AND chapter = 18 AND verse = 26) THEN
+        RAISE EXCEPTION 'DRB Wis 18:26 is not the row expected (no verse 25 after the relabel)';
+    END IF;
 
     UPDATE "NVBSE_idx" i SET chapters = x.chapters, verses_count = x.cnt, verses_last = x.last
     FROM (

@@ -42,6 +42,7 @@ PHP side.
 """
 
 import argparse
+import hashlib
 import os
 import sys
 import time
@@ -168,12 +169,19 @@ def load_verses(conn, version, column, force=False):
         return cur.fetchall()
 
 
-def write_embeddings(conn, version, column, verse_ids, embeddings):
+def write_embeddings(conn, version, column, verse_ids, embeddings, texts):
     """Write embeddings back to the database in a single transaction.
 
     For the primary column, also snapshots the current text_hash into
     embedded_text_hash so we can detect future text changes. Non-primary
     columns share the same source text and don't track their own hash.
+
+    A row is written only if it still holds the text that was embedded
+    (`texts`, as load_verses() read it): a migration that changes the text or
+    shifts "verseID"s while a run is in progress (042 inserts rows mid-table)
+    would otherwise get a vector stored on the wrong verse, and marked
+    current. Such a row is skipped and stays stale for the next run. Returns
+    the number of rows written.
     """
     track_hash = column == DEFAULT_COLUMN and has_text_hash_column(conn, version)
     table_ident = sql.Identifier(version)
@@ -181,22 +189,23 @@ def write_embeddings(conn, version, column, verse_ids, embeddings):
     if track_hash:
         query = sql.SQL(
             "UPDATE {table} SET {col} = %s::vector, "
-            'embedded_text_hash = text_hash WHERE "verseID" = %s'
+            'embedded_text_hash = text_hash WHERE "verseID" = %s '
+            "AND md5(bibleget_embedding_text(book, text)) = %s"
         ).format(table=table_ident, col=col_ident)
     else:
         query = sql.SQL(
-            'UPDATE {table} SET {col} = %s::vector WHERE "verseID" = %s'
+            'UPDATE {table} SET {col} = %s::vector WHERE "verseID" = %s '
+            "AND md5(bibleget_embedding_text(book, text)) = %s"
         ).format(table=table_ident, col=col_ident)
 
+    written = 0
     with conn.cursor() as cur:
-        cur.executemany(
-            query,
-            [
-                ("[" + ",".join(str(x) for x in embedding.tolist()) + "]", verse_id)
-                for verse_id, embedding in zip(verse_ids, embeddings, strict=True)
-            ],
-        )
+        for verse_id, embedding, text in zip(verse_ids, embeddings, texts, strict=True):
+            vector = "[" + ",".join(str(x) for x in embedding.tolist()) + "]"
+            cur.execute(query, (vector, verse_id, hashlib.md5(text.encode("utf-8")).hexdigest()))
+            written += cur.rowcount
     conn.commit()
+    return written
 
 
 def compute_content_xor(conn, version):
@@ -307,8 +316,10 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
         batch_texts = texts[i : i + batch_size]
         batch_ids = verse_ids[i : i + batch_size]
         embeddings = model.encode(batch_texts, show_progress_bar=False)
-        write_embeddings(conn, version, column, batch_ids, embeddings)
-        total_written += len(batch_ids)
+        written = write_embeddings(conn, version, column, batch_ids, embeddings, batch_texts)
+        if written < len(batch_ids):
+            print(f"    {len(batch_ids) - written} skipped: the row changed while embedding (rerun to catch up)")
+        total_written += written
         if len(texts) > batch_size:
             print(f"    {total_written}/{len(texts)} written")
 
