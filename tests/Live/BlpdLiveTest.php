@@ -49,6 +49,30 @@ final class BlpdLiveTest extends LiveTestCase
         self::assertCount(18, $labels);
     }
 
+    /**
+     * @return array<string, array{string, string, ?int}>
+     */
+    public static function headings(): array
+    {
+        return [
+            'section heading before the verse' => ['Gen1:1', 'La creación del mundo y la caída del hombre', null],
+            'section heading mid-verse'        => ['Gen2:4', 'La creación del hombre y la mujer', 67],
+            'Psalm 119 stanza letter'          => ['Sal119:9', 'Bet', null],
+        ];
+    }
+
+    #[DataProvider('headings')]
+    public function testHeading(string $query, string $title, ?int $position): void
+    {
+        $r = self::liveGet('/quote?query=' . $query . '&version=BLPD&return=json');
+        self::assertSame(200, $r['status']);
+        self::assertIsArray($r['body']['results']);
+        $row = $r['body']['results'][0];
+        self::assertIsArray($row);
+        self::assertSame($title, $row['title1']);
+        self::assertSame($position, $row['title_position'] === null ? null : (int) $row['title_position']);
+    }
+
     public function testGenesis47PrintedOrder(): void
     {
         $r = self::liveGet('/quote?query=Gen47:5-6&version=BLPD&return=json');
