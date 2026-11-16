@@ -240,6 +240,22 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Fixed
 
+- **NVBSE checked against vatican.va and corrected** (migration `041`,
+  #185, #187). The Nova Vulgata was compared verse by verse with
+  vatican.va in the private archive `BibleGet-I-O/NVBSE-vatican`. 21
+  verses the 2015 import had merged into the verse before are rows of their
+  own again (Num 3:10, Mt 17:22, Mc 9:45 and 47, Act 8:38, ...): most of
+  the "gaps" #185 listed. 314 words split by a space, dashes rendered as
+  "C", a few typos and the empty Deut 32:27 are repaired. NVBSE adopts
+  vatican.va's spelling conventions: ae/oe spelled out instead of the æ/œ
+  ligatures the import had applied mechanically ("Isræl" 2,584 times, so a
+  keyword search for "Israel" found nothing), curly quotation marks, em
+  dashes, and 309 parenthetical dashes both copies had lost. Daniel
+  3:91-100's Hebrew numbers move from the text into `verseequiv`, as in
+  BLPD. As for BLPD, the data half is in the private archive; the public
+  `041` checks the result and rebuilds `NVBSE_idx`, which also fixes the
+  NVBSE counts in #187.
+
 - **BLPD checked against vatican.va and corrected** (migration `039`, #185).
   BLPD was compared verse by verse with vatican.va (archive/ESL0506), the
   source it was imported from, in the private archive
