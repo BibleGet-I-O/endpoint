@@ -70,7 +70,7 @@ log() {
     echo "$(date '+%H:%M:%S') [sync] $*"
 }
 
-# Runs psql against local PG and returns stdout. Used to dump (verseID, labse)
+# Runs psql against local PG and returns stdout. Used to dump (sort_order, labse)
 # tuples in COPY text format. Falls back to `docker compose exec` if psql is
 # not on PATH (the common case when local PG is a Docker container).
 if command -v psql >/dev/null 2>&1; then
@@ -144,9 +144,9 @@ for V in $VERSIONS; do
     # rollback rather than a half-applied sync.
     {
         echo 'BEGIN;'
-        echo "CREATE TEMP TABLE _labse_in (\"verseID\" INT PRIMARY KEY, embedding_labse vector(768));"
+        echo "CREATE TEMP TABLE _labse_in (sort_order INT PRIMARY KEY, embedding_labse vector(768));"
         echo 'COPY _labse_in FROM STDIN;'
-        local_psql -tAc "COPY (SELECT \"verseID\", embedding_labse FROM \"$V\" WHERE embedding_labse IS NOT NULL) TO STDOUT"
+        local_psql -tAc "COPY (SELECT sort_order, embedding_labse FROM \"$V\" WHERE embedding_labse IS NOT NULL) TO STDOUT"
         echo '\.'
         echo "DO \$sync\$"
         echo "DECLARE"
@@ -155,7 +155,7 @@ for V in $VERSIONS; do
         echo "BEGIN"
         echo "    SELECT COUNT(*) INTO expected_count FROM _labse_in;"
         echo "    UPDATE \"$V\" SET embedding_labse = _labse_in.embedding_labse"
-        echo "      FROM _labse_in WHERE \"$V\".\"verseID\" = _labse_in.\"verseID\";"
+        echo "      FROM _labse_in WHERE \"$V\".sort_order = _labse_in.sort_order;"
         echo "    GET DIAGNOSTICS updated_count = ROW_COUNT;"
         echo "    IF updated_count <> expected_count THEN"
         echo "        RAISE EXCEPTION 'sync mismatch for $V: expected %, updated %', expected_count, updated_count;"
