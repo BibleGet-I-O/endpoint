@@ -29,15 +29,16 @@ final class VerseIdentityColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * Create and register the old-shape table, insert $rows, run 046.
+     * Create and register an old-shape table, insert $rows, run 046. Named
+     * after an edition ('LUZZI', 'NABRE', 'BLPD') it gets that edition's rules.
      *
      * @param list<array<string, string|int|null>> $rows
      */
-    private function migrate(array $rows, int $runs = 1): \PDO
+    private function migrate(array $rows, int $runs = 1, string $table = 'ZZ046'): \PDO
     {
         $pdo = $this->getConnection();
         $pdo->beginTransaction();
-        $pdo->exec(<<<'SQL'
+        $pdo->exec(str_replace('ZZ046', $table, <<<'SQL'
             CREATE TABLE "ZZ046" (
                 "verseID"   SERIAL PRIMARY KEY,
                 book        INT NOT NULL,
@@ -57,12 +58,22 @@ final class VerseIdentityColumnsTest extends DatabaseTestCase
             );
             CREATE INDEX "ZZ046_bcv" ON "ZZ046" (book, chapter, verse, verseequiv, verseorigin);
             INSERT INTO versions_available (sigla) VALUES ('ZZ046');
-            SQL);
+            SQL));
         $insert = $pdo->prepare(
-            'INSERT INTO "ZZ046" (book, chapter, verse, verseequiv, versedescr, verseorigin) VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO "' . $table . '" (book, chapter, verse, verseequiv, versedescr, verseorigin, title1, title_position) '
+            . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
         foreach ($rows as $r) {
-            $insert->execute([$r['book'], $r['chapter'], $r['verse'], $r['eq'] ?? null, $r['descr'] ?? null, $r['origin'] ?? null]);
+            $insert->execute([
+                $r['book'],
+                $r['chapter'],
+                $r['verse'],
+                $r['eq'] ?? null,
+                $r['descr'] ?? null,
+                $r['origin'] ?? null,
+                $r['title1'] ?? '',
+                $r['title_position'] ?? null,
+            ]);
         }
         $sql = file_get_contents(self::MIGRATION);
         self::assertIsString($sql, 'migration 046 is missing');
@@ -76,9 +87,9 @@ final class VerseIdentityColumnsTest extends DatabaseTestCase
     /**
      * @return array<string, mixed>
      */
-    private static function row(\PDO $pdo, int $verse): array
+    private static function row(\PDO $pdo, int $verse, string $table = 'ZZ046'): array
     {
-        $stmt = $pdo->prepare('SELECT verse_segment, alt_ref, acrostic, text_tradition FROM "ZZ046" WHERE verse = ?');
+        $stmt = $pdo->prepare('SELECT verse_segment, alt_ref, acrostic, text_tradition FROM "' . $table . '" WHERE verse = ?');
         $stmt->execute([$verse]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         self::assertIsArray($row);
@@ -88,24 +99,127 @@ final class VerseIdentityColumnsTest extends DatabaseTestCase
     public function testShapesLandInTheirColumns(): void
     {
         $pdo = $this->migrate([
-            ['book' => 23, 'chapter' => 10, 'verse' => 1, 'eq' => '4a'],
-            ['book' => 23, 'chapter' => 10, 'verse' => 2, 'eq' => '17aa', 'origin' => 'GREEK'],
+            ['book' => 23, 'chapter' => 10, 'verse' => 4, 'eq' => '4a'],
+            ['book' => 23, 'chapter' => 10, 'verse' => 17, 'eq' => '17aa', 'origin' => 'GREEK'],
             ['book' => 23, 'chapter' => 10, 'verse' => 3, 'eq' => '(9,22)'],
-            ['book' => 23, 'chapter' => 10, 'verse' => 4, 'eq' => '(113,20>)'],
+            ['book' => 23, 'chapter' => 10, 'verse' => 14, 'eq' => '(113,20>)'],
             ['book' => 23, 'chapter' => 10, 'verse' => 5, 'eq' => '33'],
             ['book' => 23, 'chapter' => 10, 'verse' => 6, 'eq' => '', 'descr' => ''],
             ['book' => 23, 'chapter' => 10, 'verse' => 7, 'descr' => '11:2'],
-            ['book' => 23, 'chapter' => 10, 'verse' => 8, 'descr' => '[Alef] '],
         ]);
 
-        self::assertSame(['verse_segment' => 'a', 'alt_ref' => null, 'acrostic' => null, 'text_tradition' => null], self::row($pdo, 1));
-        self::assertSame(['verse_segment' => 'aa', 'alt_ref' => null, 'acrostic' => null, 'text_tradition' => 'GREEK'], self::row($pdo, 2));
+        self::assertSame(['verse_segment' => 'a', 'alt_ref' => null, 'acrostic' => null, 'text_tradition' => null], self::row($pdo, 4));
+        self::assertSame(['verse_segment' => 'aa', 'alt_ref' => null, 'acrostic' => null, 'text_tradition' => 'GREEK'], self::row($pdo, 17));
         self::assertSame('(9,22)', self::row($pdo, 3)['alt_ref']);
-        self::assertSame('(113,20>)', self::row($pdo, 4)['alt_ref']);
+        self::assertSame('(113,20>)', self::row($pdo, 14)['alt_ref']);
         self::assertSame('33', self::row($pdo, 5)['alt_ref']);
         self::assertSame(['verse_segment' => null, 'alt_ref' => null, 'acrostic' => null, 'text_tradition' => null], self::row($pdo, 6));
         self::assertSame('11:2', self::row($pdo, 7)['alt_ref']);
-        self::assertSame('Alef', self::row($pdo, 8)['acrostic']);
+    }
+
+    /**
+     * Run 046 expecting it to refuse with a message naming each of $needles.
+     *
+     * @param list<array<string, string|int|null>> $rows
+     * @param list<string> $needles
+     */
+    private function assertRefuses(array $rows, array $needles, string $table = 'ZZ046'): void
+    {
+        try {
+            $this->migrate($rows, 1, $table);
+            self::fail('046 accepted ' . implode(', ', $needles));
+        } catch (\PDOException $e) {
+            foreach ($needles as $needle) {
+                self::assertStringContainsString($needle, $e->getMessage());
+            }
+        }
+    }
+
+    public function testLetteredNumberMustMatchVerse(): void
+    {
+        $this->assertRefuses([['book' => 1, 'chapter' => 2, 'verse' => 18, 'eq' => '17a']], ['ZZ046', '17a']);
+    }
+
+    /**
+     * Two import slips 046 corrects first: Greek Esther A:13-17 stored at
+     * 1:2-1:6 (VGCL), and DRB's 4:8 additions labelled 13a/13b (VGCL: 8a/8b).
+     */
+    public function testEstherImportSlipsCorrected(): void
+    {
+        $pdo  = $this->migrate([
+            ['book' => 19, 'chapter' => 1, 'verse' => 2, 'eq' => '1n', 'descr' => '12:2', 'origin' => 'GREEK'],
+            ['book' => 19, 'chapter' => 4, 'verse' => 8, 'eq' => '13a', 'descr' => '15:2', 'origin' => 'GREEK'],
+        ]);
+        $stmt = $pdo->query('SELECT chapter, verse, verse_segment, alt_ref FROM "ZZ046" ORDER BY sort_order');
+        self::assertNotFalse($stmt);
+        self::assertSame([[1, 1, 'n', '12:2'], [4, 8, 'a', '15:2']], $stmt->fetchAll(\PDO::FETCH_NUM));
+    }
+
+    public function testUnclaimedVersedescrRaises(): void
+    {
+        $this->assertRefuses([['book' => 1, 'chapter' => 2, 'verse' => 3, 'descr' => '3:4:5']], ['ZZ046', 'versedescr', '3:4:5']);
+    }
+
+    public function testWordInVersedescrIsUnclaimedWithoutALetterList(): void
+    {
+        $this->assertRefuses([['book' => 1, 'chapter' => 2, 'verse' => 3, 'descr' => 'Prologus']], ['ZZ046', 'Prologus']);
+    }
+
+    public function testWordOutsideTheEditionsLettersRaises(): void
+    {
+        $this->assertRefuses([['book' => 23, 'chapter' => 1, 'verse' => 1, 'descr' => '[Glossa']], ['BLPD', 'Glossa'], 'BLPD');
+    }
+
+    public function testBracketedLetterIsStripped(): void
+    {
+        $pdo = $this->migrate([['book' => 23, 'chapter' => 1, 'verse' => 1, 'descr' => '[Guímel] ']], 1, 'BLPD');
+        self::assertSame('Guímel', self::row($pdo, 1, 'BLPD')['acrostic']);
+    }
+
+    public function testHeadingLetterFillsAcrostic(): void
+    {
+        $pdo = $this->migrate([
+            ['book' => 23, 'chapter' => 1, 'verse' => 1, 'title1' => 'ALEF'],
+            ['book' => 23, 'chapter' => 1, 'verse' => 2, 'title1' => 'Salmo'],
+        ], 1, 'LUZZI');
+        self::assertSame('ALEF', self::row($pdo, 1, 'LUZZI')['acrostic']);
+        self::assertNull(self::row($pdo, 2, 'LUZZI')['acrostic']);
+    }
+
+    public function testHeadingLetterMustAgreeWithVersedescr(): void
+    {
+        $this->assertRefuses([['book' => 23, 'chapter' => 1, 'verse' => 1, 'descr' => 'Alef', 'title1' => 'Bet']], ['BLPD', 'differ'], 'BLPD');
+    }
+
+    public function testMidVerseHeadingMayNotReplaceADifferentLetter(): void
+    {
+        $this->assertRefuses(
+            [['book' => 23, 'chapter' => 1, 'verse' => 1, 'descr' => 'Alef', 'title1' => 'Bet', 'title_position' => 5]],
+            ['BLPD', '23 1:1'],
+            'BLPD'
+        );
+    }
+
+    public function testMidVerseHeadingFillsAnEmptyRow(): void
+    {
+        $pdo = $this->migrate([['book' => 23, 'chapter' => 1, 'verse' => 1, 'title1' => 'Bet', 'title_position' => 5]], 1, 'BLPD');
+        self::assertSame('Bet', self::row($pdo, 1, 'BLPD')['acrostic']);
+    }
+
+    public function testAcrosticCountPerChapterIsChecked(): void
+    {
+        $this->assertRefuses([['book' => 23, 'chapter' => 119, 'verse' => 1, 'title1' => 'ALEF']], ['LUZZI', '119', 'expected 22'], 'LUZZI');
+    }
+
+    public function testNabreEstherLabelsAndDroppedValues(): void
+    {
+        $pdo  = $this->migrate([
+            ['book' => 19, 'chapter' => 1, 'verse' => 1, 'eq' => '1a', 'descr' => 'A:1', 'origin' => 'GREEK'],
+            ['book' => 27, 'chapter' => 12, 'verse' => 1, 'descr' => '12:1'],
+        ], 1, 'NABRE');
+        $stmt = $pdo->query('SELECT verse_label, verse_segment, alt_ref FROM "NABRE" ORDER BY sort_order');
+        self::assertNotFalse($stmt);
+        self::assertSame([['A:1', 'a', null], [null, null, null]], $stmt->fetchAll(\PDO::FETCH_NUM));
     }
 
     public function testOldColumnsGoneAndSortOrderIsKey(): void

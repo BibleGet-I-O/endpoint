@@ -17,11 +17,15 @@
 --   ''                                 -> NULL (an import leftover, not "no number printed")
 --   a heading that is only a Hebrew letter name, in the edition's spelling
 --                                      -> acrostic as well (LUZZI, NABRE, VGCL; CEI2008 and BLPD,
---                                         where it must agree with versedescr's letter unless the
---                                         heading falls mid-verse: the letter beginning there wins)
+--                                         where it must agree with versedescr's letter; a heading
+--                                         that falls mid-verse marks that row, CEI2008 Ps 10:8, 37:28)
+-- A versedescr letter must be in the edition's list (editions without one have none);
+-- a lettered verseequiv's number must equal verse.
 --   verseorigin                        -> text_tradition (added, NULL, where missing: LUZZI, DIVCOM)
 --   "verseID"                          -> sort_order (reading order; still the primary key)
 --
+-- First, two import slips in Greek Esther are corrected (VGCL A:13-17 stored at
+-- 1:2-1:6, DRB's 4:8 additions labelled 13a/13b): see m046_table.
 -- Any other value raises, naming table, column and value. Headings stay as
 -- they are: the letter is data (acrostic), the heading is how it is printed.
 -- '' keeps a meaning only in verse_label ('' = printed without a number).
@@ -120,7 +124,9 @@ DECLARE
     alt_re     CONSTANT TEXT := '^(\([0-9]+,[0-9]+>?\)|[0-9]+)$';
     pos_re     CONSTANT TEXT := '^[0-9]+:[0-9]+$';
     nabre_re   CONSTANT TEXT := '^[A-F]:[0-9]+$';
-    letter_re  CONSTANT TEXT := '^\[?[[:alpha:]]+\]? *$';
+    -- A versedescr letter: one of the edition's letter names, optionally in brackets.
+    letter_ok  TEXT := CASE WHEN letters IS NULL THEN 'false'
+                            ELSE format('btrim(versedescr, %L) = ANY(%L)', '[] ', letters) END;
 BEGIN
     IF NOT pg_temp.m046_has(tbl, 'verseequiv') THEN
         RETURN tbl || ': already converted';
@@ -128,6 +134,21 @@ BEGIN
     IF NOT has_descr THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN versedescr VARCHAR(10)', tbl);
     END IF;
+    -- Two import slips in Greek Esther, found by the verse-number guard below and
+    -- corrected first (no text or order changes):
+    --   VGCL stored A:13-17 (1n-1r, Vulgate 12:2-6) at verses 2-6; every other
+    --     edition has them at 1:1, and 1:2-1:6 are the Greek text's own verses;
+    --   DRB labelled its 4:8 additions (Vulgate 15:2-3) 13a/13b; VGCL has 8a/8b.
+    EXECUTE format('UPDATE %I SET verse = 1 WHERE book = 19 AND chapter = 1 AND verse BETWEEN 2 AND 6 '
+                   'AND verseequiv ~ %L AND versedescr = %L || verse', tbl, '^1[n-r]$', '12:');
+    GET DIAGNOSTICS n = ROW_COUNT;
+    IF n > 0 THEN RAISE NOTICE '%: Greek Esther A:13-17 moved to 1:1 (% rows)', tbl, n; END IF;
+    EXECUTE format('UPDATE %I SET verseequiv = %L || right(verseequiv, 1) WHERE book = 19 AND chapter = 4 AND verse = 8 '
+                   'AND verseequiv ~ %L AND versedescr = %L || (right(verseequiv, 1) = %L)::int + 2',
+                   tbl, '8', '^13[ab]$', '15:', 'b');
+    GET DIAGNOSTICS n = ROW_COUNT;
+    IF n > 0 THEN RAISE NOTICE '%: Greek Esther 4:8 additions relabelled 8a/8b (% rows)', tbl, n; END IF;
+
     digest0 := pg_temp.m046_digest(tbl, 'verseID');
 
     EXECUTE format('ALTER TABLE %I ADD COLUMN verse_segment VARCHAR(4), ADD COLUMN alt_ref VARCHAR(16), '
@@ -145,12 +166,19 @@ BEGIN
         RAISE EXCEPTION '%: verseequiv value % claimed by no rule', tbl, bad;
     END IF;
     EXECUTE format('SELECT min(versedescr) FROM %I WHERE versedescr <> %L AND NOT ('
-                   '(%L <> %L AND versedescr ~ %L) OR (%L = %L AND versedescr ~ %L) OR versedescr ~ %L%s)',
-                   tbl, '', tbl, 'NABRE', pos_re, tbl, 'NABRE', nabre_re, letter_re,
+                   '(%L <> %L AND versedescr ~ %L) OR (%L = %L AND versedescr ~ %L) OR %s%s)',
+                   tbl, '', tbl, 'NABRE', pos_re, tbl, 'NABRE', nabre_re, letter_ok,
                    CASE WHEN dropped IS NULL THEN ''
                         ELSE format(' OR (book, chapter, verse, versedescr) IN (%s)', dropped) END) INTO bad;
     IF bad IS NOT NULL THEN
         RAISE EXCEPTION '%: versedescr value % claimed by no rule', tbl, bad;
+    END IF;
+
+    -- A lettered value's number must be the row's verse: only the letters are kept.
+    EXECUTE format('SELECT min(verseequiv || '' at '' || book || '' '' || chapter || '':'' || verse) FROM %I '
+                   'WHERE verseequiv ~ %L AND substring(verseequiv from %L)::int <> verse', tbl, seg_re, '^[0-9]+') INTO bad;
+    IF bad IS NOT NULL THEN
+        RAISE EXCEPTION '%: verseequiv %: the number does not match the verse', tbl, bad;
     END IF;
 
     -- verseequiv
@@ -186,7 +214,7 @@ BEGIN
         EXECUTE format('UPDATE %I SET alt_ref = versedescr WHERE versedescr ~ %L', tbl, pos_re);
         GET DIAGNOSTICS n = ROW_COUNT; n_moved := n_moved + n;
     END IF;
-    EXECUTE format('UPDATE %I SET acrostic = btrim(versedescr, %L) WHERE versedescr ~ %L', tbl, '[] ', letter_re);
+    EXECUTE format('UPDATE %I SET acrostic = btrim(versedescr, %L) WHERE %s', tbl, '[] ', letter_ok);
     GET DIAGNOSTICS n = ROW_COUNT; n_moved := n_moved + n;
     IF n_moved <> n_src THEN
         RAISE EXCEPTION '%: versedescr: % values, % moved', tbl, n_src, n_moved;
@@ -201,9 +229,10 @@ BEGIN
     -- Acrostic letters printed as headings.
     IF letters IS NOT NULL AND pg_temp.m046_has(tbl, 'title1') THEN
         FOREACH c IN ARRAY ARRAY['title1', 'title2', 'title3'] LOOP
-            -- A heading letter that differs from versedescr's, at the start of the verse: a conflict.
+            -- A heading letter that differs from the row's versedescr letter: a conflict,
+            -- wherever the heading falls (a mid-verse heading only fills an empty row).
             EXECUTE format('SELECT min(book || '' '' || chapter || '':'' || verse) FROM %I '
-                           'WHERE btrim(%I) = ANY(%L) AND acrostic IS NOT NULL AND acrostic <> btrim(%I) AND title_position IS NULL',
+                           'WHERE btrim(%I) = ANY(%L) AND acrostic IS NOT NULL AND acrostic <> btrim(%I)',
                            tbl, c, letters, c) INTO bad;
             IF bad IS NOT NULL THEN
                 RAISE EXCEPTION '%: % heading letter and versedescr letter differ at %', tbl, c, bad;
