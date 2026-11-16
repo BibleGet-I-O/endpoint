@@ -70,6 +70,42 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         }
     }
 
+    // ── Accents, diaereses and ligatures are ignored (#196) ──
+
+    /**
+     * @return array<string, array{string, string, string, string}>
+     */
+    public static function foldedKeywords(): array
+    {
+        return [
+            'Israel finds Israël (fulltext)'  => ['Israel', 'VGCL', 'fulltext', 'Israël'],
+            'Israël finds Israël (fulltext)'  => ['Israël', 'VGCL', 'fulltext', 'Israël'],
+            'caelum finds cælum (fulltext)'   => ['caelum', 'VGCL', 'fulltext', 'cælum'],
+            'Israel finds Israël (exact)'     => ['Israel', 'VGCL', 'exact', 'Israël'],
+            'caelum finds cælum (exact)'      => ['caelum', 'VGCL', 'exact', 'cælum'],
+            'Israel & Dominus (boolean)'      => ['Israel & Dominus', 'VGCL', 'boolean', 'Israël'],
+            'créated finds created (stemmed)' => ['créated', 'TEST1', 'fulltext', 'created'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('foldedKeywords')]
+    public function testSearchIgnoresAccentsAndLigatures(string $keyword, string $version, string $mode, string $expected): void
+    {
+        $handler  = $this->createHandler();
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword') )
+            ->withQueryParams(['keyword' => $keyword, 'version' => $version, 'match' => $mode]);
+        $response = $handler->handle($request);
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertNotEmpty($body['results'], "'$keyword' should match '$expected' in $version ($mode)");
+        foreach ($body['results'] as $verse) {
+            // The text comes back as the edition spells it.
+            self::assertStringContainsString($expected, $verse['text']);
+        }
+    }
+
     public function testFulltextSimpleFallbackNoStemming(): void
     {
         $handler = $this->createHandler();

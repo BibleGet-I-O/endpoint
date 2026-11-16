@@ -169,6 +169,7 @@ CREATE TABLE IF NOT EXISTS "VGCL_idx" (
 -- Vulgate numbering: 150 Psalms. Hebrew Psalm 51 = VGCL chapter 50.
 INSERT INTO "VGCL_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
 ('Gen', 'Genesis', 3, '10,8,5', 1),
+('Exod', 'Exodus', 4, '22,25,22,31', 2),
 ('Psal', 'Psalmorum', 55, '6,13,9,10,13,11,18,10,39,8,9,6,7,5,10,15,51,15,10,14,32,6,10,22,12,14,9,11,13,25,11,22,23,28,13,40,23,14,18,14,12,5,26,18,12,10,15,21,23,21,11,7,9,24,13', 23)
 ON CONFLICT DO NOTHING;
 
@@ -208,7 +209,10 @@ INSERT INTO "VGCL" (book, chapter, verse, text, testament, section) VALUES
 -- VGCL Psalm 51 (= Hebrew Psalm 52, a different Psalm)
 (23, 51, 1, 'In finem. Intellectus David,', 1, 7),
 (23, 51, 2, 'cum venit Doeg Idumaeus, et nuntiavit Sauli.', 1, 7),
-(23, 51, 3, 'Quid gloriaris in malitia, qui potens es in iniquitate?', 1, 7)
+(23, 51, 3, 'Quid gloriaris in malitia, qui potens es in iniquitate?', 1, 7),
+-- The Clementine's own spellings, for accent-insensitive keyword search (#196)
+(1, 1, 1, 'In principio creavit Deus cælum et terram.', 1, 1),
+(2, 4, 22, 'dicesque ad eum: Hæc dicit Dominus: Filius meus primogenitus Israël.', 1, 1)
 ON CONFLICT DO NOTHING;
 
 -- ── DRB (Douay-Rheims Bible) ───────────────────────────────────────────
