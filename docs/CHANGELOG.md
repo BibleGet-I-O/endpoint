@@ -251,6 +251,16 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Fixed
 
+- **`/search/similar` found no source verse outside Esther** (404 "Verse
+  not found or has no embedding"). Since the printed-label work (#188) the
+  source embedding is averaged over the rows of one `verseorigin`, chosen
+  with `verseorigin = (…)`; in production `verseorigin` is NULL for every
+  verse outside Esther, and NULL = NULL is never true. It now compares
+  with `IS NOT DISTINCT FROM`. The test fixtures declared `verseorigin NOT
+  NULL DEFAULT ''`, which hid it; they now use production's definition
+  (`DEFAULT NULL CHECK (verseorigin IN ('GREEK', 'HEBREW'))`). Found by the
+  staging deploy's live tests.
+
 - **Verses merged into the verse before, split out** (migration `042`,
   #185). Reviewing #185's remaining items against each edition's source
   turned up verses stored inside the previous verse's row. vatican.va
