@@ -1899,6 +1899,17 @@
                             "$ref": "#/components/schemas/MetadataBibleBooksResult"
                         }
                     },
+                    "codes": {
+                        "type": "array",
+                        "description": "The USFM 3 and OSIS 2.1.1 code of each book, index-aligned with `results`. Greek-tradition Esther rows correspond to USFM `ESG` / OSIS `AddEsth`; USFM keeps Baruch 6 apart as `LJE`.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "usfm": {"type": "string", "example": "GEN"},
+                                "osis": {"type": "string", "example": "Gen"}
+                            }
+                        }
+                    },
                     "errors": {
                         "type": "array",
                         "description": "An array of any error messages that may have been generated indicating a badly formed `query` parameter or an API server error",

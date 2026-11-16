@@ -25,6 +25,16 @@ class MetadataHandlerHttpTest extends ServerTestCase
         self::assertContains('ENGLISH', $body['languages']);
     }
 
+    public function testBiblebooksCarriesCodes(): void
+    {
+        $body = self::jsonBody(self::httpGet('/v3/metadata/biblebooks')['body']);
+        self::assertArrayHasKey('codes', $body);
+        self::assertCount(count($body['results']), $body['codes']);
+        self::assertSame(['usfm' => 'GEN', 'osis' => 'Gen'], $body['codes'][0]);
+        self::assertSame(['usfm' => 'EST', 'osis' => 'Esth'], $body['codes'][18]);
+        self::assertSame(['usfm' => 'REV', 'osis' => 'Rev'], $body['codes'][72]);
+    }
+
     // ── Bible versions ─────────────────────────────────────
 
     public function testBibleVersionsJson(): void
