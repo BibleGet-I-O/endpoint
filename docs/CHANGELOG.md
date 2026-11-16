@@ -91,6 +91,17 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Added
 
+- **BLPD section headings and Psalm 119's stanza letters** (migration
+  `040`). From vatican.va: 1,296 headings (higher-level and section
+  headings) and Psalm 119's 22 stanza letters (stored like NABRE's and CEI
+  2008's, without brackets) on 1,245 verses, in `title1`-`title3` in
+  printed order; 23 headings that interrupt a verse get a `title_position`.
+  vatican.va's misprints in headings are corrected (proper names with a
+  stray accent such as "Abrám", plus "ombre", "Elseo", "vicoria", ...). As
+  for 039, the data half is in the private BLPD-vatican archive and the
+  public `040` checks the result. No re-embedding (headings aren't part of
+  the embedded text).
+
 - **Live test suite against staging.** `tests/Live` queries a deployed API
   (`BIBLEGET_LIVE_URL`, skipped when unset) with the real data, checking
   structure and an md5 of the text only (copyrighted editions' text stays
