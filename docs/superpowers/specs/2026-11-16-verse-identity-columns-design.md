@@ -39,7 +39,7 @@ No client reads `/dev` (all use `/v3`, or the root that returns 410), and a v4 r
 
 ## Anti-goals
 
-- Changing any verse text, heading or reading order. The digest of (book, chapter, verse, text, titles, order) per edition must be identical before and after.
+- Changing any verse text, heading or reading order (the two Esther corrections below change a verse number and a label only). The digest of (book, chapter, verse, text, titles, order) per edition must be identical before and after.
 - Losing a value: every non-empty old value lands in a new column or is listed as dropped (the two duplicate and leftover cases above), by count.
 
 ## Approaches
@@ -72,7 +72,15 @@ The letter is data (`acrostic`); the heading is how the edition prints it, with 
 - CEI2008, BLPD: from `versedescr` (BLPD's brackets and trailing space stripped).
 - LUZZI (Ps 119), NABRE (Ps 37, Ps 119), VGCL (Ps 118, Lam 1–4): from the heading slot (`title1`–`title3`) whose whole value is a letter name in that edition's spelling. The migration lists the spellings per edition (e.g. LUZZI `ALEF`…`RESCH`, `SCHIN`, `TSADE`; NABRE `Aleph`…`Lamedh`, `Sadhe`; VGCL `Aleph`…`Phe`, `Coph`, `Thau`) and checks the count per chapter (22; 66 for Lam 3; VGCL Lam 1 has 21, since 1:1 carries "Prologus" and no letter).
 - CEI2008 and BLPD also print the letters as headings. Where a row has both, they must agree (the migration checks); where only the heading has one (e.g. CEI2008 Lam 1:1, whose `versedescr` is empty), the heading supplies it.
-- A letter whose heading falls mid-verse (`title_position` set: CEI2008 Ps 10 and 37, NABRE Ps 37:28) belongs to that row.
+- A letter whose heading falls mid-verse (`title_position` set: CEI2008 Ps 10:8 and 37:28, NABRE Ps 37:28) belongs to that row. CEI2008 also marked those two letters in `versedescr` on the next verse (10:9, 37:29); those copies are dropped, as is BLPD's `[He] ` on Ps 119:32 (its stanza and heading begin at 119:33).
+- A `versedescr` letter must be in the edition's list; an edition without a list has none. A heading letter that disagrees with the row's `versedescr` letter raises, mid-verse or not.
+
+### Corrections found by the migration's guards
+
+A lettered `verseequiv` must carry the row's own verse number. Seven Greek Esther rows did not, both import slips, corrected first (user decision, 2026-11-17):
+
+- VGCL stored A:13–17 (`1n`–`1r`, Vulgate 12:2–6) at verses 1:2–1:6; every other edition has them at 1:1, and 1:2–1:6 are the Greek text's own verses. Moved to 1:1.
+- DRB labelled its 4:8 additions (Vulgate 15:2–3) `13a`/`13b`; VGCL has `8a`/`8b` for the same rows. Relabelled.
 
 ### Unique key
 
