@@ -1,8 +1,12 @@
 # CPU-only PyTorch. The VPS has no GPU, and the default PyPI torch wheel pulls in
-# ~3.5 GB of CUDA libraries (nvidia-*, triton) that are never used. The CPU index
-# publishes the same versions with a `+cpu` local label, which PEP 440 ranks above
-# the plain PyPI build, so pip picks it whenever it has to install or upgrade torch.
+# ~3.5 GB of CUDA libraries (nvidia-*, triton) that are never used.
+# torch is pinned with its `+cpu` local label, which only the PyTorch CPU index
+# publishes: pip cannot satisfy it from PyPI, so a newer PyPI release can never
+# win the resolution and bring the CUDA build back. Other packages still come
+# from PyPI. The pin also keeps embeddings reproducible: upgrade it
+# deliberately (and re-check vectors) rather than as a deploy side effect.
 --extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.11.0+cpu
 fastapi>=0.100.0
 uvicorn>=0.23.0
 sentence-transformers>=2.2.0
