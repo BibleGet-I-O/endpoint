@@ -108,7 +108,7 @@ final class EstherRemapperTest extends TestCase
 
     // ── Default prefer origin passed through when no remapping ──
 
-    public function testDefaultPreferOriginPassedThrough(): void
+    public function testDefaultTextTraditionPassedThrough(): void
     {
         $query          = new BibleQuery(19, [new VerseRef(19, 5, null, 1)]);
         [$result, $pos] = $this->remapper->remap($query, 'VGCL', " AND text_tradition = 'HEBREW'");

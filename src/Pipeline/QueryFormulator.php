@@ -48,20 +48,20 @@ class QueryFormulator
                     continue;
                 }
 
-                // Determine base preferOrigin for this book/version
-                $basePreferOrigin = $this->buildPreferOrigin($parsedQuery->book, $version);
+                // Determine base textTradition for this book/version
+                $baseTextTradition = $this->buildTextTradition($parsedQuery->book, $version);
 
                 // Apply Esther Greek additions remapping (AST → AST)
                 [$remappedQuery, $perSegmentOrigins] = $this->estherRemapper->remap(
                     $parsedQuery,
                     $version,
-                    $basePreferOrigin
+                    $baseTextTradition
                 );
 
                 // Apply Psalm chapter swap for Vulgate-numbered versions
                 $remappedQuery = $this->psalmSwapper->swap($remappedQuery, $version);
 
-                // Compile AST → SQL with per-segment preferOrigin
+                // Compile AST → SQL with per-segment textTradition
                 $sqls = $this->compiler->compile(
                     $remappedQuery,
                     $version,
@@ -94,12 +94,12 @@ class QueryFormulator
 
     private const ESTHER_BOOK_NUM = 19;
 
-    private function buildPreferOrigin(int $book, string $version): string
+    private function buildTextTradition(int $book, string $version): string
     {
         if ($book === self::ESTHER_BOOK_NUM && in_array($version, $this->ctx->CATHOLIC_VERSIONS, true)) {
-            $preferOrigin = $this->ctx->DATA['preferorigin'] ?? '';
-            $origin       = in_array($preferOrigin, QuoteContext::ALLOWED_PREFER_ORIGINS, true)
-                ? $preferOrigin
+            $textTradition = $this->ctx->DATA['text_tradition'] ?? '';
+            $origin        = in_array($textTradition, QuoteContext::ALLOWED_TEXT_TRADITIONS, true)
+                ? $textTradition
                 : 'GREEK';
             return " AND text_tradition = '" . $origin . "'";
         }

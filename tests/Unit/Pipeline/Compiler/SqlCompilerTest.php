@@ -22,15 +22,15 @@ final class SqlCompilerTest extends TestCase
     /**
      * @return array<int, string>
      */
-    private function compile(BibleQuery $query, string $version = 'CEI2008', string $preferOrigin = ''): array
+    private function compile(BibleQuery $query, string $version = 'CEI2008', string $textTradition = ''): array
     {
-        return $this->compiler->compile($query, $version, $preferOrigin, [], []);
+        return $this->compiler->compile($query, $version, $textTradition, [], []);
     }
 
     /**
      * The WHERE fragment for one segment. Rows are stored at their identity
      * (migration 045), so a segment selects by chapter and verse; parenthesised
-     * so a clause appended after it (preferorigin) binds to all of it.
+     * so a clause appended after it (text_tradition) binds to all of it.
      */
     private static function where(string $cond): string
     {
@@ -142,9 +142,9 @@ final class SqlCompilerTest extends TestCase
         $this->assertStringContainsString('verse = 10', $result[2]);
     }
 
-    // ── preferOrigin annotation ───────────────────────────────────
+    // ── textTradition annotation ───────────────────────────────────
 
-    public function testPreferOriginBindsToWholeCondition(): void
+    public function testTextTraditionBindsToWholeCondition(): void
     {
         $query  = new BibleQuery(23, [new VerseRef(23, 51, null, 3)]);
         $result = $this->compile($query, 'TEST3', " AND text_tradition = 'HEBREW'");
@@ -164,7 +164,7 @@ final class SqlCompilerTest extends TestCase
         $this->assertStringNotContainsString('verse_segment', $result[0]);
     }
 
-    public function testPreferOrigin(): void
+    public function testTextTradition(): void
     {
         $query  = new BibleQuery(19, [new VerseRef(19, 51, null, 1)]);
         $result = $this->compiler->compile($query, 'CEI2008', " AND text_tradition = 'GREEK'", [], []);

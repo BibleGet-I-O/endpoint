@@ -297,6 +297,10 @@ class MetadataHandler extends AbstractHandler
         $results->addAttribute('type', $rootName);
         $json = json_encode($data['results'] ?? $data['indexes'] ?? $data, JSON_UNESCAPED_UNICODE);
         $results->addAttribute('data', $json !== false ? $json : '{}');
+        if (isset($data['codes'])) {
+            $codesJson = json_encode($data['codes'], JSON_UNESCAPED_UNICODE);
+            $results->addAttribute('codes', $codesJson !== false ? $codesJson : '[]');
+        }
 
         $xmlString = $xml->asXML();
         return $xmlString !== false ? $xmlString : '';

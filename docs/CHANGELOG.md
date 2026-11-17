@@ -21,11 +21,15 @@ Deprecated / Fixed / Removed / Security where applicable.
     edition's spelling, in CEI 2008, BLPD, LUZZI, NABRE and VGCL (the
     letter headings stay as they are);
   - `text_tradition`: `HEBREW` / `GREEK` (was `verseorigin`).
+  Search rows (keyword, semantic, similar, hybrid) carry the same four.
+  The quote parameter `preferorigin` is now `text_tradition` (same values,
+  HEBREW / GREEK, default GREEK), matching the field.
   NABRE's printed Esther labels (`A:1` …) are now in `verse_label`.
   `verseID` is `sort_order` internally (never returned). Each edition table
   gets a unique key on (book, chapter, verse, verse_segment, text_tradition,
   printed_chapter). `/metadata/biblebooks` adds `codes`: the USFM and OSIS
-  code of each book (new table `biblebooks_codes`). No client reads `/dev`;
+  code of each book (new table `biblebooks_codes`; in XML, a `codes`
+  attribute on `results`). No client reads `/dev`;
   the frozen v3 API is unchanged. Apply `046` and deploy together.
 
 - **Keyword search ignores accents, diaereses and ligatures** (#196,

@@ -26,13 +26,13 @@ class QuoteContextTest extends TestCase
         self::assertSame('{"Accept":"*/*"}', $ctx->jsonEncodedRequestHeaders);
     }
 
-    public function testPreferOriginValidation(): void
+    public function testTextTraditionValidation(): void
     {
-        $ctx = new QuoteContext(['preferorigin' => 'GREEK']);
-        self::assertSame('GREEK', $ctx->DATA['preferorigin']);
+        $ctx = new QuoteContext(['text_tradition' => 'GREEK']);
+        self::assertSame('GREEK', $ctx->DATA['text_tradition']);
 
-        $ctx2 = new QuoteContext(['preferorigin' => 'INVALID']);
-        self::assertSame('', $ctx2->DATA['preferorigin']);
+        $ctx2 = new QuoteContext(['text_tradition' => 'INVALID']);
+        self::assertSame('', $ctx2->DATA['text_tradition']);
     }
 
     public function testAddErrorMessage(): void

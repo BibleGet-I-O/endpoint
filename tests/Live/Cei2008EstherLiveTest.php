@@ -32,7 +32,7 @@ final class Cei2008EstherLiveTest extends LiveTestCase
     #[DataProvider('ranges')]
     public function testRangeStaysWithinOneText(string $query, string $origin, array $expected): void
     {
-        $r = self::liveGet('/quote?query=' . $query . '&version=CEI2008&return=json&preferorigin=' . $origin);
+        $r = self::liveGet('/quote?query=' . $query . '&version=CEI2008&return=json&text_tradition=' . $origin);
         self::assertSame(200, $r['status']);
         self::assertSame([], $r['body']['errors']);
         self::assertIsArray($r['body']['results']);

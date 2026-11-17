@@ -19,19 +19,21 @@ final class Placement
     /**
      * A search result row's verse identity and placement: chapter, verse,
      * verse_segment (the printed letter), alt_ref (the position in another
-     * numbering, e.g. CEI 2008's Greek psalm number), and
-     * the three placement fields.
+     * numbering, e.g. CEI 2008's Greek psalm number), acrostic, text_tradition,
+     * and the three placement fields.
      *
      * @param array<string, mixed> $row A fetched verse row.
-     * @return array{chapter: int, verse: int, verse_segment: ?string, alt_ref: ?string, printed_chapter: ?int, verse_label: ?string, omitted: bool}
+     * @return array{chapter: int, verse: int, verse_segment: ?string, alt_ref: ?string, acrostic: ?string, text_tradition: ?string, printed_chapter: ?int, verse_label: ?string, omitted: bool}
      */
     public static function verseFields(array $row): array
     {
         return [
-            'chapter'       => is_numeric($row['chapter'] ?? null) ? (int) $row['chapter'] : 0,
-            'verse'         => is_numeric($row['verse'] ?? null) ? (int) $row['verse'] : 0,
-            'verse_segment' => is_string($row['verse_segment'] ?? null) ? $row['verse_segment'] : null,
-            'alt_ref'       => is_string($row['alt_ref'] ?? null) ? $row['alt_ref'] : null,
+            'chapter'        => is_numeric($row['chapter'] ?? null) ? (int) $row['chapter'] : 0,
+            'verse'          => is_numeric($row['verse'] ?? null) ? (int) $row['verse'] : 0,
+            'verse_segment'  => is_string($row['verse_segment'] ?? null) ? $row['verse_segment'] : null,
+            'alt_ref'        => is_string($row['alt_ref'] ?? null) ? $row['alt_ref'] : null,
+            'acrostic'       => is_string($row['acrostic'] ?? null) ? $row['acrostic'] : null,
+            'text_tradition' => is_string($row['text_tradition'] ?? null) ? $row['text_tradition'] : null,
         ] + self::fromRow($row);
     }
 

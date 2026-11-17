@@ -116,7 +116,7 @@ final class PrintedLabelHttpTest extends ServerTestCase
     #[DataProvider('estherTexts')]
     public function testEstherRangeStaysWithinOneText(string $origin, array $verses): void
     {
-        $r = self::httpGet('/v3/quote?query=Est9,29-31&version=TEST3&preferorigin=' . $origin);
+        $r = self::httpGet('/v3/quote?query=Est9,29-31&version=TEST3&text_tradition=' . $origin);
         self::assertSame(200, $r['status']);
         $body = self::jsonBody($r['body']);
         self::assertSame([], $body['errors']);

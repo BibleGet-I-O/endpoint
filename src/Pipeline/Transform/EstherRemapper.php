@@ -53,18 +53,18 @@ final class EstherRemapper
     /**
      * Remap a BibleQuery AST if it targets Esther in a VGCL/DRB version.
      *
-     * Returns a new BibleQuery with remapped segments, plus the preferorigin
+     * Returns a new BibleQuery with remapped segments, plus the text_tradition
      * annotation to use. If no remapping applies, returns the query unchanged.
      *
-     * Returns per-segment preferOrigin strings so each non-consecutive chunk
+     * Returns per-segment textTradition strings so each non-consecutive chunk
      * gets the correct text_tradition filter (matching legacy per-chunk behavior).
      *
-     * @return array{BibleQuery, array<int, string>} [remappedQuery, perSegmentPreferOrigins]
+     * @return array{BibleQuery, array<int, string>} [remappedQuery, perSegmentTextTraditions]
      */
-    public function remap(BibleQuery $query, string $version, string $defaultPreferOrigin): array
+    public function remap(BibleQuery $query, string $version, string $defaultTextTradition): array
     {
         if (!$this->shouldRemap($query->book, $version)) {
-            $origins = array_fill(0, count($query->segments), $defaultPreferOrigin);
+            $origins = array_fill(0, count($query->segments), $defaultTextTradition);
             return [$query, $origins];
         }
 
@@ -73,12 +73,12 @@ final class EstherRemapper
 
         foreach ($query->segments as $segment) {
             if ($segment instanceof VerseRef) {
-                [$mapped, $po] = $this->remapVerseRef($segment, $defaultPreferOrigin);
+                [$mapped, $po] = $this->remapVerseRef($segment, $defaultTextTradition);
                 $segments[]    = $mapped;
                 $origins[]     = $po;
             } elseif ($segment instanceof VerseRange) {
-                [$from, $poFrom] = $this->remapVerseRef($segment->from, $defaultPreferOrigin);
-                [$to ]           = $this->remapVerseRef($segment->to, $defaultPreferOrigin);
+                [$from, $poFrom] = $this->remapVerseRef($segment->from, $defaultTextTradition);
+                [$to ]           = $this->remapVerseRef($segment->to, $defaultTextTradition);
                 $segments[]      = new VerseRange($from, $to);
                 $origins[]       = $poFrom;
             }
@@ -97,21 +97,21 @@ final class EstherRemapper
     /**
      * @return array{VerseRef, string}
      */
-    private function remapVerseRef(VerseRef $ref, string $defaultPreferOrigin): array
+    private function remapVerseRef(VerseRef $ref, string $defaultTextTradition): array
     {
         $mapped = $this->matchMapping($ref->chapter, $ref->verse);
         if ($mapped !== null) {
-            [$chapter, $verse, $preferOrigin] = $mapped;
+            [$chapter, $verse, $textTradition] = $mapped;
             return [
                 new VerseRef($ref->book, $chapter, $ref->alternateChapter, $verse, $ref->partialSuffix),
-                $preferOrigin,
+                $textTradition,
             ];
         }
-        return [$ref, $defaultPreferOrigin];
+        return [$ref, $defaultTextTradition];
     }
 
     /**
-     * @return array{int, int|null, string}|null [chapter, verse, preferorigin] or null
+     * @return array{int, int|null, string}|null [chapter, verse, text_tradition] or null
      */
     private function matchMapping(int $chapter, ?int $verse): ?array
     {

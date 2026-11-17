@@ -20,7 +20,7 @@ class QuoteContext
 {
     public const ENDPOINT_VERSION = '3.0';
 
-    public const ALLOWED_PREFER_ORIGINS = ['GREEK', 'HEBREW'];
+    public const ALLOWED_TEXT_TRADITIONS = ['GREEK', 'HEBREW'];
 
     /** @var array<int|string, string> */
     public static array $errorMessages = [
@@ -49,7 +49,7 @@ class QuoteContext
         'pluginversion'  => '',
         'forceversion'   => '',
         'forcecopyright' => '',
-        'preferorigin'   => '',
+        'text_tradition' => '',
     ];
 
     public \PDO $pdo;
@@ -126,8 +126,8 @@ class QuoteContext
     public function __construct(array $params, ?LoggerInterface $logger = null, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')
     {
         $this->DATA                      = array_merge(self::$defaultParameters, $params);
-        $preferOriginUpper               = strtoupper($this->DATA['preferorigin']);
-        $this->DATA['preferorigin']      = in_array($preferOriginUpper, self::ALLOWED_PREFER_ORIGINS, true) ? $preferOriginUpper : '';
+        $textTraditionUpper              = strtoupper($this->DATA['text_tradition']);
+        $this->DATA['text_tradition']    = in_array($textTraditionUpper, self::ALLOWED_TEXT_TRADITIONS, true) ? $textTraditionUpper : '';
         $this->logger                    = $logger ?? new NullLogger();
         $this->originHeader              = $originHeader;
         $this->requestMethod             = $requestMethod;

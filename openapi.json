@@ -50,7 +50,7 @@
                         "$ref": "#/components/parameters/domain"
                     },
                     {
-                        "$ref": "#/components/parameters/preferorigin"
+                        "$ref": "#/components/parameters/text_tradition"
                     }
                 ],
                 "responses": {
@@ -190,7 +190,7 @@
                                             "NABRE"
                                         ],
                                         "appid": "swaggerhub",
-                                        "preferorigin": "GREEK"
+                                        "text_tradition": "GREEK"
                                     }
                                 },
                                 "RequestHebrewOrigin": {
@@ -200,7 +200,7 @@
                                             "NABRE"
                                         ],
                                         "appid": "swaggerhub",
-                                        "preferorigin": "HEBREW"
+                                        "text_tradition": "HEBREW"
                                     }
                                 },
                                 "RequestEuropeanFormat": {
@@ -1055,9 +1055,9 @@
                         "description": "In the case of web based applications, should indicate the domain from which the request is generated. Currently used by the official plugin for WordPress to better understand usage of the plugin and monitor requests. When the application or plugin making the request can be installed on different domains (as is the case with the WordPress plugin), this value should be generated dynamically from a server variable identifying the domain. If instead it will always be the same domain making the requests, the value can be hardcoded with the actual domain.",
                         "example": "app.swaggerhub.com"
                     },
-                    "preferorigin": {
+                    "text_tradition": {
                         "type": "string",
-                        "description": "whether to retrieve Bible verses that are based on the GREEK original text or on the HEBREW original text, when there are multiple possibilities. This occurs generally in Catholic versions of the Bible for certain Books and chapters (e.g. Esther)",
+                        "description": "Esther in Catholic editions is printed twice, from the Greek text (with its additions) and from the Hebrew: which of the two to quote. Default GREEK. Matches the `text_tradition` field of the returned rows (was `preferorigin` before migration 046).",
                         "enum": [
                             "GREEK",
                             "HEBREW"
@@ -15334,10 +15334,10 @@
                 },
                 "example": "app.swaggerhub.com"
             },
-            "preferorigin": {
-                "name": "preferorigin",
+            "text_tradition": {
+                "name": "text_tradition",
                 "in": "query",
-                "description": "",
+                "description": "Esther in Catholic editions is printed twice, from the Greek text (with its additions) and from the Hebrew: which of the two to quote. Default GREEK. Matches the `text_tradition` field of the returned rows (was `preferorigin` before migration 046).",
                 "required": false,
                 "schema": {
                     "type": "string",

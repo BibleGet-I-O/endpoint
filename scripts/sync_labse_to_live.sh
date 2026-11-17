@@ -21,6 +21,9 @@
 #     exist on every version table). If not, apply them on live first:
 #         psql ... -f migrations/012-add-embedding-labse-columns.sql
 #         psql ... -f migrations/013-add-embedding-labse-remaining-versions.sql
+#   - Both local and live have migration 046 applied (rows are matched by
+#     sort_order, which was "verseID" before 046):
+#         psql ... -f migrations/046-verse-identity-columns.sql
 #   - SSH access to the live host, with credentials available in an .env-style
 #     file at LIVE_ENV_PATH on the remote (DB_HOST, DB_PORT, DB_NAME, DB_USER,
 #     DB_PASS — same shape as the deployed app's .env).

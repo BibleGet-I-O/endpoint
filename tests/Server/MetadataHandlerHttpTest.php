@@ -35,6 +35,16 @@ class MetadataHandlerHttpTest extends ServerTestCase
         self::assertSame(['usfm' => 'REV', 'osis' => 'Rev'], $body['codes'][72]);
     }
 
+    public function testBiblebooksXmlCarriesCodes(): void
+    {
+        $r   = self::httpGet('/v3/metadata/biblebooks?return=xml');
+        $xml = simplexml_load_string($r['body']);
+        self::assertNotFalse($xml);
+        $codes = json_decode((string) $xml->results['codes'], true);
+        self::assertIsArray($codes);
+        self::assertSame(['usfm' => 'GEN', 'osis' => 'Gen'], $codes[0]);
+    }
+
     // ── Bible versions ─────────────────────────────────────
 
     public function testBibleVersionsJson(): void
