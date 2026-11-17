@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Exception\ForbiddenException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
@@ -43,12 +44,13 @@ class QuoteHandler extends AbstractHandler
         foreach ($params as $key => $value) {
             $stringParams[$key] = is_string($value) ? $value : ( is_scalar($value) ? (string) $value : '' );
         }
-        $ctx = new QuoteContext(
+        $credential = $request->getAttribute('credential');
+        $ctx        = new QuoteContext(
             $stringParams,
             LoggerFactory::create('api'),
             $request->getHeaderLine('Origin'),
             $request->getMethod(),
-            self::safeEncodeHeaders($request->getHeaders())
+            $credential instanceof Credential ? $credential : null
         );
         $ctx->initialize();
 
@@ -263,25 +265,6 @@ class QuoteHandler extends AbstractHandler
         return $this->buildHtmlResults($ctx->results)
             . $this->buildHtmlErrors($ctx->errors)
             . $this->buildHtmlInfo($ctx->detectedNotation, $bibleVersionsInfo, $ctx->notices);
-    }
-
-    /**
-     * Encode request headers as JSON, redacting sensitive values.
-     *
-     * @param array<array<string>> $headers
-     */
-    private static function safeEncodeHeaders(array $headers): string
-    {
-        $sensitiveHeaders = ['authorization', 'cookie', 'set-cookie', 'x-api-key', 'proxy-authorization'];
-        $safe             = [];
-        foreach ($headers as $name => $values) {
-            if (in_array(strtolower($name), $sensitiveHeaders, true)) {
-                $safe[$name] = ['[REDACTED]'];
-            } else {
-                $safe[$name] = $values;
-            }
-        }
-        return json_encode($safe) ?: '{}';
     }
 
     private static function createEmptyResponse(ServerRequestInterface $request): ResponseInterface

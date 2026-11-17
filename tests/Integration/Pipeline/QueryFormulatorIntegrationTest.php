@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BibleGet\Tests\Integration\Pipeline;
 
+use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Auth\CredentialType;
 use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\QueryValidator;
 use BibleGet\Api\Pipeline\QueryFormulator;
@@ -11,9 +13,9 @@ use BibleGet\Tests\Integration\DatabaseTestCase;
 
 class QueryFormulatorIntegrationTest extends DatabaseTestCase
 {
-    private function formulateFor(string $query, string $version = 'TEST1'): QuoteContext
+    private function formulateFor(string $query, string $version = 'TEST1', ?Credential $credential = null): QuoteContext
     {
-        $ctx = new QuoteContext(['query' => $query, 'version' => $version]);
+        $ctx = new QuoteContext(['query' => $query, 'version' => $version], null, '', 'GET', $credential);
         $ctx->initialize();
         $ctx->queryStrClean();
 
@@ -121,6 +123,25 @@ class QueryFormulatorIntegrationTest extends DatabaseTestCase
 
         self::assertNotEmpty($ctx->formulatedQueries);
         self::assertStringContainsString('LIMIT 30', $ctx->formulatedQueries[0]);
+    }
+
+    public function testReaderScopeLiftsLimitOnlyOnFlaggedEdition(): void
+    {
+        $reader = new Credential(CredentialType::Project, '00000000-0000-4000-8000-000000000001', 'reader', null, null, null, null, true);
+        $read   = new Credential(CredentialType::Project, '00000000-0000-4000-8000-000000000002', 'read', 1000, null, null, null, false);
+        $pdo    = $this->getConnection();
+
+        // Not flagged: limited even for the reader key.
+        self::assertStringContainsString('LIMIT 30', $this->formulateFor('Genesis1', 'TEST2', $reader)->formulatedQueries[0]);
+
+        $pdo->exec("UPDATE versions_available SET reader_full_text = TRUE WHERE sigla = 'TEST2'");
+        try {
+            self::assertStringNotContainsString('LIMIT', $this->formulateFor('Genesis1', 'TEST2', $reader)->formulatedQueries[0]);
+            self::assertStringContainsString('LIMIT 30', $this->formulateFor('Genesis1', 'TEST2', $read)->formulatedQueries[0]);
+            self::assertStringContainsString('LIMIT 30', $this->formulateFor('Genesis1', 'TEST2')->formulatedQueries[0]);
+        } finally {
+            $pdo->exec("UPDATE versions_available SET reader_full_text = FALSE WHERE sigla = 'TEST2'");
+        }
     }
 
     public function testNonCopyrightVersionNoLimit(): void

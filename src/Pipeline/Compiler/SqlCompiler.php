@@ -34,21 +34,18 @@ final class SqlCompiler
      *
      * @param string|array<int, string> $textTradition  Single string (applied to all segments)
      *                                                  or per-segment array of textTradition suffixes
-     * @param array<int, string> $copyrightVersions
-     * @param array<int, string> $requestedCopyrightedVersions
+     * @param array<int, string> $limitedVersions Editions limited to 30 verses (copyrighted, unless the reader scope lifts it)
      * @return array<int, string> SQL queries
      */
     public function compile(
         BibleQuery $query,
         string $version,
         string|array $textTradition,
-        array $copyrightVersions,
-        array $requestedCopyrightedVersions,
+        array $limitedVersions,
     ): array {
         $sqlBase  = 'SELECT * FROM "' . $version . '" WHERE book = ' . $query->book;
         $queries  = [];
-        $isCopied = in_array($version, $copyrightVersions)
-            || in_array($version, $requestedCopyrightedVersions);
+        $isCopied = in_array($version, $limitedVersions, true);
 
         foreach ($query->segments as $i => $segment) {
             $sql = $sqlBase;

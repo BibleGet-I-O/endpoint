@@ -20,8 +20,6 @@ class PsalmChapterSwapIntegrationTest extends DatabaseTestCase
 {
     private function executePipeline(string $query, string $version): QuoteContext
     {
-        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
-
         $ctx = new QuoteContext(['query' => $query, 'version' => $version]);
         $ctx->initialize();
         $ctx->queryStrClean();
@@ -38,12 +36,6 @@ class PsalmChapterSwapIntegrationTest extends DatabaseTestCase
         }
 
         return $ctx;
-    }
-
-    protected function tearDown(): void
-    {
-        unset($_SERVER['REMOTE_ADDR']);
-        parent::tearDown();
     }
 
     /**
