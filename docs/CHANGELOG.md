@@ -9,6 +9,18 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ### Fixed
 
+- **Embedding metadata for vectors copied in from elsewhere.**
+  `sync_labse_to_live.sh` copied LaBSE vectors without their
+  `embedding_metadata` row, and `compute_embeddings.py` never created a
+  missing one when there was nothing to embed. LUZZI, VGCL and DIVCOM had
+  no LaBSE row, so every semantic search on them logged "No embedding
+  metadata found" and could not check the model or staleness of their
+  vectors (the vectors themselves were current LaBSE: re-embedded samples
+  matched exactly). The sync now copies the row with the vectors; the
+  script records a missing row (model, dimensions, and the content
+  checksum for the hash-tracked column). The three rows were recorded on
+  staging.
+
 - **NABRE Greek Esther** (migration `047`): Addition E:21 (8:12v) was
   stored in chapter 9, so a Greek quote of Est 8:12 missed it and one of
   9:12 returned it; it is now at 8:12v, as in CEI 2008 and VGCL. 10:3e,

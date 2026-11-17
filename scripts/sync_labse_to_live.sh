@@ -165,6 +165,15 @@ for V in $VERSIONS; do
         echo "    END IF;"
         echo "END"
         echo "\$sync\$;"
+        # The vectors' metadata row (model, dimensions, content checksum) goes
+        # with them: without it the API logs a warning on every semantic search
+        # and cannot check the model or the staleness of these vectors.
+        meta_sql=$(local_psql -tAc "SELECT format('INSERT INTO embedding_metadata (version_sigla, column_name, model_name, model_version, dimensions, computed_at, content_xor) VALUES (%L, %L, %L, %L, %s, %L, %L) ON CONFLICT (version_sigla, column_name) DO UPDATE SET model_name = EXCLUDED.model_name, model_version = EXCLUDED.model_version, dimensions = EXCLUDED.dimensions, computed_at = EXCLUDED.computed_at, content_xor = EXCLUDED.content_xor;', version_sigla, column_name, model_name, model_version, dimensions, computed_at, content_xor) FROM embedding_metadata WHERE version_sigla = '$V' AND column_name = 'embedding_labse'")
+        if [ -n "$meta_sql" ]; then
+            echo "$meta_sql"
+        else
+            log "$V: no local embedding_metadata row for embedding_labse; run compute_embeddings.py on live to record one" >&2
+        fi
         echo 'COMMIT;'
     } | remote_psql_stdin | sed "s/^/    /"
 done

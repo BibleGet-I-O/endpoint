@@ -317,8 +317,13 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
         # asymmetry" below), and refreshing it would hide stale vectors.
         # Only the checksum: no vector was computed, so the model metadata
         # (name, version, dimensions) still describes the stored vectors.
-        if column == DEFAULT_COLUMN and has_text_hash_column(conn, version):
-            update_content_xor(conn, version, column, compute_content_xor(conn, version))
+        # Vectors copied in from elsewhere (sync_labse_to_live.sh) may have no
+        # metadata row at all: record one, or the API can neither check their
+        # model nor their staleness.
+        hash_tracked = column == DEFAULT_COLUMN and has_text_hash_column(conn, version)
+        content_xor = compute_content_xor(conn, version) if hash_tracked else None
+        if not record_missing_metadata(conn, version, column, dim, content_xor) and hash_tracked:
+            update_content_xor(conn, version, column, content_xor)
         print(f"  {version}: no verses to process (all up to date)")
         return 0
 
@@ -343,6 +348,27 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
 
     print(f"  {version}: done ({total_written} embeddings)")
     return total_written
+
+
+def record_missing_metadata(conn, version, column, dim, content_xor):
+    """Create the embedding_metadata row for (version, column) when there is none,
+    for vectors that are all present but were not written by this script. The
+    model fields are this run's model; content_xor is given only for the
+    hash-tracked column (elsewhere it would hide stale vectors, see "Known
+    asymmetry"). Returns True if a row was created."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO embedding_metadata "
+            "(version_sigla, column_name, model_name, model_version, dimensions, computed_at, content_xor) "
+            "VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s) "
+            "ON CONFLICT (version_sigla, column_name) DO NOTHING",
+            (version, column, MODEL_NAME, MODEL_VERSION, dim, content_xor),
+        )
+        created = cur.rowcount == 1
+    conn.commit()
+    if created:
+        print(f"  {version}: recorded missing metadata for {column} ({MODEL_NAME})")
+    return created
 
 
 def update_content_xor(conn, version, column, content_xor):
