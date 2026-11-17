@@ -7,6 +7,14 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Fixed
+
+- **NABRE Greek Esther** (migration `047`): Addition E:21 (8:12v) was
+  stored in chapter 9, so a Greek quote of Est 8:12 missed it and one of
+  9:12 returned it; it is now at 8:12v, as in CEI 2008 and VGCL. 10:3e,
+  labelled F:4 (the label of 10:3d), is now F:5. Found by the
+  versification snapshot regenerated after `046`; snapshots updated.
+
 ### Changed
 
 - **Verse-identity fields renamed and sorted by what they hold** (#184,
