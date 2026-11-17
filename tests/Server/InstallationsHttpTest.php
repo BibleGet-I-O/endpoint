@@ -222,6 +222,37 @@ class InstallationsHttpTest extends ServerTestCase
         self::assertSame(401, self::httpPatch('/v3/installations/self', '{}', ['X-Api-Key' => $key['plain'], 'Content-Type' => 'application/json'])['status']);
     }
 
+    public function testQueryStringFieldsAreIgnoredAndBadBytesAre422(): void
+    {
+        $key = $this->clientKey();
+        $r   = self::httpPost(
+            '/v3/installations?install_id=' . self::UUID . '&plugin_version=%FF',
+            null,
+            ['X-Api-Key' => $key['plain'], 'Content-Type' => 'application/json']
+        );
+        self::assertSame(422, $r['status'], $r['body']);
+        $r = self::httpPost(
+            '/v3/installations?plugin_version=%FF',
+            json_encode(['install_id' => self::UUID, 'plugin_version' => '1'], JSON_THROW_ON_ERROR),
+            ['X-Api-Key' => $key['plain'], 'Content-Type' => 'application/json']
+        );
+        self::assertSame(201, $r['status'], $r['body']);
+    }
+
+    public function testNulAndOddCharactersInFieldsAre422(): void
+    {
+        $key = $this->clientKey();
+        self::assertSame(422, self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => "1.0\x00x"])['status']);
+        self::assertSame(422, self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1 0'])['status']);
+
+        $reg = self::jsonBody(self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1'])['body']);
+        self::assertIsString($reg['token']);
+        $h = ['X-Api-Key' => $reg['token'], 'Content-Type' => 'application/json'];
+        self::assertSame(422, self::httpPatch('/v3/installations/self', json_encode(['site_url' => "https://example.com/\x01"], JSON_THROW_ON_ERROR), $h)['status']);
+        self::assertSame(422, self::httpPatch('/v3/installations/self', json_encode(['contact_email' => "a\x00@example.com"], JSON_THROW_ON_ERROR), $h)['status']);
+        self::assertSame(204, self::httpPatch('/v3/installations/self?plugin_version=%FF', '{}', $h)['status']);
+    }
+
     public function testConcurrentFirstRegistrationYieldsOneRow(): void
     {
         $key  = $this->clientKey();
