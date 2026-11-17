@@ -13,8 +13,11 @@ use BibleGet\Api\Handlers\SemanticSearchHandler;
 use BibleGet\Api\Handlers\SimilarSearchHandler;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
+use BibleGet\Api\Http\Middleware\CredentialMiddleware;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
 use BibleGet\Api\Http\Middleware\LoggingMiddleware;
+use BibleGet\Api\Http\Middleware\RateLimitMiddleware;
+use BibleGet\Api\Http\Middleware\UsageMiddleware;
 use BibleGet\Api\Http\Server\MiddlewarePipeline;
 use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -113,6 +116,13 @@ class Router
         $pipeline->pipe(new ErrorHandlingMiddleware($this->psr17Factory, self::$debug));
         $pipeline->pipe(new LoggingMiddleware(self::$debug));
 
+        $usageRoute = self::dataRouteName($route, $requestPathParts);
+        if ($usageRoute !== null) {
+            $pipeline->pipe(new CredentialMiddleware());
+            $pipeline->pipe(new RateLimitMiddleware());
+            $pipeline->pipe(new UsageMiddleware($usageRoute));
+        }
+
         $this->response = $pipeline->handle($this->request)
             ->withHeader('X-Request-Id', $this->requestId);
         $this->emitResponse();
@@ -171,6 +181,33 @@ class Router
         return in_array($serverAddress, $localhostAddresses)
             || in_array($remoteAddress, $localhostAddresses)
             || in_array($serverName, $localhostNames);
+    }
+
+    /**
+     * The usage_daily route name of a data route (the first path segment, plus
+     * the second for search), or null for a route that needs no credential
+     * (including unknown routes, which 404).
+     * The empty route is the legacy alias of /quote.
+     *
+     * @param list<string> $pathParts the path segments after the first
+     */
+    public static function dataRouteName(string $route, array $pathParts): ?string
+    {
+        return match ($route) {
+            '', 'quote' => 'quote',
+            'metadata'  => 'metadata',
+            'search'    => self::searchRouteName($pathParts[0] ?? ''),
+            default     => null,
+        };
+    }
+
+    /** Unknown search sub-routes are 404s, not data routes, so no free-form text reaches usage_daily. */
+    private static function searchRouteName(string $subRoute): ?string
+    {
+        if ($subRoute === '') {
+            return 'search';
+        }
+        return in_array($subRoute, ['keyword', 'semantic', 'hybrid', 'similar'], true) ? 'search/' . $subRoute : null;
     }
 
     private function createNotFoundHandler(): RequestHandlerInterface

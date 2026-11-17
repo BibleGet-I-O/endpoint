@@ -10,6 +10,7 @@ enum StatusCode: int
     case NO_CONTENT             = 204;
     case NOT_MODIFIED           = 304;
     case BAD_REQUEST            = 400;
+    case UNAUTHORIZED           = 401;
     case FORBIDDEN              = 403;
     case NOT_FOUND              = 404;
     case METHOD_NOT_ALLOWED     = 405;
@@ -27,6 +28,7 @@ enum StatusCode: int
             self::NO_CONTENT             => 'No Content',
             self::NOT_MODIFIED           => 'Not Modified',
             self::BAD_REQUEST            => 'Bad Request',
+            self::UNAUTHORIZED           => 'Unauthorized',
             self::FORBIDDEN              => 'Forbidden',
             self::NOT_FOUND              => 'Not Found',
             self::METHOD_NOT_ALLOWED     => 'Method Not Allowed',

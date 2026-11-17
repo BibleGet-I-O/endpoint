@@ -7,6 +7,7 @@ namespace BibleGet\Api\Http\Middleware;
 use BibleGet\Api\Http\CorsPolicy;
 use BibleGet\Api\Http\Exception\ApiException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
+use BibleGet\Api\Http\Exception\UnauthorizedException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use Monolog\Logger;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -74,6 +75,10 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
 
             if ($retryAfter !== null) {
                 $response = $response->withHeader('Retry-After', (string) $retryAfter);
+            }
+
+            if ($e instanceof UnauthorizedException) {
+                $response = $response->withHeader('WWW-Authenticate', UnauthorizedException::WWW_AUTHENTICATE);
             }
 
             $responseBody = json_encode($problem, JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

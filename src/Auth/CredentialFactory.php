@@ -33,11 +33,29 @@ final class CredentialFactory
 
     public static function currentEnv(): string
     {
-        foreach ([$_ENV['APP_ENV'] ?? null, $_SERVER['APP_ENV'] ?? null, getenv('APP_ENV')] as $v) {
+        return self::env('APP_ENV') ?? '';
+    }
+
+    /**
+     * Reads a variable from $_ENV, then $_SERVER, then getenv(): phpdotenv
+     * fills the first two, a process environment only the last.
+     */
+    public static function env(string $key): ?string
+    {
+        foreach ([$_ENV[$key] ?? null, $_SERVER[$key] ?? null, getenv($key)] as $v) {
             if (is_string($v)) {
                 return $v;
             }
         }
-        return '';
+        return null;
+    }
+
+    /** True in production whatever REQUIRE_CREDENTIALS says; elsewhere the variable, default false. */
+    public static function credentialsRequired(): bool
+    {
+        if (self::currentEnv() === 'production') {
+            return true;
+        }
+        return filter_var(self::env('REQUIRE_CREDENTIALS') ?? 'false', FILTER_VALIDATE_BOOLEAN);
     }
 }

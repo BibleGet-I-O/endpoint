@@ -45,4 +45,30 @@ class RouterTest extends TestCase
     {
         self::assertSame($expected, Router::isLocalhost($serverParams));
     }
+
+    /**
+     * @return array<string, array{string, list<string>, ?string}>
+     */
+    public static function dataRouteProvider(): array
+    {
+        return [
+            'root alias of quote'  => ['', [], 'quote'],
+            'quote'                => ['quote', [], 'quote'],
+            'metadata collapses'   => ['metadata', ['bibleversions'], 'metadata'],
+            'search alias'         => ['search', [], 'search'],
+            'search keyword'       => ['search', ['keyword'], 'search/keyword'],
+            'search similar'       => ['search', ['similar', 'x'], 'search/similar'],
+            'unknown search route' => ['search', ['anything'], null],
+            'unknown route'        => ['installations', [], null],
+        ];
+    }
+
+    /**
+     * @param list<string> $parts
+     */
+    #[DataProvider('dataRouteProvider')]
+    public function testDataRouteName(string $route, array $parts, ?string $expected): void
+    {
+        self::assertSame($expected, Router::dataRouteName($route, $parts));
+    }
 }

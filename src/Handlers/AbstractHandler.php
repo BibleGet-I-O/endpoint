@@ -116,7 +116,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
 
             $headersHeader = $request->getHeaderLine('Access-Control-Request-Headers');
             if ($headersHeader !== '') {
-                $allowed       = ['Accept', 'Accept-Language', 'Content-Type'];
+                $allowed       = ['Accept', 'Accept-Language', 'Content-Type', 'X-Api-Key'];
                 $requested     = array_values(array_filter(array_map('trim', explode(',', $headersHeader))));
                 $canonicalByLc = array_combine(array_map('strtolower', $allowed), $allowed);
                 $approved      = [];
