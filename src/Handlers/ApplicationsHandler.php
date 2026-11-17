@@ -327,8 +327,8 @@ class ApplicationsHandler extends AbstractHandler
         if ($v === null || ( is_string($v) && trim($v) === '' )) {
             return null;
         }
-        if (!is_string($v) || mb_strlen($v, 'UTF-8') > 1000 || !self::isCleanText($v)) {
-            throw new ValidationException('description must be text of at most 1000 characters, without control characters.');
+        if (!is_string($v) || !self::isCleanMultilineText($v) || mb_strlen(trim($v), 'UTF-8') > 1000) {
+            throw new ValidationException('description must be text of at most 1000 characters; line breaks and tabs are the only control characters allowed.');
         }
         return trim($v);
     }

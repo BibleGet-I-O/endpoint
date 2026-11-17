@@ -204,6 +204,25 @@ class ApplicationsHttpTest extends ServerTestCase
         self::assertSame(422, $r['status'], $r['body']);
     }
 
+    public function testDescriptionAllowsLineBreaksAndTabsButNoOtherControls(): void
+    {
+        $bearer = $this->bearer();
+        $r      = self::call('POST', '/v3/applications', $bearer, ['name' => 'Multi-line', 'description' => "  Line one\r\nLine two\n\tIndented  "]);
+        self::assertSame(201, $r['status'], $r['body']);
+        $app = self::jsonBody($r['body'])['application'] ?? null;
+        self::assertIsArray($app);
+        self::assertSame("Line one\r\nLine two\n\tIndented", $app['description']);
+
+        // The limit applies after trimming.
+        $padded = self::call('POST', '/v3/applications', $bearer, ['name' => 'Padded', 'description' => '   ' . str_repeat('d', 1000) . "\n\n"]);
+        self::assertSame(201, $padded['status'], $padded['body']);
+
+        foreach (["bell\u{0007}", "nul\u{0000}", "esc\u{001B}", "del\u{007F}", "c1\u{0085}"] as $bad) {
+            $r = self::call('POST', '/v3/applications', $bearer, ['name' => 'Bad', 'description' => $bad]);
+            self::assertSame(422, $r['status'], json_encode($bad) . ': ' . $r['body']);
+        }
+    }
+
     public function testOwnerSeesOnlyOwnApplications(): void
     {
         $alice    = $this->bearer();

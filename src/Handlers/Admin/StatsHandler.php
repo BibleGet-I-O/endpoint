@@ -16,8 +16,9 @@ use Psr\Http\Message\ServerRequestInterface;
  *   installations           per plugin and version: total registered, active_30d
  *                           (active, last seen within 30 days) — a current snapshot
  *   registrations_per_hour  new installations per client key per UTC hour in the window
- *   requests                usage_daily rows for the window's days, labelled by
- *                           application name, plugin and version, or 'none'
+ *   requests                requests per day and route for the window's days,
+ *                           summed per application, per plugin and version, or
+ *                           for uncredentialed requests ('none'), with a label
  *
  * from and to are ISO-8601 dates or date-times (UTC when no offset); a date-only
  * `to` includes that whole day. Default: the 30 days up to now; at most 366 days.

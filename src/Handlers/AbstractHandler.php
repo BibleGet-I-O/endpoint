@@ -323,6 +323,12 @@ abstract class AbstractHandler implements RequestHandlerInterface
         return mb_check_encoding($v, 'UTF-8') && preg_match('/\p{Cc}/u', $v) !== 1;
     }
 
+    /** As isCleanText, but tab, line feed and carriage return are allowed (free text that may span lines). */
+    protected static function isCleanMultilineText(string $v): bool
+    {
+        return mb_check_encoding($v, 'UTF-8') && preg_match('/[^\P{Cc}\t\n\r]/u', $v) !== 1;
+    }
+
     /**
      * Determine the response content type from the `return` param or Accept header.
      *

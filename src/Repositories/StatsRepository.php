@@ -70,17 +70,20 @@ class StatsRepository
     }
 
     /**
-     * usage_daily rows for days in [$fromDay, $toDay], each with a label: the
-     * application name for a project key, the plugin and its version for an
-     * installation, 'none' for uncredentialed requests ('unknown' when the
-     * credential has since been deleted).
+     * Requests per day and route for days in [$fromDay, $toDay], summed per
+     * application (project keys), per plugin and version (installations), or
+     * for uncredentialed requests ('none'), so the size of the answer grows
+     * with applications and plugin versions, not with keys or installations.
+     * The label is the application name, the plugin and its version, 'none',
+     * or 'unknown' when the credential has since been deleted.
      *
-     * @return list<array{day: string, credential_type: string, credential_id: string, label: string, route: string, requests: int}>
+     * @return list<array{day: string, credential_type: string, application_id: ?string, plugin: ?string, plugin_version: ?string, label: string, route: string, requests: int}>
      */
     public function requests(string $fromDay, string $toDay): array
     {
         $stmt = $this->db->prepare(
-            "SELECT u.day, u.credential_type, u.credential_id, u.route, u.requests,
+            "SELECT u.day, u.credential_type, a.id AS application_id, c.plugin, i.plugin_version, u.route,
+                    sum(u.requests) AS requests,
                     CASE u.credential_type
                         WHEN 'none' THEN 'none'
                         WHEN 'project' THEN COALESCE(a.name, 'unknown')
@@ -92,6 +95,7 @@ class StatsRepository
              LEFT JOIN installations i ON u.credential_type = 'installation' AND i.id = u.credential_id
              LEFT JOIN client_keys c ON c.id = i.client_key_id
              WHERE u.day >= :f AND u.day <= :t
+             GROUP BY u.day, u.credential_type, a.id, a.name, c.plugin, i.plugin_version, u.route
              ORDER BY u.day, u.credential_type, label, u.route"
         );
         $stmt->execute([':f' => $fromDay, ':t' => $toDay]);
@@ -100,7 +104,9 @@ class StatsRepository
             $out[] = [
                 'day'             => Cast::string($r['day']),
                 'credential_type' => Cast::string($r['credential_type']),
-                'credential_id'   => Cast::string($r['credential_id']),
+                'application_id'  => $r['application_id'] === null ? null : Cast::string($r['application_id']),
+                'plugin'          => $r['plugin'] === null ? null : Cast::string($r['plugin']),
+                'plugin_version'  => $r['plugin_version'] === null ? null : Cast::string($r['plugin_version']),
                 'label'           => Cast::string($r['label']),
                 'route'           => Cast::string($r['route']),
                 'requests'        => Cast::int($r['requests']),

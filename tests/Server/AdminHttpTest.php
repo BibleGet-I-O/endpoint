@@ -221,14 +221,16 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame(409, self::call('POST', "$base/reject")['status'], 'rejected → rejected');
         self::assertSame(409, self::call('POST', "$base/revoke")['status'], 'rejected → revoked');
 
-        // rejected → approved
-        $app = self::okJson(self::call('POST', "$base/approve"))['application'];
+        // rejected → approved; notes may span lines, and are trimmed before the length check.
+        $app = self::okJson(self::call('POST', "$base/approve", ['notes' => "  Thanks.\r\n\tLooks good.\n" . str_repeat('x', 975) . '   ']))['application'];
         self::assertIsArray($app);
         self::assertSame('approved', $app['status']);
+        self::assertSame("Thanks.\r\n\tLooks good.\n" . str_repeat('x', 975), $app['review_notes']);
         self::assertSame(409, self::call('POST', "$base/reject")['status'], 'approved → rejected');
         self::assertSame(409, self::call('POST', "$base/approve")['status'], 'approved → approved');
 
         self::assertSame(422, self::call('POST', "$base/approve", ['notes' => "bad\u{0007}notes"])['status']);
+        self::assertSame(422, self::call('POST', "$base/approve", ['notes' => "bad\u{001B}notes"])['status']);
         self::assertSame(404, self::call('POST', '/v3/admin/applications/' . self::NIL_ID . '/approve')['status']);
         self::assertSame(404, self::call('POST', "$base/bless")['status']);
 
@@ -393,11 +395,15 @@ class AdminHttpTest extends ServerTestCase
         $appName = 'Stats app ' . bin2hex(random_bytes(3));
         $appId   = $this->application($appName);
         ( new ApplicationRepository($this->db) )->approve($appId, 'admin', null);
-        $apiKey = ( new ApiKeyRepository($this->db) )->mint($appId, 'k');
-        $today  = gmdate('Y-m-d');
-        $ins    = $this->db->prepare('INSERT INTO usage_daily (day, credential_type, credential_id, route, requests) VALUES (?, ?, ?, ?, ?)');
+        $apiKey  = ( new ApiKeyRepository($this->db) )->mint($appId, 'k');
+        $apiKey2 = ( new ApiKeyRepository($this->db) )->mint($appId, 'k2');
+        $today   = gmdate('Y-m-d');
+        $ins     = $this->db->prepare('INSERT INTO usage_daily (day, credential_type, credential_id, route, requests) VALUES (?, ?, ?, ?, ?)');
+        // Two keys of one application, two installations of one plugin version: one row each.
         $ins->execute([$today, 'project', $apiKey['id'], 'quote', 5]);
+        $ins->execute([$today, 'project', $apiKey2['id'], 'quote', 3]);
         $ins->execute([$today, 'installation', $inst[0], 'metadata', 7]);
+        $ins->execute([$today, 'installation', $inst[1], 'metadata', 2]);
 
         foreach (['?from=2026-13-01', '?from=' . $today . '&to=2020-01-01', '?to=nope', '?from=2020-01-01&to=2026-01-01'] as $q) {
             self::assertSame(422, self::call('GET', '/v3/admin/stats' . $q)['status'], $q);
@@ -419,22 +425,28 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame(gmdate('Y-m-d\TH:00:00\Z'), $hours[0]['hour']);
 
         self::assertIsArray($stats['requests']);
-        $byId = [];
+        $project = [];
+        $plugin  = [];
         foreach ($stats['requests'] as $x) {
             self::assertIsArray($x);
-            self::assertIsString($x['credential_id']);
-            $byId[$x['credential_id']] = $x;
+            self::assertArrayNotHasKey('credential_id', $x);
             if ($x['credential_type'] === 'none') {
                 self::assertSame('none', $x['label']);
             }
+            if (( $x['application_id'] ?? null ) === $appId) {
+                $project[] = $x;
+            }
+            if (( $x['plugin_version'] ?? null ) === $version) {
+                $plugin[] = $x;
+            }
         }
         self::assertSame(
-            ['day' => $today, 'credential_type' => 'project', 'credential_id' => $apiKey['id'], 'label' => $appName, 'route' => 'quote', 'requests' => 5],
-            $byId[$apiKey['id']] ?? null
+            [['day' => $today, 'credential_type' => 'project', 'application_id' => $appId, 'plugin' => null, 'plugin_version' => null, 'label' => $appName, 'route' => 'quote', 'requests' => 8]],
+            $project
         );
         self::assertSame(
-            ['day' => $today, 'credential_type' => 'installation', 'credential_id' => $inst[0], 'label' => 'libreoffice ' . $version, 'route' => 'metadata', 'requests' => 7],
-            $byId[$inst[0]] ?? null
+            [['day' => $today, 'credential_type' => 'installation', 'application_id' => null, 'plugin' => 'libreoffice', 'plugin_version' => $version, 'label' => 'libreoffice ' . $version, 'route' => 'metadata', 'requests' => 9]],
+            $plugin
         );
     }
 }

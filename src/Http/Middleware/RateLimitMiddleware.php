@@ -20,7 +20,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * off) and requests with a system credential are not limited. Allowed
  * responses carry X-RateLimit-Limit/Remaining/Reset; an exceeded limit
  * throws TooManyRequestsException, which ErrorHandlingMiddleware turns into
- * a 429 with Retry-After.
+ * a 429 with Retry-After and the same X-RateLimit-* headers.
  */
 class RateLimitMiddleware implements MiddlewareInterface
 {
@@ -46,14 +46,32 @@ class RateLimitMiddleware implements MiddlewareInterface
         if (!$result['allowed']) {
             throw new TooManyRequestsException(
                 "Rate limit exceeded: at most {$limit} requests per hour for this credential.",
-                max(1, $result['reset'] - time())
+                max(1, $result['reset'] - time()),
+                null,
+                self::headers($limit, $result)
             );
         }
 
-        return $handler->handle($request)
-            ->withHeader('X-RateLimit-Limit', (string) $limit)
-            ->withHeader('X-RateLimit-Remaining', (string) $result['remaining'])
-            ->withHeader('X-RateLimit-Reset', (string) $result['reset']);
+        $response = $handler->handle($request);
+        foreach (self::headers($limit, $result) as $name => $value) {
+            $response = $response->withHeader($name, $value);
+        }
+        return $response;
+    }
+
+    /**
+     * X-RateLimit-* headers, sent on allowed responses and on the 429.
+     *
+     * @param array{allowed: bool, remaining: int, reset: int} $result
+     * @return array<string, string>
+     */
+    public static function headers(int $limit, array $result): array
+    {
+        return [
+            'X-RateLimit-Limit'     => (string) $limit,
+            'X-RateLimit-Remaining' => (string) max(0, $result['remaining']),
+            'X-RateLimit-Reset'     => (string) $result['reset'],
+        ];
     }
 
     private static function defaultLimit(CredentialType $type): int

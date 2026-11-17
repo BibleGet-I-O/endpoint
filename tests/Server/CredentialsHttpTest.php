@@ -193,6 +193,9 @@ class CredentialsHttpTest extends ServerTestCase
         self::assertSame(429, $r['status']);
         self::assertArrayHasKey('retry-after', $r['headers']);
         self::assertGreaterThan(0, (int) $r['headers']['retry-after']);
+        self::assertSame('2', $r['headers']['x-ratelimit-limit'] ?? null);
+        self::assertSame('0', $r['headers']['x-ratelimit-remaining'] ?? null);
+        self::assertGreaterThan(time(), (int) ( $r['headers']['x-ratelimit-reset'] ?? 0 ));
     }
 
     public function testUsageDailyCountsEveryDataRoute(): void

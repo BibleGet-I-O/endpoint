@@ -174,6 +174,8 @@ class InstallationsHttpTest extends ServerTestCase
         $r = self::register($key['plain'], ['install_id' => '5a1c0de0-0000-4000-8000-0000000000a3', 'plugin_version' => '1']);
         self::assertSame(429, $r['status']);
         self::assertGreaterThan(0, (int) ( $r['headers']['retry-after'] ?? 0 ));
+        self::assertSame('1', $r['headers']['x-ratelimit-limit'] ?? null);
+        self::assertSame('0', $r['headers']['x-ratelimit-remaining'] ?? null);
     }
 
     public function testInvalidInstallIdIs422(): void

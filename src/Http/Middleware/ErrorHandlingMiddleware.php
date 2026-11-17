@@ -57,13 +57,17 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
                 'detail' => $this->debug ? $e->getMessage() : 'An unexpected error occurred.',
             ];
 
-            $retryAfter = null;
+            $retryAfter   = null;
+            $extraHeaders = [];
             if ($e instanceof ApiException) {
                 $status  = $e->getStatus();
                 $problem = $e->toArray($this->debug);
 
-                if ($e instanceof TooManyRequestsException && $e->getRetryAfter() > 0) {
-                    $retryAfter = $e->getRetryAfter();
+                if ($e instanceof TooManyRequestsException) {
+                    $extraHeaders = $e->getHeaders();
+                    if ($e->getRetryAfter() > 0) {
+                        $retryAfter = $e->getRetryAfter();
+                    }
                 }
             } elseif ($this->debug) {
                 $problem['file']  = $e->getFile();
@@ -75,6 +79,9 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
 
             if ($retryAfter !== null) {
                 $response = $response->withHeader('Retry-After', (string) $retryAfter);
+            }
+            foreach ($extraHeaders as $name => $value) {
+                $response = $response->withHeader($name, $value);
             }
 
             if ($e instanceof UnauthorizedException) {

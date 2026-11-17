@@ -14,6 +14,7 @@ use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Exception\UnauthorizedException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Http\Middleware\RateLimitMiddleware;
 use BibleGet\Api\Repositories\ClientKeyRepository;
 use BibleGet\Api\Repositories\InstallationRepository;
 use BibleGet\Api\Services\RateLimiter;
@@ -99,7 +100,9 @@ class InstallationsHandler extends AbstractHandler
         if (!$result['allowed']) {
             throw new TooManyRequestsException(
                 "Registration limit exceeded: at most {$limit} registrations per hour for this client key.",
-                max(1, $result['reset'] - time())
+                max(1, $result['reset'] - time()),
+                null,
+                RateLimitMiddleware::headers($limit, $result)
             );
         }
 
