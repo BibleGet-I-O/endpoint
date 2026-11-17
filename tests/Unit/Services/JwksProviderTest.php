@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BibleGet\Tests\Unit\Services;
 
 use BibleGet\Api\Services\JwksProvider;
+use BibleGet\Tests\Support\IsolatesEnvironment;
 use BibleGet\Tests\Support\OidcTestIssuer;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
@@ -17,6 +18,8 @@ use PHPUnit\Framework\TestCase;
  */
 class JwksProviderTest extends TestCase
 {
+    use IsolatesEnvironment;
+
     private const START = 1_900_000_000;
 
     private static OidcTestIssuer $issuer;
@@ -25,7 +28,6 @@ class JwksProviderTest extends TestCase
     private int $now;
     private int $fetches;
     private bool $failing;
-    private ?string $savedEnv;
 
     public static function setUpBeforeClass(): void
     {
@@ -34,22 +36,19 @@ class JwksProviderTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->cache    = sys_get_temp_dir() . '/bibleget-jwks-test-' . bin2hex(random_bytes(6)) . '.json';
-        $this->now      = self::START;
-        $this->fetches  = 0;
-        $this->failing  = false;
-        $this->savedEnv = $_ENV['APP_ENV'] ?? null;
+        $this->cache   = sys_get_temp_dir() . '/bibleget-jwks-test-' . bin2hex(random_bytes(6)) . '.json';
+        $this->now     = self::START;
+        $this->fetches = 0;
+        $this->failing = false;
+        $this->isolateEnvironment(['APP_ENV']);
         $this->resetWarnedFlag();
     }
 
     protected function tearDown(): void
     {
         @unlink($this->cache);
-        if ($this->savedEnv === null) {
-            unset($_ENV['APP_ENV']);
-        } else {
-            $_ENV['APP_ENV'] = $this->savedEnv;
-        }
+        @unlink($this->cache . '.lock');
+        $this->restoreEnvironment();
         $this->resetWarnedFlag();
     }
 
@@ -124,6 +123,42 @@ class JwksProviderTest extends TestCase
         $this->failing = false;
         self::assertArrayHasKey('kid-a', $this->provider()->keysFor('kid-a'));
         self::assertSame(2, $this->fetches);
+    }
+
+    public function testAttemptIsRecordedBeforeTheDownload(): void
+    {
+        $seen     = null;
+        $provider = new JwksProvider(OidcTestIssuer::ISSUER, $this->cache, null, 3600, function (string $url) use (&$seen): string {
+            $this->fetches++;
+            $raw  = @file_get_contents($this->cache);
+            $seen = is_string($raw) ? json_decode($raw, true) : null;
+            return (string) json_encode(self::$issuer->jwks());
+        }, fn (): int => $this->now, new Logger('test', [new TestHandler()]));
+
+        self::assertArrayHasKey('kid-a', $provider->keysFor('kid-a'));
+        self::assertIsArray($seen, 'the cache file exists while the download runs');
+        self::assertSame($this->now, $seen['attempted_at'], 'other workers see the attempt in flight');
+    }
+
+    public function testAWorkerRereadsTheAttemptBeforeRefetching(): void
+    {
+        self::assertArrayHasKey('kid-a', $this->provider()->keysFor('kid-a'));
+        // A long-lived worker loads the cache while it is fresh.
+        $this->now += 10;
+        $worker     = $this->provider();
+        self::assertArrayHasKey('kid-a', $worker->keysFor('kid-a'));
+        self::assertSame(1, $this->fetches);
+
+        // Past the lifetime another worker refreshes it...
+        $this->now += 3600;
+        self::assertArrayHasKey('kid-a', $this->provider()->keysFor('kid-a'));
+        self::assertSame(2, $this->fetches);
+
+        // ...so the first one, whose copy in memory is stale, must not download again.
+        $this->now += 5;
+        self::assertArrayHasKey('kid-a', $worker->keysFor('kid-a'));
+        self::assertArrayHasKey('kid-a', $worker->keysFor('unknown-kid'));
+        self::assertSame(2, $this->fetches, 'the attempt recorded by the other worker throttles this one');
     }
 
     public function testJwksFileIsIgnoredInProduction(): void

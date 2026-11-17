@@ -22,6 +22,13 @@ use Psr\Log\LoggerInterface;
  * fails, the cached keys are used even past their lifetime; only with no keys
  * at all does keysFor() throw.
  *
+ * Workers coordinate through an exclusive lock on `{cache}.lock`: the one
+ * that takes it re-reads the cache (another worker may have just refreshed
+ * it or be throttled), records its attempt in the file before downloading,
+ * and the others wait for it and then use what it wrote. The cache's
+ * directory must be writable by PHP: without the file neither the keys nor
+ * the throttle outlive a request (an error is logged once per process).
+ *
  * Only RSA keys are kept, and every key is bound to RS256: a token signed with
  * any other algorithm (none, HS256 with the public key as secret, ...) fails
  * the library's algorithm check.
@@ -35,7 +42,8 @@ class JwksProvider
     public const DEFAULT_CACHE = 'logs/jwks.json';
     private const MIN_REFETCH  = 60;
 
-    private static bool $jwksFileWarned = false;
+    private static bool $jwksFileWarned   = false;
+    private static bool $cacheWriteWarned = false;
 
     private readonly ?string $issuer;
     private readonly string $cachePath;
@@ -94,16 +102,53 @@ class JwksProvider
         if (!$this->cacheRead && $this->jwksFile === null) {
             $this->readCache($now);
         }
-        $stale   = $this->keys === null || $now - $this->fetchedAt >= $this->ttl;
-        $unknown = $this->keys !== null && !isset($this->keys[$kid]);
-        if (( $stale || $unknown ) && $now - $this->attemptedAt >= self::MIN_REFETCH) {
-            $this->refresh($now);
+        if ($this->needsRefresh($kid, $now)) {
+            if ($this->jwksFile === null) {
+                $this->refreshShared($kid, $now);
+            } else {
+                $this->refresh($now);
+            }
         }
         if ($this->keys === null) {
             $why = $this->lastError?->getMessage() ?? 'a fetch was attempted less than a minute ago';
             throw new \RuntimeException('No JWKS is available: ' . $why, 0, $this->lastError);
         }
         return $this->keys;
+    }
+
+    /** Past the lifetime or $kid unknown, and no attempt within the last minute. */
+    private function needsRefresh(string $kid, int $now): bool
+    {
+        $stale   = $this->keys === null || $now - $this->fetchedAt >= $this->ttl;
+        $unknown = $this->keys !== null && !isset($this->keys[$kid]);
+        return ( $stale || $unknown ) && $now - $this->attemptedAt >= self::MIN_REFETCH;
+    }
+
+    /**
+     * Refreshes under the cache's lock, after re-reading the cache: another
+     * worker may have refreshed it, or attempted to, while this one waited.
+     * Without a lock file (unwritable directory) it refreshes unlocked.
+     */
+    private function refreshShared(string $kid, int $now): void
+    {
+        $lock = @fopen($this->cachePath . '.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX)) {
+            if ($lock !== false) {
+                fclose($lock);
+            }
+            $this->refresh($now);
+            return;
+        }
+        try {
+            $now = ( $this->clock )();
+            $this->readCache($now);
+            if ($this->needsRefresh($kid, $now)) {
+                $this->refresh($now);
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
 
     /** The local JWKS file, unless in production, where it is ignored. */
@@ -123,6 +168,9 @@ class JwksProvider
     private function refresh(int $now): void
     {
         $this->attemptedAt = $now;
+        if ($this->jwksFile === null) {
+            $this->writeCache(); // the attempt is visible to other workers before the download
+        }
         try {
             $json = $this->download();
             $keys = self::parse($json);
@@ -159,8 +207,9 @@ class JwksProvider
     }
 
     /**
-     * Loads the cache file once: the keys (even past their lifetime) and the
-     * time of the last fetch attempt. Times in the future are ignored.
+     * Loads the cache file: the time of the last fetch attempt and the keys
+     * (even past their lifetime), unless those held are as recent. Times in
+     * the future are ignored.
      */
     private function readCache(int $now): void
     {
@@ -175,7 +224,7 @@ class JwksProvider
         if ($attemptedAt <= $now) {
             $this->attemptedAt = max($this->attemptedAt, $attemptedAt);
         }
-        if (!is_string($data['jwks'] ?? null)) {
+        if (!is_string($data['jwks'] ?? null) || ( $this->keys !== null && $fetchedAt <= $this->fetchedAt )) {
             return;
         }
         try {
@@ -187,18 +236,27 @@ class JwksProvider
         $this->fetchedAt = $fetchedAt;
     }
 
+    /**
+     * Writes keys and attempt time atomically. If it cannot (the directory is
+     * not writable), nothing persists between requests: every request with
+     * no keys in memory downloads the JWKS. Logged once per process.
+     */
     private function writeCache(): void
     {
-        $dir = dirname($this->cachePath);
-        if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-            return; // an unwritable cache only costs a refetch per minute
+        $dir     = dirname($this->cachePath);
+        $written = false;
+        if (is_dir($dir) || @mkdir($dir, 0775, true) || is_dir($dir)) {
+            $tmp = $this->cachePath . '.' . bin2hex(random_bytes(4)) . '.tmp';
+            $out = json_encode(['fetched_at' => $this->fetchedAt, 'attempted_at' => $this->attemptedAt, 'jwks' => $this->jwksJson]);
+            if ($out !== false && @file_put_contents($tmp, $out) !== false) {
+                $written = @rename($tmp, $this->cachePath);
+            }
+            @unlink($tmp);
         }
-        $tmp = $this->cachePath . '.' . bin2hex(random_bytes(4)) . '.tmp';
-        $out = json_encode(['fetched_at' => $this->fetchedAt, 'attempted_at' => $this->attemptedAt, 'jwks' => $this->jwksJson]);
-        if ($out !== false && @file_put_contents($tmp, $out) !== false) {
-            @rename($tmp, $this->cachePath);
+        if (!$written && !self::$cacheWriteWarned) {
+            self::$cacheWriteWarned = true;
+            $this->logger()->error('The JWKS cache ' . $this->cachePath . ' is not writable: keys and the refetch throttle do not persist between requests.');
         }
-        @unlink($tmp);
     }
 
     private function logger(): LoggerInterface
