@@ -355,7 +355,15 @@ def record_missing_metadata(conn, version, column, dim, content_xor):
     for vectors that are all present but were not written by this script. The
     model fields are this run's model; content_xor is given only for the
     hash-tracked column (elsewhere it would hide stale vectors, see "Known
-    asymmetry"). Returns True if a row was created."""
+    asymmetry"). Returns True if a row was created.
+
+    Only when this run uses the column's own model (COLUMN_MODELS): with an
+    EMBEDDING_MODEL override the row would credit the stored vectors to a model
+    that did not compute them. Rerun with --force to recompute them instead."""
+    own_model = COLUMN_MODELS.get(column, (None,))[0]
+    if MODEL_NAME != own_model:
+        print(f"  {version}: no metadata for {column}, not recorded: this run uses {MODEL_NAME}, not {own_model}")
+        return False
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO embedding_metadata "
