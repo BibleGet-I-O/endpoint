@@ -44,4 +44,24 @@ class CredentialFactoryTest extends TestCase
         self::assertNull(CredentialFactory::typeOf(''));
         self::assertNull(CredentialFactory::typeOf('bibleget_x'));
     }
+
+    public function testCurrentEnvReadsDotenvStyleSuperglobals(): void
+    {
+        $had = array_key_exists('APP_ENV', $_ENV);
+        $old = $_ENV['APP_ENV'] ?? null;
+        try {
+            $_ENV['APP_ENV'] = 'production';
+            self::assertSame('production', CredentialFactory::currentEnv());
+            self::assertStringContainsString(
+                '_live_',
+                CredentialFactory::generate(CredentialType::Project, CredentialFactory::currentEnv())['plain']
+            );
+        } finally {
+            if ($had) {
+                $_ENV['APP_ENV'] = $old;
+            } else {
+                unset($_ENV['APP_ENV']);
+            }
+        }
+    }
 }

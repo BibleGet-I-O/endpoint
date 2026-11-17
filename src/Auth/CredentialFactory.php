@@ -33,7 +33,11 @@ final class CredentialFactory
 
     public static function currentEnv(): string
     {
-        $env = getenv('APP_ENV');
-        return $env === false ? '' : $env;
+        foreach ([$_ENV['APP_ENV'] ?? null, $_SERVER['APP_ENV'] ?? null, getenv('APP_ENV')] as $v) {
+            if (is_string($v)) {
+                return $v;
+            }
+        }
+        return '';
     }
 }

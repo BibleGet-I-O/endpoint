@@ -82,4 +82,13 @@ class ApiKeyRepositoryTest extends DatabaseTestCase
         $keys->touch($new['id']);
         $keys->touch($new['id']);
     }
+
+    public function testRotateOfRevokedKeyReturnsNullAndMintsNothing(): void
+    {
+        $keys = new ApiKeyRepository($this->getConnection());
+        $old  = $keys->mint($this->appId, 'k1');
+        $keys->revoke($old['id']);
+        self::assertNull($keys->rotate($old['id']));
+        self::assertCount(1, $keys->listForApplication($this->appId));
+    }
 }

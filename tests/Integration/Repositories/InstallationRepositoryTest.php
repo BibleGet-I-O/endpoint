@@ -7,6 +7,7 @@ namespace BibleGet\Tests\Integration\Repositories;
 use BibleGet\Api\Auth\CredentialFactory;
 use BibleGet\Api\Auth\CredentialType;
 use BibleGet\Api\Repositories\ClientKeyRepository;
+use BibleGet\Api\Repositories\InstallationRevokedException;
 use BibleGet\Api\Repositories\InstallationRepository;
 use BibleGet\Tests\Integration\DatabaseTestCase;
 
@@ -97,5 +98,34 @@ class InstallationRepositoryTest extends DatabaseTestCase
         self::assertSame(1, $n);
         self::assertNotNull($repo->findActiveByHash(CredentialFactory::hash($old['token'])));
         self::assertNull($repo->findActiveByHash(CredentialFactory::hash($new['token'])));
+    }
+
+    public function testRevokedClientKeyDoesNotStopExistingInstallation(): void
+    {
+        $repo = new InstallationRepository($this->getConnection());
+        $r    = $repo->register($this->clientKeyId, '3f2b8c1e-0000-4000-8000-000000000005', '1.0', null);
+        ( new ClientKeyRepository($this->getConnection()) )->revoke($this->clientKeyId);
+        self::assertNotNull($repo->findActiveByHash(CredentialFactory::hash($r['token'])));
+    }
+
+    public function testReRegisteringRevokedInstallationIsRefused(): void
+    {
+        $repo = new InstallationRepository($this->getConnection());
+        $iid  = '3f2b8c1e-0000-4000-8000-000000000006';
+        $r    = $repo->register($this->clientKeyId, $iid, '1.0', null);
+        $repo->revoke($r['installation_id']);
+        try {
+            $repo->register($this->clientKeyId, $iid, '1.0', null);
+            self::fail('Expected InstallationRevokedException');
+        } catch (InstallationRevokedException) {
+            self::assertNull($repo->findActiveByHash(CredentialFactory::hash($r['token'])));
+        }
+        self::assertSame(1, $this->rowCount());
+        $s = $this->getConnection()->prepare('SELECT is_active, token_hash FROM installations WHERE id = ?');
+        $s->execute([$r['installation_id']]);
+        $row = $s->fetch();
+        self::assertIsArray($row);
+        self::assertFalse($row['is_active']);
+        self::assertSame(CredentialFactory::hash($r['token']), trim((string) $row['token_hash']));
     }
 }

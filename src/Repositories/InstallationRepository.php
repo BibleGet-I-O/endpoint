@@ -21,7 +21,7 @@ class InstallationRepository
         $stmt = $this->db->prepare(
             'SELECT i.id, i.rate_limit_per_hour, c.plugin
              FROM installations i JOIN client_keys c ON c.id = i.client_key_id
-             WHERE i.token_hash = :h AND i.is_active AND c.is_active'
+             WHERE i.token_hash = :h AND i.is_active'
         );
         $stmt->execute([':h' => $hash]);
         $row = $stmt->fetch();
@@ -54,8 +54,8 @@ class InstallationRepository
                  token_prefix = EXCLUDED.token_prefix,
                  plugin_version = EXCLUDED.plugin_version,
                  site_url = COALESCE(EXCLUDED.site_url, installations.site_url),
-                 is_active = TRUE,
                  last_seen_at = now()
+             WHERE installations.is_active
              RETURNING id, (xmax = 0) AS created'
         );
         $stmt->execute([
@@ -68,7 +68,7 @@ class InstallationRepository
         ]);
         $row = $stmt->fetch();
         if (!is_array($row)) {
-            throw new \RuntimeException('Installation registration failed');
+            throw new InstallationRevokedException();
         }
         return [
             'token'           => $c['plain'],

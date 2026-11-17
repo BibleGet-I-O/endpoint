@@ -84,14 +84,17 @@ class ApiKeyRepository
      */
     public function rotate(string $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT application_id, name, scope, rate_limit_per_hour FROM api_keys WHERE id = :id');
-        $stmt->execute([':id' => $id]);
-        $row = $stmt->fetch();
-        if (!is_array($row)) {
-            return null;
-        }
         $this->db->beginTransaction();
         try {
+            $stmt = $this->db->prepare(
+                'SELECT application_id, name, scope, rate_limit_per_hour FROM api_keys WHERE id = :id AND is_active FOR UPDATE'
+            );
+            $stmt->execute([':id' => $id]);
+            $row = $stmt->fetch();
+            if (!is_array($row)) {
+                $this->db->rollBack();
+                return null;
+            }
             $this->revoke($id);
             $new = $this->mint(
                 Cast::string($row['application_id']),
