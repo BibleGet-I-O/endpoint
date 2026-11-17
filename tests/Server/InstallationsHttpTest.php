@@ -268,6 +268,8 @@ class InstallationsHttpTest extends ServerTestCase
         self::assertSame(422, self::httpPatch('/v3/installations/self', '{"site_url":"https://example.com"}', $h)['status'], 'site_url is WordPress-only');
         self::assertSame(204, self::httpPatch('/v3/installations/self', '{"plugin_version":"3.0.0"}', $h)['status']);
         $version = $this->db->prepare('SELECT plugin_version FROM installations WHERE id = ?');
+        $version->execute([$mine['installation_id']]);
+        self::assertSame('3.0.0', $version->fetchColumn(), 'the authenticated installation is updated');
         $version->execute([$other['installation_id']]);
         self::assertSame('1', $version->fetchColumn(), 'another installation is untouched');
 

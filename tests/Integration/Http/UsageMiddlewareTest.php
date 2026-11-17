@@ -54,6 +54,8 @@ class UsageMiddlewareTest extends DatabaseTestCase
         // UTC+14 and UTC-12 are 26 hours apart: at any moment one of them is
         // on a different date than UTC.
         foreach (['Pacific/Kiritimati', 'Etc/GMT+12'] as $zone) {
+            // Each zone checks only the row it wrote.
+            $db->prepare('DELETE FROM usage_daily WHERE credential_id = ?')->execute([$this->credentialId]);
             $db->exec("SET TIME ZONE '{$zone}'");
             $before = gmdate('Y-m-d');
             ( new UsageMiddleware('quote', $db) )->process($this->request(), self::handler());
