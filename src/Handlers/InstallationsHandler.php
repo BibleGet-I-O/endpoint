@@ -10,7 +10,6 @@ use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Enum\StatusCode;
-use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Exception\UnauthorizedException;
@@ -78,7 +77,7 @@ class InstallationsHandler extends AbstractHandler
             );
         }
 
-        $params    = $this->bodyParams($request);
+        $params    = $this->getJsonBodyParams($request);
         $installId = $params['install_id'] ?? null;
         if (!is_string($installId) || preg_match(self::UUID_PATTERN, $installId) !== 1) {
             throw new ValidationException('install_id must be a UUID.');
@@ -124,7 +123,7 @@ class InstallationsHandler extends AbstractHandler
             );
         }
 
-        $params = $this->bodyParams($request);
+        $params = $this->getJsonBodyParams($request);
         $fields = [];
         if (array_key_exists('plugin_version', $params)) {
             $version = $this->validVersion($params['plugin_version']);
@@ -143,7 +142,7 @@ class InstallationsHandler extends AbstractHandler
             $email = $params['contact_email'];
             if ($email === '' || $email === null) {
                 $fields['contact_email'] = null;
-            } elseif (is_string($email) && strlen($email) <= 255 && self::cleanText($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+            } elseif (is_string($email) && strlen($email) <= 255 && self::isCleanText($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
                 $fields['contact_email'] = $email;
             } else {
                 throw new ValidationException('contact_email must be a valid email address, or "" to remove it.');
@@ -157,34 +156,9 @@ class InstallationsHandler extends AbstractHandler
         return $response->withoutHeader('Content-Type');
     }
 
-    /**
-     * Fields come from the JSON body only: the query string is never read.
-     *
-     * @return array<string, mixed>
-     */
-    private function bodyParams(ServerRequestInterface $request): array
-    {
-        $body = (string) $request->getBody();
-        if ($body === '') {
-            return [];
-        }
-        $decoded = json_decode($body, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new BadRequestException('Malformed JSON data received in the request: ' . json_last_error_msg());
-        }
-        /** @var array<string, mixed> $out */
-        $out = is_array($decoded) ? $decoded : [];
-        return $out;
-    }
-
     private function validVersion(mixed $v): ?string
     {
         return is_string($v) && preg_match('/^[0-9A-Za-z.+_-]{1,50}$/', $v) === 1 ? $v : null;
-    }
-
-    private static function cleanText(string $v): bool
-    {
-        return mb_check_encoding($v, 'UTF-8') && preg_match('/[\x00-\x1F\x7F]/', $v) !== 1;
     }
 
     private function validSiteUrl(mixed $v): ?string
@@ -193,7 +167,7 @@ class InstallationsHandler extends AbstractHandler
             return null;
         }
         if (
-            !is_string($v) || strlen($v) > 255 || !self::cleanText($v) || filter_var($v, FILTER_VALIDATE_URL) === false
+            !is_string($v) || strlen($v) > 255 || !self::isCleanText($v) || filter_var($v, FILTER_VALIDATE_URL) === false
             || preg_match('#^https?://#i', $v) !== 1
         ) {
             throw new ValidationException('site_url must be an http(s) URL of at most 255 characters.');

@@ -15,8 +15,8 @@ use BibleGet\Api\Http\Enum\StatusCode;
  */
 class UnauthorizedException extends ApiException
 {
-    public const DEVELOPERS_URL   = 'https://www.bibleget.io/developers';
-    public const WWW_AUTHENTICATE = 'ApiKey header="X-Api-Key"';
+    public const DEVELOPERS_URL          = 'https://www.bibleget.io/developers';
+    public const string WWW_AUTHENTICATE = 'ApiKey header="X-Api-Key"';
 
     public function __construct(
         string $message = 'A valid credential is required in the X-Api-Key header.',
@@ -29,6 +29,12 @@ class UnauthorizedException extends ApiException
             StatusCode::UNAUTHORIZED->reason(),
             $previous
         );
+    }
+
+    /** The WWW-Authenticate challenge ErrorHandlingMiddleware sends with this 401. */
+    public function challenge(): string
+    {
+        return static::WWW_AUTHENTICATE;
     }
 
     /**

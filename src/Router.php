@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api;
 
+use BibleGet\Api\Handlers\ApplicationsHandler;
 use BibleGet\Api\Handlers\InstallationsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
@@ -17,6 +18,7 @@ use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Middleware\CredentialMiddleware;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
 use BibleGet\Api\Http\Middleware\LoggingMiddleware;
+use BibleGet\Api\Http\Middleware\OidcBearerMiddleware;
 use BibleGet\Api\Http\Middleware\RateLimitMiddleware;
 use BibleGet\Api\Http\Middleware\UsageMiddleware;
 use BibleGet\Api\Http\Server\MiddlewarePipeline;
@@ -87,6 +89,11 @@ class Router
                 $this->handler = new InstallationsHandler($this->psr17Factory, $requestPathParts);
                 break;
 
+            case 'applications':
+                // Developer routes: a Zitadel access token in Authorization: Bearer, never an X-Api-Key credential.
+                $this->handler = new ApplicationsHandler($this->psr17Factory, $requestPathParts);
+                break;
+
             case 'search':
                 $subRoute     = $requestPathParts[0] ?? '';
                 $subPathParts = array_slice($requestPathParts, 1);
@@ -121,6 +128,10 @@ class Router
         $pipeline = new MiddlewarePipeline($this->handler);
         $pipeline->pipe(new ErrorHandlingMiddleware($this->psr17Factory, self::$debug));
         $pipeline->pipe(new LoggingMiddleware(self::$debug));
+
+        if ($route === 'applications') {
+            $pipeline->pipe(new OidcBearerMiddleware());
+        }
 
         $usageRoute = self::dataRouteName($route, $requestPathParts);
         if ($usageRoute !== null) {

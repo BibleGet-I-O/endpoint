@@ -78,7 +78,7 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
             }
 
             if ($e instanceof UnauthorizedException) {
-                $response = $response->withHeader('WWW-Authenticate', UnauthorizedException::WWW_AUTHENTICATE);
+                $response = $response->withHeader('WWW-Authenticate', $e->challenge());
             }
 
             $responseBody = json_encode($problem, JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

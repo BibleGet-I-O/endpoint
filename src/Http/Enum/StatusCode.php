@@ -16,6 +16,7 @@ enum StatusCode: int
     case NOT_FOUND              = 404;
     case METHOD_NOT_ALLOWED     = 405;
     case NOT_ACCEPTABLE         = 406;
+    case CONFLICT               = 409;
     case UNSUPPORTED_MEDIA_TYPE = 415;
     case UNPROCESSABLE_CONTENT  = 422;
     case TOO_MANY_REQUESTS      = 429;
@@ -35,6 +36,7 @@ enum StatusCode: int
             self::NOT_FOUND              => 'Not Found',
             self::METHOD_NOT_ALLOWED     => 'Method Not Allowed',
             self::NOT_ACCEPTABLE         => 'Not Acceptable',
+            self::CONFLICT               => 'Conflict',
             self::UNSUPPORTED_MEDIA_TYPE => 'Unsupported Media Type',
             self::UNPROCESSABLE_CONTENT  => 'Unprocessable Content',
             self::TOO_MANY_REQUESTS      => 'Too Many Requests',

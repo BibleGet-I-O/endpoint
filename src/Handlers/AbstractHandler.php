@@ -295,6 +295,35 @@ abstract class AbstractHandler implements RequestHandlerInterface
     }
 
     /**
+     * Parameters from a JSON request body only: the query string is never
+     * read, so nothing outside the decoded (hence valid UTF-8) body reaches
+     * the database.
+     *
+     * @return array<string, mixed>
+     * @throws BadRequestException on malformed JSON
+     */
+    protected function getJsonBodyParams(ServerRequestInterface $request): array
+    {
+        $body = (string) $request->getBody();
+        if ($body === '') {
+            return [];
+        }
+        $decoded = json_decode($body, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new BadRequestException('Malformed JSON data received in the request: ' . json_last_error_msg());
+        }
+        /** @var array<string, mixed> $out */
+        $out = is_array($decoded) ? $decoded : [];
+        return $out;
+    }
+
+    /** True for valid UTF-8 without control characters (C0, DEL or C1). */
+    protected static function isCleanText(string $v): bool
+    {
+        return mb_check_encoding($v, 'UTF-8') && preg_match('/\p{Cc}/u', $v) !== 1;
+    }
+
+    /**
      * Determine the response content type from the `return` param or Accept header.
      *
      * @param array<string, mixed> $params
