@@ -60,9 +60,11 @@ cd ~/embedding
 python3 -m venv venv
 . venv/bin/activate
 pip install --upgrade pip
-# Install the runtime deps (matches services/embedding/requirements.txt).
+# Install the runtime deps from requirements.txt (copy it into ~/embedding
+# first). It pulls the CPU-only torch build: the default PyPI wheel adds
+# ~3.5 GB of CUDA libraries this GPU-less server never uses.
 # The deploy workflow will keep this in sync going forward.
-pip install fastapi uvicorn sentence-transformers
+pip install -r requirements.txt
 # Pre-warm the model cache so cold starts are fast.
 python -c "from sentence_transformers import SentenceTransformer; \
            SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
