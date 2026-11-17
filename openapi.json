@@ -1339,6 +1339,19 @@
                         }
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "403": {
+                        "description": "This installation (client key + install_id) was revoked by an admin. The plugin should generate a new install_id and register again.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "401": {
@@ -1392,6 +1405,9 @@
                         "description": "Done, no content."
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "401": {
@@ -1482,6 +1498,19 @@
                         }
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "403": {
+                        "description": "The signed-in user's email address is not verified (`email_verified` is not true in the access token).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "401": {
@@ -1609,6 +1638,9 @@
                         }
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "404": {
@@ -1828,10 +1860,20 @@
                         }
                     },
                     "400": {
-                        "$ref": "#/components/responses/ValidationError"
+                        "$ref": "#/components/responses/MalformedJson"
                     },
-                    "403": {
-                        "$ref": "#/components/responses/Forbidden"
+                    "409": {
+                        "description": "The application is not approved and active: keys are issued only for approved applications.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
@@ -1948,6 +1990,16 @@
                     "401": {
                         "$ref": "#/components/responses/BearerUnauthorized"
                     },
+                    "409": {
+                        "description": "The application is not approved and active: keys are issued only for approved applications.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
                     "503": {
                         "$ref": "#/components/responses/ServiceUnavailable"
                     }
@@ -2004,8 +2056,70 @@
                             }
                         }
                     },
-                    "400": {
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/applications/{id}": {
+            "get": {
+                "summary": "One project and its keys",
+                "description": "Any application, system ones included (the frontend's reader key belongs to one), with all its keys. Keys are listed without the key itself or its hash.",
+                "operationId": "adminGetApplication",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The application and its keys.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/AdminApplication"
+                                        },
+                                        "keys": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ApiKeyRecord"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     },
                     "401": {
                         "$ref": "#/components/responses/BearerUnauthorized"
@@ -2040,7 +2154,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
+                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -2070,6 +2184,9 @@
                             }
                         }
                     },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
                     },
@@ -2081,6 +2198,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     },
                     "503": {
                         "$ref": "#/components/responses/ServiceUnavailable"
@@ -2109,7 +2229,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
+                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -2139,6 +2259,9 @@
                             }
                         }
                     },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
                     },
@@ -2150,6 +2273,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     },
                     "503": {
                         "$ref": "#/components/responses/ServiceUnavailable"
@@ -2178,7 +2304,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
+                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -2208,6 +2334,9 @@
                             }
                         }
                     },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
                     },
@@ -2219,6 +2348,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     },
                     "503": {
                         "$ref": "#/components/responses/ServiceUnavailable"
@@ -2278,10 +2410,60 @@
                         }
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/api-keys/{id}/revoke": {
+            "post": {
+                "summary": "Revoke one key",
+                "description": "Deactivates one project key, the system reader key included. A key that is already inactive is a 409.",
+                "operationId": "adminRevokeApiKey",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "API key id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done, no content."
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
                     },
                     "401": {
                         "$ref": "#/components/responses/BearerUnauthorized"
@@ -2407,6 +2589,9 @@
                         }
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "401": {
@@ -2553,7 +2738,7 @@
                             }
                         }
                     },
-                    "400": {
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "401": {
@@ -2627,6 +2812,9 @@
                         }
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "404": {
@@ -2696,6 +2884,9 @@
                         }
                     },
                     "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "404": {
@@ -2849,9 +3040,48 @@
                                         },
                                         "requests": {
                                             "type": "array",
+                                            "description": "Requests per day and route, summed per application (project keys), per plugin and version (installations), or for uncredentialed requests (`none`).",
                                             "items": {
                                                 "type": "object",
-                                                "additionalProperties": true
+                                                "properties": {
+                                                    "day": {
+                                                        "type": "string",
+                                                        "format": "date"
+                                                    },
+                                                    "credential_type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "project",
+                                                            "installation",
+                                                            "none"
+                                                        ]
+                                                    },
+                                                    "application_id": {
+                                                        "type": "string",
+                                                        "format": "uuid",
+                                                        "nullable": true,
+                                                        "description": "The application of a project key; null otherwise, or when the key has since been deleted."
+                                                    },
+                                                    "plugin": {
+                                                        "type": "string",
+                                                        "nullable": true,
+                                                        "description": "The plugin of an installation; null otherwise, or when the installation has since been deleted."
+                                                    },
+                                                    "plugin_version": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "label": {
+                                                        "type": "string",
+                                                        "description": "Application name, plugin and version, `none`, or `unknown` for a deleted credential."
+                                                    },
+                                                    "route": {
+                                                        "type": "string"
+                                                    },
+                                                    "requests": {
+                                                        "type": "integer"
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -2859,7 +3089,7 @@
                             }
                         }
                     },
-                    "400": {
+                    "422": {
                         "$ref": "#/components/responses/ValidationError"
                     },
                     "401": {
@@ -17332,6 +17562,31 @@
                     }
                 }
             },
+            "AdminApplication": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Application"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "zitadel_user_id": {
+                                "type": "string",
+                                "description": "The owner's Zitadel user id (`system` for first-party applications)."
+                            },
+                            "reviewed_by": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "The reviewing admin's Zitadel user id."
+                            },
+                            "is_system": {
+                                "type": "boolean",
+                                "description": "First-party application (the frontend's reader key)."
+                            }
+                        }
+                    }
+                ]
+            },
             "ApplicationInput": {
                 "type": "object",
                 "required": [
@@ -17755,8 +18010,18 @@
                     }
                 }
             },
+            "MalformedJson": {
+                "description": "The request body is not valid JSON (or not valid UTF-8).",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
             "ValidationError": {
-                "description": "The request body or parameters are invalid.",
+                "description": "The request body or parameters are invalid (422 Unprocessable Content).",
                 "content": {
                     "application/problem+json": {
                         "schema": {
@@ -17766,7 +18031,7 @@
                 }
             },
             "TooManyRequests": {
-                "description": "Rate limit exceeded for this credential (sliding one-hour window).",
+                "description": "Rate limit exceeded: for a credential on the data routes (sliding one-hour window), or for a client key's registrations on POST /installations. The X-RateLimit-* headers are sent with the 429 as well.",
                 "headers": {
                     "Retry-After": {
                         "$ref": "#/components/headers/RetryAfter"

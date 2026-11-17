@@ -164,7 +164,9 @@ class InstallationsHttpTest extends ServerTestCase
         $body = self::jsonBody(self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1'])['body']);
         self::assertIsString($body['installation_id']);
         ( new InstallationRepository($this->db) )->revoke($body['installation_id']);
-        self::assertSame(403, self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1'])['status']);
+        $r = self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1']);
+        self::assertSame(403, $r['status']);
+        self::assertStringContainsString('generate a new install_id and register again', (string) ( self::jsonBody($r['body'])['detail'] ?? '' ));
     }
 
     public function testRegistrationCapIs429WithRetryAfter(): void

@@ -13,6 +13,6 @@ class InstallationRevokedException extends ForbiddenException
 {
     public function __construct(?\Throwable $previous = null)
     {
-        parent::__construct('This installation has been revoked', $previous);
+        parent::__construct('This installation has been revoked: generate a new install_id and register again.', $previous);
     }
 }
