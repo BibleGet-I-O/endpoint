@@ -16,10 +16,19 @@ final class CredentialFactory
         return ['plain' => $plain, 'hash' => self::hash($plain), 'prefix' => substr($plain, 0, 20)];
     }
 
+    /**
+     * The credential type a presented string claims by its prefix, or null.
+     * In production a `_test_` credential is not recognised at all, so it is
+     * refused (401) before any lookup.
+     */
     public static function typeOf(string $presented): ?CredentialType
     {
+        $acceptTest = self::currentEnv() !== 'production';
         foreach (CredentialType::cases() as $type) {
-            if (str_starts_with($presented, $type->prefix() . 'live_') || str_starts_with($presented, $type->prefix() . 'test_')) {
+            if (
+                str_starts_with($presented, $type->prefix() . 'live_')
+                || ( $acceptTest && str_starts_with($presented, $type->prefix() . 'test_') )
+            ) {
                 return $type;
             }
         }

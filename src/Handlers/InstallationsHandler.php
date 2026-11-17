@@ -28,7 +28,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * PATCH /installations/self (installation token updates its own record).
  *
  * Not behind CredentialMiddleware: each method validates its own credential
- * from the X-Api-Key header only.
+ * from the X-Api-Key header only (in production, `_test_` credentials are
+ * refused before any lookup).
  */
 class InstallationsHandler extends AbstractHandler
 {
@@ -67,10 +68,9 @@ class InstallationsHandler extends AbstractHandler
 
     private function register(ServerRequestInterface $request): ResponseInterface
     {
-        $db        = Connection::getConnection();
         $presented = trim($request->getHeaderLine('X-Api-Key'));
         $client    = CredentialFactory::typeOf($presented) === CredentialType::Client
-            ? ( new ClientKeyRepository($db) )->findActiveByHash(CredentialFactory::hash($presented))
+            ? ( new ClientKeyRepository(Connection::getConnection()) )->findActiveByHash(CredentialFactory::hash($presented))
             : null;
         if ($client === null) {
             throw new UnauthorizedException(
@@ -106,7 +106,7 @@ class InstallationsHandler extends AbstractHandler
             );
         }
 
-        $reg      = ( new InstallationRepository($db) )->register($client['id'], strtolower($installId), $version, $siteUrl);
+        $reg      = ( new InstallationRepository(Connection::getConnection()) )->register($client['id'], strtolower($installId), $version, $siteUrl);
         $status   = $reg['created'] ? StatusCode::CREATED : StatusCode::OK;
         $response = $this->initResponse($request, 'application/json')
             ->withStatus($status->value, $status->reason())

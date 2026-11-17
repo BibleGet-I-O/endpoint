@@ -26,6 +26,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * The key is read from the X-Api-Key header only: a key in the query string
  * or the Authorization header is ignored. CORS preflight requests pass
  * through untouched, since browsers never send custom headers on them.
+ * In production a `_test_` credential is refused (CredentialFactory::typeOf).
  */
 class CredentialMiddleware implements MiddlewareInterface
 {
@@ -57,6 +58,9 @@ class CredentialMiddleware implements MiddlewareInterface
     private function resolve(string $presented): Credential
     {
         $type = CredentialFactory::typeOf($presented);
+        if ($type === null) {
+            throw self::invalid();
+        }
         $hash = CredentialFactory::hash($presented);
         $db   = $this->db ?? Connection::getConnection();
 
@@ -77,17 +81,13 @@ class CredentialMiddleware implements MiddlewareInterface
             return $credential;
         }
 
-        if ($type === CredentialType::Installation) {
-            $repo       = new InstallationRepository($db);
-            $credential = $repo->findActiveByHash($hash);
-            if ($credential === null) {
-                throw self::invalid();
-            }
-            $repo->touch($credential->id);
-            return $credential;
+        $repo       = new InstallationRepository($db);
+        $credential = $repo->findActiveByHash($hash);
+        if ($credential === null) {
+            throw self::invalid();
         }
-
-        throw self::invalid();
+        $repo->touch($credential->id);
+        return $credential;
     }
 
     private static function invalid(): UnauthorizedException
