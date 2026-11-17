@@ -119,7 +119,7 @@ class MetadataHandler extends AbstractHandler
             if (( $row1['BOOK'] ?? null ) !== ( $row2['BOOK'] ?? null )) {
                 throw new InternalServerErrorException('biblebooks_fullname and biblebooks_abbr BOOK keys are mismatched.');
             }
-            $bookNumbers[]  = (int) StringUtils::asString($row1['BOOK'] ?? 0);
+            $bookNumbers[]  = StringUtils::asInt($row1['BOOK'] ?? 0);
             $biblebooks[$n] = [];
             for ($x = 0; $x < $cols - 1; $x++) {
                 $val1               = StringUtils::asString($row1[$names[$x + 1]] ?? '');
@@ -159,7 +159,7 @@ class MetadataHandler extends AbstractHandler
         }
         $byBook = [];
         while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
-            $byBook[(int) StringUtils::asString($row['book'] ?? 0)] = [
+            $byBook[StringUtils::asInt($row['book'] ?? 0)] = [
                 'usfm' => StringUtils::asString($row['usfm_code'] ?? ''),
                 'osis' => StringUtils::asString($row['osis_code'] ?? ''),
             ];

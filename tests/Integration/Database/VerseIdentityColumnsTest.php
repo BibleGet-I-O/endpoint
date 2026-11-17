@@ -266,6 +266,19 @@ final class VerseIdentityColumnsTest extends DatabaseTestCase
         self::assertSame('(2,3)', self::row($pdo, 2)['alt_ref']);
     }
 
+    /**
+     * A converted table is recognised by its missing "verseID", even if a
+     * verseequiv column comes back (re-running seed.sql on a migrated DB).
+     */
+    public function testConvertedTableWithVerseequivAgainIsSkipped(): void
+    {
+        $pdo = $this->migrate([['book' => 1, 'chapter' => 1, 'verse' => 1, 'eq' => '1a']]);
+        $pdo->exec('ALTER TABLE "ZZ046" ADD COLUMN verseequiv VARCHAR(10)');
+        $sql = (string) preg_replace('/^(BEGIN|COMMIT);\s*$/m', '', (string) file_get_contents(self::MIGRATION));
+        $pdo->exec($sql);
+        self::assertSame('a', self::row($pdo, 1)['verse_segment']);
+    }
+
     public function testUniqueKeyTreatsNullsAsEqual(): void
     {
         $pdo = $this->migrate([['book' => 1, 'chapter' => 1, 'verse' => 1]]);

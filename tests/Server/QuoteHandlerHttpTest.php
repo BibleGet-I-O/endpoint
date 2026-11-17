@@ -102,13 +102,19 @@ class QuoteHandlerHttpTest extends ServerTestCase
     public function testResponsesCarryNoOldFieldNames(): void
     {
         $old = ['verseequiv', 'versedescr', 'verseorigin', 'verseID', 'sort_order'];
+        // Esther 1:1-2 (text_tradition set) and Wis 12:4 (verse_segment 'a'): new
+        // fields with values, so every format serializes at least one.
         foreach (['json', 'xml', 'html'] as $format) {
-            $r = self::httpGet('/v3/quote?query=Est1,1-2&version=TEST3&return=' . $format);
-            self::assertSame(200, $r['status'], $format);
-            foreach ($old as $name) {
-                self::assertStringNotContainsString($name, $r['body'], $format . ' carries ' . $name);
+            foreach (['Est1,1-2', 'Wis12,4'] as $query) {
+                $r = self::httpGet('/v3/quote?query=' . $query . '&version=TEST3&return=' . $format);
+                self::assertSame(200, $r['status'], $format);
+                foreach ($old as $name) {
+                    self::assertStringNotContainsString($name, $r['body'], $format . ' carries ' . $name);
+                }
             }
         }
+        $wis = self::jsonBody(self::httpGet('/v3/quote?query=Wis12,4&version=TEST3')['body']);
+        self::assertSame('a', $wis['results'][0]['verse_segment'] ?? null);
 
         $r    = self::httpGet('/v3/quote?query=Est1,1-2&version=TEST3');
         $body = self::jsonBody($r['body']);

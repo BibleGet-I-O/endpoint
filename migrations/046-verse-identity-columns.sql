@@ -41,7 +41,7 @@
 -- Also: biblebooks_codes (USFM / OSIS book codes; Greek-tradition Esther rows
 -- are USFM ESG / OSIS AddEsth, and USFM splits Baruch 6 as LJE: both left to
 -- the output transformers), and bibleget_rebuild_in_order on sort_order.
--- Idempotent: a converted table is skipped.
+-- Idempotent: a converted table (no "verseID") is skipped.
 
 BEGIN;
 
@@ -128,8 +128,12 @@ DECLARE
     letter_ok  TEXT := CASE WHEN letters IS NULL THEN 'false'
                             ELSE format('btrim(versedescr, %L) = ANY(%L)', '[] ', letters) END;
 BEGIN
-    IF NOT pg_temp.m046_has(tbl, 'verseequiv') THEN
+    -- Converted tables have no "verseID" (it is sort_order), whatever else they gained since.
+    IF NOT pg_temp.m046_has(tbl, 'verseID') THEN
         RETURN tbl || ': already converted';
+    END IF;
+    IF NOT pg_temp.m046_has(tbl, 'verseequiv') THEN
+        EXECUTE format('ALTER TABLE %I ADD COLUMN verseequiv VARCHAR(10)', tbl);
     END IF;
     IF NOT has_descr THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN versedescr VARCHAR(10)', tbl);
