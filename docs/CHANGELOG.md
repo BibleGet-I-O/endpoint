@@ -33,18 +33,26 @@ migration `048`).
 - **Developer routes** (Zitadel Bearer token): `/applications` and
   `/applications/{id}[/resubmit|/keys[/{keyId}[/rotate]]]`.
 - **Admin routes** (Bearer token, role `bibleget_admin`): approve, reject and
-  revoke applications, client keys, installations (including a batch revoke
+  revoke applications, view one application (system ones included) with its
+  keys and revoke a single key (`GET /admin/applications/{id}`,
+  `POST /admin/api-keys/{id}/revoke`), client keys, installations (including a batch revoke
   by registration window), per-key and per-installation limits and
   `GET /admin/stats`. On `/admin/stats` a date-only `to` covers that whole
   day; on `revoke-batch` and the `registered_to` filter the window is
   half-open, `[from, to)`.
 - **Rate limiting per credential**: sliding one-hour window, project keys
   1000/hour, installation tokens 300/hour, with `X-RateLimit-Limit`,
-  `X-RateLimit-Remaining` and `X-RateLimit-Reset`; the system key is exempt.
+  `X-RateLimit-Remaining` and `X-RateLimit-Reset` (also on the `429`); the
+  system key is exempt. In production, `_test_` credentials are refused.
 - **`reader` scope** for the first-party frontend (key minted by
   `scripts/mint-reader-key.php`): whole chapters of editions flagged
   `versions_available.reader_full_text`. `scripts/mint-client-key.php` mints a
-  client key from the command line.
+  client key from the command line. The scripts are not deployed: run them
+  from a local checkout through an SSH tunnel
+  (`ssh -L 15432:127.0.0.1:5432 ubuntu@catholicdigitalcommons.org`, then
+  `DB_HOST=127.0.0.1 DB_PORT=15432`, the target's `DB_*` and its `APP_ENV`;
+  see CLAUDE.md, "Minting keys"). They print `APP_ENV` and `DB_NAME` before
+  minting.
 - OpenAPI: `ApiKey`, `ClientKey` and `BearerAuth` security schemes, the
   `401`/`403`/`429` responses with their headers, and the new paths. The Live
   suite sends `BIBLEGET_LIVE_API_KEY` (deploy workflow secret) when set.

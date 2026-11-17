@@ -111,6 +111,23 @@ class ApiKeyRepository
     }
 
     /**
+     * Deactivates one key, system keys included (POST /admin/api-keys/{id}/revoke).
+     *
+     * @return bool|null true when revoked now, false when it was already inactive, null when it does not exist
+     */
+    public function deactivate(string $id): ?bool
+    {
+        $stmt = $this->db->prepare('UPDATE api_keys SET is_active = FALSE WHERE id = :id AND is_active RETURNING id');
+        $stmt->execute([':id' => $id]);
+        if ($stmt->fetchColumn() !== false) {
+            return true;
+        }
+        $exists = $this->db->prepare('SELECT 1 FROM api_keys WHERE id = :id');
+        $exists->execute([':id' => $id]);
+        return $exists->fetchColumn() !== false ? false : null;
+    }
+
+    /**
      * Sets a key's hourly limit; returns its listing row (never key_hash), or null when it does not exist.
      *
      * @return array<string, mixed>|null

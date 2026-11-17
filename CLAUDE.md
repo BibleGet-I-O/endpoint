@@ -220,6 +220,27 @@ sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
     systemctl --user restart bibleget-embedding bibleget-embedding-labse
 ```
 
+### Minting keys (scripts are not deployed)
+
+`scripts/mint-reader-key.php` (the frontend's `reader` key) and
+`scripts/mint-client-key.php` (a plugin release's client key) are excluded
+from the rsync deploy on purpose: anything outside `public/` might be
+web-reachable. Run them from a local checkout through an SSH tunnel to the
+target's PostgreSQL:
+
+```bash
+ssh -N -L 15432:127.0.0.1:5432 ubuntu@catholicdigitalcommons.org &
+export APP_ENV=staging            # or production: decides live vs test keys
+export DB_HOST=127.0.0.1 DB_PORT=15432 DB_NAME=... DB_USER=... DB_PASS=...
+php scripts/mint-client-key.php wordpress 9.0.0
+```
+
+Process variables win over the local `.env*` files, so set every `DB_*` and
+`APP_ENV` (values from the server's `.env.staging` / `.env.production`; never
+print them). Each script prints `APP_ENV` and `DB_NAME` to stderr before
+minting, then the key once on stdout. Revoke an old reader key with
+`POST /admin/api-keys/{id}/revoke` (ids from `GET /admin/applications/{id}`).
+
 ### Deploy workflows (manual, `workflow_dispatch`)
 
 - **`.github/workflows/deploy.yaml`** — deploys the PHP API. Skips any tag

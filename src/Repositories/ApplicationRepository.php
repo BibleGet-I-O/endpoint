@@ -148,6 +148,18 @@ class ApplicationRepository
     }
 
     /**
+     * Any application, system ones included (GET /admin/applications/{id}).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findIncludingSystem(string $id): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM applications WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        return Cast::row($stmt->fetch());
+    }
+
+    /**
      * Moves the application to $status only from a status TRANSITIONS allows,
      * in one conditional UPDATE, so concurrent reviews cannot both succeed.
      * False when the application is absent or in another status.

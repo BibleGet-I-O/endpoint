@@ -178,6 +178,8 @@ class AdminHttpTest extends ServerTestCase
                 ['GET', '/v3/admin/installations', null],
                 ['POST', '/v3/admin/installations/revoke-batch', ['client_key_id' => self::NIL_ID]],
                 ['PATCH', '/v3/admin/api-keys/' . self::NIL_ID, ['rate_limit_per_hour' => 5]],
+                ['GET', '/v3/admin/applications/' . self::NIL_ID, null],
+                ['POST', '/v3/admin/api-keys/' . self::NIL_ID . '/revoke', null],
                 ['GET', '/v3/admin/stats', null],
                 ['GET', '/v3/admin/nope', null],
             ] as [$method, $path, $body]
@@ -257,6 +259,69 @@ class AdminHttpTest extends ServerTestCase
         foreach (['approve', 'reject', 'revoke'] as $action) {
             self::assertSame(409, self::call('POST', "$base/$action")['status'], "revoked → $action");
         }
+    }
+
+    public function testApplicationDetailListsKeysAndAKeyCanBeRevoked(): void
+    {
+        $appId = $this->application('Detail app');
+        ( new ApplicationRepository($this->db) )->approve($appId, 'admin', null);
+        $key = ( new ApiKeyRepository($this->db) )->mint($appId, 'detail key', 'read', 1000);
+
+        $detail = self::okJson(self::call('GET', "/v3/admin/applications/{$appId}"));
+        self::assertIsArray($detail['application']);
+        self::assertSame($appId, $detail['application']['id']);
+        self::assertIsArray($detail['keys']);
+        self::assertCount(1, $detail['keys']);
+        $row = $detail['keys'][0];
+        self::assertIsArray($row);
+        self::assertSame($key['id'], $row['id']);
+        self::assertSame(substr($key['plain'], 0, 20), $row['key_prefix']);
+        self::assertSame('detail key', $row['name']);
+        self::assertSame('read', $row['scope']);
+        self::assertTrue($row['is_active']);
+        self::assertSame(1000, $row['rate_limit_per_hour']);
+        self::assertArrayHasKey('last_used_at', $row);
+        self::assertArrayNotHasKey('key_hash', $row);
+        self::assertStringNotContainsString($key['plain'], json_encode($detail, JSON_THROW_ON_ERROR));
+
+        self::assertSame(404, self::call('GET', '/v3/admin/applications/' . self::NIL_ID)['status']);
+        self::assertSame(404, self::call('GET', '/v3/admin/applications/not-a-uuid')['status']);
+        self::assertSame(405, self::call('PATCH', "/v3/admin/applications/{$appId}", ['x' => 1])['status']);
+
+        self::assertSame(200, self::httpGet(self::QUOTE, ['X-Api-Key' => $key['plain']])['status']);
+        $r = self::call('POST', "/v3/admin/api-keys/{$key['id']}/revoke");
+        self::assertSame(204, $r['status'], $r['body']);
+        self::assertSame(401, self::httpGet(self::QUOTE, ['X-Api-Key' => $key['plain']])['status']);
+        self::assertSame(409, self::call('POST', "/v3/admin/api-keys/{$key['id']}/revoke")['status']);
+        self::assertSame(404, self::call('POST', '/v3/admin/api-keys/' . self::NIL_ID . '/revoke')['status']);
+        self::assertSame(404, self::call('POST', "/v3/admin/api-keys/{$key['id']}/bless")['status']);
+        self::assertSame(405, self::call('GET', "/v3/admin/api-keys/{$key['id']}/revoke")['status']);
+    }
+
+    public function testSystemApplicationAndItsReaderKeyAreVisibleAndRevocable(): void
+    {
+        $owner          = 'test-owner-' . bin2hex(random_bytes(6));
+        $this->owners[] = $owner;
+        $stmt           = $this->db->prepare(
+            "INSERT INTO applications (zitadel_user_id, name, status, is_system, reviewed_by, reviewed_at)
+             VALUES (?, 'System detail app', 'approved', TRUE, 'system', now()) RETURNING id"
+        );
+        $stmt->execute([$owner]);
+        $appId = $stmt->fetchColumn();
+        self::assertIsString($appId);
+        $reader = ( new ApiKeyRepository($this->db) )->mint($appId, 'Frontend reader', 'reader', null);
+
+        $detail = self::okJson(self::call('GET', "/v3/admin/applications/{$appId}"));
+        self::assertIsArray($detail['application']);
+        self::assertTrue($detail['application']['is_system']);
+        self::assertIsArray($detail['keys']);
+        self::assertIsArray($detail['keys'][0]);
+        self::assertSame('reader', $detail['keys'][0]['scope']);
+        self::assertNull($detail['keys'][0]['rate_limit_per_hour']);
+
+        self::assertSame(200, self::httpGet(self::QUOTE, ['X-Api-Key' => $reader['plain']])['status']);
+        self::assertSame(204, self::call('POST', "/v3/admin/api-keys/{$reader['id']}/revoke")['status']);
+        self::assertSame(401, self::httpGet(self::QUOTE, ['X-Api-Key' => $reader['plain']])['status']);
     }
 
     public function testMintClientKeyReturnsPlainOnce(): void
