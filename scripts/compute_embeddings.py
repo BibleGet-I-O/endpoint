@@ -317,8 +317,13 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
         # asymmetry" below), and refreshing it would hide stale vectors.
         # Only the checksum: no vector was computed, so the model metadata
         # (name, version, dimensions) still describes the stored vectors.
-        if column == DEFAULT_COLUMN and has_text_hash_column(conn, version):
-            update_content_xor(conn, version, column, compute_content_xor(conn, version))
+        # Vectors copied in from elsewhere (sync_labse_to_live.sh) may have no
+        # metadata row at all: record one, or the API can neither check their
+        # model nor their staleness.
+        hash_tracked = column == DEFAULT_COLUMN and has_text_hash_column(conn, version)
+        content_xor = compute_content_xor(conn, version) if hash_tracked else None
+        if not record_missing_metadata(conn, version, column, dim, content_xor) and hash_tracked:
+            update_content_xor(conn, version, column, content_xor)
         print(f"  {version}: no verses to process (all up to date)")
         return 0
 
@@ -343,6 +348,37 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
 
     print(f"  {version}: done ({total_written} embeddings)")
     return total_written
+
+
+def record_missing_metadata(conn, version, column, dim, content_xor):
+    """Create the embedding_metadata row for (version, column) when there is none,
+    for vectors that are all present but were not written by this script. The
+    model name is this run's model; the model version is left empty (the
+    column default: unknown), since EMBEDDING_MODEL_VERSION tags vectors this
+    run computes, and these it did not. content_xor is given only for the
+    hash-tracked column (elsewhere it would hide stale vectors, see "Known
+    asymmetry"). Returns True if a row was created.
+
+    Only when this run uses the column's own model (COLUMN_MODELS): with an
+    EMBEDDING_MODEL override the row would credit the stored vectors to a model
+    that did not compute them. Rerun with --force to recompute them instead."""
+    own_model = COLUMN_MODELS.get(column, (None,))[0]
+    if MODEL_NAME != own_model:
+        print(f"  {version}: no metadata for {column}, not recorded: this run uses {MODEL_NAME}, not {own_model}")
+        return False
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO embedding_metadata "
+            "(version_sigla, column_name, model_name, model_version, dimensions, computed_at, content_xor) "
+            "VALUES (%s, %s, %s, '', %s, CURRENT_TIMESTAMP, %s) "
+            "ON CONFLICT (version_sigla, column_name) DO NOTHING",
+            (version, column, MODEL_NAME, dim, content_xor),
+        )
+        created = cur.rowcount == 1
+    conn.commit()
+    if created:
+        print(f"  {version}: recorded missing metadata for {column} ({MODEL_NAME})")
+    return created
 
 
 def update_content_xor(conn, version, column, content_xor):
