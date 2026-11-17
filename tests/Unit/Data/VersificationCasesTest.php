@@ -158,9 +158,10 @@ final class VersificationCasesTest extends TestCase
                     continue;
                 }
                 // A label: a number or range, a lettered verse, a chapter:verse label
-                // printed in another chapter, or · (printed without a number).
+                // printed in another chapter, a lettered-chapter label (NABRE's
+                // Esther A:1 ... F:11), or · (printed without a number).
                 $this->assertMatchesRegularExpression(
-                    '/^\d+ \d+(?: (?:HEBREW|GREEK))?: (?:·|(?:\d+:)?\d+[a-z]*(?:-\d+)?)(?:,(?:·|(?:\d+:)?\d+[a-z]*(?:-\d+)?))*$/u',
+                    '/^\d+ \d+(?: (?:HEBREW|GREEK))?: (?:·|(?:(?:\d+|[A-F]):)?\d+[a-z]*(?:-\d+)?)(?:,(?:·|(?:(?:\d+|[A-F]):)?\d+[a-z]*(?:-\d+)?))*$/u',
                     $line,
                     basename($file) . ':' . ( $n + 1 )
                 );
