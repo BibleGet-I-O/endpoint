@@ -14,9 +14,9 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * Handles:
  * - Single verse, whole chapter, verse ranges (same-chapter and cross-chapter)
  * - Non-consecutive verses (multiple segments → multiple SQL queries)
- * - preferorigin annotation for Psalms
+ * - text_tradition annotation for Psalms
  * - Copyright-limited verse count (LIMIT 30)
- * - ORDER BY verseID
+ * - ORDER BY sort_order
  *
  * A reference selects verses by their number: every row is stored at its
  * identity (chapter, verse), and where the edition prints it is recorded
@@ -32,8 +32,8 @@ final class SqlCompiler
      * produce separate SQL queries, each independently finalized with
      * ORDER BY and optional LIMIT.
      *
-     * @param string|array<int, string> $preferOrigin  Single string (applied to all segments)
-     *                                                  or per-segment array of preferOrigin suffixes
+     * @param string|array<int, string> $textTradition  Single string (applied to all segments)
+     *                                                  or per-segment array of textTradition suffixes
      * @param array<int, string> $copyrightVersions
      * @param array<int, string> $requestedCopyrightedVersions
      * @return array<int, string> SQL queries
@@ -41,7 +41,7 @@ final class SqlCompiler
     public function compile(
         BibleQuery $query,
         string $version,
-        string|array $preferOrigin,
+        string|array $textTradition,
         array $copyrightVersions,
         array $requestedCopyrightedVersions,
     ): array {
@@ -57,11 +57,11 @@ final class SqlCompiler
                 $sql .= ' AND ' . $this->compileWhere($segment);
             }
 
-            $segmentOrigin = is_array($preferOrigin)
-                ? ( $preferOrigin[$i] ?? '' )
-                : $preferOrigin;
+            $segmentOrigin = is_array($textTradition)
+                ? ( $textTradition[$i] ?? '' )
+                : $textTradition;
             $sql          .= $segmentOrigin;
-            $sql          .= ' ORDER BY "verseID"';
+            $sql          .= ' ORDER BY sort_order';
 
             if ($isCopied) {
                 $sql .= ' LIMIT 30';
@@ -105,7 +105,7 @@ final class SqlCompiler
 
     /**
      * The segment's condition on chapter and verse, parenthesised so clauses
-     * appended after it (preferorigin) bind to all of it.
+     * appended after it (text_tradition) bind to all of it.
      */
     private function compileWhere(VerseRange|VerseRef $segment): string
     {

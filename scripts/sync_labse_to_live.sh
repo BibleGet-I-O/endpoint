@@ -21,6 +21,9 @@
 #     exist on every version table). If not, apply them on live first:
 #         psql ... -f migrations/012-add-embedding-labse-columns.sql
 #         psql ... -f migrations/013-add-embedding-labse-remaining-versions.sql
+#   - Both local and live have migration 046 applied (rows are matched by
+#     sort_order, which was "verseID" before 046):
+#         psql ... -f migrations/046-verse-identity-columns.sql
 #   - SSH access to the live host, with credentials available in an .env-style
 #     file at LIVE_ENV_PATH on the remote (DB_HOST, DB_PORT, DB_NAME, DB_USER,
 #     DB_PASS — same shape as the deployed app's .env).
@@ -70,7 +73,7 @@ log() {
     echo "$(date '+%H:%M:%S') [sync] $*"
 }
 
-# Runs psql against local PG and returns stdout. Used to dump (verseID, labse)
+# Runs psql against local PG and returns stdout. Used to dump (sort_order, labse)
 # tuples in COPY text format. Falls back to `docker compose exec` if psql is
 # not on PATH (the common case when local PG is a Docker container).
 if command -v psql >/dev/null 2>&1; then
@@ -144,9 +147,9 @@ for V in $VERSIONS; do
     # rollback rather than a half-applied sync.
     {
         echo 'BEGIN;'
-        echo "CREATE TEMP TABLE _labse_in (\"verseID\" INT PRIMARY KEY, embedding_labse vector(768));"
+        echo "CREATE TEMP TABLE _labse_in (sort_order INT PRIMARY KEY, embedding_labse vector(768));"
         echo 'COPY _labse_in FROM STDIN;'
-        local_psql -tAc "COPY (SELECT \"verseID\", embedding_labse FROM \"$V\" WHERE embedding_labse IS NOT NULL) TO STDOUT"
+        local_psql -tAc "COPY (SELECT sort_order, embedding_labse FROM \"$V\" WHERE embedding_labse IS NOT NULL) TO STDOUT"
         echo '\.'
         echo "DO \$sync\$"
         echo "DECLARE"
@@ -155,7 +158,7 @@ for V in $VERSIONS; do
         echo "BEGIN"
         echo "    SELECT COUNT(*) INTO expected_count FROM _labse_in;"
         echo "    UPDATE \"$V\" SET embedding_labse = _labse_in.embedding_labse"
-        echo "      FROM _labse_in WHERE \"$V\".\"verseID\" = _labse_in.\"verseID\";"
+        echo "      FROM _labse_in WHERE \"$V\".sort_order = _labse_in.sort_order;"
         echo "    GET DIAGNOSTICS updated_count = ROW_COUNT;"
         echo "    IF updated_count <> expected_count THEN"
         echo "        RAISE EXCEPTION 'sync mismatch for $V: expected %, updated %', expected_count, updated_count;"

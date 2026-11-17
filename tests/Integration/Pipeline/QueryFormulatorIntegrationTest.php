@@ -36,7 +36,7 @@ class QueryFormulatorIntegrationTest extends DatabaseTestCase
         self::assertStringContainsString('book = 1', $ctx->formulatedQueries[0]);
         self::assertStringContainsString('chapter = 1', $ctx->formulatedQueries[0]);
         self::assertStringContainsString('verse = 1', $ctx->formulatedQueries[0]);
-        self::assertStringContainsString('ORDER BY "verseID"', $ctx->formulatedQueries[0]);
+        self::assertStringContainsString('ORDER BY sort_order', $ctx->formulatedQueries[0]);
     }
 
     public function testFormulatesVerseRange(): void

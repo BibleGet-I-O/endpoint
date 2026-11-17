@@ -150,9 +150,9 @@ class KeywordSearchService
      * Run the keyword query for one version.
      *
      * With $limit null (the `/search/keyword` contract) every match is
-     * returned in canonical (`verseID`) order. With a $limit (`fulltext`
+     * returned in canonical (`sort_order`) order. With a $limit (`fulltext`
      * mode only — the hybrid keyword leg) the top $limit matches by
-     * `ts_rank_cd` are returned, ordered by score DESC then `verseID`, so
+     * `ts_rank_cd` are returned, ordered by score DESC then `sort_order`, so
      * the row order is the leg's rank order.
      *
      * @throws ValidationException on a too-short keyword or a query error
@@ -191,7 +191,7 @@ class KeywordSearchService
                     $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $folded) ?? $folded;
                     $stmt           = $this->pdo->prepare(
                         'SELECT *, NULL::float8 AS score FROM "' . $version . '" '
-                        . 'WHERE unaccent(text_plain) ~* (\'\y\' || ? || \'\y\') ORDER BY "verseID"'
+                        . 'WHERE unaccent(text_plain) ~* (\'\y\' || ? || \'\y\') ORDER BY sort_order'
                     );
                     $stmt->execute([$escapedKeyword]);
                 } catch (\PDOException) {
@@ -212,7 +212,7 @@ class KeywordSearchService
                         . 'ts_rank_cd(to_tsvector(\'' . $tsConfig . '\', text_plain), to_tsquery(\'' . $tsConfig . '\', ?)) AS score '
                         . 'FROM "' . $version . '" '
                         . 'WHERE to_tsvector(\'' . $tsConfig . '\', text_plain) @@ to_tsquery(\'' . $tsConfig . '\', ?) '
-                        . 'ORDER BY "verseID"'
+                        . 'ORDER BY sort_order'
                     );
                     $stmt->execute([$keyword, $keyword]);
                 } catch (\PDOException) {
@@ -228,8 +228,8 @@ class KeywordSearchService
                     throw new ValidationException(self::SHORT_KEYWORD_MESSAGE);
                 }
                 $orderBy = $limit === null
-                    ? 'ORDER BY "verseID"'
-                    : 'ORDER BY score DESC, "verseID" LIMIT ?';
+                    ? 'ORDER BY sort_order'
+                    : 'ORDER BY score DESC, sort_order LIMIT ?';
                 $bind    = [$sanitizedKeyword, $sanitizedKeyword];
                 if ($limit !== null) {
                     $bind[] = $limit;
@@ -292,7 +292,7 @@ class KeywordSearchService
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder
                 // can rank rows; unset before the row leaves the handler.
-                'verseID'     => is_numeric($row['verseID'] ?? null) ? (int) $row['verseID'] : 0,
+                'sort_order'  => is_numeric($row['sort_order'] ?? null) ? (int) $row['sort_order'] : 0,
             ];
             $results[] = $entry;
         }

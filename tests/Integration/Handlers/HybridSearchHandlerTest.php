@@ -133,7 +133,7 @@ class HybridSearchHandlerTest extends DatabaseTestCase
 
         // Gen 1:5: 1/63 + 1/62 (both legs) beats every single-leg row.
         // Gen 1:3 (keyword #1) and Exod 1:1 (semantic #1) tie at 1/61 and on
-        // best-rank; verseID (canonical order) breaks the tie.
+        // best-rank; sort_order (canonical order) breaks the tie.
         self::assertSame(
             ['TEST1 1:1:5', 'TEST1 1:1:3', 'TEST1 2:1:1', 'TEST1 1:1:4'],
             self::refs($body)
@@ -172,11 +172,11 @@ class HybridSearchHandlerTest extends DatabaseTestCase
         foreach (['version', 'testament', 'text', 'text_plain', 'bookabbrev', 'booknum', 'univbooknum', 'book', 'section', 'chapter', 'verse', 'score', 'canonical_order', 'components'] as $key) {
             self::assertArrayHasKey($key, $row);
         }
-        self::assertArrayNotHasKey('verseID', $row);
+        self::assertArrayNotHasKey('sort_order', $row);
         self::assertSame([], $body['errors']);
         self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
 
-        // canonical_order ranks rows by verseID within the version, not by fused score.
+        // canonical_order ranks rows by sort_order within the version, not by fused score.
         $orders = array_column($body['results'], 'canonical_order');
         self::assertSame([3, 1, 4, 2], $orders);
     }

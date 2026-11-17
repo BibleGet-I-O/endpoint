@@ -159,7 +159,7 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
         self::assertArrayHasKey('canonical_order', $first);
         self::assertIsInt($first['canonical_order']);
         self::assertGreaterThanOrEqual(1, $first['canonical_order']);
-        self::assertArrayNotHasKey('verseID', $first, 'verseID must never cross the API boundary');
+        self::assertArrayNotHasKey('sort_order', $first, 'sort_order must never cross the API boundary');
     }
 
     public function testInfoContainsEndpointVersion(): void

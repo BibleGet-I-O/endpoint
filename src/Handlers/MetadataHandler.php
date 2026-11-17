@@ -109,7 +109,8 @@ class MetadataHandler extends AbstractHandler
             throw new InternalServerErrorException('An internal database error occurred.');
         }
 
-        $n = 0;
+        $n           = 0;
+        $bookNumbers = [];
         while (is_array($row1 = $result1->fetch(\PDO::FETCH_ASSOC))) {
             $row2 = $result2->fetch(\PDO::FETCH_ASSOC);
             if (!is_array($row2)) {
@@ -118,6 +119,7 @@ class MetadataHandler extends AbstractHandler
             if (( $row1['BOOK'] ?? null ) !== ( $row2['BOOK'] ?? null )) {
                 throw new InternalServerErrorException('biblebooks_fullname and biblebooks_abbr BOOK keys are mismatched.');
             }
+            $bookNumbers[]  = StringUtils::asInt($row1['BOOK'] ?? 0);
             $biblebooks[$n] = [];
             for ($x = 0; $x < $cols - 1; $x++) {
                 $val1               = StringUtils::asString($row1[$names[$x + 1]] ?? '');
@@ -133,8 +135,43 @@ class MetadataHandler extends AbstractHandler
         return [
             'results'   => $biblebooks,
             'languages' => $languages,
+            'codes'     => $this->getBookCodes($pdo, $bookNumbers),
             'errors'    => [],
         ];
+    }
+
+    /**
+     * USFM and OSIS codes (migration 046), index-aligned with the books.
+     *
+     * @param list<int> $bookNumbers The "BOOK" of each entry in `results`, in order.
+     * @return list<array{usfm: string, osis: string}>
+     */
+    private function getBookCodes(\PDO $pdo, array $bookNumbers): array
+    {
+        try {
+            $stmt = $pdo->query('SELECT book, usfm_code, osis_code FROM biblebooks_codes ORDER BY book');
+        } catch (\PDOException $e) {
+            $this->logger->error('Database error while handling metadata', ['exception_class' => get_class($e), 'context' => 'metadata_fetch']);
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        if ($stmt === false) {
+            throw new InternalServerErrorException('An internal database error occurred.');
+        }
+        $byBook = [];
+        while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
+            $byBook[StringUtils::asInt($row['book'] ?? 0)] = [
+                'usfm' => StringUtils::asString($row['usfm_code'] ?? ''),
+                'osis' => StringUtils::asString($row['osis_code'] ?? ''),
+            ];
+        }
+        $codes = [];
+        foreach ($bookNumbers as $book) {
+            if (!isset($byBook[$book])) {
+                throw new InternalServerErrorException('biblebooks_codes has no row for book ' . $book . '.');
+            }
+            $codes[] = $byBook[$book];
+        }
+        return $codes;
     }
 
     /**
@@ -260,6 +297,10 @@ class MetadataHandler extends AbstractHandler
         $results->addAttribute('type', $rootName);
         $json = json_encode($data['results'] ?? $data['indexes'] ?? $data, JSON_UNESCAPED_UNICODE);
         $results->addAttribute('data', $json !== false ? $json : '{}');
+        if (isset($data['codes'])) {
+            $codesJson = json_encode($data['codes'], JSON_UNESCAPED_UNICODE);
+            $results->addAttribute('codes', $codesJson !== false ? $codesJson : '[]');
+        }
 
         $xmlString = $xml->asXML();
         return $xmlString !== false ? $xmlString : '';

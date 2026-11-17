@@ -159,7 +159,7 @@ class HybridSearchHandler extends AbstractHandler
             $limit
         );
 
-        // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
+        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($results);
         foreach ($results as $i => &$row) {
             $row['components'] = $components[$i];
@@ -198,15 +198,15 @@ class HybridSearchHandler extends AbstractHandler
     /**
      * Weighted Reciprocal Rank Fusion over the legs' rank-ordered lists.
      *
-     * Rows are identified by (version, verseID). Ties on the fused score are
+     * Rows are identified by (version, sort_order). Ties on the fused score are
      * broken by the better (lower) best-rank across legs, then by the
-     * requested version order, then by verseID (canonical order).
+     * requested version order, then by sort_order (canonical order).
      *
      * @param array<string, array<int, array<string, mixed>>> $legs Rank-ordered rows per leg name.
      * @param array<string, float> $weights Weight per leg name.
      * @param array<string, int> $versionOrder Requested position of each version.
      * @return array{array<int, array<string, mixed>>, array<int, array<string, array{rank: int, score: float|null}|null>>}
-     *         [top-$limit rows with `score` = fused RRF sum (verseID still present), components per row]
+     *         [top-$limit rows with `score` = fused RRF sum (sort_order still present), components per row]
      */
     private function fuse(array $legs, array $weights, int $k, array $versionOrder, int $limit): array
     {
@@ -218,7 +218,7 @@ class HybridSearchHandler extends AbstractHandler
             foreach ($rows as $row) {
                 $rank++;
                 $key = ( is_string($row['version'] ?? null) ? $row['version'] : '' )
-                    . ':' . ( is_int($row['verseID'] ?? null) ? $row['verseID'] : 0 );
+                    . ':' . ( is_int($row['sort_order'] ?? null) ? $row['sort_order'] : 0 );
                 if (!isset($fused[$key])) {
                     $fused[$key] = [
                         'row'        => $row,
@@ -257,7 +257,7 @@ class HybridSearchHandler extends AbstractHandler
 
     /**
      * Fused-list order: higher fused score, then better best-rank across
-     * legs, then requested version order, then verseID (canonical order).
+     * legs, then requested version order, then sort_order (canonical order).
      *
      * @param array{row: array<string, mixed>, fused: float, bestRank: int} $a
      * @param array{row: array<string, mixed>, fused: float, bestRank: int} $b
@@ -267,8 +267,8 @@ class HybridSearchHandler extends AbstractHandler
     {
         $va = is_string($a['row']['version'] ?? null) ? $a['row']['version'] : '';
         $vb = is_string($b['row']['version'] ?? null) ? $b['row']['version'] : '';
-        return [$b['fused'], $a['bestRank'], $versionOrder[$va] ?? 0, $a['row']['verseID'] ?? 0]
-            <=> [$a['fused'], $b['bestRank'], $versionOrder[$vb] ?? 0, $b['row']['verseID'] ?? 0];
+        return [$b['fused'], $a['bestRank'], $versionOrder[$va] ?? 0, $a['row']['sort_order'] ?? 0]
+            <=> [$a['fused'], $b['bestRank'], $versionOrder[$vb] ?? 0, $b['row']['sort_order'] ?? 0];
     }
 
     /**

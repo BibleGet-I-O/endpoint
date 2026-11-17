@@ -111,7 +111,7 @@ class SemanticSearchHandler extends AbstractHandler
         SearchUtils::sortByScoreDesc($allResults);
         $allResults = array_slice($allResults, 0, $limit);
 
-        // Per-version 1-based canonical_order (subverse-aware), verseID stripped.
+        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($allResults);
 
         $dbMs = round(( microtime(true) - $dbStart ) * 1000, 1);

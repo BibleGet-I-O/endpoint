@@ -152,19 +152,19 @@ def load_verses(conn, version, column, force=False):
     present = sql.SQL("NOT omitted" if has_column(conn, version, "omitted") else "true")
 
     if force:
-        query = sql.SQL('SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} WHERE {present} ORDER BY "verseID"').format(
+        query = sql.SQL('SELECT sort_order, bibleget_embedding_text(book, text) FROM {table} WHERE {present} ORDER BY sort_order').format(
             table=table_ident, present=present)
     elif track_hash:
         query = sql.SQL(
-            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} '
+            'SELECT sort_order, bibleget_embedding_text(book, text) FROM {table} '
             "WHERE {present} AND ({col} IS NULL "
             "OR embedded_text_hash IS NULL "
             "OR text_hash != embedded_text_hash) "
-            'ORDER BY "verseID"'
+            'ORDER BY sort_order'
         ).format(table=table_ident, col=col_ident, present=present)
     else:
         query = sql.SQL(
-            'SELECT "verseID", bibleget_embedding_text(book, text) FROM {table} WHERE {present} AND {col} IS NULL ORDER BY "verseID"'
+            'SELECT sort_order, bibleget_embedding_text(book, text) FROM {table} WHERE {present} AND {col} IS NULL ORDER BY sort_order'
         ).format(table=table_ident, col=col_ident, present=present)
 
     with conn.cursor() as cur:
@@ -181,7 +181,7 @@ def write_embeddings(conn, version, column, verse_ids, embeddings, texts):
 
     A row is written only if it still holds the text that was embedded
     (`texts`, as load_verses() read it): a migration that changes the text or
-    shifts "verseID"s while a run is in progress (042 inserts rows mid-table)
+    shifts sort_orders while a run is in progress (042 inserts rows mid-table)
     would otherwise get a vector stored on the wrong verse, and marked
     current. Such a row is skipped and stays stale for the next run. Returns
     the number of rows written.
@@ -192,12 +192,12 @@ def write_embeddings(conn, version, column, verse_ids, embeddings, texts):
     if track_hash:
         query = sql.SQL(
             "UPDATE {table} SET {col} = %s::vector, "
-            'embedded_text_hash = text_hash WHERE "verseID" = %s '
+            'embedded_text_hash = text_hash WHERE sort_order = %s '
             "AND md5(bibleget_embedding_text(book, text)) = %s"
         ).format(table=table_ident, col=col_ident)
     else:
         query = sql.SQL(
-            'UPDATE {table} SET {col} = %s::vector WHERE "verseID" = %s '
+            'UPDATE {table} SET {col} = %s::vector WHERE sort_order = %s '
             "AND md5(bibleget_embedding_text(book, text)) = %s"
         ).format(table=table_ident, col=col_ident)
 

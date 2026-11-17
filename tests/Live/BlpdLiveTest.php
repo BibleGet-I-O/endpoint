@@ -40,7 +40,7 @@ final class BlpdLiveTest extends LiveTestCase
 
     public function testGreekAdditionToEsther(): void
     {
-        $r = self::liveGet('/quote?query=Est1:1&version=BLPD&return=json&preferorigin=GREEK');
+        $r = self::liveGet('/quote?query=Est1:1&version=BLPD&return=json&text_tradition=GREEK');
         self::assertSame(200, $r['status']);
         self::assertSame([], $r['body']['errors']);
         $labels = self::labels($r['body']);

@@ -317,7 +317,7 @@ class QuoteHandlerTest extends DatabaseTestCase
             self::assertArrayHasKey('canonical_order', $row);
             self::assertIsInt($row['canonical_order']);
             self::assertGreaterThanOrEqual(1, $row['canonical_order']);
-            self::assertArrayNotHasKey('verseID', $row, 'verseID must never cross the API boundary');
+            self::assertArrayNotHasKey('sort_order', $row, 'sort_order must never cross the API boundary');
             $orders[] = $row['canonical_order'];
         }
 
@@ -355,7 +355,7 @@ class QuoteHandlerTest extends DatabaseTestCase
         }
 
         foreach ($body['results'] as $row) {
-            self::assertArrayNotHasKey('verseID', $row);
+            self::assertArrayNotHasKey('sort_order', $row);
         }
     }
 }

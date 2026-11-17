@@ -61,10 +61,10 @@ final class SimilarSearchPrintedLabelTest extends DatabaseTestCase
         $set('chapter = 9 AND verse = 34', self::vec([0.5, 0.5]));
         // Esther 1:1 in two texts; 1:2 GREEK is near the Greek 1:1, 1:2 HEBREW
         // equals the blend of the two 1:1 rows.
-        $set("book = 19 AND verse = 1 AND verseorigin = 'HEBREW'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
-        $set("book = 19 AND verse = 1 AND verseorigin = 'GREEK'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
-        $set("book = 19 AND verse = 2 AND verseorigin = 'GREEK'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.1]));
-        $set("book = 19 AND verse = 2 AND verseorigin = 'HEBREW'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.6, 0.6]));
+        $set("book = 19 AND verse = 1 AND text_tradition = 'HEBREW'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
+        $set("book = 19 AND verse = 1 AND text_tradition = 'GREEK'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
+        $set("book = 19 AND verse = 2 AND text_tradition = 'GREEK'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.1]));
+        $set("book = 19 AND verse = 2 AND text_tradition = 'HEBREW'", self::vec([0.0, 0.0, 0.0, 0.0, 0.0, 0.6, 0.6]));
         // Wis 12:1, and a row close to it.
         $set("verse_label = '12:1'", self::vec([0.0, 0.0, 1.0]));
         // Mk 9:44 is omitted (no text); give it Mk 9:43's embedding anyway, so a

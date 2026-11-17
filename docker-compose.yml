@@ -18,6 +18,7 @@ services:
       - ./migrations/036-requests-log-query-text.sql:/docker-entrypoint-initdb.d/04-036-requests-log-query-text.sql
       - ./migrations/043-keyword-search-unaccent.sql:/docker-entrypoint-initdb.d/05-043-keyword-search-unaccent.sql
       - ./migrations/044-placement-columns.sql:/docker-entrypoint-initdb.d/06-044-placement-columns.sql
+      - ./migrations/046-verse-identity-columns.sql:/docker-entrypoint-initdb.d/07-046-verse-identity-columns.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bibleget"]
       interval: 10s
