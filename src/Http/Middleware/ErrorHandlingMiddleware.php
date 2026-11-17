@@ -183,8 +183,10 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
         ));
 
         $this->errorLogger->{$severity}($fullMessage, [
-            'request_id' => $this->currentRequest?->getAttribute('request_id'),
-            'exception'  => $e,
+            'request_id'      => $this->currentRequest?->getAttribute('request_id'),
+            // Not the exception object: formatters would serialize its
+            // (and its previous exceptions') unmasked message.
+            'exception_class' => $e::class,
         ]);
     }
 }

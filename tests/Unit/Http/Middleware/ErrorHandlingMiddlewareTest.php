@@ -223,7 +223,9 @@ class ErrorHandlingMiddlewareTest extends TestCase
         self::assertCount(1, $logged);
         self::assertSame(Level::Error, $logged[0]->level);
         self::assertStringContainsString('Stack trace', $logged[0]->message);
-        self::assertArrayHasKey('exception', $logged[0]->context);
+        // The exception object would be serialized with its unmasked message.
+        self::assertArrayNotHasKey('exception', $logged[0]->context);
+        self::assertSame(\RuntimeException::class, $logged[0]->context['exception_class'] ?? null);
     }
 
     public function testLoggedUriHasCredentialsMasked(): void
@@ -232,7 +234,7 @@ class ErrorHandlingMiddlewareTest extends TestCase
         $records    = new TestHandler();
         $middleware = new ErrorHandlingMiddleware($this->factory, false, new Logger('test', [$records]));
 
-        foreach ([new NotFoundException('No such thing'), new \RuntimeException('boom')] as $e) {
+        foreach ([new NotFoundException('No such thing'), new \RuntimeException('boom', 0, new \RuntimeException('upstream said ' . $key))] as $e) {
             $request = new ServerRequest('GET', '/v3/quote?query=Jn3,16&api_key=' . $key);
             $middleware->process($request, self::throwing($e));
             self::assertStringContainsString('api_key=', (string) $request->getUri(), 'the request itself is untouched');
@@ -243,6 +245,7 @@ class ErrorHandlingMiddlewareTest extends TestCase
         foreach ($logged as $record) {
             self::assertStringContainsString('/v3/quote?query=Jn3,16&api_key=[redacted]', $record->message);
             self::assertStringNotContainsString($key, $record->message);
+            self::assertStringNotContainsString($key, json_encode($record->context, JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '');
         }
     }
 }

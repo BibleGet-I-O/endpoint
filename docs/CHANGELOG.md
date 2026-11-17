@@ -46,8 +46,8 @@ migration `048`).
   1000/hour, installation tokens 300/hour, with `X-RateLimit-Limit`,
   `X-RateLimit-Remaining` and `X-RateLimit-Reset` (also on the `429`); the
   system key is exempt. In production, `_test_` credentials are refused.
-  Limits are 1 to 100000 per hour (enforced by the admin routes, the
-  repositories and a `CHECK` in `048`). Every response exposes the rate-limit
+  Limits are 1 to 100000 per hour: the admin routes enforce both bounds; the
+  repositories and a `CHECK` in `048` refuse anything below 1. Every response exposes the rate-limit
   headers to browsers (`Access-Control-Expose-Headers`), preflights allow
   `Authorization` (for the Bearer routes), and responses to credentialed
   requests are `Cache-Control: private`, so a shared cache never serves one

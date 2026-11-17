@@ -188,6 +188,67 @@ final class ApiKeysSchemaTest extends DatabaseTestCase
         }
     }
 
+    /** A second connection to the test database, failing fast on a lock wait. */
+    private static function secondConnection(): \PDO
+    {
+        $env = static fn (string $k): string => is_scalar($_ENV[$k] ?? null) ? (string) $_ENV[$k] : '';
+        $pdo = new \PDO(
+            'pgsql:host=' . $env('DB_HOST') . ';port=' . ( $env('DB_PORT') ?: '5432' ) . ';dbname=' . $env('DB_NAME'),
+            $env('DB_USER'),
+            $env('DB_PASS'),
+            [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
+        );
+        $pdo->exec("SET lock_timeout = '500ms'");
+        return $pdo;
+    }
+
+    /**
+     * Under READ COMMITTED each trigger only sees the other transaction once
+     * it commits: both paths lock the application row, so a reader key and
+     * is_system = FALSE cannot both commit. Here the second one waits (and
+     * times out) instead of slipping through.
+     */
+    public function testReaderKeyInsertAndSystemFlagClearSerializeOnTheApplication(): void
+    {
+        $pdo    = $this->getConnection();
+        $system = $this->newApplication(true);
+        $other  = self::secondConnection();
+        $insert = "INSERT INTO api_keys (application_id, key_hash, key_prefix, name, scope) VALUES (?, ?, 'bg_x', 'k', 'reader')";
+        try {
+            // Flag cleared first (uncommitted): the reader key must wait for it.
+            $pdo->beginTransaction();
+            $pdo->prepare('UPDATE applications SET is_system = FALSE WHERE id = ?')->execute([$system]);
+            try {
+                $other->prepare($insert)->execute([$system, bin2hex(random_bytes(32))]);
+                self::fail('the reader key was inserted while is_system was being cleared');
+            } catch (\PDOException $e) {
+                self::assertSame('55P03', $e->getCode(), $e->getMessage());
+            }
+            $pdo->rollBack();
+
+            // Reader key first (uncommitted): clearing the flag must wait for it.
+            $other->beginTransaction();
+            $other->prepare($insert)->execute([$system, bin2hex(random_bytes(32))]);
+            $pdo->exec("SET lock_timeout = '500ms'");
+            try {
+                $pdo->prepare('UPDATE applications SET is_system = FALSE WHERE id = ?')->execute([$system]);
+                self::fail('is_system was cleared while a reader key was being inserted');
+            } catch (\PDOException $e) {
+                self::assertSame('55P03', $e->getCode(), $e->getMessage());
+            }
+            $other->rollBack();
+        } finally {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($other->inTransaction()) {
+                $other->rollBack();
+            }
+            $pdo->exec('SET lock_timeout = 0');
+            $pdo->prepare('DELETE FROM applications WHERE id = ?')->execute([$system]);
+        }
+    }
+
     public function testRateLimitsMustBePositive(): void
     {
         $this->expectSqlState('23514', function (): void {

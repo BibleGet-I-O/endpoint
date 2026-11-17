@@ -311,6 +311,17 @@ class AbstractHandlerTest extends TestCase
         self::assertNotSame('', $response->getHeaderLine('ETag'));
     }
 
+    public function testCacheHeadersVaryOnTheKeyAndKeepExistingVary(): void
+    {
+        $handler = $this->createHandler();
+        foreach ([new ServerRequest('GET', '/'), ( new ServerRequest('GET', '/') )->withAttribute('credential', new Credential(CredentialType::Project, 'k1', 'read', 1000, 'a1', null, null, false))] as $request) {
+            $response = $handler->testWithCacheHeaders($request, new \Nyholm\Psr7\Response(200, ['Vary' => 'Origin'], 'body'));
+            $vary     = array_map('trim', explode(',', $response->getHeaderLine('Vary')));
+            self::assertContains('Origin', $vary);
+            self::assertContains('X-Api-Key', $vary);
+        }
+    }
+
     public function testCacheHeadersCustomMaxAge(): void
     {
         $handler  = $this->createHandler();

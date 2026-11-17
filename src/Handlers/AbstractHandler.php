@@ -373,7 +373,9 @@ abstract class AbstractHandler implements RequestHandlerInterface
      * A response to a request carrying a credential is `private`: its body
      * can depend on the credential (the reader scope serves whole editions)
      * and it carries that credential's X-RateLimit-* headers, so a shared
-     * cache must never hand it to another caller.
+     * cache must never hand it to another caller. Every response varies on
+     * X-Api-Key, so a browser cache does not reuse a body fetched with another
+     * key (e.g. a capped quote once a reader key is in use).
      *
      * If the client sent an If-None-Match header that matches the ETag,
      * a 304 Not Modified response is returned instead.
@@ -391,6 +393,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
         $private  = $request->getAttribute('credential') instanceof Credential ? 'private, ' : '';
         $response = $response
             ->withHeader('Cache-Control', $private . 'must-revalidate, max-age=' . $maxAge)
+            ->withAddedHeader('Vary', 'X-Api-Key')
             ->withHeader('ETag', $etag);
 
         $ifNoneMatch = $request->getHeaderLine('If-None-Match');

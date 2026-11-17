@@ -49,10 +49,15 @@ CREATE TABLE IF NOT EXISTS api_keys (
 );
 CREATE INDEX IF NOT EXISTS api_keys_application_id_idx ON api_keys (application_id);
 
+-- Both reader-scope triggers serialize on the application row: this one
+-- takes FOR SHARE on it, which waits for (and then re-reads) an in-flight
+-- UPDATE of is_system; the UPDATE's own row lock waits for this insert.
+-- Otherwise, under READ COMMITTED, a reader key and is_system = FALSE could
+-- each pass its check and both commit.
 CREATE OR REPLACE FUNCTION api_keys_reader_scope_check() RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.scope = 'reader' AND NOT EXISTS (
-        SELECT 1 FROM applications WHERE id = NEW.application_id AND is_system
+        SELECT 1 FROM applications WHERE id = NEW.application_id AND is_system FOR SHARE
     ) THEN
         RAISE EXCEPTION 'scope reader is allowed only on system applications'
             USING ERRCODE = 'check_violation';
@@ -67,7 +72,9 @@ CREATE TRIGGER api_keys_reader_scope
     FOR EACH ROW EXECUTE FUNCTION api_keys_reader_scope_check();
 
 -- The same rule from the other side: an application holding reader keys
--- (active or not) cannot stop being a system application.
+-- (active or not) cannot stop being a system application. The UPDATE already
+-- holds the row lock that a concurrent reader-key insert must wait for, and
+-- this check runs once that insert has committed (fresh snapshot per query).
 CREATE OR REPLACE FUNCTION applications_reader_scope_check() RETURNS TRIGGER AS $$
 BEGIN
     IF OLD.is_system AND NOT NEW.is_system AND EXISTS (
