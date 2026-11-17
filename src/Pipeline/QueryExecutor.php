@@ -26,8 +26,12 @@ class QueryExecutor
     /** @var array<int, string> */
     private array $queriesversions = [];
 
-    public function __construct(QuoteContext $ctx)
+    /** @var int|null Year of the request log to write; null is the current year (tests inject one). */
+    private ?int $logYear;
+
+    public function __construct(QuoteContext $ctx, ?int $logYear = null)
     {
+        $this->logYear         = $logYear;
         $this->ctx             = $ctx;
         $this->logger          = $ctx->logger;
         $this->sqlqueries      = $ctx->formulatedQueries;
@@ -39,28 +43,46 @@ class QueryExecutor
      * NULL for an uncredentialed request), origin, query and method. The
      * legacy IP, geolocation, header and app columns keep their defaults.
      *
+     * Nothing else creates a new year's table, so when the insert finds it
+     * missing (SQLSTATE 42P01) it creates it with create_yearly_log_table()
+     * and retries once.
+     *
      * Best-effort: a failed insert is logged and never fails the request.
      */
     private function logQuery(): void
     {
-        $credential = $this->ctx->credential;
+        $year = (string) ( $this->logYear ?? (int) date('Y') );
         try {
-            $stmt = $this->ctx->pdo->prepare(
-                'INSERT INTO requests_log__' . date('Y')
-                . ' ( credential_type, credential_id, "ORIGIN", "QUERY", "ORIGINALQUERY", "REQUEST_METHOD" )'
-                . ' VALUES ( ?, ?, ?, ?, ?, ? )'
-            );
-            $stmt->execute([
-                $credential?->type->value,
-                $credential?->id,
-                $this->ctx->originHeader,
-                $this->xquery,
-                $this->currentOriginalQuery(),
-                $this->ctx->requestMethod,
-            ]);
+            try {
+                $this->insertLogRow($year);
+            } catch (\PDOException $e) {
+                if ($e->getCode() !== '42P01') {
+                    throw $e;
+                }
+                $this->ctx->pdo->prepare('SELECT create_yearly_log_table(?)')->execute([$year]);
+                $this->insertLogRow($year);
+            }
         } catch (\Throwable $e) {
             $this->logger->error('Request log insert failed: ' . $e->getMessage());
         }
+    }
+
+    private function insertLogRow(string $year): void
+    {
+        $credential = $this->ctx->credential;
+        $stmt       = $this->ctx->pdo->prepare(
+            'INSERT INTO requests_log__' . $year
+            . ' ( credential_type, credential_id, "ORIGIN", "QUERY", "ORIGINALQUERY", "REQUEST_METHOD" )'
+            . ' VALUES ( ?, ?, ?, ?, ?, ? )'
+        );
+        $stmt->execute([
+            $credential?->type->value,
+            $credential?->id,
+            $this->ctx->originHeader,
+            $this->xquery,
+            $this->currentOriginalQuery(),
+            $this->ctx->requestMethod,
+        ]);
     }
 
     /**

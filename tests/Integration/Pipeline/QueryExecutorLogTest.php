@@ -19,10 +19,16 @@ use BibleGet\Tests\Integration\DatabaseTestCase;
  */
 class QueryExecutorLogTest extends DatabaseTestCase
 {
+    private const int FUTURE_YEAR = 2097;
+
     private ?string $appId = null;
 
     protected function tearDown(): void
     {
+        try {
+            $this->getConnection()->exec('DROP TABLE IF EXISTS requests_log__' . self::FUTURE_YEAR);
+        } catch (\Throwable) {
+        }
         unset($_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_X_FORWARDED_FOR'], $_SERVER['HTTP_X_REAL_IP'], $_SERVER['HTTP_CLIENT_IP']);
         if ($this->appId !== null) {
             try {
@@ -33,14 +39,14 @@ class QueryExecutorLogTest extends DatabaseTestCase
         parent::tearDown();
     }
 
-    private function quote(?Credential $credential, string $query = 'Genesis1,1'): void
+    private function quote(?Credential $credential, string $query = 'Genesis1,1', ?int $logYear = null): void
     {
         $ctx = new QuoteContext(['query' => $query, 'version' => 'TEST1'], null, 'https://example.org', 'GET', $credential);
         $ctx->initialize();
         $ctx->queryStrClean();
         ( new QueryValidator($ctx) )->validateQueries();
         ( new QueryFormulator($ctx) )->formulateSQLQueries();
-        ( new QueryExecutor($ctx) )->executeSQLQueries();
+        ( new QueryExecutor($ctx, $logYear) )->executeSQLQueries();
         self::assertNotEmpty($ctx->results);
     }
 
@@ -102,5 +108,17 @@ class QueryExecutorLogTest extends DatabaseTestCase
         unset($_SERVER['REMOTE_ADDR']);
         $this->quote(null);
         self::assertNotEmpty($this->latestLogRow());
+    }
+
+    public function testMissingYearTableIsCreatedAndTheRowLogged(): void
+    {
+        // On January 1st nothing has created the new year's table yet.
+        $db = $this->getConnection();
+        $db->exec('DROP TABLE IF EXISTS requests_log__' . self::FUTURE_YEAR);
+
+        $this->quote(null, 'Genesis1,1', self::FUTURE_YEAR);
+
+        $count = $db->query('SELECT count(*) FROM requests_log__' . self::FUTURE_YEAR)->fetchColumn();
+        self::assertSame(1, (int) $count);
     }
 }

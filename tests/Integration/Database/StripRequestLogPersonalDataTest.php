@@ -28,6 +28,9 @@ final class StripRequestLogPersonalDataTest extends DatabaseTestCase
 
     private string $originalSearchPath = '';
 
+    /** A yearly log table that exists in public (any year), used as the template and copied under its own name. */
+    private string $yearTable = '';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,8 +38,16 @@ final class StripRequestLogPersonalDataTest extends DatabaseTestCase
         $this->originalSearchPath = (string) $pdo->query('SHOW search_path')->fetchColumn();
         $pdo->exec('DROP SCHEMA IF EXISTS ' . self::SCHEMA . ' CASCADE');
         $pdo->exec('CREATE SCHEMA ' . self::SCHEMA);
-        foreach (['requests_log', 'requests_log__' . date('Y')] as $t) {
-            $pdo->exec(sprintf('CREATE TABLE %s.%s (LIKE public.requests_log__%s INCLUDING DEFAULTS)', self::SCHEMA, $t, date('Y')));
+        $template = $pdo->query(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename ~ '^requests_log__[0-9]{4}$'"
+            . ' ORDER BY tablename DESC LIMIT 1'
+        )->fetchColumn();
+        if (!is_string($template)) {
+            self::markTestSkipped('No requests_log__YYYY table in the test database.');
+        }
+        $this->yearTable = $template;
+        foreach (['requests_log', $this->yearTable] as $t) {
+            $pdo->exec(sprintf('CREATE TABLE %s.%s (LIKE public.%s INCLUDING DEFAULTS)', self::SCHEMA, $t, $this->yearTable));
             $pdo->exec(sprintf('CREATE INDEX %s_ip_when ON %s.%s ("WHO_IP", "WHO_WHEN" DESC)', $t, self::SCHEMA, $t));
         }
     }
@@ -70,12 +81,12 @@ final class StripRequestLogPersonalDataTest extends DatabaseTestCase
 
     public function testPersonalColumnsAreNulledAndTheRestIsIntact(): void
     {
-        foreach (['requests_log', 'requests_log__' . date('Y')] as $t) {
+        foreach (['requests_log', $this->yearTable] as $t) {
             $this->seed($t);
         }
         $this->applyMigration();
 
-        foreach (['requests_log', 'requests_log__' . date('Y')] as $t) {
+        foreach (['requests_log', $this->yearTable] as $t) {
             $row = $this->getConnection()->query(sprintf('SELECT * FROM %s.%s', self::SCHEMA, $t))->fetch(\PDO::FETCH_ASSOC);
             self::assertIsArray($row);
             foreach (self::PERSONAL as $col) {

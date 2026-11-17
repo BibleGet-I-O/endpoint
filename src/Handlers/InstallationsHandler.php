@@ -31,7 +31,7 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class InstallationsHandler extends AbstractHandler
 {
-    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i';
 
     /** @param string[] $requestPathParams */
     public function __construct(ResponseFactoryInterface $responseFactory, array $requestPathParams = [])
@@ -158,7 +158,7 @@ class InstallationsHandler extends AbstractHandler
 
     private function validVersion(mixed $v): ?string
     {
-        return is_string($v) && preg_match('/^[0-9A-Za-z.+_-]{1,50}$/', $v) === 1 ? $v : null;
+        return is_string($v) && preg_match('/^[0-9A-Za-z.+_-]{1,50}\z/', $v) === 1 ? $v : null;
     }
 
     private function validSiteUrl(mixed $v): ?string

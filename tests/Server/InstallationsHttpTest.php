@@ -186,6 +186,21 @@ class InstallationsHttpTest extends ServerTestCase
         self::assertSame(0, $this->installationCount($key['id']));
     }
 
+    public function testTrailingNewlineInInstallIdOrVersionIs422(): void
+    {
+        $key = $this->clientKey();
+        $r   = self::register($key['plain'], ['install_id' => self::UUID . "\n", 'plugin_version' => '1']);
+        self::assertSame(422, $r['status'], $r['body']);
+        $r = self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => "1.0\n"]);
+        self::assertSame(422, $r['status'], $r['body']);
+        self::assertSame(0, $this->installationCount($key['id']));
+
+        $reg = self::jsonBody(self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1'])['body']);
+        self::assertIsString($reg['token']);
+        $h = ['X-Api-Key' => $reg['token'], 'Content-Type' => 'application/json'];
+        self::assertSame(422, self::httpPatch('/v3/installations/self', json_encode(['plugin_version' => "2.0\n"], JSON_THROW_ON_ERROR), $h)['status']);
+    }
+
     public function testSiteUrlRejectedForNonWordpressPlugin(): void
     {
         $key = $this->clientKey('msword');
