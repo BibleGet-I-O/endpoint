@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace BibleGet\Api;
 
+use BibleGet\Api\Handlers\Admin\ApplicationAdminHandler;
+use BibleGet\Api\Handlers\Admin\ClientKeyAdminHandler;
+use BibleGet\Api\Handlers\Admin\InstallationAdminHandler;
+use BibleGet\Api\Handlers\Admin\StatsHandler;
 use BibleGet\Api\Handlers\ApplicationsHandler;
 use BibleGet\Api\Handlers\InstallationsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
@@ -31,6 +35,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class Router
 {
+    public const ADMIN_ROLE = 'bibleget_admin';
+
     public static string $apiBase = '/';
     private RequestHandlerInterface $handler;
     private Psr17Factory $psr17Factory;
@@ -94,6 +100,11 @@ class Router
                 $this->handler = new ApplicationsHandler($this->psr17Factory, $requestPathParts);
                 break;
 
+            case 'admin':
+                // Admin routes: a Zitadel access token with the bibleget_admin role (see the pipeline below).
+                $this->handler = $this->createAdminHandler($requestPathParts);
+                break;
+
             case 'search':
                 $subRoute     = $requestPathParts[0] ?? '';
                 $subPathParts = array_slice($requestPathParts, 1);
@@ -129,8 +140,9 @@ class Router
         $pipeline->pipe(new ErrorHandlingMiddleware($this->psr17Factory, self::$debug));
         $pipeline->pipe(new LoggingMiddleware(self::$debug));
 
-        if ($route === 'applications') {
-            $pipeline->pipe(new OidcBearerMiddleware());
+        $oidc = self::oidcMiddleware($route);
+        if ($oidc !== null) {
+            $pipeline->pipe($oidc);
         }
 
         $usageRoute = self::dataRouteName($route, $requestPathParts);
@@ -225,6 +237,37 @@ class Router
             return 'search';
         }
         return in_array($subRoute, ['keyword', 'semantic', 'hybrid', 'similar'], true) ? 'search/' . $subRoute : null;
+    }
+
+    /**
+     * Bearer-token authentication for the developer routes (any signed-in
+     * user) and the admin routes (role bibleget_admin: every admin path,
+     * including unknown ones, needs the role before it can 404); null for
+     * every other route.
+     */
+    private static function oidcMiddleware(string $route): ?OidcBearerMiddleware
+    {
+        return match ($route) {
+            'applications' => new OidcBearerMiddleware(),
+            'admin'        => ( new OidcBearerMiddleware() )->requireRole(self::ADMIN_ROLE),
+            default        => null,
+        };
+    }
+
+    /**
+     * The handler for /admin/{resource}/...; it receives the path segments after /admin.
+     *
+     * @param list<string> $pathParts
+     */
+    private function createAdminHandler(array $pathParts): RequestHandlerInterface
+    {
+        return match ($pathParts[0] ?? '') {
+            'applications', 'api-keys' => new ApplicationAdminHandler($this->psr17Factory, $pathParts),
+            'client-keys'              => new ClientKeyAdminHandler($this->psr17Factory, $pathParts),
+            'installations'            => new InstallationAdminHandler($this->psr17Factory, $pathParts),
+            'stats'                    => new StatsHandler($this->psr17Factory, $pathParts),
+            default                    => $this->createNotFoundHandler(),
+        };
     }
 
     private function createNotFoundHandler(): RequestHandlerInterface

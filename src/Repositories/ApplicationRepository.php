@@ -8,6 +8,16 @@ class ApplicationRepository
 {
     private const UPDATABLE = ['name', 'description', 'website'];
 
+    /**
+     * Review transitions: the target status => the statuses it may be reached from.
+     * A rejected application can still be approved; a revoked one is final.
+     */
+    public const TRANSITIONS = [
+        'approved' => ['pending', 'rejected'],
+        'rejected' => ['pending'],
+        'revoked'  => ['approved'],
+    ];
+
     public function __construct(private readonly \PDO $db)
     {
     }
@@ -83,17 +93,19 @@ class ApplicationRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** pending|rejected → approved; false when absent or in another status. */
     public function approve(string $id, string $reviewer, ?string $notes): bool
     {
         return $this->review($id, 'approved', $reviewer, $notes);
     }
 
+    /** pending → rejected; false when absent or in another status. */
     public function reject(string $id, string $reviewer, ?string $notes): bool
     {
         return $this->review($id, 'rejected', $reviewer, $notes);
     }
 
-    /** Revokes the application and deactivates all of its keys. */
+    /** approved → revoked, deactivating all of the application's keys; false when absent or not approved. */
     public function revoke(string $id, string $reviewer, ?string $notes): bool
     {
         $this->db->beginTransaction();
@@ -123,13 +135,40 @@ class ApplicationRepository
         return $stmt === false ? [] : Cast::rows($stmt->fetchAll());
     }
 
+    /**
+     * Any (non-system) application, for the admin routes.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function find(string $id): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM applications WHERE id = :id AND NOT is_system');
+        $stmt->execute([':id' => $id]);
+        return Cast::row($stmt->fetch());
+    }
+
+    /**
+     * Moves the application to $status only from a status TRANSITIONS allows,
+     * in one conditional UPDATE, so concurrent reviews cannot both succeed.
+     * False when the application is absent or in another status.
+     */
     private function review(string $id, string $status, string $reviewer, ?string $notes): bool
     {
+        $from   = self::TRANSITIONS[$status] ?? [];
+        $params = [':s' => $status, ':r' => $reviewer, ':n' => $notes, ':id' => $id];
+        $marks  = [];
+        foreach ($from as $i => $f) {
+            $marks[]          = ":f{$i}";
+            $params[":f{$i}"] = $f;
+        }
+        if ($marks === []) {
+            return false;
+        }
         $stmt = $this->db->prepare(
             'UPDATE applications SET status = :s, reviewed_by = :r, review_notes = :n, reviewed_at = now(), updated_at = now()
-             WHERE id = :id AND NOT is_system'
+             WHERE id = :id AND NOT is_system AND status IN (' . implode(', ', $marks) . ')'
         );
-        $stmt->execute([':s' => $status, ':r' => $reviewer, ':n' => $notes, ':id' => $id]);
+        $stmt->execute($params);
         return $stmt->rowCount() > 0;
     }
 }

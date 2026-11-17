@@ -110,6 +110,24 @@ class ApiKeyRepository
         }
     }
 
+    /**
+     * Sets a key's hourly limit; returns its listing row (never key_hash), or null when it does not exist.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function setRateLimit(string $id, int $perHour): ?array
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE api_keys SET rate_limit_per_hour = :r WHERE id = :id
+             RETURNING id, application_id, key_prefix, name, scope, rate_limit_per_hour, is_active,
+                       last_used_at, expires_at, created_at'
+        );
+        $stmt->bindValue(':r', $perHour, \PDO::PARAM_INT);
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        return Cast::row($stmt->fetch());
+    }
+
     /** Updates last_used_at at most once a minute. */
     public function touch(string $id): void
     {
