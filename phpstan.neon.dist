@@ -2,4 +2,6 @@ parameters:
     level: 10
     paths:
         - src
+        - scripts/mint-client-key.php
+        - scripts/mint-reader-key.php
     treatPhpDocTypesAsCertain: false

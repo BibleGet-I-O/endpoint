@@ -1259,7 +1259,7 @@
         "/installations": {
             "post": {
                 "summary": "Register a plugin installation",
-                "description": "Authenticated with a client key (`bgclient_…`). A new `install_id` creates an installation (201); an existing one is re-registered: a new token is issued, the old one stops working, and the count does not grow (200). Registrations are capped per client key per hour (default 200): over the cap is a 429 with `Retry-After`.",
+                "description": "Authenticated with a client key (`bgclient_…`). A new `install_id` creates an installation (201); an existing one is re-registered: a new token is issued, the old one stops working, and the count does not grow (200). Registrations are capped per client key per hour (default 200): over the cap is a 429 with `Retry-After`.\n\nWhat a plugin must do:\n- Generate `install_id` once, as a random (version 4) UUID from a cryptographically secure source, and keep it private like a password: anyone who has it and the public client key can re-register the installation, which replaces its token. Never show it, log it or send it anywhere but here.\n- Store the token and send it as `X-Api-Key` on every request. When a request answers 401, the token was replaced or lost: register again with the same `install_id` (a 403 here then means the installation was revoked: generate a new `install_id`).\n- When the WordPress site moves to another `site_url` (or the installation is copied to another site), generate a new `install_id` and register it: two sites must never share one.",
                 "operationId": "registerInstallation",
                 "tags": [
                     "InstallationsAPI"
@@ -1278,16 +1278,27 @@
                                     "install_id": {
                                         "type": "string",
                                         "format": "uuid",
-                                        "description": "Generated once by the plugin and kept."
+                                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                                        "description": "A random (version 4) UUID, generated once by the plugin and kept secret. Other UUID versions, and the nil UUID, are a 422."
                                     },
                                     "plugin_version": {
                                         "type": "string",
                                         "maxLength": 50
                                     },
                                     "site_url": {
-                                        "type": "string",
-                                        "format": "uri",
-                                        "description": "WordPress only."
+                                        "anyOf": [
+                                            {
+                                                "type": "string",
+                                                "format": "uri"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "enum": [
+                                                    ""
+                                                ]
+                                            }
+                                        ],
+                                        "description": "WordPress only: an http(s) URL. An empty string (or null) means none and is accepted from any plugin."
                                     }
                                 }
                             }
@@ -1366,7 +1377,7 @@
         "/installations/self": {
             "patch": {
                 "summary": "Update this installation",
-                "description": "Authenticated with the installation token. `contact_email` set to an empty string removes it. `site_url` is accepted from WordPress installations only.",
+                "description": "Authenticated with the installation token, and counted against the installation's hourly rate limit like its data requests (over it: 429 with `Retry-After`). Only the fields sent are changed. `contact_email` set to an empty string (or null) removes it. A `site_url` is accepted from WordPress installations only; an empty string (or null) removes it, from any plugin. A 401 means the token was replaced or the installation revoked: register again (see `POST /installations`).",
                 "operationId": "updateInstallation",
                 "tags": [
                     "InstallationsAPI"
@@ -1383,12 +1394,34 @@
                                         "maxLength": 50
                                     },
                                     "site_url": {
-                                        "type": "string",
-                                        "format": "uri"
+                                        "anyOf": [
+                                            {
+                                                "type": "string",
+                                                "format": "uri"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "enum": [
+                                                    ""
+                                                ]
+                                            }
+                                        ],
+                                        "description": "WordPress only: an http(s) URL; an empty string removes it."
                                     },
                                     "contact_email": {
-                                        "type": "string",
-                                        "format": "email"
+                                        "anyOf": [
+                                            {
+                                                "type": "string",
+                                                "format": "email"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "enum": [
+                                                    ""
+                                                ]
+                                            }
+                                        ],
+                                        "description": "An email address; an empty string removes it."
                                     }
                                 }
                             }
@@ -1412,6 +1445,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
                 }
             }
@@ -2954,7 +2990,7 @@
         "/admin/stats": {
             "get": {
                 "summary": "Usage statistics",
-                "description": "Installations per plugin and version (a current snapshot: total and active in the last 30 days), registrations per client key per UTC hour, and requests per credential per day and route from `usage_daily`. Defaults to the 30 days up to now; at most 366 days. A date-only `to` covers that whole day (it is inclusive here), unlike the half-open windows of `revoke-batch` and `registered_to`.",
+                "description": "Installations per plugin and version (a current snapshot: total and active in the last 30 days), registrations per client key per UTC hour, and requests per day (UTC) and route from `usage_daily`, summed per application and per plugin and version. An installation's requests are listed under its current `plugin_version`: after an update, its earlier days move to the new version too. Defaults to the 30 days up to now; at most 366 days. A date-only `to` covers that whole day (it is inclusive here), unlike the half-open windows of `revoke-batch` and `registered_to`.",
                 "operationId": "adminStats",
                 "tags": [
                     "AdminAPI"
@@ -17760,7 +17796,8 @@
                         "format": "date-time"
                     },
                     "request_count": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Minutes with at least one request (it is updated at most once a minute), not a request count: requests are counted per day in `GET /admin/stats`."
                     }
                 }
             },
@@ -17773,7 +17810,7 @@
                     "rate_limit_per_hour": {
                         "type": "integer",
                         "minimum": 1,
-                        "maximum": 1000000
+                        "maximum": 100000
                     }
                 }
             },

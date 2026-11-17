@@ -30,13 +30,6 @@ class ConnectionTest extends DatabaseTestCase
         self::assertNotSame($c1, $c2);
     }
 
-    public function testGetWhitelistedDomainsIPsReturnsArray(): void
-    {
-        Connection::getConnection(); // ensure initialized
-        $result = Connection::getWhitelistedDomainsIPs();
-        self::assertIsArray($result);
-    }
-
     public function testClientEncodingIsUtf8(): void
     {
         $pdo      = Connection::getConnection();

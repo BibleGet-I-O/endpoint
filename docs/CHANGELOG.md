@@ -27,9 +27,11 @@ migration `048`).
   SHA-256 hash plus a prefix; shown once.
 - **Installation registration**: `POST /installations` (client key) returns a
   token and re-registering the same `install_id` replaces it; `PATCH
-  /installations/self` updates version, site URL and contact email.
-  Registrations are capped per client key per hour (default 200, `429` with
-  `Retry-After`).
+  /installations/self` updates version, site URL and contact email, and counts
+  against the installation's hourly limit. Registrations are capped per client
+  key per hour (default 200, `429` with `Retry-After`). `install_id` must be a
+  random (version 4) UUID, and acts as a secret (the plugin contract is in the
+  OpenAPI description of `POST /installations`).
 - **Developer routes** (Zitadel Bearer token): `/applications` and
   `/applications/{id}[/resubmit|/keys[/{keyId}[/rotate]]]`.
 - **Admin routes** (Bearer token, role `bibleget_admin`): approve, reject and
@@ -44,6 +46,12 @@ migration `048`).
   1000/hour, installation tokens 300/hour, with `X-RateLimit-Limit`,
   `X-RateLimit-Remaining` and `X-RateLimit-Reset` (also on the `429`); the
   system key is exempt. In production, `_test_` credentials are refused.
+  Limits are 1 to 100000 per hour (enforced by the admin routes, the
+  repositories and a `CHECK` in `048`). Every response exposes the rate-limit
+  headers to browsers (`Access-Control-Expose-Headers`), preflights allow
+  `Authorization` (for the Bearer routes), and responses to credentialed
+  requests are `Cache-Control: private`, so a shared cache never serves one
+  caller's response (or the reader scope's full text) to another.
 - **`reader` scope** for the first-party frontend (key minted by
   `scripts/mint-reader-key.php`): whole chapters of editions flagged
   `versions_available.reader_full_text`. `scripts/mint-client-key.php` mints a
@@ -58,6 +66,9 @@ migration `048`).
   suite sends `BIBLEGET_LIVE_API_KEY` (deploy workflow secret) when set.
 - New environment variables: `REQUIRE_CREDENTIALS`, `RATE_LIMIT_STORAGE_PATH`,
   `ZITADEL_ISSUER`, `ZITADEL_AUDIENCE`, `JWKS_CACHE_PATH` (see `.env.example`).
+  The JWKS cache's directory (`logs/` by default) must be writable: workers
+  coordinate refetches through it. `WHITELISTED_DOMAINS_IPS` is gone (it only
+  served the removed IP rate limiter), with quote error codes 10-12.
 
 ### Changed: no personal data in v4
 

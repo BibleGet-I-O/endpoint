@@ -52,6 +52,8 @@
     </rule>
     <file>src</file>
     <file>tests</file>
+    <file>scripts/mint-client-key.php</file>
+    <file>scripts/mint-reader-key.php</file>
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>dbcredentials.php</exclude-pattern>
     <arg name="encoding" value="utf-8"/>

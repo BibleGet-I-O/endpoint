@@ -51,6 +51,7 @@ ini_set('error_log', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 
 fwrite(STDERR, sprintf('APP_ENV=%s DB_NAME=%s' . PHP_EOL, CredentialFactory::currentEnv(), CredentialFactory::env('DB_NAME') ?? ''));
 
+$db = null;
 try {
     $db      = Connection::getConnection();
     $keyName = $argv[1] ?? 'Frontend reader';
@@ -81,7 +82,7 @@ try {
     $minted = ( new ApiKeyRepository($db) )->mint($appId, $keyName, 'reader', null);
     $db->commit();
 } catch (Throwable $e) {
-    if (isset($db) && $db->inTransaction()) {
+    if ($db instanceof PDO && $db->inTransaction()) {
         $db->rollBack();
     }
     // Not the exception message: a PDO error can carry the DSN or the query.

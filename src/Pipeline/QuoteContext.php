@@ -25,19 +25,16 @@ class QuoteContext
 
     /** @var array<int|string, string> */
     public static array $errorMessages = [
-        0  => 'The first query must start with a valid book indicator.',
-        1  => 'You must have a valid chapter following a book indicator.',
-        2  => 'The book indicator is not valid. Please check the documentation for a list of correct book indicators.',
-        3  => 'You cannot request discontinuous verses without first indicating a chapter for the discontinuous verses.',
-        4  => 'A request for discontinuous verses must contain two valid verse numbers on either side of a discontinuous verse indicator.',
-        5  => 'A chapter-verse separator must be preceded by a valid chapter number and followed by a valid verse number.',
-        6  => 'A request for a range of verses must contain two valid verse numbers on either side of a verse range indicator.',
-        7  => 'If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.',
-        8  => 'Multiple verse ranges have been requested, but there are not enough verse separators. Multiple verse ranges assume there are verse separators that connect them.',
-        9  => 'Notation Error. Please check your citation notation.',
-        10 => 'Please use a caching mechanism, you seem to be submitting numerous requests for the same query.',
-        11 => 'You are submitting too many requests with the same query. You must use a caching mechanism. Once you have implemented a caching mechanism you may have to wait a couple of days before getting service again. Otherwise contact the service management to request service again.',
-        12 => 'You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management.',
+        0 => 'The first query must start with a valid book indicator.',
+        1 => 'You must have a valid chapter following a book indicator.',
+        2 => 'The book indicator is not valid. Please check the documentation for a list of correct book indicators.',
+        3 => 'You cannot request discontinuous verses without first indicating a chapter for the discontinuous verses.',
+        4 => 'A request for discontinuous verses must contain two valid verse numbers on either side of a discontinuous verse indicator.',
+        5 => 'A chapter-verse separator must be preceded by a valid chapter number and followed by a valid verse number.',
+        6 => 'A request for a range of verses must contain two valid verse numbers on either side of a verse range indicator.',
+        7 => 'If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.',
+        8 => 'Multiple verse ranges have been requested, but there are not enough verse separators. Multiple verse ranges assume there are verse separators that connect them.',
+        9 => 'Notation Error. Please check your citation notation.',
     ];
 
     /** @var array<string, string> */

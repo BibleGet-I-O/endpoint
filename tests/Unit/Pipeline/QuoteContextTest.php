@@ -237,9 +237,11 @@ class QuoteContextTest extends TestCase
 
     public function testErrorMessagesAreComplete(): void
     {
-        for ($i = 0; $i <= 12; $i++) {
+        for ($i = 0; $i <= 9; $i++) {
             self::assertArrayHasKey($i, QuoteContext::$errorMessages, "Error message $i should exist");
             self::assertNotEmpty(QuoteContext::$errorMessages[$i]);
         }
+        // 10-12 were the legacy per-IP rate-limit notices; rate limiting is now a 429.
+        self::assertSame(range(0, 9), array_keys(QuoteContext::$errorMessages));
     }
 }
