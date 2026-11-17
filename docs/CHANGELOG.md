@@ -18,7 +18,9 @@ Deprecated / Fixed / Removed / Security where applicable.
   vectors (the vectors themselves were current LaBSE: re-embedded samples
   matched exactly). The sync now copies the row with the vectors; the
   script records a missing row (model, dimensions, and the content
-  checksum for the hash-tracked column). The three rows were recorded on
+  checksum for the hash-tracked column), only when run with the column's
+  own model, and with an empty model version since it did not compute
+  those vectors. The three rows were recorded on
   staging.
 
 - **NABRE Greek Esther** (migration `047`): Addition E:21 (8:12v) was

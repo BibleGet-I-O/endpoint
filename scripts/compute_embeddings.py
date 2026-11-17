@@ -353,7 +353,9 @@ def process_version(conn, model, version, column, dim, force=False, batch_size=D
 def record_missing_metadata(conn, version, column, dim, content_xor):
     """Create the embedding_metadata row for (version, column) when there is none,
     for vectors that are all present but were not written by this script. The
-    model fields are this run's model; content_xor is given only for the
+    model name is this run's model; the model version is left empty (the
+    column default: unknown), since EMBEDDING_MODEL_VERSION tags vectors this
+    run computes, and these it did not. content_xor is given only for the
     hash-tracked column (elsewhere it would hide stale vectors, see "Known
     asymmetry"). Returns True if a row was created.
 
@@ -368,9 +370,9 @@ def record_missing_metadata(conn, version, column, dim, content_xor):
         cur.execute(
             "INSERT INTO embedding_metadata "
             "(version_sigla, column_name, model_name, model_version, dimensions, computed_at, content_xor) "
-            "VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s) "
+            "VALUES (%s, %s, %s, '', %s, CURRENT_TIMESTAMP, %s) "
             "ON CONFLICT (version_sigla, column_name) DO NOTHING",
-            (version, column, MODEL_NAME, MODEL_VERSION, dim, content_xor),
+            (version, column, MODEL_NAME, dim, content_xor),
         )
         created = cur.rowcount == 1
     conn.commit()
