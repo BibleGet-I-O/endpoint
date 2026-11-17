@@ -1,6 +1,6 @@
 # API keys and plugin installations (v4)
 
-**Status:** approaches chosen 2026-11-17; design for review.
+**Status:** approved 2026-11-17.
 **Issue:** [#97](https://github.com/BibleGet-I-O/endpoint/issues/97) (phases 1–2, reshaped; this document supersedes `docs/plans/identity-rbac-and-fine-grained-authz.md` where they differ).
 **Program:** the first of three projects that gate the v4 release (below).
 
@@ -95,6 +95,7 @@ Formats follow LitCal (`litcal_{live|test}_…`): `bibleget_{live|test}_…` for
 - `versions_available.reader_full_text` BOOLEAN NOT NULL DEFAULT FALSE — which editions the `reader` scope may serve whole. All false until the rights holders' permissions are recorded; public-domain editions (e.g. VGCL, DRB, LUZZI) can be set true by the admin.
 - `usage_daily` — (`day`, `credential_type`, `credential_id`, `route`) primary key, `requests` count; upserted per request (every data route, not only `/quote`). This feeds the statistics; it is a few thousand small rows a day at most.
 - v4 request log: the per-year `requests_log__YYYY` tables keep their role but v4 writes `credential_type` (`project|installation`) and `credential_id` instead of `WHO_IP`, `WHO_WHERE_JSON` and the `HTTP_*`/`REMOTE_ADDR` columns (those stay NULL). The IPinfo lookup (`QueryExecutor::getGeoIPInfoFromLogsElseOnline`) and the IP rate limiter are removed from v4.
+- Imported v3 history (2014–2026, about 1.1 GB): **personal data stripped (decided 2026-11-17).** A migration sets `WHO_IP`, `WHO_WHERE_JSON`, `HEADERS_JSON`, `HTTP_CLIENT_IP`, `HTTP_X_FORWARDED_FOR`, `HTTP_X_REAL_IP` and `REMOTE_ADDR` to NULL in every `requests_log*` table and drops the IP index, keeping time, query, origin, app and domain. It is destructive, so it is drafted in `docs/future-migrations/` and moved into `migrations/` only when applied: on staging, and on the production copy before it goes live. Space is reclaimed with `VACUUM FULL` afterwards. v3's MariaDB log is not touched.
 
 ### Installation registration
 
@@ -105,6 +106,7 @@ Formats follow LitCal (`litcal_{live|test}_…`): `bibleget_{live|test}_…` for
 - Existing pair → issue a new token, invalidate the old one, return `200` (a plugin that lost its token re-registers with the same `install_id`, so the count does not grow).
 - Revoking a **client key** stops new registrations with it; installations already registered keep working (each is revocable on its own, and the admin can bulk-revoke the installations a client key registered in a time range). Revoking an **installation** stops only that installation.
 - Registrations are capped per client key per hour (`max_registrations_per_hour`, default 200); over the cap → `429` with `Retry-After`. This is the only route reachable without a secret, so it is the only one throttled globally.
+- **Accepted risk (decided 2026-11-17):** the client key is public, so anyone can register installations with it — up to the cap, which can also block genuine new installations for the rest of the hour. No proof-of-work and no IP counter. The response is operational: `GET /admin/stats` and the admin installation list show registrations per client key per hour; on a burst the admin bulk-revokes the installations registered in that range and mints a new client key for the next plugin release. Revisit (proof-of-work in the plugins) only if it happens.
 
 `PATCH /installations/self` (installation token) updates `plugin_version`, `site_url`, `contact_email` (WordPress settings page: "Email me about BibleGet updates"; empty string removes it).
 
