@@ -265,4 +265,6 @@ jobs:
       - name: Run the Live suite against staging
         env:
           BIBLEGET_LIVE_URL: ${{ vars.STAGING_BASE_URL || 'https://query.bibleget.io/dev' }}
+          # A project key, for when staging requires credentials; empty is fine until then.
+          BIBLEGET_LIVE_API_KEY: ${{ secrets.BIBLEGET_LIVE_API_KEY }}
         run: composer test:live

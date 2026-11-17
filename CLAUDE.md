@@ -105,8 +105,8 @@ All errors throw `ApiException` subclasses (`src/Http/Exception/`), caught by `E
 - **PostgreSQL** via PDO (`ext-pdo_pgsql`)
 - Credentials loaded from environment variables (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`) via `vlucas/phpdotenv`
 - Managed by `src/Database/Connection.php` (PDO singleton with `ERRMODE_EXCEPTION` and `FETCH_ASSOC`)
-- Key tables: `versions_available`, `biblebooks_fullname`, `biblebooks_abbr`, `"{VERSION}_idx"`, `"{VERSION}"`, `requests_log__YYYY`
-- IP addresses stored as PostgreSQL native `inet` type
+- Key tables: `versions_available`, `biblebooks_fullname`, `biblebooks_abbr`, `"{VERSION}_idx"`, `"{VERSION}"`, `requests_log__YYYY`, plus the credential tables `applications`, `api_keys`, `client_keys`, `installations`, `usage_daily` (migration 048)
+- v4 stores no IP addresses or geolocation: `requests_log__YYYY` records `credential_type`/`credential_id`, and the legacy personal columns stay NULL. Stripping the imported v3 history is drafted in `docs/future-migrations/049-…` (destructive, apply on staging and the production copy before go-live)
 - Full-text search uses `tsvector`/`tsquery` with GIN indexes
 
 ### Response Formats
@@ -139,7 +139,7 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 - Bible notation auto-detection converts between ENGLISH and EUROPEAN formats
 - Copyright-restricted versions enforce a 30-verse-per-request limit
 - Verse ordering uses `verseID` field to handle Greek subverses correctly
-- Rate limiting: IP-based, 2-day windows, thresholds at 10/30/100 requests → `TooManyRequestsException`
+- Credentials, not IPs: data routes need `X-Api-Key` (project key `bibleget_…` or installation token `bginst_…`; client keys `bgclient_…` only register installations via `POST /installations`). Required when `APP_ENV=production` or `REQUIRE_CREDENTIALS=true`. Per-credential sliding-hour rate limit (project 1000, installation 300, system `reader` exempt) → `TooManyRequestsException` (429); `/applications` and `/admin/*` take a Zitadel Bearer token (role `bibleget_admin` for admin). Design: `docs/superpowers/specs/2026-11-17-api-keys-installations-design.md`
 
 ## Live infrastructure (catholicdigitalcommons.org)
 
