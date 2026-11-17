@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Enum\RequestContentType;
@@ -116,7 +117,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
 
             $headersHeader = $request->getHeaderLine('Access-Control-Request-Headers');
             if ($headersHeader !== '') {
-                $allowed       = ['Accept', 'Accept-Language', 'Content-Type', 'X-Api-Key'];
+                $allowed       = ['Accept', 'Accept-Language', 'Authorization', 'Content-Type', 'X-Api-Key'];
                 $requested     = array_values(array_filter(array_map('trim', explode(',', $headersHeader))));
                 $canonicalByLc = array_combine(array_map('strtolower', $allowed), $allowed);
                 $approved      = [];
@@ -369,6 +370,11 @@ abstract class AbstractHandler implements RequestHandlerInterface
     /**
      * Add Cache-Control and ETag headers to the response.
      *
+     * A response to a request carrying a credential is `private`: its body
+     * can depend on the credential (the reader scope serves whole editions)
+     * and it carries that credential's X-RateLimit-* headers, so a shared
+     * cache must never hand it to another caller.
+     *
      * If the client sent an If-None-Match header that matches the ETag,
      * a 304 Not Modified response is returned instead.
      *
@@ -382,8 +388,9 @@ abstract class AbstractHandler implements RequestHandlerInterface
         $body = (string) $response->getBody();
         $etag = '"' . md5($body) . '"';
 
+        $private  = $request->getAttribute('credential') instanceof Credential ? 'private, ' : '';
         $response = $response
-            ->withHeader('Cache-Control', 'must-revalidate, max-age=' . $maxAge)
+            ->withHeader('Cache-Control', $private . 'must-revalidate, max-age=' . $maxAge)
             ->withHeader('ETag', $etag);
 
         $ifNoneMatch = $request->getHeaderLine('If-None-Match');

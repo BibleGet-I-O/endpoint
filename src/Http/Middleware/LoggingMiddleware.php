@@ -23,7 +23,9 @@ class LoggingMiddleware implements MiddlewareInterface
 {
     private const REDACTED        = '[redacted]';
     private const REDACTED_FIELDS = ['key', 'token', 'contact_email'];
-    private const CREDENTIAL_RE   = '/\b(?:bibleget|bgclient|bginst)_(?:live|test)_[0-9a-f]{32}\b/i';
+    // No word boundaries: a credential glued to `_` or other word characters
+    // (`__bgclient_test_…__`) must be masked too.
+    private const CREDENTIAL_RE = '/(?:bibleget|bgclient|bginst)_(?:live|test)_[0-9a-f]{32}/i';
 
     private LoggerInterface $logger;
     private bool $debug;
@@ -126,7 +128,8 @@ class LoggingMiddleware implements MiddlewareInterface
         return $value;
     }
 
-    private static function maskCredentials(string $text): string
+    /** $text with every credential-shaped string replaced by `[redacted]`; also used for the error log. */
+    public static function maskCredentials(string $text): string
     {
         return preg_replace(self::CREDENTIAL_RE, self::REDACTED, $text) ?? self::REDACTED;
     }

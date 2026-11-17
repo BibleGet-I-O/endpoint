@@ -225,4 +225,24 @@ class ErrorHandlingMiddlewareTest extends TestCase
         self::assertStringContainsString('Stack trace', $logged[0]->message);
         self::assertArrayHasKey('exception', $logged[0]->context);
     }
+
+    public function testLoggedUriHasCredentialsMasked(): void
+    {
+        $key        = 'bibleget_test_' . str_repeat('ab', 16);
+        $records    = new TestHandler();
+        $middleware = new ErrorHandlingMiddleware($this->factory, false, new Logger('test', [$records]));
+
+        foreach ([new NotFoundException('No such thing'), new \RuntimeException('boom')] as $e) {
+            $request = new ServerRequest('GET', '/v3/quote?query=Jn3,16&api_key=' . $key);
+            $middleware->process($request, self::throwing($e));
+            self::assertStringContainsString('api_key=', (string) $request->getUri(), 'the request itself is untouched');
+        }
+
+        $logged = $records->getRecords();
+        self::assertCount(2, $logged);
+        foreach ($logged as $record) {
+            self::assertStringContainsString('/v3/quote?query=Jn3,16&api_key=[redacted]', $record->message);
+            self::assertStringNotContainsString($key, $record->message);
+        }
+    }
 }

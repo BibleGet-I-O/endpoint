@@ -155,7 +155,8 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
      * Server errors (5xx, and anything that is not an ApiException) at the
      * given severity with a full trace; client errors (4xx ApiException:
      * 401, 403, 404, 409, 422, 429...) are expected traffic, logged at info
-     * with no trace.
+     * with no trace. Credential-shaped strings (e.g. a key sent in the query
+     * string, where it is never accepted) are masked in both.
      */
     private function logException(\Throwable $e, string $severity = 'error'): void
     {
@@ -163,14 +164,15 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
         $uri    = $this->currentRequest?->getUri()?->__toString() ?? 'N/A';
 
         if ($e instanceof ApiException && $e->getStatus() < 500) {
-            $this->errorLogger->info(sprintf('[%s %s] %d %s', $method, $uri, $e->getStatus(), $e->getMessage()), [
+            $message = sprintf('[%s %s] %d %s', $method, $uri, $e->getStatus(), $e->getMessage());
+            $this->errorLogger->info(LoggingMiddleware::maskCredentials($message), [
                 'request_id' => $this->currentRequest?->getAttribute('request_id'),
                 'status'     => $e->getStatus(),
             ]);
             return;
         }
 
-        $fullMessage = sprintf(
+        $fullMessage = LoggingMiddleware::maskCredentials(sprintf(
             "[%s %s] %s in %s:%d\nStack trace:\n%s",
             $method,
             $uri,
@@ -178,7 +180,7 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
             $e->getFile(),
             $e->getLine(),
             $e->getTraceAsString()
-        );
+        ));
 
         $this->errorLogger->{$severity}($fullMessage, [
             'request_id' => $this->currentRequest?->getAttribute('request_id'),

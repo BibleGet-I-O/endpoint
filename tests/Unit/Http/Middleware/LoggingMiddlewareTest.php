@@ -78,7 +78,7 @@ class LoggingMiddlewareTest extends TestCase
             'Content-Type'  => 'application/json',
             'X-Api-Key'     => $client,
             'Authorization' => 'Bearer secret.jwt.value',
-        ], json_encode(['contact_email' => 'someone@example.com', 'note' => "plain {$client}"], JSON_THROW_ON_ERROR)) );
+        ], json_encode(['contact_email' => 'someone@example.com', 'note' => "plain {$client}", 'glued' => "__{$client}__x{$key}9"], JSON_THROW_ON_ERROR)) );
 
         $out = $middle->process($request, $handler);
         self::assertSame($response, (string) $out->getBody(), 'the response itself is untouched');

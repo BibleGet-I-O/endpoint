@@ -41,6 +41,18 @@ class CorsPolicyTest extends TestCase
         $this->assertSame('', $response->getHeaderLine('Access-Control-Allow-Credentials'));
     }
 
+    public function testRateLimitHeadersAreExposedToBrowsers(): void
+    {
+        $_ENV['CORS_ALLOWED_ORIGINS'] = 'https://app.bibleget.io';
+        foreach (['', 'https://app.bibleget.io', 'https://other.example'] as $origin) {
+            $response = ( new CorsPolicy() )->applyHeaders($this->request($origin), $this->factory->createResponse(200));
+            $exposed  = array_map('trim', explode(',', $response->getHeaderLine('Access-Control-Expose-Headers')));
+            foreach (['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After'] as $header) {
+                $this->assertContains($header, $exposed, "{$header} exposed for origin '{$origin}'");
+            }
+        }
+    }
+
     public function testAnyOriginAllowedWhenNoAllowlistConfigured(): void
     {
         $response = ( new CorsPolicy() )->applyHeaders(
