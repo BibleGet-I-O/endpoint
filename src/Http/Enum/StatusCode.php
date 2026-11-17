@@ -7,6 +7,7 @@ namespace BibleGet\Api\Http\Enum;
 enum StatusCode: int
 {
     case OK                     = 200;
+    case CREATED                = 201;
     case NO_CONTENT             = 204;
     case NOT_MODIFIED           = 304;
     case BAD_REQUEST            = 400;
@@ -25,6 +26,7 @@ enum StatusCode: int
     {
         return match ($this) {
             self::OK                     => 'OK',
+            self::CREATED                => 'Created',
             self::NO_CONTENT             => 'No Content',
             self::NOT_MODIFIED           => 'Not Modified',
             self::BAD_REQUEST            => 'Bad Request',

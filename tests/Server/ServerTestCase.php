@@ -193,6 +193,15 @@ abstract class ServerTestCase extends TestCase
      * @param array<string, string> $headers
      * @return array{status: int, headers: array<string, string>, body: string}
      */
+    protected static function httpPatch(string $path, ?string $body = null, array $headers = []): array
+    {
+        return self::httpRequest('PATCH', $path, $body, $headers);
+    }
+
+    /**
+     * @param array<string, string> $headers
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
     protected static function httpOptions(string $path, array $headers = []): array
     {
         return self::httpRequest('OPTIONS', $path, null, $headers);

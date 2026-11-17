@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api;
 
+use BibleGet\Api\Handlers\InstallationsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
 use BibleGet\Api\Handlers\HybridSearchHandler;
@@ -79,6 +80,11 @@ class Router
 
             case 'metadata':
                 $this->handler = new MetadataHandler($this->psr17Factory, $requestPathParts);
+                break;
+
+            case 'installations':
+                // No CredentialMiddleware: the handler validates the client key or installation token itself.
+                $this->handler = new InstallationsHandler($this->psr17Factory, $requestPathParts);
                 break;
 
             case 'search':
