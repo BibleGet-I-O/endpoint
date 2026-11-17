@@ -67,7 +67,7 @@ class OidcBearerMiddleware implements MiddlewareInterface
             throw new ServiceUnavailableException('Sign-in is not configured on this server (ZITADEL_ISSUER, ZITADEL_AUDIENCE).');
         }
 
-        if (preg_match(self::BEARER_PATTERN, trim($request->getHeaderLine('Authorization')), $m) !== 1) {
+        if (preg_match(self::BEARER_PATTERN, self::authorization($request), $m) !== 1) {
             throw new BearerUnauthorizedException();
         }
         $user = $this->validate($m[1], $this->issuer, $this->audience);
@@ -76,6 +76,26 @@ class OidcBearerMiddleware implements MiddlewareInterface
             throw new ForbiddenException('This route requires the ' . $this->requiredRole . ' role.');
         }
         return $handler->handle($request->withAttribute('oidc_user', $user));
+    }
+
+    /**
+     * The Authorization header, or, when Apache under CGI/FastCGI has stripped
+     * it, the copy public/.htaccess puts in HTTP_AUTHORIZATION (prefixed
+     * REDIRECT_ after an internal rewrite).
+     */
+    private static function authorization(ServerRequestInterface $request): string
+    {
+        $header = trim($request->getHeaderLine('Authorization'));
+        if ($header !== '') {
+            return $header;
+        }
+        $server = $request->getServerParams();
+        foreach (['HTTP_AUTHORIZATION', 'REDIRECT_HTTP_AUTHORIZATION'] as $name) {
+            if (is_string($server[$name] ?? null) && trim($server[$name]) !== '') {
+                return trim($server[$name]);
+            }
+        }
+        return '';
     }
 
     /** @return array{sub: string, email: string, email_verified: bool, roles: list<string>} */

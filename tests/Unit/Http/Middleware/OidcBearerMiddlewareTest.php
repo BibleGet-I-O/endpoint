@@ -173,6 +173,28 @@ class OidcBearerMiddlewareTest extends TestCase
         );
     }
 
+    public function testAuthorizationFromServerParamsWhenTheHeaderIsStripped(): void
+    {
+        // Apache with CGI/FastCGI drops the header; .htaccess copies it into
+        // HTTP_AUTHORIZATION, or REDIRECT_HTTP_AUTHORIZATION after a rewrite.
+        $token = 'Bearer ' . self::$issuer->token('user-7');
+        foreach (['HTTP_AUTHORIZATION', 'REDIRECT_HTTP_AUTHORIZATION'] as $param) {
+            $handler = $this->recordingHandler();
+            $request = new ServerRequest('GET', '/v3/applications', [], null, '1.1', [$param => $token]);
+            $this->middleware()->process($request, $handler);
+            self::assertNotNull($handler->seen, $param);
+        }
+
+        // A header that is present wins over the server parameters.
+        $request = new ServerRequest('GET', '/v3/applications', ['Authorization' => 'Bearer nope'], null, '1.1', ['HTTP_AUTHORIZATION' => $token]);
+        try {
+            $this->middleware()->process($request, $this->recordingHandler());
+            self::fail('the Authorization header should be used first');
+        } catch (UnauthorizedException) {
+            self::assertTrue(true);
+        }
+    }
+
     public function testExpiryWithinLeewayIsAccepted(): void
     {
         $handler = $this->recordingHandler();
