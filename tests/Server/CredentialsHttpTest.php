@@ -35,18 +35,12 @@ class CredentialsHttpTest extends ServerTestCase
 
     protected static function serverPort(): int
     {
-        return self::defaultServerPort() + 1;
+        return self::basePort() + 1;
     }
 
     protected static function serverEnv(): array
     {
         return ['REQUIRE_CREDENTIALS' => 'true', 'RATE_LIMIT_STORAGE_PATH' => self::$rateLimitDir];
-    }
-
-    private static function defaultServerPort(): int
-    {
-        $envPort = getenv('TEST_SERVER_PORT');
-        return $envPort !== false && ctype_digit($envPort) ? (int) $envPort : 8199;
     }
 
     public static function setUpBeforeClass(): void
@@ -83,17 +77,21 @@ class CredentialsHttpTest extends ServerTestCase
 
     protected function tearDown(): void
     {
-        try {
-            if ($this->credentialIds !== []) {
-                $in = implode(',', array_fill(0, count($this->credentialIds), '?'));
-                $this->db->prepare("DELETE FROM usage_daily WHERE credential_id IN ($in)")->execute($this->credentialIds);
-            }
-            $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$this->clientKeyId]);
-            $this->db->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$this->clientKeyId]);
-            foreach ($this->appIds as $appId) {
-                $this->db->prepare('DELETE FROM applications WHERE id = ?')->execute([$appId]);
-            }
-        } catch (\Throwable) {
+        // Cleanup errors are not swallowed: PHPUnit reports them on a passing
+        // test (and keeps the original failure otherwise). Nothing to clean
+        // when setUp skipped the test for want of a database.
+        if ($this->status()->isSkipped()) {
+            Connection::reset();
+            return;
+        }
+        if ($this->credentialIds !== []) {
+            $in = implode(',', array_fill(0, count($this->credentialIds), '?'));
+            $this->db->prepare("DELETE FROM usage_daily WHERE credential_id IN ($in)")->execute($this->credentialIds);
+        }
+        $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$this->clientKeyId]);
+        $this->db->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$this->clientKeyId]);
+        foreach ($this->appIds as $appId) {
+            $this->db->prepare('DELETE FROM applications WHERE id = ?')->execute([$appId]);
         }
         Connection::reset();
     }

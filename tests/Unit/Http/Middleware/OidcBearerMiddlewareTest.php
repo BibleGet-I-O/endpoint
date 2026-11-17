@@ -10,6 +10,7 @@ use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Exception\UnauthorizedException;
 use BibleGet\Api\Http\Middleware\OidcBearerMiddleware;
 use BibleGet\Api\Services\JwksProvider;
+use BibleGet\Tests\Support\IsolatesEnvironment;
 use BibleGet\Tests\Support\OidcTestIssuer;
 use Firebase\JWT\JWT;
 use Nyholm\Psr7\Response;
@@ -21,11 +22,10 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class OidcBearerMiddlewareTest extends TestCase
 {
+    use IsolatesEnvironment;
+
     private static OidcTestIssuer $issuer;
     private static string $jwksFile;
-
-    /** @var array<string, mixed> */
-    private array $savedEnv = [];
 
     public static function setUpBeforeClass(): void
     {
@@ -40,21 +40,12 @@ class OidcBearerMiddlewareTest extends TestCase
 
     protected function setUp(): void
     {
-        foreach (['ZITADEL_ISSUER', 'ZITADEL_AUDIENCE', 'ZITADEL_JWKS_FILE'] as $k) {
-            $this->savedEnv[$k] = $_ENV[$k] ?? null;
-            unset($_ENV[$k]);
-        }
+        $this->isolateEnvironment(['ZITADEL_ISSUER', 'ZITADEL_AUDIENCE', 'ZITADEL_JWKS_FILE']);
     }
 
     protected function tearDown(): void
     {
-        foreach ($this->savedEnv as $k => $v) {
-            if ($v === null) {
-                unset($_ENV[$k]);
-            } else {
-                $_ENV[$k] = $v;
-            }
-        }
+        $this->restoreEnvironment();
     }
 
     private function middleware(): OidcBearerMiddleware

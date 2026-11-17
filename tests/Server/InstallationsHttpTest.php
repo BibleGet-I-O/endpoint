@@ -27,8 +27,7 @@ class InstallationsHttpTest extends ServerTestCase
 
     protected static function serverPort(): int
     {
-        $envPort = getenv('TEST_SERVER_PORT');
-        return ( $envPort !== false && ctype_digit($envPort) ? (int) $envPort : 8199 ) + 2;
+        return self::basePort() + 2;
     }
 
     protected static function serverEnv(): array
@@ -63,13 +62,17 @@ class InstallationsHttpTest extends ServerTestCase
 
     protected function tearDown(): void
     {
-        try {
-            foreach ($this->clientKeyIds as $id) {
-                $this->db->prepare('DELETE FROM usage_daily WHERE credential_id IN (SELECT id FROM installations WHERE client_key_id = ?)')->execute([$id]);
-                $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$id]);
-                $this->db->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$id]);
-            }
-        } catch (\Throwable) {
+        // Cleanup errors are not swallowed: PHPUnit reports them on a passing
+        // test (and keeps the original failure otherwise). Nothing to clean
+        // when setUp skipped the test for want of a database.
+        if ($this->status()->isSkipped()) {
+            Connection::reset();
+            return;
+        }
+        foreach ($this->clientKeyIds as $id) {
+            $this->db->prepare('DELETE FROM usage_daily WHERE credential_id IN (SELECT id FROM installations WHERE client_key_id = ?)')->execute([$id]);
+            $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$id]);
+            $this->db->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$id]);
         }
         Connection::reset();
     }
@@ -184,6 +187,10 @@ class InstallationsHttpTest extends ServerTestCase
     {
         $key = $this->clientKey();
         self::assertSame(422, self::register($key['plain'], ['install_id' => 'abc', 'plugin_version' => '1'])['status']);
+        // install_id acts as a secret: only random (version 4) UUIDs; not nil, not time-based (v1).
+        foreach (['00000000-0000-0000-0000-000000000000', 'c232ab00-9414-11ec-b3c8-9f6bdeced846', '3f2b8c1e-0000-4000-c000-000000000001'] as $weak) {
+            self::assertSame(422, self::register($key['plain'], ['install_id' => $weak, 'plugin_version' => '1'])['status'], $weak);
+        }
         self::assertSame(422, self::register($key['plain'], ['plugin_version' => '1'])['status']);
         self::assertSame(422, self::register($key['plain'], ['install_id' => self::UUID])['status']);
         self::assertSame(422, self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => str_repeat('x', 51)])['status']);
@@ -210,6 +217,15 @@ class InstallationsHttpTest extends ServerTestCase
         $key = $this->clientKey('msword');
         $r   = self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1', 'site_url' => 'https://example.com']);
         self::assertSame(422, $r['status']);
+        // An empty or null site_url means "none", from any plugin, on POST and PATCH alike.
+        foreach (['', null] as $none) {
+            $r = self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1', 'site_url' => $none]);
+            self::assertContains($r['status'], [200, 201], var_export($none, true) . ': ' . $r['body']);
+            $token = self::jsonBody($r['body'])['token'];
+            self::assertIsString($token);
+            $patch = self::httpPatch('/v3/installations/self', json_encode(['site_url' => $none], JSON_THROW_ON_ERROR), ['X-Api-Key' => $token, 'Content-Type' => 'application/json']);
+            self::assertSame(204, $patch['status'], $patch['body']);
+        }
 
         $wp = $this->clientKey();
         self::assertSame(422, self::register($wp['plain'], ['install_id' => self::UUID, 'plugin_version' => '1', 'site_url' => 'not a url'])['status']);
@@ -239,6 +255,35 @@ class InstallationsHttpTest extends ServerTestCase
         self::assertNull($fetched['contact_email']);
 
         self::assertSame(401, self::httpPatch('/v3/installations/self', '{}', ['X-Api-Key' => $key['plain'], 'Content-Type' => 'application/json'])['status']);
+    }
+
+    public function testPatchSelfTouchesOnlyItsOwnRecordAndIsRateLimited(): void
+    {
+        $key   = $this->clientKey('google-docs');
+        $mine  = self::jsonBody(self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1'])['body']);
+        $other = self::jsonBody(self::register($key['plain'], ['install_id' => '5a1c0de0-0000-4000-8000-0000000000a4', 'plugin_version' => '1'])['body']);
+        self::assertIsString($mine['token']);
+        $h = ['X-Api-Key' => $mine['token'], 'Content-Type' => 'application/json'];
+
+        self::assertSame(422, self::httpPatch('/v3/installations/self', '{"site_url":"https://example.com"}', $h)['status'], 'site_url is WordPress-only');
+        self::assertSame(204, self::httpPatch('/v3/installations/self', '{"plugin_version":"3.0.0"}', $h)['status']);
+        $version = $this->db->prepare('SELECT plugin_version FROM installations WHERE id = ?');
+        $version->execute([$other['installation_id']]);
+        self::assertSame('1', $version->fetchColumn(), 'another installation is untouched');
+
+        // The installation's own hourly limit applies to PATCH too: the two
+        // PATCHes above (422 included) used two of these three.
+        $this->db->prepare('UPDATE installations SET rate_limit_per_hour = 3 WHERE id = ?')->execute([$mine['installation_id']]);
+        $first  = self::httpPatch('/v3/installations/self', '{}', $h);
+        $second = self::httpPatch('/v3/installations/self', '{}', $h);
+        self::assertSame(204, $first['status'], $first['body']);
+        self::assertSame(429, $second['status'], $second['body']);
+        self::assertArrayHasKey('retry-after', $second['headers']);
+        self::assertSame('3', $second['headers']['x-ratelimit-limit'] ?? null);
+
+        // A revoked installation's token is refused.
+        $this->db->prepare('UPDATE installations SET is_active = FALSE WHERE id = ?')->execute([$other['installation_id']]);
+        self::assertSame(401, self::httpPatch('/v3/installations/self', '{}', ['X-Api-Key' => $other['token'], 'Content-Type' => 'application/json'])['status']);
     }
 
     public function testQueryStringFieldsAreIgnoredAndBadBytesAre422(): void

@@ -6,6 +6,7 @@ namespace BibleGet\Tests\Unit\Http\Middleware;
 
 use BibleGet\Api\Http\Exception\UnauthorizedException;
 use BibleGet\Api\Http\Middleware\CredentialMiddleware;
+use BibleGet\Tests\Support\IsolatesEnvironment;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
@@ -15,25 +16,16 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class CredentialMiddlewareTest extends TestCase
 {
-    /** @var array<string, mixed> */
-    private array $savedEnv = [];
+    use IsolatesEnvironment;
 
     protected function setUp(): void
     {
-        foreach (['APP_ENV', 'REQUIRE_CREDENTIALS'] as $k) {
-            $this->savedEnv[$k] = $_ENV[$k] ?? null;
-        }
+        $this->isolateEnvironment(['APP_ENV', 'REQUIRE_CREDENTIALS']);
     }
 
     protected function tearDown(): void
     {
-        foreach ($this->savedEnv as $k => $v) {
-            if ($v === null) {
-                unset($_ENV[$k]);
-            } else {
-                $_ENV[$k] = $v;
-            }
-        }
+        $this->restoreEnvironment();
     }
 
     private function recordingHandler(): RequestHandlerInterface

@@ -28,8 +28,7 @@ class ApplicationsHttpTest extends ServerTestCase
 
     protected static function serverPort(): int
     {
-        $envPort = getenv('TEST_SERVER_PORT');
-        return ( $envPort !== false && ctype_digit($envPort) ? (int) $envPort : 8199 ) + 3;
+        return self::basePort() + 3;
     }
 
     protected static function serverEnv(): array
@@ -77,15 +76,19 @@ class ApplicationsHttpTest extends ServerTestCase
 
     protected function tearDown(): void
     {
-        try {
-            foreach ($this->subs as $sub) {
-                $this->db->prepare(
-                    'DELETE FROM usage_daily WHERE credential_id IN
-                       (SELECT k.id FROM api_keys k JOIN applications a ON a.id = k.application_id WHERE a.zitadel_user_id = ?)'
-                )->execute([$sub]);
-                $this->db->prepare('DELETE FROM applications WHERE zitadel_user_id = ?')->execute([$sub]);
-            }
-        } catch (\Throwable) {
+        // Cleanup errors are not swallowed: PHPUnit reports them on a passing
+        // test (and keeps the original failure otherwise). Nothing to clean
+        // when setUp skipped the test for want of a database.
+        if ($this->status()->isSkipped()) {
+            Connection::reset();
+            return;
+        }
+        foreach ($this->subs as $sub) {
+            $this->db->prepare(
+                'DELETE FROM usage_daily WHERE credential_id IN
+                   (SELECT k.id FROM api_keys k JOIN applications a ON a.id = k.application_id WHERE a.zitadel_user_id = ?)'
+            )->execute([$sub]);
+            $this->db->prepare('DELETE FROM applications WHERE zitadel_user_id = ?')->execute([$sub]);
         }
         Connection::reset();
     }

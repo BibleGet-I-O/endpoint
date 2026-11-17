@@ -26,6 +26,9 @@ abstract class ServerTestCase extends TestCase
      */
     private static array $servers = [];
 
+    /** @var array<int, class-string> the class that claimed each own port */
+    private static array $portOwners = [];
+
     /**
      * Extra environment for the spawned server. Dotenv::createImmutable in the
      * front controller does not override variables already in the process
@@ -53,7 +56,18 @@ abstract class ServerTestCase extends TestCase
             self::markTestSkipped('Server tests require POSIX extensions (not available on Windows).');
         }
 
-        self::$port    = static::serverPort() ?? self::defaultPort();
+        $own = static::serverPort();
+        if (static::serverEnv() !== [] && ( $own === null || $own === self::defaultPort() )) {
+            self::fail(static::class . ' sets serverEnv(), so serverPort() must return a port of its own (basePort() + n).');
+        }
+        if ($own !== null && ( self::$portOwners[$own] ?? static::class ) !== static::class) {
+            self::fail(static::class . ' and ' . self::$portOwners[$own] . ' both claim port ' . $own . '.');
+        }
+        if ($own !== null) {
+            self::$portOwners[$own] = static::class;
+        }
+
+        self::$port    = $own ?? self::defaultPort();
         self::$baseUrl = 'http://' . self::$host . ':' . self::$port;
         $port          = self::$port;
 
@@ -127,6 +141,12 @@ abstract class ServerTestCase extends TestCase
     public static function tearDownAfterClass(): void
     {
         self::stopServer(self::$port);
+    }
+
+    /** TEST_SERVER_PORT, else 8199; classes with their own server use basePort() + n. */
+    protected static function basePort(): int
+    {
+        return self::defaultPort();
     }
 
     private static function defaultPort(): int
@@ -211,6 +231,15 @@ abstract class ServerTestCase extends TestCase
      * @param array<string, string> $headers
      * @return array{status: int, headers: array<string, string>, body: string}
      */
+    protected static function httpHead(string $path, array $headers = []): array
+    {
+        return self::httpRequest('HEAD', $path, null, $headers);
+    }
+
+    /**
+     * @param array<string, string> $headers
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
     protected static function httpDelete(string $path, array $headers = []): array
     {
         return self::httpRequest('DELETE', $path, null, $headers);
@@ -231,6 +260,9 @@ abstract class ServerTestCase extends TestCase
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        if ($method === 'HEAD') {
+            curl_setopt($ch, CURLOPT_NOBODY, true);
+        }
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 

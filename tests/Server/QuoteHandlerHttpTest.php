@@ -247,8 +247,9 @@ class QuoteHandlerHttpTest extends ServerTestCase
             self::markTestSkipped('Test database not available: ' . $e->getMessage());
         }
         self::unseed($db);
-        self::seedLongRangeAndUnlistedEdition($db);
         try {
+            // Inside the try: a seed that fails half-way is cleaned up too.
+            self::seedLongRangeAndUnlistedEdition($db);
             // Copyrighted edition: limited to 30 with or without forcecopyright.
             self::assertCount(30, self::results('/v3/quote?query=Ps1-5&version=TEST2'));
             self::assertCount(30, self::results('/v3/quote?query=Ps1-5&version=TEST2&forcecopyright=true'));

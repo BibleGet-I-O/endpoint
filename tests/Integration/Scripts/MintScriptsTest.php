@@ -40,8 +40,18 @@ final class MintScriptsTest extends DatabaseTestCase
      */
     private static function runScript(string $script, array $args = [], array $env = []): array
     {
+        // The bootstrap loads .env.test into $_ENV only, not into getenv(): pass
+        // its effective values explicitly, or a DB_* exported by the shell would
+        // reach the child (whose dotenv never overrides the environment).
+        $effective = [];
+        foreach (['APP_ENV', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS'] as $k) {
+            if (isset($_ENV[$k]) && is_scalar($_ENV[$k])) {
+                $effective[$k] = (string) $_ENV[$k];
+            }
+        }
+        self::assertStringEndsWith('_test', $effective['DB_NAME'] ?? '', 'the scripts must run against the test database');
         $cmd = array_merge([PHP_BINARY, dirname(__DIR__, 3) . '/scripts/' . $script], $args);
-        $p   = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, array_merge(getenv(), $env));
+        $p   = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, array_merge(getenv(), $effective, $env));
         self::assertIsResource($p);
         $out  = (string) stream_get_contents($pipes[1]);
         $err  = (string) stream_get_contents($pipes[2]);

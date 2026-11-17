@@ -74,6 +74,9 @@ class CopyrightLimitTest extends TestCase
         foreach (['forcecopyright', 'forceversion', 'appid', 'domain', 'pluginversion'] as $removed) {
             self::assertArrayNotHasKey($removed, QuoteContext::$defaultParameters);
         }
-        self::assertSame([], $ctx->copyrightLimitedVersions());
+        // A copyrighted edition stays limited whatever those parameters say.
+        $ctx->COPYRIGHT_VERSIONS = ['CR'];
+        self::assertFalse($ctx->fullTextAllowed('CR'));
+        self::assertSame(['CR'], $ctx->copyrightLimitedVersions());
     }
 }

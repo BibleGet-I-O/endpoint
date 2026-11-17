@@ -25,16 +25,17 @@ class QueryExecutorLogTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        try {
-            $this->getConnection()->exec('DROP TABLE IF EXISTS requests_log__' . self::FUTURE_YEAR);
-        } catch (\Throwable) {
+        // Cleanup errors are not swallowed: PHPUnit reports them on a passing
+        // test (and keeps the original failure otherwise). Nothing to clean
+        // when setUp skipped the test for want of a database.
+        if ($this->status()->isSkipped()) {
+            parent::tearDown();
+            return;
         }
+        $this->getConnection()->exec('DROP TABLE IF EXISTS requests_log__' . self::FUTURE_YEAR);
         unset($_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_X_FORWARDED_FOR'], $_SERVER['HTTP_X_REAL_IP'], $_SERVER['HTTP_CLIENT_IP']);
         if ($this->appId !== null) {
-            try {
-                $this->getConnection()->prepare('DELETE FROM applications WHERE id = ?')->execute([$this->appId]);
-            } catch (\Throwable) {
-            }
+            $this->getConnection()->prepare('DELETE FROM applications WHERE id = ?')->execute([$this->appId]);
         }
         parent::tearDown();
     }

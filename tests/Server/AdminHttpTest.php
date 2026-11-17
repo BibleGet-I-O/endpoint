@@ -35,8 +35,7 @@ class AdminHttpTest extends ServerTestCase
 
     protected static function serverPort(): int
     {
-        $envPort = getenv('TEST_SERVER_PORT');
-        return ( $envPort !== false && ctype_digit($envPort) ? (int) $envPort : 8199 ) + 4;
+        return self::basePort() + 4;
     }
 
     protected static function serverEnv(): array
@@ -84,20 +83,24 @@ class AdminHttpTest extends ServerTestCase
 
     protected function tearDown(): void
     {
-        try {
-            foreach ($this->clientKeyIds as $id) {
-                $this->db->prepare('DELETE FROM usage_daily WHERE credential_id IN (SELECT id FROM installations WHERE client_key_id = ?)')->execute([$id]);
-                $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$id]);
-                $this->db->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$id]);
-            }
-            foreach ($this->owners as $owner) {
-                $this->db->prepare(
-                    'DELETE FROM usage_daily WHERE credential_id IN
-                       (SELECT k.id FROM api_keys k JOIN applications a ON a.id = k.application_id WHERE a.zitadel_user_id = ?)'
-                )->execute([$owner]);
-                $this->db->prepare('DELETE FROM applications WHERE zitadel_user_id = ?')->execute([$owner]);
-            }
-        } catch (\Throwable) {
+        // Cleanup errors are not swallowed: PHPUnit reports them on a passing
+        // test (and keeps the original failure otherwise). Nothing to clean
+        // when setUp skipped the test for want of a database.
+        if ($this->status()->isSkipped()) {
+            Connection::reset();
+            return;
+        }
+        foreach ($this->clientKeyIds as $id) {
+            $this->db->prepare('DELETE FROM usage_daily WHERE credential_id IN (SELECT id FROM installations WHERE client_key_id = ?)')->execute([$id]);
+            $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$id]);
+            $this->db->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$id]);
+        }
+        foreach ($this->owners as $owner) {
+            $this->db->prepare(
+                'DELETE FROM usage_daily WHERE credential_id IN
+                   (SELECT k.id FROM api_keys k JOIN applications a ON a.id = k.application_id WHERE a.zitadel_user_id = ?)'
+            )->execute([$owner]);
+            $this->db->prepare('DELETE FROM applications WHERE zitadel_user_id = ?')->execute([$owner]);
         }
         Connection::reset();
     }
@@ -188,10 +191,12 @@ class AdminHttpTest extends ServerTestCase
             self::assertSame(403, $r['status'], "$method $path: " . $r['body']);
             self::assertStringStartsWith('application/problem+json', $r['headers']['content-type'] ?? '');
 
-            $anon = $method === 'GET' ? self::httpGet($path) : self::httpPost($path, '{}', ['Content-Type' => 'application/json']);
-            if ($method !== 'PATCH') {
-                self::assertSame(401, $anon['status'], "$method $path without a token");
-            }
+            $anon = match ($method) {
+                'GET'   => self::httpGet($path),
+                'POST'  => self::httpPost($path, '{}', ['Content-Type' => 'application/json']),
+                'PATCH' => self::httpPatch($path, '{}', ['Content-Type' => 'application/json']),
+            };
+            self::assertSame(401, $anon['status'], "$method $path without a token");
         }
         self::assertSame(401, self::httpGet('/v3/admin/stats', ['X-Api-Key' => 'bibleget_test_' . str_repeat('0', 32)])['status']);
 
@@ -201,6 +206,59 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame(404, self::call('POST', '/v3/admin/applications/not-a-uuid/approve')['status']);
         self::assertSame(404, self::call('POST', '/v3/admin/applications/' . self::NIL_ID . '-x/approve')['status']);
         self::assertSame(405, self::call('PATCH', '/v3/admin/stats', ['x' => 1])['status']);
+    }
+
+    public function testPreflightAndHeadNeedNoTokenAndLeakNothing(): void
+    {
+        // A browser's preflight carries no token: it is answered without one.
+        $r = self::httpOptions('/v3/admin/applications', [
+            'Origin'                         => 'https://admin.example',
+            'Access-Control-Request-Method'  => 'PATCH',
+            'Access-Control-Request-Headers' => 'Authorization, Content-Type',
+        ]);
+        self::assertSame(204, $r['status'], $r['body']);
+        self::assertStringContainsString('PATCH', $r['headers']['access-control-allow-methods'] ?? '');
+        self::assertStringContainsString('Authorization', $r['headers']['access-control-allow-headers'] ?? '');
+        self::assertSame('', $r['body']);
+
+        // HEAD is not an admin method: without a token 401, with one 405; never a body.
+        self::assertSame(401, self::httpHead('/v3/admin/stats')['status']);
+        $head = self::httpHead('/v3/admin/stats', ['Authorization' => self::admin()]);
+        self::assertSame(405, $head['status']);
+        self::assertSame('', $head['body']);
+    }
+
+    public function testInstallationListFilters(): void
+    {
+        $version = 'filter-' . bin2hex(random_bytes(4));
+        $wp      = $this->clientKey('wordpress', $version);
+        $gd      = $this->clientKey('google-docs', $version);
+        $repo    = new InstallationRepository($this->db);
+        $a       = $repo->register($wp['id'], '7a1c0de0-0000-4000-8000-000000000001', $version, 'https://a.example')['installation_id'];
+        $b       = $repo->register($gd['id'], '7a1c0de0-0000-4000-8000-000000000002', $version, null)['installation_id'];
+        $c       = $repo->register($wp['id'], '7a1c0de0-0000-4000-8000-000000000003', $version, 'https://c.example')['installation_id'];
+        $this->db->prepare("UPDATE installations SET last_seen_at = now() - interval '10 days' WHERE id = ?")->execute([$c]);
+
+        $ids = static fn (array $list): array => array_column(is_array($list['installations'] ?? null) ? $list['installations'] : [], 'id');
+
+        $byVersion = self::okJson(self::call('GET', "/v3/admin/installations?version={$version}"));
+        self::assertSame(3, $byVersion['total']);
+        self::assertEqualsCanonicalizing([$a, $b, $c], $ids($byVersion));
+
+        $wordpress = self::okJson(self::call('GET', "/v3/admin/installations?version={$version}&plugin=wordpress"));
+        self::assertEqualsCanonicalizing([$a, $c], $ids($wordpress));
+
+        $since  = rawurlencode(self::iso(-86400));
+        $active = self::okJson(self::call('GET', "/v3/admin/installations?version={$version}&active_since={$since}"));
+        self::assertEqualsCanonicalizing([$a, $b], $ids($active));
+
+        $limited = self::okJson(self::call('GET', "/v3/admin/installations?version={$version}&limit=1"));
+        self::assertCount(1, $ids($limited));
+        self::assertSame(3, $limited['total'], 'total counts every match, not just the page');
+
+        foreach (['limit=0', 'limit=10001', 'limit=x', 'version=' . rawurlencode('bad version!')] as $bad) {
+            self::assertSame(422, self::call('GET', "/v3/admin/installations?{$bad}")['status'], $bad);
+        }
     }
 
     public function testApproveRejectRevokeTransitions(): void
@@ -239,7 +297,7 @@ class AdminHttpTest extends ServerTestCase
         // The project key works, and its limit can be changed.
         $key = ( new ApiKeyRepository($this->db) )->mint($appId, 'k');
         self::assertSame(200, self::httpGet(self::QUOTE, ['X-Api-Key' => $key['plain']])['status']);
-        foreach ([0, -1, 1000001, '50', 1.5, null] as $bad) {
+        foreach ([0, -1, 100001, '50', 1.5, null] as $bad) {
             $r = self::call('PATCH', "/v3/admin/api-keys/{$key['id']}", ['rate_limit_per_hour' => $bad]);
             self::assertSame(422, $r['status'], var_export($bad, true) . ': ' . $r['body']);
         }
@@ -452,8 +510,12 @@ class AdminHttpTest extends ServerTestCase
         for ($i = 1; $i <= 3; $i++) {
             $inst[] = $repo->register($key['id'], sprintf('9c3d0de0-0000-4000-8000-%012d', $i), $version, null)['installation_id'];
         }
-        $this->db->prepare("UPDATE installations SET first_seen_at = date_trunc('hour', now()) WHERE client_key_id = ?")
-            ->execute([$key['id']]);
+        // One instant for the fixture and the expectations, so an hour or a
+        // day boundary crossed while the test runs cannot split them.
+        $now  = time();
+        $hour = gmdate('Y-m-d\TH:00:00\Z', $now);
+        $this->db->prepare('UPDATE installations SET first_seen_at = ?::timestamptz WHERE client_key_id = ?')
+            ->execute([$hour, $key['id']]);
         $this->db->prepare("UPDATE installations SET last_seen_at = now() - interval '40 days' WHERE id = ?")->execute([$inst[1]]);
         $repo->revoke($inst[2]);
 
@@ -462,7 +524,7 @@ class AdminHttpTest extends ServerTestCase
         ( new ApplicationRepository($this->db) )->approve($appId, 'admin', null);
         $apiKey  = ( new ApiKeyRepository($this->db) )->mint($appId, 'k');
         $apiKey2 = ( new ApiKeyRepository($this->db) )->mint($appId, 'k2');
-        $today   = gmdate('Y-m-d');
+        $today   = gmdate('Y-m-d', $now);
         $ins     = $this->db->prepare('INSERT INTO usage_daily (day, credential_type, credential_id, route, requests) VALUES (?, ?, ?, ?, ?)');
         // Two keys of one application, two installations of one plugin version: one row each.
         $ins->execute([$today, 'project', $apiKey['id'], 'quote', 5]);
@@ -487,7 +549,7 @@ class AdminHttpTest extends ServerTestCase
         self::assertCount(1, $hours);
         self::assertIsArray($hours[0]);
         self::assertSame(3, $hours[0]['count']);
-        self::assertSame(gmdate('Y-m-d\TH:00:00\Z'), $hours[0]['hour']);
+        self::assertSame($hour, $hours[0]['hour']);
 
         self::assertIsArray($stats['requests']);
         $project = [];
