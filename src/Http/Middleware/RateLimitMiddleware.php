@@ -41,6 +41,27 @@ class RateLimitMiddleware implements MiddlewareInterface
             return $handler->handle($request);
         }
 
+        $headers  = $this->enforce($credential);
+        $response = $handler->handle($request);
+        foreach ($headers as $name => $value) {
+            $response = $response->withHeader($name, $value);
+        }
+        return $response;
+    }
+
+    /**
+     * Counts one request against the credential's hourly limit (system
+     * credentials are not limited); also used by PATCH /installations/self,
+     * which is outside this middleware.
+     *
+     * @return array<string, string> the X-RateLimit-* headers for the response
+     * @throws TooManyRequestsException when the limit is exceeded
+     */
+    public function enforce(Credential $credential): array
+    {
+        if ($credential->isSystem) {
+            return [];
+        }
         $limit  = $credential->ratePerHour ?? self::defaultLimit($credential->type);
         $result = $this->limiter->hit($credential->type->value . ':' . $credential->id, $limit);
         if (!$result['allowed']) {
@@ -51,12 +72,7 @@ class RateLimitMiddleware implements MiddlewareInterface
                 self::headers($limit, $result)
             );
         }
-
-        $response = $handler->handle($request);
-        foreach (self::headers($limit, $result) as $name => $value) {
-            $response = $response->withHeader($name, $value);
-        }
-        return $response;
+        return self::headers($limit, $result);
     }
 
     /**

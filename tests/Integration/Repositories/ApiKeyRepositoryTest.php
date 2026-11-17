@@ -22,10 +22,14 @@ class ApiKeyRepositoryTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        try {
-            $this->getConnection()->prepare('DELETE FROM applications WHERE id = ?')->execute([$this->appId]);
-        } catch (\Throwable) {
+        // Cleanup errors are not swallowed: PHPUnit reports them on a passing
+        // test (and keeps the original failure otherwise). Nothing to clean
+        // when setUp skipped the test for want of a database.
+        if ($this->status()->isSkipped()) {
+            parent::tearDown();
+            return;
         }
+        $this->getConnection()->prepare('DELETE FROM applications WHERE id = ?')->execute([$this->appId]);
         parent::tearDown();
     }
 
@@ -79,8 +83,51 @@ class ApiKeyRepositoryTest extends DatabaseTestCase
         self::assertNotNull($cred);
         self::assertSame('read', $cred->scope);
         self::assertSame(500, $cred->ratePerHour);
-        $keys->touch($new['id']);
-        $keys->touch($new['id']);
+    }
+
+    public function testTouchSetsLastUsedAtAtMostOnceAMinute(): void
+    {
+        $keys     = new ApiKeyRepository($this->getConnection());
+        $k        = $keys->mint($this->appId, 'k1');
+        $lastUsed = function () use ($k): mixed {
+            $s = $this->getConnection()->prepare('SELECT last_used_at FROM api_keys WHERE id = ?');
+            $s->execute([$k['id']]);
+            return $s->fetchColumn();
+        };
+        self::assertNull($lastUsed());
+
+        $keys->touch($k['id']);
+        $first = $lastUsed();
+        self::assertNotNull($first);
+        $keys->touch($k['id']);
+        self::assertSame($first, $lastUsed(), 'a second touch within the minute changes nothing');
+
+        $this->getConnection()->prepare("UPDATE api_keys SET last_used_at = now() - interval '2 minutes' WHERE id = ?")->execute([$k['id']]);
+        $stale = $lastUsed();
+        $keys->touch($k['id']);
+        self::assertNotSame($stale, $lastUsed());
+    }
+
+    public function testRateLimitBelowOneIsRefused(): void
+    {
+        $keys = new ApiKeyRepository($this->getConnection());
+        foreach ([0, -1] as $bad) {
+            try {
+                $keys->mint($this->appId, 'k', 'read', $bad);
+                self::fail("mint with rate limit {$bad} was accepted");
+            } catch (\InvalidArgumentException) {
+            }
+        }
+        $k = $keys->mint($this->appId, 'k1');
+        try {
+            $keys->setRateLimit($k['id'], 0);
+            self::fail('setRateLimit(0) was accepted');
+        } catch (\InvalidArgumentException) {
+        }
+        self::assertSame(1000, $keys->listForApplication($this->appId)[0]['rate_limit_per_hour']);
+        // The database refuses it too (migration 048).
+        $this->expectException(\PDOException::class);
+        $this->getConnection()->prepare('UPDATE api_keys SET rate_limit_per_hour = 0 WHERE id = ?')->execute([$k['id']]);
     }
 
     public function testRotateOfRevokedKeyReturnsNullAndMintsNothing(): void

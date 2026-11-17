@@ -14,7 +14,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Counts each data-route request in usage_daily once the handler has
- * returned: one row per day, credential and route.
+ * returned: one row per day (the UTC date, whatever the server's or the
+ * session's time zone), credential and route.
  *
  * Requests without a credential are counted under credential_type 'none'
  * with the nil UUID. Best-effort: a failure is logged and the response is
@@ -48,7 +49,7 @@ class UsageMiddleware implements MiddlewareInterface
         try {
             ( $this->db ?? Connection::getConnection() )->prepare(
                 'INSERT INTO usage_daily (day, credential_type, credential_id, route, requests)
-                 VALUES (current_date, :t, :i, :r, 1)
+                 VALUES ((now() AT TIME ZONE \'UTC\')::date, :t, :i, :r, 1)
                  ON CONFLICT (day, credential_type, credential_id, route)
                  DO UPDATE SET requests = usage_daily.requests + 1'
             )->execute([':t' => $type, ':i' => $id, ':r' => $this->route]);

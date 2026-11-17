@@ -177,7 +177,8 @@ class ApplicationsHandler extends AbstractHandler
         $site   = self::validWebsite($params['website'] ?? null);
 
         $id  = $this->apps()->create($owner, $name, $desc, $site);
-        $app = $this->apps()->findForOwner($id, $owner) ?? [];
+        $app = $this->apps()->findForOwner($id, $owner)
+            ?? throw new \RuntimeException("Application {$id} was not found right after it was created.");
         return $this->json($request, ['application' => self::publicApplication($app)], StatusCode::CREATED);
     }
 

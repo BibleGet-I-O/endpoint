@@ -105,20 +105,30 @@ class ApplicationRepository
         return $this->review($id, 'rejected', $reviewer, $notes);
     }
 
-    /** approved → revoked, deactivating all of the application's keys; false when absent or not approved. */
+    /**
+     * approved → revoked, deactivating all of the application's keys; false when absent or not approved.
+     * Runs in its own transaction, or in the caller's when one is open.
+     */
     public function revoke(string $id, string $reviewer, ?string $notes): bool
     {
-        $this->db->beginTransaction();
+        $own = !$this->db->inTransaction();
+        if ($own) {
+            $this->db->beginTransaction();
+        }
         try {
             $ok = $this->review($id, 'revoked', $reviewer, $notes);
             if ($ok) {
                 $this->db->prepare('UPDATE api_keys SET is_active = FALSE WHERE application_id = :id')
                     ->execute([':id' => $id]);
             }
-            $this->db->commit();
+            if ($own) {
+                $this->db->commit();
+            }
             return $ok;
         } catch (\Throwable $e) {
-            $this->db->rollBack();
+            if ($own) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }

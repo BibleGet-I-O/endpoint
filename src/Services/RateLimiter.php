@@ -75,7 +75,8 @@ class RateLimiter
         }
 
         try {
-            return $this->record($handle, $now, $limit, $identifier);
+            // Read the clock again: waiting for the lock may have taken a while.
+            return $this->record($handle, ( $this->clock )(), $limit, $identifier);
         } catch (\Throwable $e) {
             $this->logger->error('Rate limiter failed, request allowed: ' . $e->getMessage(), ['identifier' => $identifier]);
             return $open;

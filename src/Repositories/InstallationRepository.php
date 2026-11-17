@@ -97,7 +97,11 @@ class InstallationRepository
         $this->db->prepare('UPDATE installations SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);
     }
 
-    /** Updates last_seen_at and request_count at most once a minute. */
+    /**
+     * Updates last_seen_at and request_count at most once a minute, so
+     * request_count counts the minutes with at least one request (active
+     * minutes), not requests; usage_daily has the request counts.
+     */
     public function touch(string $id): void
     {
         $this->db->prepare(
@@ -150,9 +154,11 @@ class InstallationRepository
      * Sets an installation's hourly limit; returns its admin row, or null when it does not exist.
      *
      * @return array<string, mixed>|null
+     * @throws \InvalidArgumentException when $perHour is below 1
      */
     public function setRateLimit(string $id, int $perHour): ?array
     {
+        ApiKeyRepository::assertRateLimit($perHour);
         $stmt = $this->db->prepare('UPDATE installations SET rate_limit_per_hour = :r WHERE id = :id');
         $stmt->bindValue(':r', $perHour, \PDO::PARAM_INT);
         $stmt->bindValue(':id', $id);

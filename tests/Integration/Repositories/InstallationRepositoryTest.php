@@ -7,8 +7,8 @@ namespace BibleGet\Tests\Integration\Repositories;
 use BibleGet\Api\Auth\CredentialFactory;
 use BibleGet\Api\Auth\CredentialType;
 use BibleGet\Api\Repositories\ClientKeyRepository;
-use BibleGet\Api\Repositories\InstallationRevokedException;
 use BibleGet\Api\Repositories\InstallationRepository;
+use BibleGet\Api\Repositories\InstallationRevokedException;
 use BibleGet\Tests\Integration\DatabaseTestCase;
 
 class InstallationRepositoryTest extends DatabaseTestCase
@@ -23,12 +23,16 @@ class InstallationRepositoryTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        try {
-            $pdo = $this->getConnection();
-            $pdo->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$this->clientKeyId]);
-            $pdo->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$this->clientKeyId]);
-        } catch (\Throwable) {
+        // Cleanup errors are not swallowed: PHPUnit reports them on a passing
+        // test (and keeps the original failure otherwise). Nothing to clean
+        // when setUp skipped the test for want of a database.
+        if ($this->status()->isSkipped()) {
+            parent::tearDown();
+            return;
         }
+        $pdo = $this->getConnection();
+        $pdo->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$this->clientKeyId]);
+        $pdo->prepare('DELETE FROM client_keys WHERE id = ?')->execute([$this->clientKeyId]);
         parent::tearDown();
     }
 
@@ -127,5 +131,21 @@ class InstallationRepositoryTest extends DatabaseTestCase
         self::assertIsArray($row);
         self::assertFalse($row['is_active']);
         self::assertSame(CredentialFactory::hash($r['token']), trim((string) $row['token_hash']));
+    }
+
+    public function testRateLimitBelowOneIsRefused(): void
+    {
+        $repo = new InstallationRepository($this->getConnection());
+        $r    = $repo->register($this->clientKeyId, '3f2b8c1e-0000-4000-8000-000000000007', '1.0', null);
+        foreach ([0, -5] as $bad) {
+            try {
+                $repo->setRateLimit($r['installation_id'], $bad);
+                self::fail("rate limit {$bad} was accepted");
+            } catch (\InvalidArgumentException) {
+            }
+        }
+        // The database refuses it too (migration 048).
+        $this->expectException(\PDOException::class);
+        $this->getConnection()->prepare('UPDATE installations SET rate_limit_per_hour = 0 WHERE id = ?')->execute([$r['installation_id']]);
     }
 }

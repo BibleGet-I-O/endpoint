@@ -56,6 +56,25 @@ class RateLimiterTest extends TestCase
         self::assertFalse($limiter->hit('project:a', 2)['allowed']);
     }
 
+    public function testWindowIsEvaluatedAtTheTimeTheLockIsHeld(): void
+    {
+        $tick    = 0;
+        $limiter = new RateLimiter($this->dir, 3600, null, function () use (&$tick): int {
+            $t          = $this->now;
+            $this->now += $tick; // time that passes on every read, e.g. while waiting for the lock
+            return $t;
+        });
+        $start   = $this->now;
+        self::assertTrue($limiter->hit('project:slow', 1)['allowed']);
+
+        // Ten seconds before the first hit expires; the lock then takes twenty.
+        $this->now = $start + 3590;
+        $tick      = 20;
+        $result    = $limiter->hit('project:slow', 1);
+        self::assertTrue($result['allowed'], 'the expired hit no longer counts once the lock is acquired');
+        self::assertGreaterThan($start + 3600, $result['reset']);
+    }
+
     public function testLimiterFailsOpenWhenStorageUnwritable(): void
     {
         $handler = new TestHandler();

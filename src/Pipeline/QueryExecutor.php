@@ -63,7 +63,7 @@ class QueryExecutor
                 $this->insertLogRow($year);
             }
         } catch (\Throwable $e) {
-            $this->logger->error('Request log insert failed: ' . $e->getMessage());
+            $this->logger->error('Request log insert into requests_log__' . $year . ' failed: ' . $e->getMessage());
         }
     }
 

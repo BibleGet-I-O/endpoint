@@ -41,10 +41,13 @@ class ApiKeyRepository
     }
 
     /**
+     * @param int|null $ratePerHour requests per hour, at least 1; null for the default limit
      * @return array{plain: string, id: string}
+     * @throws \InvalidArgumentException when $ratePerHour is below 1
      */
     public function mint(string $applicationId, string $name, string $scope = 'read', ?int $ratePerHour = 1000): array
     {
+        self::assertRateLimit($ratePerHour);
         $c    = CredentialFactory::generate(CredentialType::Project, CredentialFactory::currentEnv());
         $stmt = $this->db->prepare(
             'INSERT INTO api_keys (application_id, key_hash, key_prefix, name, scope, rate_limit_per_hour)
@@ -80,11 +83,16 @@ class ApiKeyRepository
     /**
      * Revokes a key and mints a replacement with the same application, name, scope and limit.
      *
-     * @return array{plain: string, id: string}|null null when the key does not exist
+     * Runs in its own transaction, or in the caller's when one is open.
+     *
+     * @return array{plain: string, id: string}|null null when the key does not exist or is not active
      */
     public function rotate(string $id): ?array
     {
-        $this->db->beginTransaction();
+        $own = !$this->db->inTransaction();
+        if ($own) {
+            $this->db->beginTransaction();
+        }
         try {
             $stmt = $this->db->prepare(
                 'SELECT application_id, name, scope, rate_limit_per_hour FROM api_keys WHERE id = :id AND is_active FOR UPDATE'
@@ -92,7 +100,9 @@ class ApiKeyRepository
             $stmt->execute([':id' => $id]);
             $row = $stmt->fetch();
             if (!is_array($row)) {
-                $this->db->rollBack();
+                if ($own) {
+                    $this->db->rollBack();
+                }
                 return null;
             }
             $this->revoke($id);
@@ -102,10 +112,14 @@ class ApiKeyRepository
                 Cast::string($row['scope']),
                 $row['rate_limit_per_hour'] === null ? null : Cast::int($row['rate_limit_per_hour'])
             );
-            $this->db->commit();
+            if ($own) {
+                $this->db->commit();
+            }
             return $new;
         } catch (\Throwable $e) {
-            $this->db->rollBack();
+            if ($own) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }
@@ -131,9 +145,11 @@ class ApiKeyRepository
      * Sets a key's hourly limit; returns its listing row (never key_hash), or null when it does not exist.
      *
      * @return array<string, mixed>|null
+     * @throws \InvalidArgumentException when $perHour is below 1
      */
     public function setRateLimit(string $id, int $perHour): ?array
     {
+        self::assertRateLimit($perHour);
         $stmt = $this->db->prepare(
             'UPDATE api_keys SET rate_limit_per_hour = :r WHERE id = :id
              RETURNING id, application_id, key_prefix, name, scope, rate_limit_per_hour, is_active,
@@ -152,5 +168,13 @@ class ApiKeyRepository
             "UPDATE api_keys SET last_used_at = now()
              WHERE id = :id AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')"
         )->execute([':id' => $id]);
+    }
+
+    /** A limit below 1 would refuse every request (the database refuses it too). */
+    public static function assertRateLimit(?int $perHour): void
+    {
+        if ($perHour !== null && $perHour < 1) {
+            throw new \InvalidArgumentException('rate_limit_per_hour must be at least 1.');
+        }
     }
 }

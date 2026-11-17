@@ -29,7 +29,11 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 abstract class AbstractAdminHandler extends AbstractHandler
 {
-    public const RATE_LIMIT_MAX = 1_000_000;
+    /**
+     * The limiter keeps one timestamp per request in the window, in a JSON
+     * file it rewrites on every request, so the cap bounds that file (~1 MB).
+     */
+    public const RATE_LIMIT_MAX = 100_000;
 
     private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i';
     private const ISO_PATTERN  = '/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?)?\z/';
@@ -95,12 +99,12 @@ abstract class AbstractAdminHandler extends AbstractHandler
         return preg_match(self::UUID_PATTERN, $v) === 1;
     }
 
-    /** rate_limit_per_hour from the body: a JSON integer from 1 to 1,000,000. */
+    /** rate_limit_per_hour from the body: a JSON integer from 1 to RATE_LIMIT_MAX. */
     protected function rateLimitFromBody(ServerRequestInterface $request): int
     {
         $v = $this->getJsonBodyParams($request)['rate_limit_per_hour'] ?? null;
         if (!is_int($v) || $v < 1 || $v > self::RATE_LIMIT_MAX) {
-            throw new ValidationException('rate_limit_per_hour must be an integer from 1 to 1000000.');
+            throw new ValidationException('rate_limit_per_hour must be an integer from 1 to ' . self::RATE_LIMIT_MAX . '.');
         }
         return $v;
     }

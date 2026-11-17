@@ -25,7 +25,8 @@ use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * POST /installations (client key registers an installation) and
- * PATCH /installations/self (installation token updates its own record).
+ * PATCH /installations/self (installation token updates its own record;
+ * counted against the installation's hourly rate limit).
  *
  * Not behind CredentialMiddleware: each method validates its own credential
  * from the X-Api-Key header only (in production, `_test_` credentials are
@@ -33,7 +34,11 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class InstallationsHandler extends AbstractHandler
 {
-    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i';
+    /**
+     * A random (version 4, RFC 9562 variant) UUID: install_id acts as a
+     * secret, since presenting it with the client key rotates the token.
+     */
+    private const UUID_V4_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/i';
 
     /** @param string[] $requestPathParams */
     public function __construct(ResponseFactoryInterface $responseFactory, array $requestPathParams = [])
@@ -80,20 +85,14 @@ class InstallationsHandler extends AbstractHandler
 
         $params    = $this->getJsonBodyParams($request);
         $installId = $params['install_id'] ?? null;
-        if (!is_string($installId) || preg_match(self::UUID_PATTERN, $installId) !== 1) {
-            throw new ValidationException('install_id must be a UUID.');
+        if (!is_string($installId) || preg_match(self::UUID_V4_PATTERN, $installId) !== 1) {
+            throw new ValidationException('install_id must be a random (version 4) UUID.');
         }
         $version = $this->validVersion($params['plugin_version'] ?? null);
         if ($version === null) {
             throw new ValidationException('plugin_version is required (at most 50 characters).');
         }
-        $siteUrl = null;
-        if (array_key_exists('site_url', $params) && $params['site_url'] !== null) {
-            if ($client['plugin'] !== 'wordpress') {
-                throw new ValidationException('site_url is only accepted from WordPress installations.');
-            }
-            $siteUrl = $this->validSiteUrl($params['site_url']);
-        }
+        $siteUrl = $this->siteUrlFor($client['plugin'], $params);
 
         $limit  = $client['max_registrations_per_hour'];
         $result = ( new RateLimiter() )->hit('registrations:' . $client['id'], $limit);
@@ -126,6 +125,9 @@ class InstallationsHandler extends AbstractHandler
             );
         }
 
+        // Counted against the installation's own hourly limit, like its data requests.
+        $rateHeaders = ( new RateLimitMiddleware() )->enforce($credential);
+
         $params = $this->getJsonBodyParams($request);
         $fields = [];
         if (array_key_exists('plugin_version', $params)) {
@@ -136,10 +138,7 @@ class InstallationsHandler extends AbstractHandler
             $fields['plugin_version'] = $version;
         }
         if (array_key_exists('site_url', $params)) {
-            if ($credential->plugin !== 'wordpress') {
-                throw new ValidationException('site_url is only accepted from WordPress installations.');
-            }
-            $fields['site_url'] = $this->validSiteUrl($params['site_url']);
+            $fields['site_url'] = $this->siteUrlFor((string) $credential->plugin, $params);
         }
         if (array_key_exists('contact_email', $params)) {
             $email = $params['contact_email'];
@@ -156,12 +155,33 @@ class InstallationsHandler extends AbstractHandler
 
         $response = $this->initResponse($request, 'application/json')
             ->withStatus(StatusCode::NO_CONTENT->value, StatusCode::NO_CONTENT->reason());
+        foreach ($rateHeaders as $name => $value) {
+            $response = $response->withHeader($name, $value);
+        }
         return $response->withoutHeader('Content-Type');
     }
 
     private function validVersion(mixed $v): ?string
     {
         return is_string($v) && preg_match('/^[0-9A-Za-z.+_-]{1,50}\z/', $v) === 1 ? $v : null;
+    }
+
+    /**
+     * The body's site_url: null when absent, null or "" (from any plugin);
+     * otherwise only WordPress installations may send one.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function siteUrlFor(string $plugin, array $params): ?string
+    {
+        $v = $params['site_url'] ?? null;
+        if ($v === null || $v === '') {
+            return null;
+        }
+        if ($plugin !== 'wordpress') {
+            throw new ValidationException('site_url is only accepted from WordPress installations.');
+        }
+        return $this->validSiteUrl($v);
     }
 
     private function validSiteUrl(mixed $v): ?string

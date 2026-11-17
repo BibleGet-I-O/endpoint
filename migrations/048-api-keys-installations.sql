@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS api_keys (
     key_prefix           VARCHAR(20) NOT NULL,
     name                 TEXT NOT NULL,
     scope                TEXT NOT NULL DEFAULT 'read' CHECK (scope IN ('read', 'reader')),
-    rate_limit_per_hour  INTEGER DEFAULT 1000,
+    rate_limit_per_hour  INTEGER DEFAULT 1000
+                         CONSTRAINT api_keys_rate_limit_per_hour_check
+                         CHECK (rate_limit_per_hour IS NULL OR rate_limit_per_hour > 0),
     is_active            BOOLEAN NOT NULL DEFAULT TRUE,
     last_used_at         TIMESTAMPTZ,
     expires_at           TIMESTAMPTZ,
@@ -64,6 +66,25 @@ CREATE TRIGGER api_keys_reader_scope
     BEFORE INSERT OR UPDATE OF scope, application_id ON api_keys
     FOR EACH ROW EXECUTE FUNCTION api_keys_reader_scope_check();
 
+-- The same rule from the other side: an application holding reader keys
+-- (active or not) cannot stop being a system application.
+CREATE OR REPLACE FUNCTION applications_reader_scope_check() RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.is_system AND NOT NEW.is_system AND EXISTS (
+        SELECT 1 FROM api_keys WHERE application_id = NEW.id AND scope = 'reader'
+    ) THEN
+        RAISE EXCEPTION 'an application with reader-scope keys must stay a system application'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS applications_reader_scope ON applications;
+CREATE TRIGGER applications_reader_scope
+    BEFORE UPDATE OF is_system ON applications
+    FOR EACH ROW EXECUTE FUNCTION applications_reader_scope_check();
+
 CREATE TABLE IF NOT EXISTS client_keys (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     plugin                      TEXT NOT NULL
@@ -86,13 +107,35 @@ CREATE TABLE IF NOT EXISTS installations (
     plugin_version       TEXT,
     site_url             TEXT,
     contact_email        TEXT,
-    rate_limit_per_hour  INTEGER DEFAULT 300,
+    rate_limit_per_hour  INTEGER DEFAULT 300
+                         CONSTRAINT installations_rate_limit_per_hour_check
+                         CHECK (rate_limit_per_hour IS NULL OR rate_limit_per_hour > 0),
     is_active            BOOLEAN NOT NULL DEFAULT TRUE,
     first_seen_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_seen_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- minutes with at least one request (updated at most once a minute);
+    -- request counts are in usage_daily
     request_count        BIGINT NOT NULL DEFAULT 0,
     UNIQUE (client_key_id, install_id)
 );
+-- the admin list's order and filters, revoke-batch and the hourly stats
+CREATE INDEX IF NOT EXISTS installations_first_seen_at_idx ON installations (first_seen_at);
+
+-- A zero or negative hourly limit would refuse every request. Databases
+-- that ran an earlier draft of this migration get the checks here.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                   WHERE conrelid = 'api_keys'::regclass AND conname = 'api_keys_rate_limit_per_hour_check') THEN
+        ALTER TABLE api_keys ADD CONSTRAINT api_keys_rate_limit_per_hour_check
+            CHECK (rate_limit_per_hour IS NULL OR rate_limit_per_hour > 0);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                   WHERE conrelid = 'installations'::regclass AND conname = 'installations_rate_limit_per_hour_check') THEN
+        ALTER TABLE installations ADD CONSTRAINT installations_rate_limit_per_hour_check
+            CHECK (rate_limit_per_hour IS NULL OR rate_limit_per_hour > 0);
+    END IF;
+END $$;
 
 -- credential_id is the nil UUID, with credential_type 'none', for requests
 -- served without a credential (staging, REQUIRE_CREDENTIALS=false).

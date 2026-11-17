@@ -160,6 +160,50 @@ final class ApiKeysSchemaTest extends DatabaseTestCase
         $pdo->rollBack();
     }
 
+    public function testSystemApplicationWithReaderKeysCannotStopBeingSystem(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->beginTransaction();
+        try {
+            $system = $this->newApplication(true);
+            $pdo->prepare("INSERT INTO api_keys (application_id, key_hash, key_prefix, name, scope) VALUES (?, ?, 'bg_x', 'k', 'reader')")
+                ->execute([$system, bin2hex(random_bytes(32))]);
+            try {
+                $pdo->prepare('UPDATE applications SET is_system = FALSE WHERE id = ?')->execute([$system]);
+                self::fail('Expected check_violation');
+            } catch (\PDOException $e) {
+                self::assertSame('23514', $e->getCode());
+            }
+        } finally {
+            $pdo->rollBack();
+        }
+
+        // Without reader keys the flag may change.
+        $pdo->beginTransaction();
+        try {
+            $system = $this->newApplication(true);
+            self::assertTrue($pdo->prepare('UPDATE applications SET is_system = FALSE WHERE id = ?')->execute([$system]));
+        } finally {
+            $pdo->rollBack();
+        }
+    }
+
+    public function testRateLimitsMustBePositive(): void
+    {
+        $this->expectSqlState('23514', function (): void {
+            $app = $this->newApplication(false);
+            $this->getConnection()->prepare(
+                "INSERT INTO api_keys (application_id, key_hash, key_prefix, name, rate_limit_per_hour) VALUES (?, ?, 'bg_x', 'k', 0)"
+            )->execute([$app, bin2hex(random_bytes(32))]);
+        });
+        $this->expectSqlState('23514', function (): void {
+            $this->getConnection()->prepare(
+                "INSERT INTO installations (client_key_id, install_id, token_hash, token_prefix, rate_limit_per_hour)
+                 VALUES (?, gen_random_uuid(), ?, 'bginst_x', -1)"
+            )->execute([$this->newClientKey(), bin2hex(random_bytes(32))]);
+        });
+    }
+
     public function testInstallationUniquePerClientKeyAndInstallId(): void
     {
         $pdo = $this->getConnection();
@@ -211,23 +255,51 @@ final class ApiKeysSchemaTest extends DatabaseTestCase
         self::assertContains('credential_id', $this->columns('requests_log__2099'));
     }
 
+    /** The newest requests_log__YYYY that exists (a new year's table is created on its first request). */
+    private function latestLogTable(): string
+    {
+        $t = $this->getConnection()->query(
+            "SELECT max(relname) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+             WHERE n.nspname = current_schema() AND c.relkind = 'r' AND relname ~ '^requests_log__[0-9]{4}$' AND relname < 'requests_log__2090'"
+        )->fetchColumn();
+        self::assertIsString($t, 'no requests_log__YYYY table');
+        return $t;
+    }
+
     public function testExistingYearlyLogTablesGotCredentialColumns(): void
     {
-        self::assertContains('credential_type', $this->columns('requests_log__' . date('Y')));
+        self::assertContains('credential_type', $this->columns($this->latestLogTable()));
+    }
+
+    /** @return list<string> constraint, trigger and index definitions on $table */
+    private function definitions(string $table): array
+    {
+        $stmt = $this->getConnection()->prepare(
+            "SELECT conname || ': ' || pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = ?::regclass
+             UNION ALL SELECT tgname || ': ' || pg_get_triggerdef(oid) FROM pg_trigger WHERE tgrelid = ?::regclass AND NOT tgisinternal
+             UNION ALL SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = ?
+             ORDER BY 1"
+        );
+        $stmt->execute([$table, $table, $table]);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     public function testMigrationIsIdempotent(): void
     {
         $before = [];
-        $tables = ['applications', 'api_keys', 'client_keys', 'installations', 'usage_daily', 'requests_log__' . date('Y')];
+        $tables = ['applications', 'api_keys', 'client_keys', 'installations', 'usage_daily', $this->latestLogTable()];
         foreach ($tables as $t) {
-            $before[$t] = $this->columns($t);
+            $before[$t] = [$this->columns($t), $this->definitions($t)];
         }
         $sql = (string) file_get_contents(self::MIGRATION);
         $this->getConnection()->exec($sql);
         $this->getConnection()->exec($sql);
         foreach ($tables as $t) {
-            self::assertSame($before[$t], $this->columns($t), $t);
+            self::assertSame($before[$t], [$this->columns($t), $this->definitions($t)], $t);
         }
+        self::assertContains(
+            'CREATE INDEX installations_first_seen_at_idx ON public.installations USING btree (first_seen_at)',
+            $this->definitions('installations')
+        );
     }
 }

@@ -9,6 +9,10 @@ use BibleGet\Api\Auth\CredentialType;
 
 class ClientKeyRepository
 {
+    /** Columns the admin routes show; never key_hash. */
+    private const PUBLIC_COLUMNS = 'c.id, c.plugin, c.plugin_version, c.key_prefix, c.is_active, c.created_at, c.revoked_at,
+                    c.max_registrations_per_hour';
+
     public function __construct(private readonly \PDO $db)
     {
     }
@@ -47,8 +51,6 @@ class ClientKeyRepository
         return ['plain' => $c['plain'], 'id' => Cast::string($stmt->fetchColumn())];
     }
 
-    private const PUBLIC_COLUMNS = 'id, plugin, plugin_version, key_prefix, is_active, created_at, revoked_at, max_registrations_per_hour';
-
     /**
      * Revokes an active client key; false when it does not exist or is already revoked.
      * Installations it registered keep working.
@@ -67,9 +69,10 @@ class ClientKeyRepository
      */
     public function find(string $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT ' . self::PUBLIC_COLUMNS . ' FROM client_keys WHERE id = :id');
+        $stmt = $this->db->prepare('SELECT ' . self::PUBLIC_COLUMNS . ' FROM client_keys c WHERE c.id = :id');
         $stmt->execute([':id' => $id]);
-        return Cast::row($stmt->fetch());
+        $row = Cast::row($stmt->fetch());
+        return $row === null ? null : self::publicRow($row);
     }
 
     /**
@@ -80,20 +83,29 @@ class ClientKeyRepository
     public function list(): array
     {
         $stmt = $this->db->query(
-            'SELECT c.id, c.plugin, c.plugin_version, c.key_prefix, c.is_active, c.created_at, c.revoked_at,
-                    c.max_registrations_per_hour,
+            'SELECT ' . self::PUBLIC_COLUMNS . ',
                     (SELECT count(*) FROM installations i WHERE i.client_key_id = c.id) AS installations
              FROM client_keys c ORDER BY c.created_at DESC'
         );
         if ($stmt === false) {
             return [];
         }
-        $rows = Cast::rows($stmt->fetchAll());
-        foreach ($rows as &$row) {
-            $row['installations']              = Cast::int($row['installations']);
-            $row['max_registrations_per_hour'] = Cast::int($row['max_registrations_per_hour']);
-            $row['is_active']                  = Cast::bool($row['is_active']);
+        $rows = [];
+        foreach (Cast::rows($stmt->fetchAll()) as $row) {
+            $row['installations'] = Cast::int($row['installations']);
+            $rows[]               = self::publicRow($row);
         }
         return $rows;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private static function publicRow(array $row): array
+    {
+        $row['max_registrations_per_hour'] = Cast::int($row['max_registrations_per_hour']);
+        $row['is_active']                  = Cast::bool($row['is_active']);
+        return $row;
     }
 }
