@@ -258,25 +258,64 @@ final class ReferenceTokenizer
         return $this->atVerseLevel ? TokenType::VERSE_NUMBER : TokenType::CHAPTER_NUMBER;
     }
 
+    /**
+     * Read the letters that name parts of a verse, right after a verse number (#42, #211).
+     *
+     * Liturgical books cite parts of a verse with lowercase letters: one part ("3a"), several
+     * consecutive parts ("11ab", "3bc"), or a span of parts ("1b-e", verse 1 from part b to
+     * part e). All three are one PARTIAL_VERSE_SUFFIX token, whose value is the letters as
+     * written ("a", "ab", "b-e"); the verse itself is what is queried.
+     *
+     * The letters must run in alphabetical order without a gap ("ab", "bcd"), and a span must
+     * end on a later letter than it starts. Anything else ("3ex") is left for the book-name
+     * reader, as before, so a misplaced word is still reported as a notation error.
+     */
     private function readPartialVerseSuffix(): void
     {
-        if ($this->pos >= $this->length) {
+        $run = $this->verseLetterRunAt($this->pos);
+        if ($run === null) {
             return;
         }
 
-        // A partial verse suffix is a single lowercase ASCII letter immediately after a verse number,
-        // but NOT if it starts a book name (i.e., not if followed by more letters)
-        $ch = $this->input[$this->pos];
-        if ($ch >= 'a' && $ch <= 'z') {
-            // Check the character after this one — if it's also a letter, this is likely
-            // a book name, not a partial verse suffix
-            $nextPos = $this->pos + 1;
-            if ($nextPos < $this->length && $this->isLetterStart($nextPos)) {
-                return;
+        $startPos = $this->pos;
+        $suffix   = $run;
+        $end      = $this->pos + strlen($run);
+
+        // A span of parts within the same verse: "1b-e". A digit after the hyphen is a verse
+        // range ("1b-2a") and is left to the range separator.
+        if ($end < $this->length && $this->input[$end] === '-') {
+            $to = $this->verseLetterRunAt($end + 1);
+            if ($to !== null && strlen($to) === 1 && $to > $run[strlen($run) - 1]) {
+                $suffix .= '-' . $to;
+                $end    += 2;
             }
-            $this->tokens[] = new Token(TokenType::PARTIAL_VERSE_SUFFIX, $ch, $this->pos);
-            $this->pos++;
         }
+
+        $this->tokens[] = new Token(TokenType::PARTIAL_VERSE_SUFFIX, $suffix, $startPos);
+        $this->pos      = $end;
+    }
+
+    /**
+     * The run of verse-part letters at $pos: lowercase ASCII letters in alphabetical order
+     * without a gap ("a", "ab", "bcd"), not followed by a further letter of any script.
+     * Null when there is none.
+     */
+    private function verseLetterRunAt(int $pos): ?string
+    {
+        if (preg_match('/\G[a-z]+/', $this->input, $m, 0, $pos) !== 1) {
+            return null;
+        }
+        $run = $m[0];
+        $end = $pos + strlen($run);
+        if ($end < $this->length && $this->isLetterStart($end)) {
+            return null;
+        }
+        for ($i = 1, $n = strlen($run); $i < $n; $i++) {
+            if (ord($run[$i]) !== ord($run[$i - 1]) + 1) {
+                return null;
+            }
+        }
+        return $run;
     }
 
     private function readAlternateChapter(): void
