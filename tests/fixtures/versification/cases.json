@@ -1376,6 +1376,44 @@
       }
     },
     {
+      "id": "nabre-psalm-2-11",
+      "kind": "split-verse",
+      "summary": "NABRE prints Ps 2 in 11 verses: it emends the obscure Hebrew of 2:11b-12a ('kiss the son') to 'Accept correction' and numbers the rest of the psalm, 'Blessed are all who take refuge in him!' included, as verse 11 (SCML: no <bcv>12</bcv>; bible.usccb.org; the introduction note cites 'Ps 2:10-11', endnote g on 2:11 cross-references the 'refuge' beatitudes). A Hebrew 2:12 is inside NABRE 2:11. Checked in #217. As printed, not a defect.",
+      "expect": {
+        "NABRE": {
+          "23 2": "1-11"
+        },
+        "CEI2008": {
+          "23 2": "1-12"
+        }
+      }
+    },
+    {
+      "id": "nvbse-psalm-verse-division",
+      "kind": "split-verse",
+      "summary": "vatican.va's Nova Vulgata ends Ps 12, 44, 60 and 150 one verse short: the Hebrew last verse (12:9 'In circuitu impii', 44:27 'Exsurge, Domine', 150:6 'omne quod spirat') is printed inside the verse before, and in Ps 60 'Da nobis auxilium' (Hebrew 13) closes v. 12, so Hebrew 14 is v. 13 (the same lines are 108:13-14). It splits Hebrew 94:23 into 23-24, and Ps 72 ends at v. 19 with no 'Defecerunt' (Hebrew 72:20). Checked against vatican.va in #217; the printed edition is unchecked. As the source prints it, not a defect.",
+      "expect": {
+        "NVBSE": {
+          "23 12": "1-8",
+          "23 44": "1-26",
+          "23 60": "1-13",
+          "23 72": "1-19",
+          "23 94": "1-24",
+          "23 108": "1-14",
+          "23 150": "1-5"
+        },
+        "CEI2008": {
+          "23 12": "1-9",
+          "23 44": "1-27",
+          "23 60": "1-14",
+          "23 72": "1-20",
+          "23 94": "1-23",
+          "23 108": "1-14",
+          "23 150": "1-6"
+        }
+      }
+    },
+    {
       "id": "blpd-printed-order",
       "kind": "reordered",
       "summary": "BLPD (El Libro del Pueblo de Dios) moves verses or repeats them where its translators restored the order of the original or a parallel (e.g. Gn 47:5-6, 1 Sam 9:9, Is 7:8-9). Stored in the order vatican.va prints them (#185, checked in migration 039). Job 24, 26, 29, 31 and Is 38, where vatican.va's order is in question, are tracked in #192.",
