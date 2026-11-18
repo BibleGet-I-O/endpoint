@@ -187,6 +187,8 @@ final class IssueRegressionTokenizerTest extends TestCase
         return [
             'a word'               => ['Psalm51,3ex', 'ex'],
             'letters out of order' => ['Psalm51,3ba', 'ba'],
+            // A decomposed accent (U+0301) makes "abc" the start of a word, as "abć" is.
+            'a combining mark'     => ["Psalm51,3abc\u{0301}", "abc\u{0301}"],
         ];
     }
 

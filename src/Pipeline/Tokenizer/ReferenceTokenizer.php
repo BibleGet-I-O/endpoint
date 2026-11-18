@@ -297,8 +297,9 @@ final class ReferenceTokenizer
 
     /**
      * The run of verse-part letters at $pos: lowercase ASCII letters in alphabetical order
-     * without a gap ("a", "ab", "bcd"), not followed by a further letter of any script.
-     * Null when there is none.
+     * without a gap ("a", "ab", "bcd"), not followed by a further letter of any script or by a
+     * combining mark (a decomposed "abć" is a word, as the precomposed one is). Null when
+     * there is none.
      */
     private function verseLetterRunAt(int $pos): ?string
     {
@@ -307,7 +308,7 @@ final class ReferenceTokenizer
         }
         $run = $m[0];
         $end = $pos + strlen($run);
-        if ($end < $this->length && $this->isLetterStart($end)) {
+        if ($end < $this->length && preg_match('/\G[\p{L}\p{M}]/u', $this->input, $mark, 0, $end) === 1) {
             return null;
         }
         for ($i = 1, $n = strlen($run); $i < $n; $i++) {
