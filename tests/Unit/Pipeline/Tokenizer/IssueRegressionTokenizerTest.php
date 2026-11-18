@@ -7,6 +7,7 @@ namespace BibleGet\Tests\Unit\Pipeline\Tokenizer;
 use BibleGet\Api\Pipeline\Tokenizer\ReferenceTokenizer;
 use BibleGet\Api\Pipeline\Tokenizer\Token;
 use BibleGet\Api\Pipeline\Tokenizer\TokenType;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -119,5 +120,90 @@ final class IssueRegressionTokenizerTest extends TestCase
             [TokenType::RANGE_SEPARATOR, '-'],
             [TokenType::VERSE_NUMBER, '3'],
         ], $result);
+    }
+
+    /**
+     * Issue #211: several consecutive parts of a verse ("11ab") are one suffix.
+     */
+    public function testIssue211MultiLetterVerseSuffix(): void
+    {
+        $result = $this->typeValues('Psalm16,10-11ab');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Psalm'],
+            [TokenType::CHAPTER_NUMBER, '16'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '10'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::VERSE_NUMBER, '11'],
+            [TokenType::PARTIAL_VERSE_SUFFIX, 'ab'],
+        ], $result);
+    }
+
+    /**
+     * Issue #211: a span of parts within one verse ("1b-e") is one suffix,
+     * not a range to a book named "e".
+     */
+    public function testIssue211VerseSuffixSpan(): void
+    {
+        $result = $this->typeValues('Psalm110,1b-e.2.3');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Psalm'],
+            [TokenType::CHAPTER_NUMBER, '110'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '1'],
+            [TokenType::PARTIAL_VERSE_SUFFIX, 'b-e'],
+            [TokenType::EXPLICIT_VERSE_SEPARATOR, '.'],
+            [TokenType::VERSE_NUMBER, '2'],
+            [TokenType::EXPLICIT_VERSE_SEPARATOR, '.'],
+            [TokenType::VERSE_NUMBER, '3'],
+        ], $result);
+    }
+
+    /**
+     * Issue #211: a hyphen followed by a digit after a suffix is still a verse range.
+     */
+    public function testIssue211SuffixFollowedByVerseRange(): void
+    {
+        $result = $this->typeValues('Psalm51,3ab-4');
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Psalm'],
+            [TokenType::CHAPTER_NUMBER, '51'],
+            [TokenType::CHAPTER_VERSE_SEPARATOR, ','],
+            [TokenType::VERSE_NUMBER, '3'],
+            [TokenType::PARTIAL_VERSE_SUFFIX, 'ab'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::VERSE_NUMBER, '4'],
+        ], $result);
+    }
+
+    /**
+     * Issue #211: letters that are not consecutive parts of a verse ("ex", "ba")
+     * are not a suffix; they are left to the book-name reader, as before.
+     *
+     * @return array<string, array{string, string}>
+     */
+    public static function lettersThatAreNotASuffix(): array
+    {
+        return [
+            'a word'               => ['Psalm51,3ex', 'ex'],
+            'letters out of order' => ['Psalm51,3ba', 'ba'],
+            // A decomposed accent (U+0301) makes "abc" the start of a word, as "abć" is.
+            'a combining mark'     => ["Psalm51,3abc\u{0301}", "abc\u{0301}"],
+        ];
+    }
+
+    #[DataProvider('lettersThatAreNotASuffix')]
+    public function testIssue211LettersThatAreNotASuffixAreNotOne(string $input, string $letters): void
+    {
+        $result = $this->typeValues($input);
+        $this->assertNotContains([TokenType::PARTIAL_VERSE_SUFFIX, $letters], $result);
+        $this->assertContains([TokenType::BOOK_NAME, $letters], $result);
+    }
+
+    public function testIssue211SpanMustEndOnALaterPart(): void
+    {
+        $result = $this->typeValues('Psalm51,3a-a');
+        $this->assertContains([TokenType::PARTIAL_VERSE_SUFFIX, 'a'], $result);
+        $this->assertNotContains([TokenType::PARTIAL_VERSE_SUFFIX, 'a-a'], $result);
     }
 }

@@ -9,6 +9,7 @@ use BibleGet\Api\Pipeline\QueryValidator;
 use BibleGet\Api\Pipeline\QueryFormulator;
 use BibleGet\Api\Pipeline\QueryExecutor;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * End-to-end regression tests proving that reported issues are resolved.
@@ -166,5 +167,34 @@ class IssueRegressionPipelineTest extends DatabaseTestCase
         self::assertNotEmpty($ctx->results, 'Valid second query should return results');
         self::assertEquals(2, $ctx->results[0]['chapter']);
         self::assertEquals(1, $ctx->results[0]['verse']);
+    }
+
+    /**
+     * Issue #211: multi-letter suffixes and spans of parts, as liturgical books
+     * write them, return the verses they belong to.
+     *
+     * @return array<string, array{string, int[]}>
+     */
+    public static function liturgicalVerseSuffixes(): array
+    {
+        return [
+            'consecutive parts'      => ['Genesis2,4ab', [4]],
+            'range to several parts' => ['Genesis2,4-5ab', [4, 5]],
+            'span of parts'          => ['Genesis2,4b-e', [4]],
+            'span then more verses'  => ['Genesis2,4b-e.6.7', [4, 6, 7]],
+            'parts then a range'     => ['Genesis2,4bc-6', [4, 5, 6]],
+        ];
+    }
+
+    /**
+     * @param int[] $verses
+     */
+    #[DataProvider('liturgicalVerseSuffixes')]
+    public function testIssue211MultiLetterVerseSuffixes(string $query, array $verses): void
+    {
+        $ctx = $this->executePipeline($query);
+
+        self::assertEmpty($ctx->errors, 'Expected no errors: ' . print_r($ctx->errors, true));
+        self::assertSame($verses, array_map(static fn(array $r): int => (int) $r['verse'], $ctx->results));
     }
 }
