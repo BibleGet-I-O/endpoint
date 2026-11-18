@@ -9,6 +9,7 @@ use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
 use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\Tokenizer\Token;
+use BibleGet\Api\Pipeline\Transform\PsalmNumbering;
 use BibleGet\Api\Pipeline\Tokenizer\TokenType;
 use BibleGet\Api\Util\StringUtils;
 
@@ -21,6 +22,10 @@ use BibleGet\Api\Util\StringUtils;
  * - Verse numbers are within bounds for the chapter (per version)
  * - Range start <= range end
  * - Cross-chapter range chapters are in order
+ *
+ * A Psalm reference is checked against each version as that version stores it
+ * (PsalmNumbering): "Salmo 131 (132), 6-7" is Hebrew 132 in CEI2008 and
+ * Vulgate 131 in VGCL, and each must exist where it is looked up.
  */
 final class AstValidator
 {
@@ -46,6 +51,8 @@ final class AstValidator
     /** @var array<int, string> */
     private array $validatedVariants = [];
 
+    private PsalmNumbering $psalmNumbering;
+
     /**
      * @param array<int, array<int, array<int, string>>> $bibleBooks
      * @param array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> $indexes
@@ -56,6 +63,7 @@ final class AstValidator
         $this->bibleBooks        = $bibleBooks;
         $this->indexes           = $indexes;
         $this->requestedVersions = $requestedVersions;
+        $this->psalmNumbering    = new PsalmNumbering();
     }
 
     /**
@@ -110,12 +118,14 @@ final class AstValidator
             return null;
         }
 
-        // Validate each segment
-        foreach ($query->segments as $segment) {
-            if ($segment instanceof VerseRef) {
-                $this->validateVerseRef($segment, $nonZeroBookIdx);
-            } elseif ($segment instanceof VerseRange) {
-                $this->validateVerseRange($segment, $nonZeroBookIdx);
+        // Shape (numbers >= 1, ranges in order), once, on the reference as written
+        // with Psalms read as Hebrew numbers; then bounds, per version, on the
+        // reference as that version stores it.
+        $resolvedQuery = new BibleQuery($nonZeroBookIdx, $query->segments);
+        $this->validateShape($this->psalmNumbering->resolve($resolvedQuery, ''));
+        if (empty($this->errors)) {
+            foreach ($this->validatedVariants as $variant) {
+                $this->validateBounds($this->psalmNumbering->resolve($resolvedQuery, $variant), $nonZeroBookIdx, $variant);
             }
         }
 
@@ -214,21 +224,34 @@ final class AstValidator
         return $this->foldedBibleBooks;
     }
 
-    private function validateVerseRef(VerseRef $ref, int $nonZeroBookIdx): void
+    /**
+     * Numbers are 1 or greater, and every range runs forward.
+     */
+    private function validateShape(BibleQuery $query): void
     {
-        $this->validateChapter($ref->chapter, $nonZeroBookIdx, $ref->position);
-
-        if ($ref->verse !== null) {
-            $this->validateVerse($ref->verse, $ref->chapter, $nonZeroBookIdx, $ref->position);
+        foreach ($query->segments as $segment) {
+            $refs = $segment instanceof VerseRange ? [$segment->from, $segment->to] : [$segment];
+            foreach ($refs as $ref) {
+                if ($ref->chapter < 1) {
+                    $this->errors[] = new ValidationError(
+                        sprintf('Invalid chapter number: %d. Chapters must be 1 or greater.', $ref->chapter),
+                        $ref->position
+                    );
+                } elseif ($ref->verse !== null && $ref->verse < 1) {
+                    $this->errors[] = new ValidationError(
+                        sprintf('Invalid verse number: %d. Verses must be 1 or greater.', $ref->verse),
+                        $ref->position
+                    );
+                }
+            }
+            if ($segment instanceof VerseRange) {
+                $this->validateRangeOrder($segment);
+            }
         }
     }
 
-    private function validateVerseRange(VerseRange $range, int $nonZeroBookIdx): void
+    private function validateRangeOrder(VerseRange $range): void
     {
-        $this->validateVerseRef($range->from, $nonZeroBookIdx);
-        $this->validateVerseRef($range->to, $nonZeroBookIdx);
-
-        // Check range ordering
         if ($range->from->chapter > $range->to->chapter) {
             $this->errors[] = new ValidationError(
                 sprintf(
@@ -256,78 +279,74 @@ final class AstValidator
         }
     }
 
-    private function validateChapter(int $chapter, int $nonZeroBookIdx, int $position = -1): void
+    /**
+     * Every chapter and verse exists in $variant.
+     */
+    private function validateBounds(BibleQuery $query, int $nonZeroBookIdx, string $variant): void
     {
-        if ($chapter < 1) {
-            $this->errors[] = new ValidationError(
-                sprintf('Invalid chapter number: %d. Chapters must be 1 or greater.', $chapter),
-                $position
-            );
-            return;
-        }
-
-        foreach ($this->validatedVariants as $variant) {
-            if (!isset($this->indexes[$variant])) {
-                continue;
-            }
-            $index   = $this->indexes[$variant];
-            $bookidx = array_search($nonZeroBookIdx, $index['book_num'], true);
-            if ($bookidx === false) {
-                continue;
-            }
-            $chapterLimit = $index['chapter_limit'][$bookidx] ?? 0;
-            if ($chapter > $chapterLimit) {
-                $this->errors[] = new ValidationError(
-                    sprintf(
-                        'A chapter in the query is out of bounds: there is no chapter <%d> in the book in the requested version %s, the last possible chapter is <%d>',
-                        $chapter,
-                        $variant,
-                        $chapterLimit
-                    ),
-                    $position
-                );
+        foreach ($query->segments as $segment) {
+            $refs = $segment instanceof VerseRange ? [$segment->from, $segment->to] : [$segment];
+            foreach ($refs as $ref) {
+                $this->validateChapter($ref->chapter, $nonZeroBookIdx, $variant, $ref->position);
+                if ($ref->verse !== null) {
+                    $this->validateVerse($ref->verse, $ref->chapter, $nonZeroBookIdx, $variant, $ref->position);
+                }
             }
         }
     }
 
-    private function validateVerse(int $verse, int $chapter, int $nonZeroBookIdx, int $position = -1): void
+    private function validateChapter(int $chapter, int $nonZeroBookIdx, string $variant, int $position = -1): void
     {
-        if ($verse < 1) {
-            $this->errors[] = new ValidationError(
-                sprintf('Invalid verse number: %d. Verses must be 1 or greater.', $verse),
-                $position
-            );
+        if (!isset($this->indexes[$variant])) {
             return;
         }
+        $index   = $this->indexes[$variant];
+        $bookidx = array_search($nonZeroBookIdx, $index['book_num'], true);
+        if ($bookidx === false) {
+            return;
+        }
+        $chapterLimit = $index['chapter_limit'][$bookidx] ?? 0;
+        if ($chapter > $chapterLimit) {
+            $this->errors[] = new ValidationError(
+                sprintf(
+                    'A chapter in the query is out of bounds: there is no chapter <%d> in the book in the requested version %s, the last possible chapter is <%d>',
+                    $chapter,
+                    $variant,
+                    $chapterLimit
+                ),
+                $position
+            );
+        }
+    }
 
-        foreach ($this->validatedVariants as $variant) {
-            if (!isset($this->indexes[$variant])) {
-                continue;
-            }
-            $index   = $this->indexes[$variant];
-            $bookidx = array_search($nonZeroBookIdx, $index['book_num'], true);
-            if ($bookidx === false) {
-                continue;
-            }
-            $chapterLimit = $index['chapter_limit'][$bookidx];
-            if ($chapter > $chapterLimit) {
-                // Already reported by validateChapter
-                continue;
-            }
-            $verseLimits = $index['verse_limit'][$bookidx] ?? [];
-            $verseLimit  = $verseLimits[$chapter - 1] ?? 0;
-            if ($verse > $verseLimit) {
-                $this->errors[] = new ValidationError(
-                    sprintf(
-                        'A verse in the query is out of bounds: there is no verse <%d> at chapter <%d> in the requested version %s, the last possible verse is <%d>',
-                        $verse,
-                        $chapter,
-                        $variant,
-                        $verseLimit
-                    ),
-                    $position
-                );
-            }
+    private function validateVerse(int $verse, int $chapter, int $nonZeroBookIdx, string $variant, int $position = -1): void
+    {
+        if (!isset($this->indexes[$variant])) {
+            return;
+        }
+        $index   = $this->indexes[$variant];
+        $bookidx = array_search($nonZeroBookIdx, $index['book_num'], true);
+        if ($bookidx === false) {
+            return;
+        }
+        $chapterLimit = $index['chapter_limit'][$bookidx];
+        if ($chapter > $chapterLimit) {
+            // Already reported by validateChapter
+            return;
+        }
+        $verseLimits = $index['verse_limit'][$bookidx] ?? [];
+        $verseLimit  = $verseLimits[$chapter - 1] ?? 0;
+        if ($verse > $verseLimit) {
+            $this->errors[] = new ValidationError(
+                sprintf(
+                    'A verse in the query is out of bounds: there is no verse <%d> at chapter <%d> in the requested version %s, the last possible verse is <%d>',
+                    $verse,
+                    $chapter,
+                    $variant,
+                    $verseLimit
+                ),
+                $position
+            );
         }
     }
 }

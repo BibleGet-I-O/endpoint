@@ -139,6 +139,25 @@ final class ReferenceParserTest extends TestCase
 
     // ── Dual Psalm numbering ──────────────────────────────────────
 
+    public function testVersesAfterADotKeepTheAlternateChapter(): void
+    {
+        // #210: in "Psalm 88 (89), 2-3.4" verse 4 belongs to 88 (89), not to a bare 88.
+        $q = $this->parse('Psalm88(89),2-3.4-5');
+        $this->assertCount(2, $q->segments);
+        $seg = $q->segments[1];
+        $this->assertInstanceOf(VerseRange::class, $seg);
+        $this->assertSame(88, $seg->from->chapter);
+        $this->assertSame(89, $seg->from->alternateChapter);
+        $this->assertSame(89, $seg->to->alternateChapter);
+    }
+
+    public function testVersesAfterADotWithoutAlternateChapterHaveNone(): void
+    {
+        $q = $this->parse('Psalm88,2.4');
+        $this->assertInstanceOf(VerseRef::class, $q->segments[1]);
+        $this->assertNull($q->segments[1]->alternateChapter);
+    }
+
     public function testDualPsalmNumbering(): void
     {
         $q   = $this->parse('Psalm51(50),1');
