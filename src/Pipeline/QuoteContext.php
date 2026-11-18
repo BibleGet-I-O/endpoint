@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Pipeline;
 
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
@@ -24,19 +25,16 @@ class QuoteContext
 
     /** @var array<int|string, string> */
     public static array $errorMessages = [
-        0  => 'The first query must start with a valid book indicator.',
-        1  => 'You must have a valid chapter following a book indicator.',
-        2  => 'The book indicator is not valid. Please check the documentation for a list of correct book indicators.',
-        3  => 'You cannot request discontinuous verses without first indicating a chapter for the discontinuous verses.',
-        4  => 'A request for discontinuous verses must contain two valid verse numbers on either side of a discontinuous verse indicator.',
-        5  => 'A chapter-verse separator must be preceded by a valid chapter number and followed by a valid verse number.',
-        6  => 'A request for a range of verses must contain two valid verse numbers on either side of a verse range indicator.',
-        7  => 'If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.',
-        8  => 'Multiple verse ranges have been requested, but there are not enough verse separators. Multiple verse ranges assume there are verse separators that connect them.',
-        9  => 'Notation Error. Please check your citation notation.',
-        10 => 'Please use a caching mechanism, you seem to be submitting numerous requests for the same query.',
-        11 => 'You are submitting too many requests with the same query. You must use a caching mechanism. Once you have implemented a caching mechanism you may have to wait a couple of days before getting service again. Otherwise contact the service management to request service again.',
-        12 => 'You are submitting a very large amount of requests to the endpoint. Please slow down. If you believe there has been an error you may contact the service management.',
+        0 => 'The first query must start with a valid book indicator.',
+        1 => 'You must have a valid chapter following a book indicator.',
+        2 => 'The book indicator is not valid. Please check the documentation for a list of correct book indicators.',
+        3 => 'You cannot request discontinuous verses without first indicating a chapter for the discontinuous verses.',
+        4 => 'A request for discontinuous verses must contain two valid verse numbers on either side of a discontinuous verse indicator.',
+        5 => 'A chapter-verse separator must be preceded by a valid chapter number and followed by a valid verse number.',
+        6 => 'A request for a range of verses must contain two valid verse numbers on either side of a verse range indicator.',
+        7 => 'If there is a chapter-verse construct following a dash, there must also be a chapter-verse construct preceding the same dash.',
+        8 => 'Multiple verse ranges have been requested, but there are not enough verse separators. Multiple verse ranges assume there are verse separators that connect them.',
+        9 => 'Notation Error. Please check your citation notation.',
     ];
 
     /** @var array<string, string> */
@@ -44,22 +42,16 @@ class QuoteContext
         'query'          => '',
         'return'         => '',
         'version'        => '',
-        'domain'         => '',
-        'appid'          => '',
-        'pluginversion'  => '',
-        'forceversion'   => '',
-        'forcecopyright' => '',
         'text_tradition' => '',
     ];
 
     public \PDO $pdo;
     public LoggerInterface $logger;
     public string $detectedNotation = 'ENGLISH';
-    /** @var array<string> */
-    public array $WhitelistedDomainsIPs      = [];
-    public string $jsonEncodedRequestHeaders = '';
-    public string $originHeader              = '';
-    public string $requestMethod             = '';
+    public string $originHeader     = '';
+    public string $requestMethod    = '';
+    /** The request's credential; null when credentials are not required and none was sent. */
+    public ?Credential $credential = null;
 
     /** @var array<int, string> */
     public array $queries = [];
@@ -87,8 +79,8 @@ class QuoteContext
     public array $CATHOLIC_VERSIONS = [];
     /** @var array<int, string> */
     public array $REQUESTED_VERSIONS = [];
-    /** @var array<int, string> */
-    public array $REQUESTED_COPYRIGHTED_VERSIONS = [];
+    /** @var array<int, string> Editions the `reader` scope may serve whole (versions_available.reader_full_text). */
+    public array $READER_FULL_TEXT_VERSIONS = [];
     /** @var array<int, array<int, array<int, string>>> */
     public array $BIBLEBOOKS = [];
     /** @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> */
@@ -123,15 +115,40 @@ class QuoteContext
     /**
      * @param array<string, string> $params
      */
-    public function __construct(array $params, ?LoggerInterface $logger = null, string $originHeader = '', string $requestMethod = 'GET', string $requestHeadersJson = '')
+    public function __construct(array $params, ?LoggerInterface $logger = null, string $originHeader = '', string $requestMethod = 'GET', ?Credential $credential = null)
     {
-        $this->DATA                      = array_merge(self::$defaultParameters, $params);
-        $textTraditionUpper              = strtoupper($this->DATA['text_tradition']);
-        $this->DATA['text_tradition']    = in_array($textTraditionUpper, self::ALLOWED_TEXT_TRADITIONS, true) ? $textTraditionUpper : '';
-        $this->logger                    = $logger ?? new NullLogger();
-        $this->originHeader              = $originHeader;
-        $this->requestMethod             = $requestMethod;
-        $this->jsonEncodedRequestHeaders = $requestHeadersJson;
+        $this->DATA                   = array_merge(self::$defaultParameters, $params);
+        $textTraditionUpper           = strtoupper($this->DATA['text_tradition']);
+        $this->DATA['text_tradition'] = in_array($textTraditionUpper, self::ALLOWED_TEXT_TRADITIONS, true) ? $textTraditionUpper : '';
+        $this->logger                 = $logger ?? new NullLogger();
+        $this->originHeader           = $originHeader;
+        $this->requestMethod          = $requestMethod;
+        $this->credential             = $credential;
+    }
+
+    /**
+     * Whether this request may have $sigla whole, past the 30-verse limit on
+     * copyrighted editions: only a `reader`-scope credential, and only on an
+     * edition flagged reader_full_text.
+     */
+    public function fullTextAllowed(string $sigla): bool
+    {
+        return $this->credential !== null
+            && $this->credential->scope === 'reader'
+            && in_array($sigla, $this->READER_FULL_TEXT_VERSIONS, true);
+    }
+
+    /**
+     * The copyrighted editions this request gets at most 30 verses of.
+     *
+     * @return array<int, string>
+     */
+    public function copyrightLimitedVersions(): array
+    {
+        return array_values(array_filter(
+            $this->COPYRIGHT_VERSIONS,
+            fn (string $sigla): bool => !$this->fullTextAllowed($sigla)
+        ));
     }
 
     /**
@@ -139,8 +156,7 @@ class QuoteContext
      */
     public function initialize(): void
     {
-        $this->pdo                   = Connection::getConnection();
-        $this->WhitelistedDomainsIPs = Connection::getWhitelistedDomainsIPs();
+        $this->pdo = Connection::getConnection();
         $this->populateVersionsInfo();
         $this->prepareBibleBooks();
         $this->prepareRequestedVersions();
@@ -352,6 +368,9 @@ class QuoteContext
             if (StringUtils::asInt($row['copyright']) === 1) {
                 $this->COPYRIGHT_VERSIONS[] = $sigla;
             }
+            if (in_array($row['reader_full_text'] ?? false, [true, 't', 1, '1'], true)) {
+                $this->READER_FULL_TEXT_VERSIONS[] = $sigla;
+            }
             if ($row['canon'] === 'CATHOLIC') {
                 $this->CATHOLIC_VERSIONS[] = $sigla;
             } elseif ($row['canon'] === 'PROTESTANT') {
@@ -448,31 +467,10 @@ class QuoteContext
             : ['CEI2008'];
 
         foreach ($temp as $version) {
-            if (isset($this->DATA['forceversion']) && filter_var($this->DATA['forceversion'], FILTER_VALIDATE_BOOLEAN)) {
-                if (!preg_match('/^[A-Za-z0-9_]+$/', $version)) {
-                    $this->addErrorMessage('Invalid version identifier format: <' . $version . '>');
-                    continue;
-                }
-                try {
-                    $idxCheck = $this->pdo->query('SELECT 1 FROM "' . $version . '_idx" LIMIT 1');
-                } catch (\PDOException) {
-                    $idxCheck = false;
-                }
-                if ($idxCheck === false) {
-                    $this->addErrorMessage('No index table found for forced version: <' . $version . '>');
-                    continue;
-                }
+            if ($this->isValidVersion($version)) {
                 $this->REQUESTED_VERSIONS[] = $version;
             } else {
-                if ($this->isValidVersion($version)) {
-                    $this->REQUESTED_VERSIONS[] = $version;
-                } else {
-                    $this->addErrorMessage('Not a valid version: <' . $version . '>, valid versions are <' . implode(' | ', $this->VALID_VERSIONS) . '>');
-                    continue;
-                }
-            }
-            if (isset($this->DATA['forcecopyright']) && filter_var($this->DATA['forcecopyright'], FILTER_VALIDATE_BOOLEAN)) {
-                $this->REQUESTED_COPYRIGHTED_VERSIONS[] = $version;
+                $this->addErrorMessage('Not a valid version: <' . $version . '>, valid versions are <' . implode(' | ', $this->VALID_VERSIONS) . '>');
             }
         }
 

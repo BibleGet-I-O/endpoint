@@ -18,9 +18,14 @@ use Psr\Http\Message\ServerRequestInterface;
  *
  * When CORS_ALLOWED_ORIGINS is unset or empty, any origin is treated as
  * allowed (preserving the previous open behaviour).
+ *
+ * Every response exposes the rate-limit headers (X-RateLimit-*, Retry-After)
+ * to browser scripts, which otherwise only see the CORS-safelisted ones.
  */
 class CorsPolicy
 {
+    public const EXPOSED_HEADERS = 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After';
+
     /** @var string[] */
     private array $allowedOrigins;
 
@@ -34,7 +39,8 @@ class CorsPolicy
 
     public function applyHeaders(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $origin = $request->getHeaderLine('Origin');
+        $origin   = $request->getHeaderLine('Origin');
+        $response = $response->withHeader('Access-Control-Expose-Headers', self::EXPOSED_HEADERS);
 
         if ($origin === '') {
             return $response->withHeader('Access-Control-Allow-Origin', '*');

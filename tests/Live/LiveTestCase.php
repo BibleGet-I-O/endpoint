@@ -14,9 +14,11 @@ use PHPUnit\Framework\TestCase;
  * Copyrighted editions' text never goes into these tests: they assert
  * structure and, where the words matter, an md5 of the returned text.
  *
- * The API rate-limits identical queries from one IP (more than 10 in two
- * days). A rate-limited response skips the test with that reason instead of
- * failing it; a fresh CI runner sends each query once.
+ * When the staging API requires credentials (REQUIRE_CREDENTIALS), set
+ * BIBLEGET_LIVE_API_KEY to a project key: it is sent as X-Api-Key. Without it
+ * no header is sent, and redirects are never followed (they would carry the
+ * key along). A rate-limited response (429) skips the test with that reason
+ * instead of failing it.
  */
 abstract class LiveTestCase extends TestCase
 {
@@ -36,12 +38,20 @@ abstract class LiveTestCase extends TestCase
      */
     protected static function liveGet(string $path): array
     {
+        $apiKey  = getenv('BIBLEGET_LIVE_API_KEY');
+        $headers = "User-Agent: BibleGet-LiveTests/1.0\r\nAccept: application/json\r\n";
+        if (is_string($apiKey) && $apiKey !== '') {
+            $headers .= "X-Api-Key: {$apiKey}\r\n";
+        }
         $context = stream_context_create([
             'http' => [
-                'method'        => 'GET',
-                'header'        => "User-Agent: BibleGet-LiveTests/1.0\r\nAccept: application/json\r\n",
-                'ignore_errors' => true,
-                'timeout'       => 30,
+                'method'          => 'GET',
+                'header'          => $headers,
+                'ignore_errors'   => true,
+                'timeout'         => 30,
+                // Never follow a redirect: PHP would resend X-Api-Key to
+                // wherever it points, even another origin.
+                'follow_location' => 0,
             ]
         ]);
         $raw     = file_get_contents(self::$baseUrl . $path, false, $context);
@@ -55,13 +65,8 @@ abstract class LiveTestCase extends TestCase
             self::markTestSkipped('Rate limited by the API: ' . $path);
         }
         $body = is_string($raw) ? json_decode($raw, true) : null;
-        self::assertIsArray($body, 'Not a JSON object from ' . $path);
+        self::assertIsArray($body, "Not a JSON object from {$path} (HTTP {$status})");
         /** @var array<string, mixed> $body */
-        foreach (is_array($body['errors'] ?? null) ? $body['errors'] : [] as $err) {
-            if (is_array($err) && ( $err['errNum'] ?? null ) === 10) {
-                self::markTestSkipped('Rate limited by the API: ' . $path);
-            }
-        }
         return ['status' => $status, 'body' => $body];
     }
 

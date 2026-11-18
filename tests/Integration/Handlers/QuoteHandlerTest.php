@@ -15,18 +15,6 @@ use Nyholm\Psr7\Stream;
 
 class QuoteHandlerTest extends DatabaseTestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
-    }
-
-    protected function tearDown(): void
-    {
-        unset($_SERVER['REMOTE_ADDR']);
-        parent::tearDown();
-    }
-
     private function createHandler(): QuoteHandler
     {
         $handler = new QuoteHandler(new Psr17Factory());

@@ -18,11 +18,37 @@ abstract class ServerTestCase extends TestCase
     protected static int $port    = 8199; // non-standard port to avoid conflicts
     protected static string $baseUrl;
 
-    /** @var int|null */
-    private static ?int $serverPid = null;
+    /**
+     * Running servers keyed by port, so a subclass that needs a differently
+     * configured server (see serverEnv()) gets its own process.
+     *
+     * @var array<int, array{pid: int, process: resource}>
+     */
+    private static array $servers = [];
 
-    /** @var resource|null */
-    private static $serverProcess = null;
+    /** @var array<int, class-string> the class that claimed each own port */
+    private static array $portOwners = [];
+
+    /**
+     * Extra environment for the spawned server. Dotenv::createImmutable in the
+     * front controller does not override variables already in the process
+     * environment, so these win over .env.test.
+     *
+     * @return array<string, string>
+     */
+    protected static function serverEnv(): array
+    {
+        return [];
+    }
+
+    /**
+     * Port for this class's server; null uses TEST_SERVER_PORT or the default.
+     * A subclass with a non-empty serverEnv() must return a distinct port.
+     */
+    protected static function serverPort(): ?int
+    {
+        return null;
+    }
 
     public static function setUpBeforeClass(): void
     {
@@ -30,37 +56,47 @@ abstract class ServerTestCase extends TestCase
             self::markTestSkipped('Server tests require POSIX extensions (not available on Windows).');
         }
 
-        $envPort = getenv('TEST_SERVER_PORT');
-        if ($envPort !== false && $envPort !== '') {
-            $port = filter_var($envPort, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
-            if ($port === false) {
-                self::fail('TEST_SERVER_PORT must be an integer between 1 and 65535, got: ' . $envPort);
-            }
-            self::$port = $port;
+        $own = static::serverPort();
+        if (static::serverEnv() !== [] && ( $own === null || $own === self::defaultPort() )) {
+            self::fail(static::class . ' sets serverEnv(), so serverPort() must return a port of its own (basePort() + n).');
         }
-        self::$baseUrl = 'http://' . self::$host . ':' . self::$port;
+        if ($own !== null && ( self::$portOwners[$own] ?? static::class ) !== static::class) {
+            self::fail(static::class . ' and ' . self::$portOwners[$own] . ' both claim port ' . $own . '.');
+        }
+        if ($own !== null) {
+            self::$portOwners[$own] = static::class;
+        }
 
-        // Don't start a second server if one is already running (e.g. shared across test classes)
-        if (self::$serverPid !== null) {
-            if (self::isProcessRunning(self::$serverPid)) {
+        self::$port    = $own ?? self::defaultPort();
+        self::$baseUrl = 'http://' . self::$host . ':' . self::$port;
+        $port          = self::$port;
+
+        // Don't start a second server if one is already running on this port
+        if (isset(self::$servers[$port])) {
+            if (self::isProcessRunning(self::$servers[$port]['pid'])) {
                 return;
             }
             // PID is stale — clean up the old proc handle before spawning a new one
-            if (self::$serverProcess !== null && is_resource(self::$serverProcess)) {
-                proc_close(self::$serverProcess);
-                self::$serverProcess = null;
-            }
-            self::$serverPid = null;
+            self::stopServer($port);
         }
 
         $projectRoot = dirname(__DIR__, 2);
         $docRoot     = $projectRoot . '/public';
         $router      = $docRoot . '/router.php';
 
+        $envArgs = '';
+        foreach (static::serverEnv() as $name => $value) {
+            if (!preg_match('/^[A-Z_][A-Z0-9_]*$/', $name)) {
+                self::fail('Invalid server environment variable name: ' . $name);
+            }
+            $envArgs .= ' ' . escapeshellarg($name . '=' . $value);
+        }
+
         $command = sprintf(
-            'exec env PHP_CLI_SERVER_WORKERS=2 php -S %s:%d -t %s %s',
+            'exec env PHP_CLI_SERVER_WORKERS=2%s php -S %s:%d -t %s %s',
+            $envArgs,
             self::$host,
-            self::$port,
+            $port,
             escapeshellarg($docRoot),
             escapeshellarg($router)
         );
@@ -77,17 +113,17 @@ abstract class ServerTestCase extends TestCase
             self::fail('Failed to start PHP built-in server');
         }
 
-        $status              = proc_get_status($process);
-        self::$serverPid     = $status['pid'];
-        self::$serverProcess = $process;
+        $status               = proc_get_status($process);
+        $pid                  = $status['pid'];
+        self::$servers[$port] = ['pid' => $pid, 'process' => $process];
 
         // Wait for server to be ready (up to 3 seconds), verifying the process is still alive
         $ready = false;
         for ($i = 0; $i < 30; $i++) {
-            if (!self::isProcessRunning(self::$serverPid)) {
+            if (!self::isProcessRunning($pid)) {
                 break;
             }
-            $sock = @fsockopen(self::$host, self::$port, $errno, $errstr, 0.1);
+            $sock = @fsockopen(self::$host, $port, $errno, $errstr, 0.1);
             if ($sock) {
                 fclose($sock);
                 $ready = true;
@@ -97,33 +133,54 @@ abstract class ServerTestCase extends TestCase
         }
 
         if (!$ready) {
-            self::stopServer();
+            self::stopServer($port);
             self::fail('PHP built-in server failed to start within 3 seconds');
         }
     }
 
     public static function tearDownAfterClass(): void
     {
-        self::stopServer();
+        self::stopServer(self::$port);
     }
 
-    private static function stopServer(): void
+    /** TEST_SERVER_PORT, else 8199; classes with their own server use basePort() + n. */
+    protected static function basePort(): int
     {
-        if (self::$serverPid !== null) {
-            // Kill the process group (server + workers)
-            @posix_kill(-self::$serverPid, SIGTERM);
-            // Also kill the main PID directly
-            @posix_kill(self::$serverPid, SIGTERM);
-            usleep(200_000);
-            if (self::isProcessRunning(self::$serverPid)) {
-                @posix_kill(-self::$serverPid, SIGKILL);
-                @posix_kill(self::$serverPid, SIGKILL);
-            }
-            self::$serverPid = null;
+        return self::defaultPort();
+    }
+
+    private static function defaultPort(): int
+    {
+        $envPort = getenv('TEST_SERVER_PORT');
+        if ($envPort === false || $envPort === '') {
+            return 8199;
         }
-        if (self::$serverProcess !== null && is_resource(self::$serverProcess)) {
-            proc_close(self::$serverProcess);
-            self::$serverProcess = null;
+        $port = filter_var($envPort, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
+        if ($port === false) {
+            self::fail('TEST_SERVER_PORT must be an integer between 1 and 65535, got: ' . $envPort);
+        }
+        return $port;
+    }
+
+    private static function stopServer(int $port): void
+    {
+        if (!isset(self::$servers[$port])) {
+            return;
+        }
+        ['pid' => $pid, 'process' => $process] = self::$servers[$port];
+        unset(self::$servers[$port]);
+
+        // Kill the process group (server + workers)
+        @posix_kill(-$pid, SIGTERM);
+        // Also kill the main PID directly
+        @posix_kill($pid, SIGTERM);
+        usleep(200_000);
+        if (self::isProcessRunning($pid)) {
+            @posix_kill(-$pid, SIGKILL);
+            @posix_kill($pid, SIGKILL);
+        }
+        if (is_resource($process)) {
+            proc_close($process);
         }
     }
 
@@ -156,9 +213,27 @@ abstract class ServerTestCase extends TestCase
      * @param array<string, string> $headers
      * @return array{status: int, headers: array<string, string>, body: string}
      */
+    protected static function httpPatch(string $path, ?string $body = null, array $headers = []): array
+    {
+        return self::httpRequest('PATCH', $path, $body, $headers);
+    }
+
+    /**
+     * @param array<string, string> $headers
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
     protected static function httpOptions(string $path, array $headers = []): array
     {
         return self::httpRequest('OPTIONS', $path, null, $headers);
+    }
+
+    /**
+     * @param array<string, string> $headers
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
+    protected static function httpHead(string $path, array $headers = []): array
+    {
+        return self::httpRequest('HEAD', $path, null, $headers);
     }
 
     /**
@@ -185,6 +260,9 @@ abstract class ServerTestCase extends TestCase
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        if ($method === 'HEAD') {
+            curl_setopt($ch, CURLOPT_NOBODY, true);
+        }
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 

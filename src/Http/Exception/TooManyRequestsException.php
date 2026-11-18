@@ -9,11 +9,17 @@ use BibleGet\Api\Http\Enum\StatusCode;
 class TooManyRequestsException extends ApiException
 {
     private int $retryAfter;
+    /** @var array<string, string> */
+    private array $headers;
 
+    /**
+     * @param array<string, string> $headers Extra response headers (e.g. X-RateLimit-*).
+     */
     public function __construct(
         string $message = 'Too many requests. Please try again later.',
         int $retryAfter = 0,
-        ?\Throwable $previous = null
+        ?\Throwable $previous = null,
+        array $headers = []
     ) {
         parent::__construct(
             $message,
@@ -24,6 +30,17 @@ class TooManyRequestsException extends ApiException
         );
 
         $this->retryAfter = max(0, $retryAfter);
+        $this->headers    = $headers;
+    }
+
+    /**
+     * Response headers to send with the 429, besides Retry-After.
+     *
+     * @return array<string, string>
+     */
+    public function getHeaders(): array
+    {
+        return $this->headers;
     }
 
     public function getRetryAfter(): int

@@ -6,9 +6,6 @@ extends:
   - recommended
 
 rules:
-  # This is a public API with no authentication
-  security-defined: off
-
   # Enforce consistent spec quality
   no-invalid-schema-examples: warn
   no-invalid-media-type-examples: warn

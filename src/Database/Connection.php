@@ -10,9 +10,6 @@ class Connection
 {
     private static ?\PDO $instance = null;
 
-    /** @var string[] */
-    private static array $whitelistedDomainsIPs = [];
-
     /**
      * Get (or create) the shared PDO connection.
      *
@@ -58,22 +55,7 @@ class Connection
         $pdo->exec("SET client_encoding = 'UTF8'");
         self::$instance = $pdo;
 
-        $whitelistRaw = self::env('WHITELISTED_DOMAINS_IPS');
-        if ($whitelistRaw !== '') {
-            self::$whitelistedDomainsIPs = array_filter(
-                array_map('trim', explode(',', $whitelistRaw))
-            );
-        }
-
         return self::$instance;
-    }
-
-    /**
-     * @return string[]
-     */
-    public static function getWhitelistedDomainsIPs(): array
-    {
-        return self::$whitelistedDomainsIPs;
     }
 
     /**
@@ -81,8 +63,7 @@ class Connection
      */
     public static function reset(): void
     {
-        self::$instance              = null;
-        self::$whitelistedDomainsIPs = [];
+        self::$instance = null;
     }
 
     /**

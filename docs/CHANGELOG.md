@@ -7,6 +7,87 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: API keys and plugin installations (#97)
+
+Every v4 request is now attributable to a registered developer project or a
+registered plugin installation (design:
+`docs/superpowers/specs/2026-11-17-api-keys-installations-design.md`;
+migration `048`).
+
+- **Credentials required.** `/quote`, `/metadata/*` and `/search/*` need an
+  `X-Api-Key` header (no query-string form). Always enforced when
+  `APP_ENV=production`; elsewhere `REQUIRE_CREDENTIALS=true` turns it on, and
+  unkeyed requests are otherwise served without a rate limit. A missing or
+  invalid credential is a `401` problem+json with `WWW-Authenticate` and a link
+  to the developer pages; a client key on a data route is a `403`.
+- **Three credential types**: project keys (`bibleget_{live|test}_…`, secret,
+  issued to approved developer projects), client keys (`bgclient_…`, public,
+  one per plugin release, can only register installations) and installation
+  tokens (`bginst_…`, secret, one per plugin installation). Stored as a
+  SHA-256 hash plus a prefix; shown once.
+- **Installation registration**: `POST /installations` (client key) returns a
+  token and re-registering the same `install_id` replaces it; `PATCH
+  /installations/self` updates version, site URL and contact email, and counts
+  against the installation's hourly limit. Registrations are capped per client
+  key per hour (default 200, `429` with `Retry-After`). `install_id` must be a
+  random (version 4) UUID, and acts as a secret (the plugin contract is in the
+  OpenAPI description of `POST /installations`).
+- **Developer routes** (Zitadel Bearer token): `/applications` and
+  `/applications/{id}[/resubmit|/keys[/{keyId}[/rotate]]]`.
+- **Admin routes** (Bearer token, role `bibleget_admin`): approve, reject and
+  revoke applications, view one application (system ones included) with its
+  keys and revoke a single key (`GET /admin/applications/{id}`,
+  `POST /admin/api-keys/{id}/revoke`), client keys, installations (including a batch revoke
+  by registration window), per-key and per-installation limits and
+  `GET /admin/stats`. On `/admin/stats` a date-only `to` covers that whole
+  day; on `revoke-batch` and the `registered_to` filter the window is
+  half-open, `[from, to)`.
+- **Rate limiting per credential**: sliding one-hour window, project keys
+  1000/hour, installation tokens 300/hour, with `X-RateLimit-Limit`,
+  `X-RateLimit-Remaining` and `X-RateLimit-Reset` (also on the `429`); the
+  system key is exempt. In production, `_test_` credentials are refused.
+  Limits are 1 to 100000 per hour: the admin routes enforce both bounds; the
+  repositories and a `CHECK` in `048` refuse anything below 1. Every response exposes the rate-limit
+  headers to browsers (`Access-Control-Expose-Headers`), preflights allow
+  `Authorization` (for the Bearer routes), and responses to credentialed
+  requests are `Cache-Control: private`, so a shared cache never serves one
+  caller's response (or the reader scope's full text) to another.
+- **`reader` scope** for the first-party frontend (key minted by
+  `scripts/mint-reader-key.php`): whole chapters of editions flagged
+  `versions_available.reader_full_text`. `scripts/mint-client-key.php` mints a
+  client key from the command line. The scripts are not deployed: run them
+  from a local checkout through an SSH tunnel
+  (`ssh -L 15432:127.0.0.1:5432 ubuntu@catholicdigitalcommons.org`, then
+  `DB_HOST=127.0.0.1 DB_PORT=15432`, the target's `DB_*` and its `APP_ENV`;
+  see CLAUDE.md, "Minting keys"). They print `APP_ENV` and `DB_NAME` before
+  minting.
+- OpenAPI: `ApiKey`, `ClientKey` and `BearerAuth` security schemes, the
+  `401`/`403`/`429` responses with their headers, and the new paths. The Live
+  suite sends `BIBLEGET_LIVE_API_KEY` (deploy workflow secret) when set.
+- New environment variables: `REQUIRE_CREDENTIALS`, `RATE_LIMIT_STORAGE_PATH`,
+  `ZITADEL_ISSUER`, `ZITADEL_AUDIENCE`, `JWKS_CACHE_PATH` (see `.env.example`).
+  The JWKS cache's directory (`logs/` by default) must be writable: workers
+  coordinate refetches through it. `WHITELISTED_DOMAINS_IPS` is gone (it only
+  served the removed IP rate limiter), with quote error codes 10-12.
+
+### Changed: no personal data in v4
+
+- The IP rate limiter and the IPinfo geolocation lookup are removed.
+- The request log records `credential_type` and `credential_id` instead of
+  IP addresses, geolocation and `HTTP_*`/`REMOTE_ADDR` headers (those columns
+  stay, NULL).
+- The `forceversion` and `forcecopyright` request parameters are removed (the
+  `reader` scope replaces them), and `appid`, `domain` and `pluginversion` are
+  no longer read (plugin and version come from the credential).
+
+### Deferred: 049
+
+- `docs/future-migrations/049-strip-personal-data-from-request-logs.sql`
+  nulls the personal columns of the imported v3 history in `requests_log` and
+  every `requests_log__YYYY`, drops the `*_ip_when` indexes and removes that
+  index from `create_yearly_log_table()`. Destructive: apply on staging and on
+  the production copy before go-live, then `VACUUM FULL` those tables.
+
 ### Fixed
 
 - **Embedding metadata for vectors copied in from elsewhere.**

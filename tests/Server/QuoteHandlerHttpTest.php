@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Tests\Server;
 
+use BibleGet\Api\Database\Connection;
 use PHPUnit\Framework\Attributes\Group;
 
 #[Group('slow')]
@@ -193,5 +194,75 @@ class QuoteHandlerHttpTest extends ServerTestCase
     {
         $r = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1', ['User-Agent' => 'Googlebot/2.1']);
         self::assertSame(403, $r['status']);
+    }
+
+    // ── Removed v3 parameters ──────────────────────────────
+
+    private const PLACEHOLDER = 'force-parameter test placeholder';
+
+    /** Psalms 1-5 in the TEST editions' index: 6+12+8+8+12 verses. */
+    private const PSALMS_1_TO_5 = 46;
+
+    private static function seedLongRangeAndUnlistedEdition(\PDO $db): void
+    {
+        $insert  = $db->prepare('INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES (23, ?, ?, ?, 1, 7)');
+        $insert2 = $db->prepare('INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES (23, ?, ?, ?, 1, 7)');
+        foreach ([1 => 6, 2 => 12, 3 => 8, 4 => 8, 5 => 12] as $chapter => $verses) {
+            for ($verse = 1; $verse <= $verses; $verse++) {
+                $insert->execute([$chapter, $verse, self::PLACEHOLDER]);
+                $insert2->execute([$chapter, $verse, self::PLACEHOLDER]);
+            }
+        }
+        // An edition with tables but no versions_available row: v3's forceversion served it.
+        $db->exec('CREATE TABLE IF NOT EXISTS "TESTFV_idx" AS SELECT * FROM "TEST1_idx"');
+        $db->exec('CREATE TABLE IF NOT EXISTS "TESTFV" AS SELECT * FROM "TEST1" WHERE book = 1');
+    }
+
+    private static function unseed(\PDO $db): void
+    {
+        $db->prepare('DELETE FROM "TEST1" WHERE text = ?')->execute([self::PLACEHOLDER]);
+        $db->prepare('DELETE FROM "TEST2" WHERE text = ?')->execute([self::PLACEHOLDER]);
+        $db->exec('DROP TABLE IF EXISTS "TESTFV_idx"');
+        $db->exec('DROP TABLE IF EXISTS "TESTFV"');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function results(string $path): array
+    {
+        $r = self::httpGet($path);
+        self::assertSame(200, $r['status'], $r['body']);
+        /** @var list<array<string, mixed>> $results */
+        $results = self::jsonBody($r['body'])['results'];
+        return $results;
+    }
+
+    public function testForceParametersHaveNoEffect(): void
+    {
+        Connection::reset();
+        try {
+            $db = Connection::getConnection();
+        } catch (\Throwable $e) {
+            self::markTestSkipped('Test database not available: ' . $e->getMessage());
+        }
+        self::unseed($db);
+        try {
+            // Inside the try: a seed that fails half-way is cleaned up too.
+            self::seedLongRangeAndUnlistedEdition($db);
+            // Copyrighted edition: limited to 30 with or without forcecopyright.
+            self::assertCount(30, self::results('/v3/quote?query=Ps1-5&version=TEST2'));
+            self::assertCount(30, self::results('/v3/quote?query=Ps1-5&version=TEST2&forcecopyright=true'));
+            // Edition without copyright: whole, with or without forcecopyright.
+            self::assertCount(self::PSALMS_1_TO_5, self::results('/v3/quote?query=Ps1-5&version=TEST1&forcecopyright=true'));
+            // forceversion does not serve an edition missing from versions_available.
+            $r    = self::httpGet('/v3/quote?query=Genesis1,1&version=TEST1,TESTFV&forceversion=true');
+            $body = self::jsonBody($r['body']);
+            self::assertSame(['TEST1'], array_values(array_unique(array_column($body['results'], 'version'))));
+            self::assertStringContainsString('Not a valid version: <TESTFV>', (string) json_encode($body['errors']));
+        } finally {
+            self::unseed($db);
+            Connection::reset();
+        }
     }
 }

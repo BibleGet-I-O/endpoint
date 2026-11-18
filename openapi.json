@@ -3,7 +3,7 @@
     "info": {
         "version": "3.0",
         "title": "BibleGet",
-        "description": "Get Bible quotes from different Bible versions either requesting by reference (book - chapter - verse) or searching by keyword",
+        "description": "Get Bible quotes from different Bible versions either requesting by reference (book - chapter - verse) or searching by keyword. Data routes (`/quote`, `/metadata/*`, `/search/*`) need an `X-Api-Key` header: a project key from an approved developer project, or the installation token a plugin installation receives when it registers. The `appid`, `domain`, `pluginversion`, `forceversion` and `forcecopyright` parameters of v3 no longer exist.",
         "license": {
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0"
@@ -41,15 +41,6 @@
                         "$ref": "#/components/parameters/return"
                     },
                     {
-                        "$ref": "#/components/parameters/appid"
-                    },
-                    {
-                        "$ref": "#/components/parameters/pluginversion"
-                    },
-                    {
-                        "$ref": "#/components/parameters/domain"
-                    },
-                    {
                         "$ref": "#/components/parameters/text_tradition"
                     }
                 ],
@@ -72,18 +63,43 @@
                                     "$ref": "#/components/schemas/MainAPIHtmlResponse"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
-                    },
-                    "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
                     },
                     "400": {
                         "description": "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
                     },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
                     "405": {
                         "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             },
             "post": {
                 "summary": "Retrieve Bible quotes by reference (book - chapter - verse)",
@@ -115,8 +131,7 @@
                                         "query": "John3:16",
                                         "version": [
                                             "NABRE"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestVerseRange": {
@@ -124,8 +139,7 @@
                                         "query": "1Corinthians13:4-8",
                                         "version": [
                                             "NABRE"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestDiscontinuousVerses": {
@@ -133,8 +147,7 @@
                                         "query": "1Corinthians13:4,8",
                                         "version": [
                                             "NABRE"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestVerseRangeAndDiscontinuousVerse": {
@@ -142,8 +155,7 @@
                                         "query": "1Corinthians13:4-8,13",
                                         "version": [
                                             "NABRE"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestDiscontinousVerseRanges": {
@@ -151,8 +163,7 @@
                                         "query": "1Corinthians13:4-8,11-12",
                                         "version": [
                                             "NABRE"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestMultipleChaptersSameBook": {
@@ -160,8 +171,7 @@
                                         "query": "1Corinthians13:4-8;14:1",
                                         "version": [
                                             "NABRE"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestMultipleBooks": {
@@ -169,8 +179,7 @@
                                         "query": "John3:16;1John4:7-8",
                                         "version": [
                                             "NABRE"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestMultipleVersions": {
@@ -179,8 +188,7 @@
                                         "version": [
                                             "NABRE",
                                             "DRB"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 },
                                 "RequestGreekOrigin": {
@@ -189,7 +197,6 @@
                                         "version": [
                                             "NABRE"
                                         ],
-                                        "appid": "swaggerhub",
                                         "text_tradition": "GREEK"
                                     }
                                 },
@@ -199,7 +206,6 @@
                                         "version": [
                                             "NABRE"
                                         ],
-                                        "appid": "swaggerhub",
                                         "text_tradition": "HEBREW"
                                     }
                                 },
@@ -208,8 +214,7 @@
                                         "query": "Giovanni3,16;1Gv4,7-8",
                                         "version": [
                                             "CEI2008"
-                                        ],
-                                        "appid": "swaggerhub"
+                                        ]
                                     }
                                 }
                             }
@@ -235,18 +240,43 @@
                                     "$ref": "#/components/schemas/MainAPIHtmlResponse"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
-                    },
-                    "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
                     },
                     "400": {
                         "description": "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
                     },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
                     "405": {
                         "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/metadata/biblebooks": {
@@ -281,15 +311,40 @@
                                     "$ref": "#/components/schemas/MetadataBibleBooksHTML"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "405": {
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
                     },
                     "415": {
                         "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
                     },
-                    "405": {
-                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/metadata/bibleversions": {
@@ -324,15 +379,40 @@
                                     "$ref": "#/components/schemas/MetadataBibleVersionsHTML"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "405": {
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
                     },
                     "415": {
                         "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
                     },
-                    "405": {
-                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/metadata/versionindex": {
@@ -399,18 +479,43 @@
                                     "$ref": "#/components/schemas/MetadataVersionIndexHTML"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
-                    },
-                    "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
                     },
                     "400": {
                         "description": "Bad request. Will be returned if the `versions` parameter is missing or invalid."
                     },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
                     "405": {
                         "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/search": {
@@ -536,18 +641,43 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
-                    },
-                    "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
                     },
                     "400": {
                         "description": "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
                     },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
                     "405": {
                         "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             },
             "post": {
                 "summary": "Search for Bible verses that contain a given keyword",
@@ -601,18 +731,43 @@
                                     ]
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
-                    },
-                    "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
                     },
                     "400": {
                         "description": "Bad request. Will be returned for example if a content type of `application/json` was set in the request, but no JSON data or malformed JSON data was sent in the body of the request."
                     },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
                     "405": {
                         "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized. `PUT`, `PATCH` and `DELETE` methods are not supported."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`,`application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/search/keyword": {
@@ -692,12 +847,37 @@
                                     "$ref": "#/components/schemas/KeywordSearchResponseXML"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
                     },
                     "422": {
                         "description": "Validation error (missing/invalid parameters)"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/search/semantic": {
@@ -785,15 +965,40 @@
                                     "$ref": "#/components/schemas/SemanticSearchResponseJSON"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
                     },
                     "422": {
                         "description": "Validation error (missing/invalid parameters)"
                     },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    },
                     "503": {
                         "description": "Embedding service unavailable. Use `/search/keyword` for text-based search as a fallback."
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/search/hybrid": {
@@ -907,15 +1112,40 @@
                                     "$ref": "#/components/schemas/HybridSearchResponseJSON"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
                     },
                     "422": {
                         "description": "Validation error (missing/invalid parameters, mixed `ts_language` versions, or a query too short for the keyword leg when `semantic_weight=0`)"
                     },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    },
                     "503": {
                         "description": "Embedding service unavailable. Use `/search/keyword`, or pass `semantic_weight=0`, for text-based search as a fallback."
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
             }
         },
         "/search/similar": {
@@ -990,13 +1220,1922 @@
                                     "$ref": "#/components/schemas/SimilarSearchResponseJSON"
                                 }
                             }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
                     },
                     "404": {
                         "description": "Referenced verse not found or has no embedding"
                     },
                     "422": {
                         "description": "Validation error (missing/invalid parameters or unknown book abbreviation)"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
+            }
+        },
+        "/installations": {
+            "post": {
+                "summary": "Register a plugin installation",
+                "description": "Authenticated with a client key (`bgclient_…`). A new `install_id` creates an installation (201); an existing one is re-registered: a new token is issued, the old one stops working, and the count does not grow (200). Registrations are capped per client key per hour (default 200): over the cap is a 429 with `Retry-After`.\n\nWhat a plugin must do:\n- Generate `install_id` once, as a random (version 4) UUID from a cryptographically secure source, and keep it private like a password: anyone who has it and the public client key can re-register the installation, which replaces its token. Never show it, log it or send it anywhere but here.\n- Store the token and send it as `X-Api-Key` on every request. When a request answers 401, the token was replaced or lost: register again with the same `install_id` (a 403 here then means the installation was revoked: generate a new `install_id`).\n- When the WordPress site moves to another `site_url` (or the installation is copied to another site), generate a new `install_id` and register it: two sites must never share one.",
+                "operationId": "registerInstallation",
+                "tags": [
+                    "InstallationsAPI"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "install_id",
+                                    "plugin_version"
+                                ],
+                                "properties": {
+                                    "install_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                                        "description": "A random (version 4) UUID, generated once by the plugin and kept secret. Other UUID versions, and the nil UUID, are a 422."
+                                    },
+                                    "plugin_version": {
+                                        "type": "string",
+                                        "maxLength": 50
+                                    },
+                                    "site_url": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string",
+                                                "format": "uri"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "enum": [
+                                                    ""
+                                                ]
+                                            }
+                                        ],
+                                        "description": "WordPress only: an http(s) URL. An empty string (or null) means none and is accepted from any plugin."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ClientKey": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Re-registered; a new token was issued.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        },
+                                        "installation_id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Registered. The token is shown only here.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        },
+                                        "installation_id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "403": {
+                        "description": "This installation (client key + install_id) was revoked by an admin. The plugin should generate a new install_id and register again.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                }
+            }
+        },
+        "/installations/self": {
+            "patch": {
+                "summary": "Update this installation",
+                "description": "Authenticated with the installation token, and counted against the installation's hourly rate limit like its data requests (over it: 429 with `Retry-After`). Only the fields sent are changed. `contact_email` set to an empty string (or null) removes it. A `site_url` is accepted from WordPress installations only; an empty string (or null) removes it, from any plugin. A 401 means the token was replaced or the installation revoked: register again (see `POST /installations`).",
+                "operationId": "updateInstallation",
+                "tags": [
+                    "InstallationsAPI"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "plugin_version": {
+                                        "type": "string",
+                                        "maxLength": 50
+                                    },
+                                    "site_url": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string",
+                                                "format": "uri"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "enum": [
+                                                    ""
+                                                ]
+                                            }
+                                        ],
+                                        "description": "WordPress only: an http(s) URL; an empty string removes it."
+                                    },
+                                    "contact_email": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string",
+                                                "format": "email"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "enum": [
+                                                    ""
+                                                ]
+                                            }
+                                        ],
+                                        "description": "An email address; an empty string removes it."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done, no content."
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                }
+            }
+        },
+        "/applications": {
+            "get": {
+                "summary": "List my projects",
+                "description": "The signed-in developer's own projects.",
+                "operationId": "listApplications",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Projects.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "applications": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Application"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a project",
+                "description": "Needs a verified email. The project starts `pending` until an admin approves it; keys are issued only for approved projects.",
+                "operationId": "createApplication",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApplicationInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/Application"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "403": {
+                        "description": "The signed-in user's email address is not verified (`email_verified` is not true in the access token).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/applications/{id}": {
+            "get": {
+                "summary": "Get a project",
+                "description": "Another user's project is a 404.",
+                "operationId": "getApplication",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The project.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/Application"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update a project",
+                "description": "At least one of name, description, website.",
+                "operationId": "updateApplication",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "website": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/Application"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a project",
+                "description": "Also deletes its keys.",
+                "operationId": "deleteApplication",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done, no content."
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/applications/{id}/resubmit": {
+            "post": {
+                "summary": "Resubmit a rejected project",
+                "description": "Moves a rejected project back to pending.",
+                "operationId": "resubmitApplication",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resubmitted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/Application"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/applications/{id}/keys": {
+            "get": {
+                "summary": "List a project's keys",
+                "description": "Never includes the key values.",
+                "operationId": "listApplicationKeys",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Keys.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "keys": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ApiKeyRecord"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a key",
+                "description": "Only for approved projects; scope is always `read`. The plaintext key is shown once.",
+                "operationId": "createApplicationKey",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "default": "Default"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NewKey"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "409": {
+                        "description": "The application is not approved and active: keys are issued only for approved applications.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/applications/{id}/keys/{keyId}": {
+            "delete": {
+                "summary": "Revoke a key",
+                "description": "",
+                "operationId": "revokeApplicationKey",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "keyId",
+                        "in": "path",
+                        "required": true,
+                        "description": "Key id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done, no content."
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/applications/{id}/keys/{keyId}/rotate": {
+            "post": {
+                "summary": "Rotate a key",
+                "description": "Revokes the key and issues a replacement; the new plaintext key is shown once.",
+                "operationId": "rotateApplicationKey",
+                "tags": [
+                    "DevelopersAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "keyId",
+                        "in": "path",
+                        "required": true,
+                        "description": "Key id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Rotated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NewKey"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "409": {
+                        "description": "The application is not approved and active: keys are issued only for approved applications.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/applications": {
+            "get": {
+                "summary": "List projects",
+                "description": "All developer projects, optionally by status.",
+                "operationId": "adminListApplications",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected",
+                                "revoked"
+                            ]
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Projects.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "applications": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Application"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/applications/{id}": {
+            "get": {
+                "summary": "One project and its keys",
+                "description": "Any application, system ones included (the frontend's reader key belongs to one), with all its keys. Keys are listed without the key itself or its hash.",
+                "operationId": "adminGetApplication",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The application and its keys.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/AdminApplication"
+                                        },
+                                        "keys": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ApiKeyRecord"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/applications/{id}/approve": {
+            "post": {
+                "summary": "Approve a project",
+                "description": "pending or rejected → approved. Any other transition is a 409.",
+                "operationId": "adminApproveApplication",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Done.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/Application"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/applications/{id}/reject": {
+            "post": {
+                "summary": "Reject a project",
+                "description": "pending → rejected. Any other transition is a 409.",
+                "operationId": "adminRejectApplication",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Done.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/Application"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/applications/{id}/revoke": {
+            "post": {
+                "summary": "Revoke a project",
+                "description": "approved → revoked (also deactivates the project's keys). Any other transition is a 409.",
+                "operationId": "adminRevokeApplication",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Application id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Done.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "application": {
+                                            "$ref": "#/components/schemas/Application"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/api-keys/{id}": {
+            "patch": {
+                "summary": "Change a project key's rate limit",
+                "description": "",
+                "operationId": "adminSetKeyLimit",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Key id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RateLimitInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "$ref": "#/components/schemas/ApiKeyRecord"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/api-keys/{id}/revoke": {
+            "post": {
+                "summary": "Revoke one key",
+                "description": "Deactivates one project key, the system reader key included. A key that is already inactive is a 409.",
+                "operationId": "adminRevokeApiKey",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "API key id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done, no content."
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/client-keys": {
+            "get": {
+                "summary": "List client keys",
+                "description": "",
+                "operationId": "adminListClientKeys",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Client keys.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "client_keys": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ClientKeyRecord"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Mint a client key",
+                "description": "One per plugin release. The plaintext key is shown once and goes into that release's build. `scripts/mint-client-key.php` is the CLI equivalent.",
+                "operationId": "adminMintClientKey",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "plugin",
+                                    "plugin_version"
+                                ],
+                                "properties": {
+                                    "plugin": {
+                                        "type": "string",
+                                        "enum": [
+                                            "wordpress",
+                                            "google-docs",
+                                            "libreoffice",
+                                            "openoffice",
+                                            "msword",
+                                            "webword"
+                                        ]
+                                    },
+                                    "plugin_version": {
+                                        "type": "string",
+                                        "maxLength": 50
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "record": {
+                                            "$ref": "#/components/schemas/ClientKeyRecord"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/client-keys/{id}/revoke": {
+            "post": {
+                "summary": "Revoke a client key",
+                "description": "Stops new registrations with it; installations already registered keep working.",
+                "operationId": "adminRevokeClientKey",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Client key id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done, no content."
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/installations": {
+            "get": {
+                "summary": "List installations",
+                "description": "Newest registration first. `total` counts all matches, whatever `limit`.",
+                "operationId": "adminListInstallations",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "plugin",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "active_since",
+                        "in": "query",
+                        "description": "Active installations last seen at or after this ISO-8601 date or date-time (UTC when no offset).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "registered_from",
+                        "in": "query",
+                        "description": "First seen at or after this instant (inclusive).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "registered_to",
+                        "in": "query",
+                        "description": "First seen before this instant (exclusive: the window is half-open, [registered_from, registered_to)). A date-only value means midnight UTC at the start of that day, so it does not include that day.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000,
+                            "default": 200
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Installations.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "installations": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InstallationRecord"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/installations/revoke-batch": {
+            "post": {
+                "summary": "Revoke the installations a client key registered in a time range",
+                "description": "The response to a registration burst on a public client key. The window is half-open, [from, to): an installation first seen exactly at `to` is not revoked, and a date-only value means midnight UTC at the start of that day. The window may be at most 31 days.",
+                "operationId": "adminRevokeInstallationBatch",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "client_key_id",
+                                    "from",
+                                    "to"
+                                ],
+                                "properties": {
+                                    "client_key_id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "from": {
+                                        "type": "string",
+                                        "description": "ISO-8601 date or date-time (UTC when no offset), inclusive."
+                                    },
+                                    "to": {
+                                        "type": "string",
+                                        "description": "ISO-8601 date or date-time, exclusive."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Done.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "revoked": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/installations/{id}": {
+            "patch": {
+                "summary": "Change an installation's rate limit",
+                "description": "",
+                "operationId": "adminSetInstallationLimit",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Installation id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RateLimitInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "installation": {
+                                            "$ref": "#/components/schemas/InstallationRecord"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/installations/{id}/revoke": {
+            "post": {
+                "summary": "Revoke an installation",
+                "description": "Stops only this installation.",
+                "operationId": "adminRevokeInstallation",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Installation id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done, no content."
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/stats": {
+            "get": {
+                "summary": "Usage statistics",
+                "description": "Installations per plugin and version (a current snapshot: total and active in the last 30 days), registrations per client key per UTC hour, and requests per day (UTC) and route from `usage_daily`, summed per application and per plugin and version. An installation's requests are listed under its current `plugin_version`: after an update, its earlier days move to the new version too. Defaults to the 30 days up to now; at most 366 days. A date-only `to` covers that whole day (it is inclusive here), unlike the half-open windows of `revoke-batch` and `registered_to`.",
+                "operationId": "adminStats",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "description": "ISO-8601 date or date-time (UTC when no offset), inclusive.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "ISO-8601 date or date-time. A date-only value includes that whole day.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statistics.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "from": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "to": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "installations": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "plugin": {
+                                                        "type": "string"
+                                                    },
+                                                    "version": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "total": {
+                                                        "type": "integer"
+                                                    },
+                                                    "active_30d": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "registrations_per_hour": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "client_key_id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "hour": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "count": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "requests": {
+                                            "type": "array",
+                                            "description": "Requests per day and route, summed per application (project keys), per plugin and version (installations), or for uncredentialed requests (`none`).",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "day": {
+                                                        "type": "string",
+                                                        "format": "date"
+                                                    },
+                                                    "credential_type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "project",
+                                                            "installation",
+                                                            "none"
+                                                        ]
+                                                    },
+                                                    "application_id": {
+                                                        "type": "string",
+                                                        "format": "uuid",
+                                                        "nullable": true,
+                                                        "description": "The application of a project key; null otherwise, or when the key has since been deleted."
+                                                    },
+                                                    "plugin": {
+                                                        "type": "string",
+                                                        "nullable": true,
+                                                        "description": "The plugin of an installation; null otherwise, or when the installation has since been deleted."
+                                                    },
+                                                    "plugin_version": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "label": {
+                                                        "type": "string",
+                                                        "description": "Application name, plugin and version, `none`, or `unknown` for a deleted credential."
+                                                    },
+                                                    "route": {
+                                                        "type": "string"
+                                                    },
+                                                    "requests": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
                     }
                 }
             }
@@ -1007,7 +3146,10 @@
             "EmbeddingModel": {
                 "type": "string",
                 "default": "labse",
-                "enum": ["labse", "minilm"],
+                "enum": [
+                    "labse",
+                    "minilm"
+                ],
                 "description": "Selects which sentence-transformers model (and matching pgvector column) backs a semantic / similar search request. `labse` (default) — sentence-transformers/LaBSE, reads `embedding_labse`. `minilm` — paraphrase-multilingual-MiniLM-L12-v2, reads `embedding`."
             },
             "BibleQuotePOST": {
@@ -1040,21 +3182,6 @@
                         "example": "json",
                         "default": "json"
                     },
-                    "appid": {
-                        "type": "string",
-                        "description": "Unique identifier of the application making the request, to be agreed upon with the owner of the API endpoint",
-                        "example": "swaggerhub"
-                    },
-                    "pluginversion": {
-                        "type": "string",
-                        "description": "Version number of the application making the request. Useful not only for statistics, to help understand which version of an application is being actively used, but also (especially in the case of the official applications) to help deal with possibly breaking changes between the application version and versions of the API endpoint",
-                        "example": "v1.0"
-                    },
-                    "domain": {
-                        "type": "string",
-                        "description": "In the case of web based applications, should indicate the domain from which the request is generated. Currently used by the official plugin for WordPress to better understand usage of the plugin and monitor requests. When the application or plugin making the request can be installed on different domains (as is the case with the WordPress plugin), this value should be generated dynamically from a server variable identifying the domain. If instead it will always be the same domain making the requests, the value can be hardcoded with the actual domain.",
-                        "example": "app.swaggerhub.com"
-                    },
                     "text_tradition": {
                         "type": "string",
                         "description": "Esther in Catholic editions is printed twice, from the Greek text (with its additions) and from the Hebrew: which of the two to quote. Default GREEK. Matches the `text_tradition` field of the returned rows (was `preferorigin` before migration 046).",
@@ -1067,11 +3194,55 @@
                 },
                 "required": [
                     "query",
-                    "version",
-                    "appid"
+                    "version"
                 ]
             },
-            "QuoteNotice": {"type": "object", "description": "Informational, never an error. VERSE_OMITTED: every verse a requested segment asks for is omitted in this edition (the rows are still returned, with `omitted: true`). In HTML responses notices are only in a hidden input (`class=\"BibleGetNotices\"`) in the info block.", "required": ["code", "version", "book", "chapter", "verse_from", "verse_to", "reference", "message"], "properties": {"code": {"type": "string", "enum": ["VERSE_OMITTED"]}, "version": {"type": "string"}, "book": {"type": "integer", "description": "Universal book number"}, "chapter": {"type": "integer"}, "verse_from": {"type": "integer"}, "verse_to": {"type": "integer"}, "reference": {"type": "string", "description": "For display only (not to be parsed): the book as the user wrote it, chapter and verses in the user's notation, e.g. `Mk 9:44` or `Mc 9,44`."}, "message": {"type": "string", "description": "English message, e.g. `Mark 9:44 is not in the text of this edition: the critical text omits it; the number is printed without text.`"}}},
+            "QuoteNotice": {
+                "type": "object",
+                "description": "Informational, never an error. VERSE_OMITTED: every verse a requested segment asks for is omitted in this edition (the rows are still returned, with `omitted: true`). In HTML responses notices are only in a hidden input (`class=\"BibleGetNotices\"`) in the info block.",
+                "required": [
+                    "code",
+                    "version",
+                    "book",
+                    "chapter",
+                    "verse_from",
+                    "verse_to",
+                    "reference",
+                    "message"
+                ],
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "enum": [
+                            "VERSE_OMITTED"
+                        ]
+                    },
+                    "version": {
+                        "type": "string"
+                    },
+                    "book": {
+                        "type": "integer",
+                        "description": "Universal book number"
+                    },
+                    "chapter": {
+                        "type": "integer"
+                    },
+                    "verse_from": {
+                        "type": "integer"
+                    },
+                    "verse_to": {
+                        "type": "integer"
+                    },
+                    "reference": {
+                        "type": "string",
+                        "description": "For display only (not to be parsed): the book as the user wrote it, chapter and verses in the user's notation, e.g. `Mk 9:44` or `Mc 9,44`."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "English message, e.g. `Mark 9:44 is not in the text of this edition: the critical text omits it; the number is printed without text.`"
+                    }
+                }
+            },
             "BibleQuoteResponseJSON": {
                 "type": "object",
                 "properties": {
@@ -1262,9 +3433,20 @@
                                     },
                                     "example": null
                                 },
-                                "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
-                                "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
+                                "printed_chapter": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."
+                                },
+                                "verse_label": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."
+                                },
+                                "omitted": {
+                                    "type": "boolean",
+                                    "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                                },
                                 "text_tradition": {
                                     "type": "string",
                                     "description": "Which text tradition the row belongs to, where an edition prints two (Esther: `HEBREW` or `GREEK`). Null for most verses.",
@@ -1353,7 +3535,13 @@
                             "type": "string"
                         }
                     },
-                    "notices": {"type": "array", "items": {"$ref": "#/components/schemas/QuoteNotice"}, "description": "Always present; empty when there are none."},
+                    "notices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/QuoteNotice"
+                        },
+                        "description": "Always present; empty when there are none."
+                    },
                     "info": {
                         "type": "object",
                         "description": "An object containing metadata about the API endpoint",
@@ -1630,9 +3818,20 @@
                         },
                         "example": null
                     },
-                    "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
-                    "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
+                    "printed_chapter": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."
+                    },
+                    "verse_label": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."
+                    },
+                    "omitted": {
+                        "type": "boolean",
+                        "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                    },
                     "text_tradition": {
                         "type": "string",
                         "description": "Which text tradition the row belongs to, where an edition prints two (Esther: `HEBREW` or `GREEK`). Null for most verses.",
@@ -1905,8 +4104,14 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "usfm": {"type": "string", "example": "GEN"},
-                                "osis": {"type": "string", "example": "Gen"}
+                                "usfm": {
+                                    "type": "string",
+                                    "example": "GEN"
+                                },
+                                "osis": {
+                                    "type": "string",
+                                    "example": "Gen"
+                                }
                             }
                         }
                     },
@@ -14537,9 +16742,20 @@
                                     },
                                     "example": null
                                 },
-                                "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                                "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
-                                "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
+                                "printed_chapter": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."
+                                },
+                                "verse_label": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."
+                                },
+                                "omitted": {
+                                    "type": "boolean",
+                                    "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                                },
                                 "text_tradition": {
                                     "type": "string",
                                     "description": "Which text tradition the row belongs to, where an edition prints two (Esther: `HEBREW` or `GREEK`). Null for most verses.",
@@ -14968,9 +17184,20 @@
                         "description": "The position of this verse in another numbering scheme, when the edition records one: the Greek/Vulgate psalm number in CEI 2008 (`(9,22)`), the Hebrew number of Dan 3:91-100 (`24`), the Vulgate position of a Greek Esther verse in DRB and VGCL (`11:2`). Null for most verses.",
                         "nullable": true
                     },
-                    "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
-                    "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
+                    "printed_chapter": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."
+                    },
+                    "verse_label": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."
+                    },
+                    "omitted": {
+                        "type": "boolean",
+                        "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                    },
                     "text": {
                         "type": "string",
                         "description": "The verse text"
@@ -14994,11 +17221,28 @@
                         "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Independent of array position: the array is in similarity-desc order, but sorting by `canonical_order` recovers canonical order without a second request."
                     }
                 },
-                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "score", "canonical_order"]
+                "required": [
+                    "version",
+                    "testament",
+                    "section",
+                    "book",
+                    "bookabbrev",
+                    "booknum",
+                    "univbooknum",
+                    "chapter",
+                    "verse",
+                    "text",
+                    "score",
+                    "canonical_order"
+                ]
             },
             "SemanticSearchResponseJSON": {
                 "type": "object",
-                "required": ["results", "errors", "info"],
+                "required": [
+                    "results",
+                    "errors",
+                    "info"
+                ],
                 "properties": {
                     "results": {
                         "type": "array",
@@ -15014,7 +17258,9 @@
                     },
                     "info": {
                         "type": "object",
-                        "required": ["ENDPOINT_VERSION"],
+                        "required": [
+                            "ENDPOINT_VERSION"
+                        ],
                         "properties": {
                             "ENDPOINT_VERSION": {
                                 "type": "string",
@@ -15041,7 +17287,10 @@
                         "description": "The retriever's own score, as the sibling endpoint reports it: `ts_rank_cd` for the keyword leg, cosine similarity for the semantic leg."
                     }
                 },
-                "required": ["rank", "score"]
+                "required": [
+                    "rank",
+                    "score"
+                ]
             },
             "HybridSearchResultItem": {
                 "type": "object",
@@ -15091,9 +17340,20 @@
                         "description": "The position of this verse in another numbering scheme, when the edition records one: the Greek/Vulgate psalm number in CEI 2008 (`(9,22)`), the Hebrew number of Dan 3:91-100 (`24`), the Vulgate position of a Greek Esther verse in DRB and VGCL (`11:2`). Null for most verses.",
                         "nullable": true
                     },
-                    "printed_chapter": {"type": "integer", "nullable": true, "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."},
-                    "verse_label": {"type": "string", "nullable": true, "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."},
-                    "omitted": {"type": "boolean", "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."},
+                    "printed_chapter": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "The chapter under whose heading the edition prints this row, when it is not `chapter` (NABRE prints Wis 12:1 at the end of chapter 11, John 7:53 under chapter 8). Null: printed under `chapter`."
+                    },
+                    "verse_label": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The label the edition prints beside this row when it is not simply the verse number (`12:1`, `7:53`); an empty string means printed without a number (the rest of NABRE Job 10:1). Null: printed as the verse number (with `verse_segment`'s letter)."
+                    },
+                    "omitted": {
+                        "type": "boolean",
+                        "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                    },
                     "text": {
                         "type": "string",
                         "description": "The verse text"
@@ -15125,14 +17385,36 @@
                                 "$ref": "#/components/schemas/HybridSearchComponent"
                             }
                         },
-                        "required": ["keyword", "semantic"]
+                        "required": [
+                            "keyword",
+                            "semantic"
+                        ]
                     }
                 },
-                "required": ["version", "testament", "section", "book", "bookabbrev", "booknum", "univbooknum", "chapter", "verse", "text", "text_plain", "score", "canonical_order", "components"]
+                "required": [
+                    "version",
+                    "testament",
+                    "section",
+                    "book",
+                    "bookabbrev",
+                    "booknum",
+                    "univbooknum",
+                    "chapter",
+                    "verse",
+                    "text",
+                    "text_plain",
+                    "score",
+                    "canonical_order",
+                    "components"
+                ]
             },
             "HybridSearchResponseJSON": {
                 "type": "object",
-                "required": ["results", "errors", "info"],
+                "required": [
+                    "results",
+                    "errors",
+                    "info"
+                ],
                 "properties": {
                     "results": {
                         "type": "array",
@@ -15148,7 +17430,15 @@
                     },
                     "info": {
                         "type": "object",
-                        "required": ["ENDPOINT_VERSION", "model", "k", "keyword_weight", "semantic_weight", "candidates", "legs"],
+                        "required": [
+                            "ENDPOINT_VERSION",
+                            "model",
+                            "k",
+                            "keyword_weight",
+                            "semantic_weight",
+                            "candidates",
+                            "legs"
+                        ],
                         "properties": {
                             "ENDPOINT_VERSION": {
                                 "type": "string",
@@ -15181,9 +17471,15 @@
                                 "description": "Retrievers that actually ran. A leg is skipped when its weight is 0, and the keyword leg is skipped when `query` is shorter than 4 characters.",
                                 "items": {
                                     "type": "string",
-                                    "enum": ["keyword", "semantic"]
+                                    "enum": [
+                                        "keyword",
+                                        "semantic"
+                                    ]
                                 },
-                                "example": ["keyword", "semantic"]
+                                "example": [
+                                    "keyword",
+                                    "semantic"
+                                ]
                             }
                         }
                     }
@@ -15191,7 +17487,11 @@
             },
             "SimilarSearchResponseJSON": {
                 "type": "object",
-                "required": ["results", "errors", "info"],
+                "required": [
+                    "results",
+                    "errors",
+                    "info"
+                ],
                 "properties": {
                     "results": {
                         "type": "array",
@@ -15207,13 +17507,319 @@
                     },
                     "info": {
                         "type": "object",
-                        "required": ["ENDPOINT_VERSION"],
+                        "required": [
+                            "ENDPOINT_VERSION"
+                        ],
                         "properties": {
                             "ENDPOINT_VERSION": {
                                 "type": "string",
                                 "example": "3.0"
                             }
                         }
+                    }
+                }
+            },
+            "Problem": {
+                "type": "object",
+                "description": "RFC 9457 problem+json error.",
+                "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "developers": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "On 401 for data routes: where to request a project key."
+                    }
+                }
+            },
+            "Application": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "website": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "revoked"
+                        ]
+                    },
+                    "review_notes": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "reviewed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "AdminApplication": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Application"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "zitadel_user_id": {
+                                "type": "string",
+                                "description": "The owner's Zitadel user id (`system` for first-party applications)."
+                            },
+                            "reviewed_by": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "The reviewing admin's Zitadel user id."
+                            },
+                            "is_system": {
+                                "type": "boolean",
+                                "description": "First-party application (the frontend's reader key)."
+                            }
+                        }
+                    }
+                ]
+            },
+            "ApplicationInput": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "website": {
+                        "type": "string",
+                        "format": "uri",
+                        "nullable": true
+                    }
+                }
+            },
+            "ApiKeyRecord": {
+                "type": "object",
+                "description": "Never includes the key itself or its hash.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "application_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "key_prefix": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "read",
+                            "reader"
+                        ]
+                    },
+                    "rate_limit_per_hour": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "last_used_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "NewKey": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "key": {
+                        "type": "string",
+                        "description": "The plaintext key. Shown only in this response."
+                    },
+                    "record": {
+                        "$ref": "#/components/schemas/ApiKeyRecord"
+                    }
+                }
+            },
+            "ClientKeyRecord": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "plugin": {
+                        "type": "string",
+                        "enum": [
+                            "wordpress",
+                            "google-docs",
+                            "libreoffice",
+                            "openoffice",
+                            "msword",
+                            "webword"
+                        ]
+                    },
+                    "plugin_version": {
+                        "type": "string"
+                    },
+                    "key_prefix": {
+                        "type": "string"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "revoked_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "max_registrations_per_hour": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "InstallationRecord": {
+                "type": "object",
+                "description": "Never includes the token or its hash.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "client_key_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "plugin": {
+                        "type": "string"
+                    },
+                    "install_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "plugin_version": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "site_url": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "contact_email": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "rate_limit_per_hour": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "first_seen_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "last_seen_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "request_count": {
+                        "type": "integer",
+                        "description": "Minutes with at least one request (it is updated at most once a minute), not a request count: requests are counted per day in `GET /admin/stats`."
+                    }
+                }
+            },
+            "RateLimitInput": {
+                "type": "object",
+                "required": [
+                    "rate_limit_per_hour"
+                ],
+                "properties": {
+                    "rate_limit_per_hour": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100000
+                    }
+                }
+            },
+            "ReviewInput": {
+                "type": "object",
+                "properties": {
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
                     }
                 }
             }
@@ -15304,36 +17910,6 @@
                     }
                 }
             },
-            "appid": {
-                "name": "appid",
-                "in": "query",
-                "description": "Unique identifier of the application making the request, to be agreed upon with the owner of the API endpoint",
-                "required": true,
-                "schema": {
-                    "type": "string"
-                },
-                "example": "swaggerhub"
-            },
-            "pluginversion": {
-                "name": "pluginversion",
-                "in": "query",
-                "description": "Version number of the application making the request. Useful not only for statistics, to help understand which version of an application is being actively used, but also (especially in the case of the official applications) to help deal with possibly breaking changes between the application version and versions of the API endpoint",
-                "required": false,
-                "schema": {
-                    "type": "string"
-                },
-                "example": "v1.0"
-            },
-            "domain": {
-                "name": "domain",
-                "in": "query",
-                "description": "In the case of web based applications, should indicate the domain from which the request is generated. Currently used by the official plugin for WordPress to better understand usage of the plugin and monitor requests. When the application or plugin making the request can be installed on different domains (as is the case with the WordPress plugin), this value should be generated dynamically from a server variable identifying the domain. If instead it will always be the same domain making the requests, the value can be hardcoded with the actual domain.",
-                "required": false,
-                "schema": {
-                    "type": "string"
-                },
-                "example": "app.swaggerhub.com"
-            },
             "text_tradition": {
                 "name": "text_tradition",
                 "in": "query",
@@ -15357,6 +17933,188 @@
                     }
                 }
             }
+        },
+        "securitySchemes": {
+            "ApiKey": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-Api-Key",
+                "description": "A project key (`bibleget_live_…`, issued to an approved developer project) or an installation token (`bginst_live_…`, returned when a plugin installation registers with `POST /installations`). Client keys (`bgclient_…`) are refused on data routes. There is no query-string form. Required on every data route when the deployment requires credentials (always in production)."
+            },
+            "ClientKey": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-Api-Key",
+                "description": "A client key (`bgclient_live_…`), bundled in a published plugin release. It can only register installations."
+            },
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "A Zitadel access token (RS256) for the BibleGet project, obtained by the frontend login flow. The `/admin/*` routes also need the `bibleget_admin` role."
+            }
+        },
+        "headers": {
+            "RateLimitLimit": {
+                "description": "Requests allowed per hour for this credential.",
+                "schema": {
+                    "type": "integer"
+                }
+            },
+            "RateLimitRemaining": {
+                "description": "Requests left in the current sliding one-hour window.",
+                "schema": {
+                    "type": "integer"
+                }
+            },
+            "RateLimitReset": {
+                "description": "Unix timestamp at which the window frees capacity.",
+                "schema": {
+                    "type": "integer"
+                }
+            },
+            "RetryAfter": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                    "type": "integer"
+                }
+            },
+            "WWWAuthenticate": {
+                "description": "The authentication challenge: `ApiKey header=\"X-Api-Key\"` on data routes, `Bearer realm=\"bibleget\"` on /applications and /admin.",
+                "schema": {
+                    "type": "string"
+                }
+            }
+        },
+        "responses": {
+            "Unauthorized": {
+                "description": "No credential, or an unknown, revoked, expired or unapproved one. The body links to the developer pages (`developers`).",
+                "headers": {
+                    "WWW-Authenticate": {
+                        "$ref": "#/components/headers/WWWAuthenticate"
+                    }
+                },
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "BearerUnauthorized": {
+                "description": "Missing, invalid or expired Zitadel access token.",
+                "headers": {
+                    "WWW-Authenticate": {
+                        "$ref": "#/components/headers/WWWAuthenticate"
+                    }
+                },
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "A client key was used on a data route (client keys can only register installations), or the token lacks the required role.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "The resource does not exist (or, on /applications, is not owned by the caller).",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "The resource is not in a state that allows the change.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "MalformedJson": {
+                "description": "The request body is not valid JSON (or not valid UTF-8).",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "ValidationError": {
+                "description": "The request body or parameters are invalid (422 Unprocessable Content).",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "TooManyRequests": {
+                "description": "Rate limit exceeded: for a credential on the data routes (sliding one-hour window), or for a client key's registrations on POST /installations. The X-RateLimit-* headers are sent with the 429 as well.",
+                "headers": {
+                    "Retry-After": {
+                        "$ref": "#/components/headers/RetryAfter"
+                    },
+                    "X-RateLimit-Limit": {
+                        "$ref": "#/components/headers/RateLimitLimit"
+                    },
+                    "X-RateLimit-Remaining": {
+                        "$ref": "#/components/headers/RateLimitRemaining"
+                    },
+                    "X-RateLimit-Reset": {
+                        "$ref": "#/components/headers/RateLimitReset"
+                    }
+                },
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            },
+            "ServiceUnavailable": {
+                "description": "Sign-in is not configured on this deployment (Zitadel issuer/audience unset).",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Problem"
+                        }
+                    }
+                }
+            }
         }
-    }
+    },
+    "tags": [
+        {
+            "name": "InstallationsAPI",
+            "description": "Plugin installation registration (client key, then installation token)."
+        },
+        {
+            "name": "DevelopersAPI",
+            "description": "Developer projects and their API keys. Bearer token (Zitadel)."
+        },
+        {
+            "name": "AdminAPI",
+            "description": "Approval, client keys, installations and statistics. Bearer token with the `bibleget_admin` role."
+        }
+    ]
 }

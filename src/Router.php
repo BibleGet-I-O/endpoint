@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace BibleGet\Api;
 
+use BibleGet\Api\Handlers\Admin\ApplicationAdminHandler;
+use BibleGet\Api\Handlers\Admin\ClientKeyAdminHandler;
+use BibleGet\Api\Handlers\Admin\InstallationAdminHandler;
+use BibleGet\Api\Handlers\Admin\StatsHandler;
+use BibleGet\Api\Handlers\ApplicationsHandler;
+use BibleGet\Api\Handlers\InstallationsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
 use BibleGet\Api\Handlers\HybridSearchHandler;
@@ -13,8 +19,12 @@ use BibleGet\Api\Handlers\SemanticSearchHandler;
 use BibleGet\Api\Handlers\SimilarSearchHandler;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
+use BibleGet\Api\Http\Middleware\CredentialMiddleware;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
 use BibleGet\Api\Http\Middleware\LoggingMiddleware;
+use BibleGet\Api\Http\Middleware\OidcBearerMiddleware;
+use BibleGet\Api\Http\Middleware\RateLimitMiddleware;
+use BibleGet\Api\Http\Middleware\UsageMiddleware;
 use BibleGet\Api\Http\Server\MiddlewarePipeline;
 use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -25,6 +35,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class Router
 {
+    public const ADMIN_ROLE = 'bibleget_admin';
+
     public static string $apiBase = '/';
     private RequestHandlerInterface $handler;
     private Psr17Factory $psr17Factory;
@@ -78,6 +90,21 @@ class Router
                 $this->handler = new MetadataHandler($this->psr17Factory, $requestPathParts);
                 break;
 
+            case 'installations':
+                // No CredentialMiddleware: the handler validates the client key or installation token itself.
+                $this->handler = new InstallationsHandler($this->psr17Factory, $requestPathParts);
+                break;
+
+            case 'applications':
+                // Developer routes: a Zitadel access token in Authorization: Bearer, never an X-Api-Key credential.
+                $this->handler = new ApplicationsHandler($this->psr17Factory, $requestPathParts);
+                break;
+
+            case 'admin':
+                // Admin routes: a Zitadel access token with the bibleget_admin role (see the pipeline below).
+                $this->handler = $this->createAdminHandler($requestPathParts);
+                break;
+
             case 'search':
                 $subRoute     = $requestPathParts[0] ?? '';
                 $subPathParts = array_slice($requestPathParts, 1);
@@ -112,6 +139,18 @@ class Router
         $pipeline = new MiddlewarePipeline($this->handler);
         $pipeline->pipe(new ErrorHandlingMiddleware($this->psr17Factory, self::$debug));
         $pipeline->pipe(new LoggingMiddleware(self::$debug));
+
+        $oidc = self::oidcMiddleware($route);
+        if ($oidc !== null) {
+            $pipeline->pipe($oidc);
+        }
+
+        $usageRoute = self::dataRouteName($route, $requestPathParts);
+        if ($usageRoute !== null) {
+            $pipeline->pipe(new CredentialMiddleware());
+            $pipeline->pipe(new RateLimitMiddleware());
+            $pipeline->pipe(new UsageMiddleware($usageRoute));
+        }
 
         $this->response = $pipeline->handle($this->request)
             ->withHeader('X-Request-Id', $this->requestId);
@@ -171,6 +210,64 @@ class Router
         return in_array($serverAddress, $localhostAddresses)
             || in_array($remoteAddress, $localhostAddresses)
             || in_array($serverName, $localhostNames);
+    }
+
+    /**
+     * The usage_daily route name of a data route (the first path segment, plus
+     * the second for search), or null for a route that needs no credential
+     * (including unknown routes, which 404).
+     * The empty route is the legacy alias of /quote.
+     *
+     * @param list<string> $pathParts the path segments after the first
+     */
+    public static function dataRouteName(string $route, array $pathParts): ?string
+    {
+        return match ($route) {
+            '', 'quote' => 'quote',
+            'metadata'  => 'metadata',
+            'search'    => self::searchRouteName($pathParts[0] ?? ''),
+            default     => null,
+        };
+    }
+
+    /** Unknown search sub-routes are 404s, not data routes, so no free-form text reaches usage_daily. */
+    private static function searchRouteName(string $subRoute): ?string
+    {
+        if ($subRoute === '') {
+            return 'search';
+        }
+        return in_array($subRoute, ['keyword', 'semantic', 'hybrid', 'similar'], true) ? 'search/' . $subRoute : null;
+    }
+
+    /**
+     * Bearer-token authentication for the developer routes (any signed-in
+     * user) and the admin routes (role bibleget_admin: every admin path,
+     * including unknown ones, needs the role before it can 404); null for
+     * every other route.
+     */
+    private static function oidcMiddleware(string $route): ?OidcBearerMiddleware
+    {
+        return match ($route) {
+            'applications' => new OidcBearerMiddleware(),
+            'admin'        => ( new OidcBearerMiddleware() )->requireRole(self::ADMIN_ROLE),
+            default        => null,
+        };
+    }
+
+    /**
+     * The handler for /admin/{resource}/...; it receives the path segments after /admin.
+     *
+     * @param list<string> $pathParts
+     */
+    private function createAdminHandler(array $pathParts): RequestHandlerInterface
+    {
+        return match ($pathParts[0] ?? '') {
+            'applications', 'api-keys' => new ApplicationAdminHandler($this->psr17Factory, $pathParts),
+            'client-keys'              => new ClientKeyAdminHandler($this->psr17Factory, $pathParts),
+            'installations'            => new InstallationAdminHandler($this->psr17Factory, $pathParts),
+            'stats'                    => new StatsHandler($this->psr17Factory, $pathParts),
+            default                    => $this->createNotFoundHandler(),
+        };
     }
 
     private function createNotFoundHandler(): RequestHandlerInterface

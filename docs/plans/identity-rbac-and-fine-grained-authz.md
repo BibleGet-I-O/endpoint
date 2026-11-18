@@ -1,6 +1,6 @@
 # Plan: Identity, RBAC, API Keys, and Per-Version Fine-Grained Authorization
 
-**Status**: Proposed
+**Status**: Proposed. Phases 1–2 (identity and API keys) are superseded by `docs/superpowers/specs/2026-11-17-api-keys-installations-design.md`, implemented in #97; later phases (curator workflows, OpenFGA) remain proposed.
 **Date**: 2026-05-05
 **Related Issue**: [#97](https://github.com/BibleGet-I-O/endpoint/issues/97)
 **Reference implementation**: [`LiturgicalCalendar/LiturgicalCalendarAPI`](https://github.com/Liturgical-Calendar/LiturgicalCalendarAPI) — sister project that has already adopted Zitadel + API keys + OpenFGA. We mirror its patterns for architectural consistency across the two APIs.

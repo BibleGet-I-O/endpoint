@@ -7,29 +7,31 @@ namespace BibleGet\Api\Http\Middleware;
 use BibleGet\Api\Http\CorsPolicy;
 use BibleGet\Api\Http\Exception\ApiException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
+use BibleGet\Api\Http\Exception\UnauthorizedException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
-use Monolog\Logger;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Log\LoggerInterface;
 
 class ErrorHandlingMiddleware implements MiddlewareInterface
 {
     private ResponseFactoryInterface $responseFactory;
     private bool $debug;
-    private Logger $errorLogger;
+    private LoggerInterface $errorLogger;
     private ?ServerRequestInterface $currentRequest = null;
     private static bool $handlersRegistered         = false;
 
     public function __construct(
         ResponseFactoryInterface $responseFactory,
-        bool $debug = false
+        bool $debug = false,
+        ?LoggerInterface $errorLogger = null
     ) {
         $this->responseFactory = $responseFactory;
         $this->debug           = $debug;
-        $this->errorLogger     = LoggerFactory::create('api-error', null, 30, $debug);
+        $this->errorLogger     = $errorLogger ?? LoggerFactory::create('api-error', null, 30, $debug);
 
         if (!self::$handlersRegistered) {
             register_shutdown_function([$this, 'handleShutdown']);
@@ -56,13 +58,17 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
                 'detail' => $this->debug ? $e->getMessage() : 'An unexpected error occurred.',
             ];
 
-            $retryAfter = null;
+            $retryAfter   = null;
+            $extraHeaders = [];
             if ($e instanceof ApiException) {
                 $status  = $e->getStatus();
                 $problem = $e->toArray($this->debug);
 
-                if ($e instanceof TooManyRequestsException && $e->getRetryAfter() > 0) {
-                    $retryAfter = $e->getRetryAfter();
+                if ($e instanceof TooManyRequestsException) {
+                    $extraHeaders = $e->getHeaders();
+                    if ($e->getRetryAfter() > 0) {
+                        $retryAfter = $e->getRetryAfter();
+                    }
                 }
             } elseif ($this->debug) {
                 $problem['file']  = $e->getFile();
@@ -74,6 +80,13 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
 
             if ($retryAfter !== null) {
                 $response = $response->withHeader('Retry-After', (string) $retryAfter);
+            }
+            foreach ($extraHeaders as $name => $value) {
+                $response = $response->withHeader($name, $value);
+            }
+
+            if ($e instanceof UnauthorizedException) {
+                $response = $response->withHeader('WWW-Authenticate', $e->challenge());
             }
 
             $responseBody = json_encode($problem, JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -138,12 +151,28 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
         return ( new CorsPolicy() )->applyHeaders($request, $response);
     }
 
+    /**
+     * Server errors (5xx, and anything that is not an ApiException) at the
+     * given severity with a full trace; client errors (4xx ApiException:
+     * 401, 403, 404, 409, 422, 429...) are expected traffic, logged at info
+     * with no trace. Credential-shaped strings (e.g. a key sent in the query
+     * string, where it is never accepted) are masked in both.
+     */
     private function logException(\Throwable $e, string $severity = 'error'): void
     {
         $method = $this->currentRequest?->getMethod() ?? 'N/A';
         $uri    = $this->currentRequest?->getUri()?->__toString() ?? 'N/A';
 
-        $fullMessage = sprintf(
+        if ($e instanceof ApiException && $e->getStatus() < 500) {
+            $message = sprintf('[%s %s] %d %s', $method, $uri, $e->getStatus(), $e->getMessage());
+            $this->errorLogger->info(LoggingMiddleware::maskCredentials($message), [
+                'request_id' => $this->currentRequest?->getAttribute('request_id'),
+                'status'     => $e->getStatus(),
+            ]);
+            return;
+        }
+
+        $fullMessage = LoggingMiddleware::maskCredentials(sprintf(
             "[%s %s] %s in %s:%d\nStack trace:\n%s",
             $method,
             $uri,
@@ -151,11 +180,13 @@ class ErrorHandlingMiddleware implements MiddlewareInterface
             $e->getFile(),
             $e->getLine(),
             $e->getTraceAsString()
-        );
+        ));
 
         $this->errorLogger->{$severity}($fullMessage, [
-            'request_id' => $this->currentRequest?->getAttribute('request_id'),
-            'exception'  => $e,
+            'request_id'      => $this->currentRequest?->getAttribute('request_id'),
+            // Not the exception object: formatters would serialize its
+            // (and its previous exceptions') unmasked message.
+            'exception_class' => $e::class,
         ]);
     }
 }

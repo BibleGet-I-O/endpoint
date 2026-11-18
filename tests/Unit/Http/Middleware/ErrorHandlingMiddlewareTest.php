@@ -8,6 +8,9 @@ use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\TooManyRequestsException;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\Logger;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
@@ -176,5 +179,73 @@ class ErrorHandlingMiddlewareTest extends TestCase
         $response = $this->middleware->process(new ServerRequest('GET', '/'), $handler);
         self::assertSame(429, $response->getStatusCode());
         self::assertSame('60', $response->getHeaderLine('Retry-After'));
+    }
+
+    private static function throwing(\Throwable $e): RequestHandlerInterface
+    {
+        return new class ($e) implements RequestHandlerInterface {
+            public function __construct(private \Throwable $e)
+            {
+            }
+
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                throw $this->e;
+            }
+        };
+    }
+
+    public function testClientErrorsAreLoggedAtInfoWithoutTrace(): void
+    {
+        $records    = new TestHandler();
+        $middleware = new ErrorHandlingMiddleware($this->factory, false, new Logger('test', [$records]));
+
+        $response = $middleware->process(new ServerRequest('GET', '/v3/quote'), self::throwing(new NotFoundException('No such thing')));
+        self::assertSame(404, $response->getStatusCode());
+
+        $logged = $records->getRecords();
+        self::assertCount(1, $logged);
+        self::assertSame(Level::Info, $logged[0]->level);
+        self::assertStringContainsString('No such thing', $logged[0]->message);
+        self::assertStringNotContainsString('Stack trace', $logged[0]->message);
+        self::assertArrayNotHasKey('exception', $logged[0]->context);
+    }
+
+    public function testServerErrorsStayAtErrorWithTrace(): void
+    {
+        $records    = new TestHandler();
+        $middleware = new ErrorHandlingMiddleware($this->factory, false, new Logger('test', [$records]));
+
+        $response = $middleware->process(new ServerRequest('GET', '/v3/quote'), self::throwing(new \RuntimeException('boom')));
+        self::assertSame(500, $response->getStatusCode());
+
+        $logged = $records->getRecords();
+        self::assertCount(1, $logged);
+        self::assertSame(Level::Error, $logged[0]->level);
+        self::assertStringContainsString('Stack trace', $logged[0]->message);
+        // The exception object would be serialized with its unmasked message.
+        self::assertArrayNotHasKey('exception', $logged[0]->context);
+        self::assertSame(\RuntimeException::class, $logged[0]->context['exception_class'] ?? null);
+    }
+
+    public function testLoggedUriHasCredentialsMasked(): void
+    {
+        $key        = 'bibleget_test_' . str_repeat('ab', 16);
+        $records    = new TestHandler();
+        $middleware = new ErrorHandlingMiddleware($this->factory, false, new Logger('test', [$records]));
+
+        foreach ([new NotFoundException('No such thing'), new \RuntimeException('boom', 0, new \RuntimeException('upstream said ' . $key))] as $e) {
+            $request = new ServerRequest('GET', '/v3/quote?query=Jn3,16&api_key=' . $key);
+            $middleware->process($request, self::throwing($e));
+            self::assertStringContainsString('api_key=', (string) $request->getUri(), 'the request itself is untouched');
+        }
+
+        $logged = $records->getRecords();
+        self::assertCount(2, $logged);
+        foreach ($logged as $record) {
+            self::assertStringContainsString('/v3/quote?query=Jn3,16&api_key=[redacted]', $record->message);
+            self::assertStringNotContainsString($key, $record->message);
+            self::assertStringNotContainsString($key, json_encode($record->context, JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '');
+        }
     }
 }

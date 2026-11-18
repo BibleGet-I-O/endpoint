@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BibleGet\Tests\Unit\Handlers;
 
+use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Auth\CredentialType;
 use BibleGet\Api\Handlers\AbstractHandler;
 use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestContentType;
@@ -296,6 +298,28 @@ class AbstractHandlerTest extends TestCase
         $expectedEtag = '"' . md5($body) . '"';
         self::assertSame($expectedEtag, $response->getHeaderLine('ETag'));
         self::assertSame(200, $response->getStatusCode());
+    }
+
+    public function testCacheHeadersArePrivateForCredentialedRequests(): void
+    {
+        $handler    = $this->createHandler();
+        $credential = new Credential(CredentialType::Project, 'k1', 'reader', 1000, 'a1', null, null, false);
+        $request    = ( new ServerRequest('GET', '/') )->withAttribute('credential', $credential);
+        $response   = $handler->testWithCacheHeaders($request, new \Nyholm\Psr7\Response(200, [], 'body'));
+
+        self::assertSame('private, must-revalidate, max-age=259200', $response->getHeaderLine('Cache-Control'));
+        self::assertNotSame('', $response->getHeaderLine('ETag'));
+    }
+
+    public function testCacheHeadersVaryOnTheKeyAndKeepExistingVary(): void
+    {
+        $handler = $this->createHandler();
+        foreach ([new ServerRequest('GET', '/'), ( new ServerRequest('GET', '/') )->withAttribute('credential', new Credential(CredentialType::Project, 'k1', 'read', 1000, 'a1', null, null, false))] as $request) {
+            $response = $handler->testWithCacheHeaders($request, new \Nyholm\Psr7\Response(200, ['Vary' => 'Origin'], 'body'));
+            $vary     = array_map('trim', explode(',', $response->getHeaderLine('Vary')));
+            self::assertContains('Origin', $vary);
+            self::assertContains('X-Api-Key', $vary);
+        }
     }
 
     public function testCacheHeadersCustomMaxAge(): void

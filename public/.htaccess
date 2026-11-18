@@ -1,5 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Pass the Authorization header (Zitadel bearer tokens) to PHP: Apache drops
+    # it under CGI/FastCGI. PHP sees HTTP_AUTHORIZATION, or
+    # REDIRECT_HTTP_AUTHORIZATION after a rewrite; OidcBearerMiddleware reads both.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [QSA,L]

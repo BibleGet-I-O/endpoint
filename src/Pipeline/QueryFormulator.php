@@ -66,8 +66,7 @@ class QueryFormulator
                     $remappedQuery,
                     $version,
                     $perSegmentOrigins,
-                    $this->ctx->COPYRIGHT_VERSIONS,
-                    $this->ctx->REQUESTED_COPYRIGHTED_VERSIONS
+                    $this->ctx->copyrightLimitedVersions()
                 );
 
                 $originalQuery = $this->ctx->validatedQueries[$i];

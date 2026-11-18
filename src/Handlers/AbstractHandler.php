@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Enum\RequestContentType;
@@ -116,7 +117,7 @@ abstract class AbstractHandler implements RequestHandlerInterface
 
             $headersHeader = $request->getHeaderLine('Access-Control-Request-Headers');
             if ($headersHeader !== '') {
-                $allowed       = ['Accept', 'Accept-Language', 'Content-Type'];
+                $allowed       = ['Accept', 'Accept-Language', 'Authorization', 'Content-Type', 'X-Api-Key'];
                 $requested     = array_values(array_filter(array_map('trim', explode(',', $headersHeader))));
                 $canonicalByLc = array_combine(array_map('strtolower', $allowed), $allowed);
                 $approved      = [];
@@ -295,6 +296,41 @@ abstract class AbstractHandler implements RequestHandlerInterface
     }
 
     /**
+     * Parameters from a JSON request body only: the query string is never
+     * read, so nothing outside the decoded (hence valid UTF-8) body reaches
+     * the database.
+     *
+     * @return array<string, mixed>
+     * @throws BadRequestException on malformed JSON
+     */
+    protected function getJsonBodyParams(ServerRequestInterface $request): array
+    {
+        $body = (string) $request->getBody();
+        if ($body === '') {
+            return [];
+        }
+        $decoded = json_decode($body, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new BadRequestException('Malformed JSON data received in the request: ' . json_last_error_msg());
+        }
+        /** @var array<string, mixed> $out */
+        $out = is_array($decoded) ? $decoded : [];
+        return $out;
+    }
+
+    /** True for valid UTF-8 without control characters (C0, DEL or C1). */
+    protected static function isCleanText(string $v): bool
+    {
+        return mb_check_encoding($v, 'UTF-8') && preg_match('/\p{Cc}/u', $v) !== 1;
+    }
+
+    /** As isCleanText, but tab, line feed and carriage return are allowed (free text that may span lines). */
+    protected static function isCleanMultilineText(string $v): bool
+    {
+        return mb_check_encoding($v, 'UTF-8') && preg_match('/[^\P{Cc}\t\n\r]/u', $v) !== 1;
+    }
+
+    /**
      * Determine the response content type from the `return` param or Accept header.
      *
      * @param array<string, mixed> $params
@@ -334,6 +370,13 @@ abstract class AbstractHandler implements RequestHandlerInterface
     /**
      * Add Cache-Control and ETag headers to the response.
      *
+     * A response to a request carrying a credential is `private`: its body
+     * can depend on the credential (the reader scope serves whole editions)
+     * and it carries that credential's X-RateLimit-* headers, so a shared
+     * cache must never hand it to another caller. Every response varies on
+     * X-Api-Key, so a browser cache does not reuse a body fetched with another
+     * key (e.g. a capped quote once a reader key is in use).
+     *
      * If the client sent an If-None-Match header that matches the ETag,
      * a 304 Not Modified response is returned instead.
      *
@@ -347,8 +390,10 @@ abstract class AbstractHandler implements RequestHandlerInterface
         $body = (string) $response->getBody();
         $etag = '"' . md5($body) . '"';
 
+        $private  = $request->getAttribute('credential') instanceof Credential ? 'private, ' : '';
         $response = $response
-            ->withHeader('Cache-Control', 'must-revalidate, max-age=' . $maxAge)
+            ->withHeader('Cache-Control', $private . 'must-revalidate, max-age=' . $maxAge)
+            ->withAddedHeader('Vary', 'X-Api-Key')
             ->withHeader('ETag', $etag);
 
         $ifNoneMatch = $request->getHeaderLine('If-None-Match');

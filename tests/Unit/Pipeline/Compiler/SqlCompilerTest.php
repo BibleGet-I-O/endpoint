@@ -24,7 +24,7 @@ final class SqlCompilerTest extends TestCase
      */
     private function compile(BibleQuery $query, string $version = 'CEI2008', string $textTradition = ''): array
     {
-        return $this->compiler->compile($query, $version, $textTradition, [], []);
+        return $this->compiler->compile($query, $version, $textTradition, []);
     }
 
     /**
@@ -167,7 +167,7 @@ final class SqlCompilerTest extends TestCase
     public function testTextTradition(): void
     {
         $query  = new BibleQuery(19, [new VerseRef(19, 51, null, 1)]);
-        $result = $this->compiler->compile($query, 'CEI2008', " AND text_tradition = 'GREEK'", [], []);
+        $result = $this->compiler->compile($query, 'CEI2008', " AND text_tradition = 'GREEK'", []);
 
         $this->assertStringContainsString("AND text_tradition = 'GREEK'", $result[0]);
     }
@@ -177,7 +177,7 @@ final class SqlCompilerTest extends TestCase
     public function testCopyrightLimit(): void
     {
         $query  = new BibleQuery(1, [new VerseRef(1, 1)]);
-        $result = $this->compiler->compile($query, 'NABRE', '', ['NABRE'], []);
+        $result = $this->compiler->compile($query, 'NABRE', '', ['NABRE']);
 
         $this->assertStringEndsWith('LIMIT 30', $result[0]);
     }
@@ -185,16 +185,8 @@ final class SqlCompilerTest extends TestCase
     public function testNoCopyrightLimitForNonCopyrighted(): void
     {
         $query  = new BibleQuery(1, [new VerseRef(1, 1)]);
-        $result = $this->compiler->compile($query, 'CEI2008', '', ['NABRE'], []);
+        $result = $this->compiler->compile($query, 'CEI2008', '', ['NABRE']);
 
         $this->assertStringEndsWith('ORDER BY sort_order', $result[0]);
-    }
-
-    public function testForcedCopyrightLimit(): void
-    {
-        $query  = new BibleQuery(1, [new VerseRef(1, 1)]);
-        $result = $this->compiler->compile($query, 'CUSTOM', '', [], ['CUSTOM']);
-
-        $this->assertStringEndsWith('LIMIT 30', $result[0]);
     }
 }
