@@ -137,6 +137,27 @@ final class ReferenceParserTest extends TestCase
         $this->assertSame('b', $seg->to->partialSuffix);
     }
 
+    public function testMultiLetterVerseSuffix(): void
+    {
+        $q   = $this->parse('Psalm16,10-11ab');
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRange::class, $seg);
+        $this->assertSame(10, $seg->from->verse);
+        $this->assertNull($seg->from->partialSuffix);
+        $this->assertSame(11, $seg->to->verse);
+        $this->assertSame('ab', $seg->to->partialSuffix);
+    }
+
+    public function testVerseSuffixSpanIsOneVerse(): void
+    {
+        $q   = $this->parse('Psalm110,1b-e.2');
+        $seg = $q->segments[0];
+        $this->assertInstanceOf(VerseRef::class, $seg);
+        $this->assertSame(1, $seg->verse);
+        $this->assertSame('b-e', $seg->partialSuffix);
+        $this->assertSame(2, $q->segments[1]->verse);
+    }
+
     // ── Dual Psalm numbering ──────────────────────────────────────
 
     public function testDualPsalmNumbering(): void
