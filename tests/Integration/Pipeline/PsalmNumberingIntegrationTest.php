@@ -11,12 +11,13 @@ use BibleGet\Api\Pipeline\QueryExecutor;
 use BibleGet\Tests\Integration\DatabaseTestCase;
 
 /**
- * Integration tests for issue #46: Psalm references with dual Hebrew/Vulgate numbering.
+ * Integration tests for issues #46 and #210: Psalm numbers are Hebrew by default,
+ * and of two numbers the larger is the Hebrew one, whichever is in parentheses.
  *
- * Verifies that "Psalm51(50),1" queries chapter 50 in VGCL/DRB (Vulgate)
- * and chapter 51 in TEST1 (Hebrew).
+ * Verifies that "Psalm51(50),3", "Psalm50(51),3" and "Psalm51,3" all query
+ * chapter 50 in VGCL/DRB (Vulgate) and chapter 51 in TEST1 (Hebrew).
  */
-class PsalmChapterSwapIntegrationTest extends DatabaseTestCase
+class PsalmNumberingIntegrationTest extends DatabaseTestCase
 {
     private function executePipeline(string $query, string $version): QuoteContext
     {
@@ -79,17 +80,48 @@ class PsalmChapterSwapIntegrationTest extends DatabaseTestCase
     }
 
     /**
-     * Psalm51,1 (no alternate) with VGCL → no swap, queries chapter 51 as-is.
-     * VGCL chapter 51 is actually Hebrew Psalm 52 ("Quid gloriaris").
+     * Psalm51,3 (no alternate) with VGCL → a bare number is Hebrew: Vulgate 50,
+     * "Miserere", not VGCL's own chapter 51 ("Quid gloriaris", Hebrew 52).
      */
-    public function testPsalmWithoutAlternateNoSwap(): void
+    public function testBarePsalmNumberIsHebrew(): void
     {
-        $ctx = $this->executePipeline('Psalm51,1', 'VGCL');
+        $ctx = $this->executePipeline('Psalm51,3', 'VGCL');
 
         self::assertEmpty($ctx->errors, 'Expected no errors: ' . print_r($ctx->errors, true));
         self::assertCount(1, $ctx->results);
-        self::assertEquals(51, $ctx->results[0]['chapter']);
-        self::assertStringContainsString('Intellectus', $ctx->results[0]['text']);
+        self::assertEquals(50, $ctx->results[0]['chapter']);
+        self::assertStringContainsString('Miserere', $ctx->results[0]['text']);
+    }
+
+    /**
+     * Psalm50(51),3 — the Vulgate number first, as CEI, AELF and the Latin
+     * lectionary print it — is the same psalm as Psalm51(50),3.
+     */
+    public function testVulgateFirstCitationFindsTheSamePsalm(): void
+    {
+        $ctx = $this->executePipeline('Psalm50(51),3', 'VGCL,DRB,TEST1');
+
+        self::assertEmpty($ctx->errors, 'Expected no errors: ' . print_r($ctx->errors, true));
+        $chapters = [];
+        foreach ($ctx->results as $r) {
+            $chapters[$r['version']] = (int) $r['chapter'];
+        }
+        self::assertSame(['VGCL' => 50, 'DRB' => 50, 'TEST1' => 51], $chapters);
+    }
+
+    /**
+     * Psalm50(51),3.5 — the verse after the dot belongs to the same dual-numbered
+     * psalm, so TEST1 returns Hebrew 51:3 and 51:5, not 51:3 and 50:5.
+     */
+    public function testVersesAfterADotStayInTheSamePsalm(): void
+    {
+        $ctx = $this->executePipeline('Psalm50(51),3.5', 'TEST1');
+
+        self::assertEmpty($ctx->errors, 'Expected no errors: ' . print_r($ctx->errors, true));
+        self::assertSame(
+            ['51:3', '51:5'],
+            array_map(static fn(array $r): string => $r['chapter'] . ':' . $r['verse'], $ctx->results)
+        );
     }
 
     /**

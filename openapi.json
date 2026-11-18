@@ -17828,7 +17828,7 @@
             "query": {
                 "name": "query",
                 "in": "query",
-                "description": "Bible reference using standard Bible citation notation. ",
+                "description": "Bible reference using standard Bible citation notation. Psalm numbers are Hebrew numbers, as in the Nova Vulgata and the modern translations; a psalm may also be cited with both numbers, in either order (`Psalm 51(50),3` or `Salmo 50(51),3`), and the larger is taken as the Hebrew one. Each version returns the psalm under its own numbering: VGCL and DRB under the Vulgate number, with the verses of the psalms the two numberings split or join (9-10, 114-116, 147) moved accordingly.",
                 "required": true,
                 "schema": {
                     "type": "string"

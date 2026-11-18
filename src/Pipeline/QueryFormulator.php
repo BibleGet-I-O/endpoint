@@ -6,12 +6,12 @@ namespace BibleGet\Api\Pipeline;
 
 use BibleGet\Api\Pipeline\Compiler\SqlCompiler;
 use BibleGet\Api\Pipeline\Transform\EstherRemapper;
-use BibleGet\Api\Pipeline\Transform\PsalmChapterSwapper;
+use BibleGet\Api\Pipeline\Transform\PsalmNumbering;
 
 /**
  * Translates validated Bible references into SQL queries.
  *
- * Delegates to EstherRemapper → SqlCompiler internally using the parsed ASTs
+ * Delegates to EstherRemapper → PsalmNumbering → SqlCompiler internally using the parsed ASTs
  * from QuoteContext. Public API (formulateSQLQueries) and its effects on
  * QuoteContext remain unchanged.
  */
@@ -20,7 +20,7 @@ class QueryFormulator
     private QuoteContext $ctx;
     private SqlCompiler $compiler;
     private EstherRemapper $estherRemapper;
-    private PsalmChapterSwapper $psalmSwapper;
+    private PsalmNumbering $psalmNumbering;
 
     /** @var array<int, string> */
     public array $sqlQueries = [];
@@ -34,7 +34,7 @@ class QueryFormulator
         $this->ctx            = $ctx;
         $this->compiler       = new SqlCompiler();
         $this->estherRemapper = new EstherRemapper($ctx->CATHOLIC_VERSIONS);
-        $this->psalmSwapper   = new PsalmChapterSwapper();
+        $this->psalmNumbering = new PsalmNumbering();
     }
 
     public function formulateSQLQueries(): void
@@ -58,8 +58,8 @@ class QueryFormulator
                     $baseTextTradition
                 );
 
-                // Apply Psalm chapter swap for Vulgate-numbered versions
-                $remappedQuery = $this->psalmSwapper->swap($remappedQuery, $version);
+                // Resolve Psalm numbers (Hebrew by default) to this version's chapter and verse
+                $remappedQuery = $this->psalmNumbering->resolve($remappedQuery, $version);
 
                 // Compile AST → SQL with per-segment textTradition
                 $sqls = $this->compiler->compile(

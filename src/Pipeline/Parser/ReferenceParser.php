@@ -198,11 +198,11 @@ final class ReferenceParser
 
         // We need the current chapter context from the first segment.
         // The chapter is inherited from the last segment's chapter.
-        $chapter  = $this->inferCurrentChapter();
-        $versePos = $this->current()->position;
+        [$chapter, $alternateChapter] = $this->inferCurrentChapter();
+        $versePos                     = $this->current()->position;
 
         [$verse, $verseSuffix] = $this->parseVerse();
-        $fromRef               = new VerseRef($this->book, $chapter, null, $verse, $verseSuffix, $versePos);
+        $fromRef               = new VerseRef($this->book, $chapter, $alternateChapter, $verse, $verseSuffix, $versePos);
 
         if ($this->check(TokenType::RANGE_SEPARATOR)) {
             $sepPos = $this->current()->position;
@@ -215,7 +215,7 @@ final class ReferenceParser
             }
             $toPos                = $this->current()->position;
             [$toVerse, $toSuffix] = $this->parseVerse();
-            $toRef                = new VerseRef($this->book, $chapter, null, $toVerse, $toSuffix, $toPos);
+            $toRef                = new VerseRef($this->book, $chapter, $alternateChapter, $toVerse, $toSuffix, $toPos);
             return new VerseRange($fromRef, $toRef);
         }
 
@@ -271,16 +271,27 @@ final class ReferenceParser
 
     /**
      * Infer the current chapter from previously parsed tokens.
-     * Walks backward through the token stream to find the last CHAPTER_NUMBER.
+     * Walks backward through the token stream to find the last CHAPTER_NUMBER,
+     * together with the alternate chapter written right after it, if any: in
+     * "Psalm 88 (89), 2-3.4" verse 4 belongs to 88 (89), not to a bare 88 (#210).
+     *
+     * @return array{int, ?int}
      */
-    private function inferCurrentChapter(): int
+    private function inferCurrentChapter(): array
     {
         for ($i = $this->pos - 1; $i >= 0; $i--) {
             if ($this->tokens[$i]->type === TokenType::CHAPTER_NUMBER) {
-                return (int) $this->tokens[$i]->value;
+                $alternate = null;
+                if (
+                    ( $this->tokens[$i + 1] ?? null )?->type === TokenType::OPEN_PARENTHESIS
+                    && ( $this->tokens[$i + 2] ?? null )?->type === TokenType::ALTERNATE_CHAPTER
+                ) {
+                    $alternate = (int) $this->tokens[$i + 2]->value;
+                }
+                return [(int) $this->tokens[$i]->value, $alternate];
             }
         }
-        return 1;
+        return [1, null];
     }
 
     private function current(): Token
