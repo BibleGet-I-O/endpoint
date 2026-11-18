@@ -74,5 +74,130 @@ services:
       DB_PASS: bibleget
       EMBEDDING_SERVICE_URL: http://embedding:8000
 
+  # --- Local Zitadel (developer sign-in), opt-in: ---------------------------
+  #   docker compose --profile zitadel up -d zitadel-proxy
+  #   scripts/setup-zitadel-local.sh
+  # One origin, http://localhost:${ZITADEL_PORT:-8095}: zitadel-proxy serves
+  # Zitadel and the v2 login UI (as cdcf-infra does in production). Image
+  # versions match production's. Console: /ui/console, user root /
+  # RootPassword1!. Mail (email verification) lands in Mailpit,
+  # http://localhost:${MAILPIT_PORT:-8026}. PATs go to ./.zitadel-data/.
+  zitadel-db:
+    profiles: [zitadel]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - zitadel_pgdata:/var/lib/postgresql/data
+
+  zitadel:
+    profiles: [zitadel]
+    image: ghcr.io/zitadel/zitadel:v4.15.0
+    command: 'start-from-init --masterkey "${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}"'
+    environment:
+      ZITADEL_EXTERNALDOMAIN: localhost
+      ZITADEL_EXTERNALPORT: ${ZITADEL_PORT:-8095}
+      ZITADEL_EXTERNALSECURE: false
+      ZITADEL_TLS_ENABLED: false
+      ZITADEL_DATABASE_POSTGRES_HOST: zitadel-db
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /zitadel-data/login-client.pat
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Login V2 Client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: '2030-01-01T00:00:00Z'
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: true
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://localhost:${ZITADEL_PORT:-8095}/ui/v2/login
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://localhost:${ZITADEL_PORT:-8095}/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://localhost:${ZITADEL_PORT:-8095}/ui/v2/login/logout?post_logout_redirect=
+      # IAM_OWNER machine user whose PAT scripts/setup-zitadel-local.sh uses.
+      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel-data/automation-user.pat
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: automation-user
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: Automation User
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: '2030-01-01T00:00:00Z'
+      ZITADEL_FIRSTINSTANCE_ORG_NAME: BibleGet Local
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: root
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: RootPassword1!
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: false
+      ZITADEL_DEFAULTINSTANCE_SMTPCONFIGURATION_SMTP_HOST: mailpit:1025
+      ZITADEL_DEFAULTINSTANCE_SMTPCONFIGURATION_SMTP_USER: ""
+      ZITADEL_DEFAULTINSTANCE_SMTPCONFIGURATION_SMTP_PASSWORD: ""
+      ZITADEL_DEFAULTINSTANCE_SMTPCONFIGURATION_TLS: false
+      ZITADEL_DEFAULTINSTANCE_SMTPCONFIGURATION_FROM: noreply@bibleget.localhost
+      ZITADEL_DEFAULTINSTANCE_SMTPCONFIGURATION_FROMNAME: BibleGet
+    healthcheck:
+      test: ["CMD", "/app/zitadel", "ready"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+    user: "0"
+    volumes:
+      - ./.zitadel-data:/zitadel-data:delegated
+    depends_on:
+      zitadel-db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  zitadel-login:
+    profiles: [zitadel]
+    image: ghcr.io/zitadel/zitadel-login:v4.15.0
+    environment:
+      ZITADEL_API_URL: http://zitadel:8080
+      # Zitadel resolves the instance from the Host header; "zitadel:8080" is
+      # not one of its domains, so send the browser-facing one.
+      CUSTOM_REQUEST_HEADERS: 'Host:localhost:${ZITADEL_PORT:-8095}'
+      NEXT_PUBLIC_BASE_PATH: /ui/v2/login
+      ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel-data/login-client.pat
+      EMAIL_VERIFICATION: true
+    user: "0"
+    volumes:
+      - ./.zitadel-data:/zitadel-data:ro
+    depends_on:
+      zitadel:
+        condition: service_healthy
+
+  zitadel-proxy:
+    profiles: [zitadel]
+    image: nginx:alpine
+    environment:
+      ZITADEL_PORT: ${ZITADEL_PORT:-8095}
+      NGINX_ENVSUBST_FILTER: '^ZITADEL_PORT$$'
+    volumes:
+      - ./docker/nginx/zitadel.local.conf:/etc/nginx/templates/default.conf.template:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -H \"Host: localhost:$$ZITADEL_PORT\" http://localhost/.well-known/openid-configuration -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    ports:
+      - "127.0.0.1:${ZITADEL_PORT:-8095}:80"
+    depends_on:
+      - zitadel
+      - zitadel-login
+
+  mailpit:
+    profiles: [zitadel]
+    image: axllent/mailpit:v1.27
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8026}:8025"
+
 volumes:
   pgdata:
+  zitadel_pgdata:

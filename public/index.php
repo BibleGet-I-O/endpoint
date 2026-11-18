@@ -46,10 +46,10 @@ if (null === $autoloaderPath) {
 require_once $autoloaderPath;
 
 use BibleGet\Api\Router;
-use Dotenv\Dotenv;
+use BibleGet\Api\Util\EnvLoader;
 
 try {
-    $dotenv = Dotenv::createImmutable($projectFolder, ['.env', '.env.local', '.env.development', '.env.test', '.env.staging', '.env.production'], false);
+    $dotenv = EnvLoader::create($projectFolder);
 
     if (Router::isLocalhost()) {
         // In development environment if no .env file is present we don't want to throw an error

@@ -7,6 +7,21 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: local Zitadel stack
+
+- `docker compose --profile zitadel` runs Zitadel v4.15.0 (as in production),
+  the v2 login UI and Mailpit behind one origin, `http://localhost:8095`;
+  `scripts/setup-zitadel-local.sh` provisions the BibleGet Org, Project,
+  `bibleget_admin` role and website app through cdcf-infra's provisioner and
+  writes `ZITADEL_ISSUER` / `ZITADEL_AUDIENCE` into `.env.local`.
+
+### Fixed: process environment wins over `.env*` files
+
+- Under the CLI server the process environment is not mirrored into `$_ENV`,
+  so a value in `.env.local` silently beat one set in the environment (the
+  test servers' `ZITADEL_ISSUER`, for one). `.env*` loading now goes through
+  `EnvLoader`, which also reads `getenv()`.
+
 ### Added: API keys and plugin installations (#97)
 
 Every v4 request is now attributable to a registered developer project or a

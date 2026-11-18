@@ -20,3 +20,7 @@ dbcredentials.php
 __pycache__/
 *.pyc
 *.pyo
+
+# Local Zitadel stack (PATs) and setup-zitadel-local.sh scratch
+.zitadel-data/
+.stack-out/
