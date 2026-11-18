@@ -16,8 +16,8 @@ use BibleGet\Api\Http\Logs\LoggerFactory;
  * POST /applications needs them, so one call per project creation.
  *
  * ZITADEL_USERINFO_URL replaces {ZITADEL_ISSUER}/oidc/v1/userinfo for tests;
- * it is ignored when APP_ENV=production, where the token may only go to the
- * issuer.
+ * it must be https, or http to a loopback host, and it is ignored when
+ * APP_ENV=production, where the token may only go to the issuer.
  */
 final class UserInfoClient
 {
@@ -29,8 +29,22 @@ final class UserInfoClient
     {
         $override       = CredentialFactory::currentEnv() === 'production' ? null : CredentialFactory::env('ZITADEL_USERINFO_URL');
         $this->endpoint = $override !== null && trim($override) !== ''
-            ? trim($override)
+            ? self::safeOverride(trim($override))
             : rtrim($issuer, '/') . '/oidc/v1/userinfo';
+    }
+
+    /**
+     * The override receives the caller's bearer token, so it must be https, or
+     * plain http only to this machine (localhost, 127.0.0.1, ::1).
+     */
+    private static function safeOverride(string $url): string
+    {
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        $host   = strtolower(trim((string) parse_url($url, PHP_URL_HOST), '[]'));
+        if ($host !== '' && ( $scheme === 'https' || ( $scheme === 'http' && in_array($host, ['localhost', '127.0.0.1', '::1'], true) ) )) {
+            return $url;
+        }
+        throw new \RuntimeException('ZITADEL_USERINFO_URL must be an https URL, or http to localhost, 127.0.0.1 or ::1.');
     }
 
     public function endpoint(): string

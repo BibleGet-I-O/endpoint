@@ -19,9 +19,18 @@ final class EnvLoaderTest extends TestCase
 
     private string $dir;
 
+    /** @var array{array<string, mixed>, array<string, mixed>} */
+    private array $superglobals;
+
+    private string|false $processValue;
+
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/bibleget-envloader-' . bin2hex(random_bytes(6));
+        // EnvLoader::create() copies every process variable into $_ENV and
+        // $_SERVER: restore both whole, so later tests see them unchanged.
+        $this->superglobals = [$_ENV, $_SERVER];
+        $this->processValue = getenv(self::KEY);
+        $this->dir          = sys_get_temp_dir() . '/bibleget-envloader-' . bin2hex(random_bytes(6));
         mkdir($this->dir);
         file_put_contents($this->dir . '/.env.local', self::KEY . "=from-file\n");
         unset($_ENV[self::KEY], $_SERVER[self::KEY]);
@@ -30,8 +39,8 @@ final class EnvLoaderTest extends TestCase
 
     protected function tearDown(): void
     {
-        unset($_ENV[self::KEY], $_SERVER[self::KEY]);
-        putenv(self::KEY);
+        [$_ENV, $_SERVER] = $this->superglobals;
+        putenv($this->processValue === false ? self::KEY : self::KEY . '=' . $this->processValue);
         @unlink($this->dir . '/.env.local');
         @rmdir($this->dir);
     }
