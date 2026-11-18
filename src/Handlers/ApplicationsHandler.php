@@ -244,8 +244,14 @@ class ApplicationsHandler extends AbstractHandler
         $params = $this->getJsonBodyParams($request);
         $name   = array_key_exists('name', $params) ? self::validName($params['name'], 'name') : self::DEFAULT_KEY_NAME;
 
-        $appId  = self::idOf($app);
-        $minted = $this->keys()->mint($appId, $name, 'read');
+        $appId = self::idOf($app);
+        // Re-checked under a row lock: an edit committed since $app was read
+        // (approved → changes_pending) must not get a new key.
+        $minted = $this->keys()->mintForApplicationIn($appId, $name, ['approved']);
+        if ($minted === null) {
+            self::requireApproved($this->apps()->find($appId) ?? []);
+            throw new ConflictException('API keys can only be issued for approved applications.');
+        }
         return $this->keyResponse($request, $appId, $minted, StatusCode::CREATED);
     }
 

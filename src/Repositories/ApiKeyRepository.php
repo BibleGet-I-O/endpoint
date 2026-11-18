@@ -63,6 +63,40 @@ class ApiKeyRepository
         return ['plain' => $c['plain'], 'id' => Cast::string($stmt->fetchColumn())];
     }
 
+    /**
+     * Mints a key only while the application is active and in one of $statuses,
+     * re-reading the status under a row lock (FOR SHARE, which waits for an
+     * edit in flight) in the same transaction as the insert. So a concurrent
+     * name or website change cannot slip a new key into changes_pending.
+     * Runs in its own transaction, or in the caller's when one is open.
+     *
+     * @param list<string> $statuses
+     * @return array{plain: string, id: string}|null null when the application is absent, inactive or in another status
+     */
+    public function mintForApplicationIn(string $applicationId, string $name, array $statuses, string $scope = 'read'): ?array
+    {
+        $own = !$this->db->inTransaction();
+        if ($own) {
+            $this->db->beginTransaction();
+        }
+        try {
+            $stmt = $this->db->prepare('SELECT status, is_active FROM applications WHERE id = :id FOR SHARE');
+            $stmt->execute([':id' => $applicationId]);
+            $row = $stmt->fetch();
+            $ok  = is_array($row) && in_array($row['status'], $statuses, true) && Cast::bool($row['is_active']);
+            $new = $ok ? $this->mint($applicationId, $name, $scope) : null;
+            if ($own) {
+                $ok ? $this->db->commit() : $this->db->rollBack();
+            }
+            return $new;
+        } catch (\Throwable $e) {
+            if ($own) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     /** @return list<array<string, mixed>> never includes key_hash */
     public function listForApplication(string $applicationId): array
     {

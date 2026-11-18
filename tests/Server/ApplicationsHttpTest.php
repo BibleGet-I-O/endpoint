@@ -353,6 +353,7 @@ class ApplicationsHttpTest extends ServerTestCase
         self::assertSame(200, $rot['status'], 'a key can still be rotated during re-review: ' . $rot['body']);
         $rotated = self::jsonBody($rot['body']);
         self::assertIsString($rotated['key']);
+        self::assertSame(200, self::httpGet(self::QUOTE, ['X-Api-Key' => $rotated['key']])['status'], 'the rotated key authenticates during re-review');
 
         self::assertTrue($repo->approve($appId, 'admin', null), 'an admin can approve the changes');
         self::assertSame('approved', self::patch($bearer, $appId, ['description' => 'x'])['status']);
