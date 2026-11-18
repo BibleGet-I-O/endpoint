@@ -225,7 +225,8 @@ final class AstValidator
     }
 
     /**
-     * Numbers are 1 or greater, and every range runs forward.
+     * Numbers are 1 or greater, every range runs forward, and a verse of a psalm that the
+     * Vulgate splits or joins exists in the Hebrew numbering ($query is read as Hebrew).
      */
     private function validateShape(BibleQuery $query): void
     {
@@ -242,6 +243,19 @@ final class AstValidator
                         sprintf('Invalid verse number: %d. Verses must be 1 or greater.', $ref->verse),
                         $ref->position
                     );
+                } elseif ($query->book === PsalmNumbering::PSALMS_BOOK_NUM && $ref->verse !== null) {
+                    $limit = PsalmNumbering::hebrewVerseLimit($ref->chapter);
+                    if ($limit !== null && $ref->verse > $limit) {
+                        $this->errors[] = new ValidationError(
+                            sprintf(
+                                'A verse in the query is out of bounds: there is no verse <%d> in Psalm <%d> in the Hebrew numbering, the last possible verse is <%d>',
+                                $ref->verse,
+                                $ref->chapter,
+                                $limit
+                            ),
+                            $ref->position
+                        );
+                    }
                 }
             }
             if ($segment instanceof VerseRange) {

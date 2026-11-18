@@ -87,6 +87,18 @@ final class PsalmNumbering
             : max($ref->chapter, $ref->alternateChapter);
     }
 
+    /**
+     * The last verse of a Hebrew psalm that the Vulgate splits or joins (9, 10, 114, 115, 116,
+     * 147), null for any other psalm. A verse past it does not exist in the Hebrew numbering,
+     * and would otherwise map onto the next psalm's verses in VGCL and DRB (Hebrew 9:22 is not
+     * Hebrew 10:1), so it is rejected before mapping; other psalms are bounds-checked per edition.
+     */
+    public static function hebrewVerseLimit(int $hebrew): ?int
+    {
+        $zone = self::SPANS[$hebrew] ?? null;
+        return $zone === null ? null : $zone[count($zone) - 1][1];
+    }
+
     public static function isVulgateNumbered(string $version): bool
     {
         return in_array($version, self::VULGATE_VERSIONS, true);

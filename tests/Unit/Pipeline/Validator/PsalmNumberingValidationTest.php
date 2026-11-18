@@ -110,4 +110,35 @@ final class PsalmNumberingValidationTest extends TestCase
         self::assertCount(1, $errors);
         self::assertStringContainsString('Invalid range', $errors[0]);
     }
+
+    /**
+     * @return array<string, array{string, int, int}>
+     */
+    public static function versesPastTheEndOfAHebrewSplitPsalm(): array
+    {
+        return [
+            // Without the check, VGCL 9:22 (Hebrew 10:1) and VGCL 113:9 (Hebrew 115:1).
+            'Hebrew 9 has 21 verses'  => ['Psalm9,22', 9, 21],
+            'Hebrew 114 has 8 verses' => ['Psalm114,9', 114, 8],
+            'Hebrew 116 has 19'       => ['Psalm116(115),20', 116, 19],
+        ];
+    }
+
+    #[DataProvider('versesPastTheEndOfAHebrewSplitPsalm')]
+    public function testAVersePastTheEndOfAHebrewSplitPsalmIsRejectedForEveryVersion(string $input, int $psalm, int $last): void
+    {
+        foreach ([['VGCL'], ['HEB'], ['HEB', 'VGCL']] as $versions) {
+            $errors = $this->errorsFor($input, $versions);
+            self::assertCount(1, $errors, implode(',', $versions));
+            self::assertStringContainsString("Psalm <{$psalm}> in the Hebrew numbering", $errors[0]);
+            self::assertStringContainsString("<{$last}>", $errors[0]);
+        }
+    }
+
+    public function testTheLastVerseOfAHebrewSplitPsalmIsStillValid(): void
+    {
+        self::assertSame([], $this->errorsFor('Psalm9,21', ['HEB', 'VGCL']));
+        self::assertSame([], $this->errorsFor('Psalm10(9),1', ['HEB', 'VGCL']));
+        self::assertSame([], $this->errorsFor('Psalm114,8', ['HEB', 'VGCL']));
+    }
 }
