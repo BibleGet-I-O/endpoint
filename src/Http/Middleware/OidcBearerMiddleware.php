@@ -75,7 +75,7 @@ class OidcBearerMiddleware implements MiddlewareInterface
         if ($this->requiredRole !== null && !in_array($this->requiredRole, $user['roles'], true)) {
             throw new ForbiddenException('This route requires the ' . $this->requiredRole . ' role.');
         }
-        return $handler->handle($request->withAttribute('oidc_user', $user));
+        return $handler->handle($request->withAttribute('oidc_user', $user)->withAttribute('oidc_token', $m[1]));
     }
 
     /**

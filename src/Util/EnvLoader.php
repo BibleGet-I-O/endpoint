@@ -5,20 +5,16 @@ declare(strict_types=1);
 namespace BibleGet\Api\Util;
 
 use Dotenv\Dotenv;
-use Dotenv\Repository\Adapter\EnvConstAdapter;
-use Dotenv\Repository\Adapter\PutenvAdapter;
-use Dotenv\Repository\Adapter\ServerConstAdapter;
-use Dotenv\Repository\RepositoryBuilder;
 
 /**
  * Loads the .env* files without overriding the process environment.
  *
- * Dotenv's default immutable repository only sees variables PHP mirrored into
- * $_ENV / $_SERVER. The CLI server (and any SAPI whose variables_order lacks
- * "E") does not mirror them, so a value in .env.local would silently beat one
- * set in the process environment. Reading getenv() too keeps the process
- * environment authoritative; values are still written to $_ENV / $_SERVER
- * only, never putenv().
+ * Dotenv's immutable repository only sees variables PHP mirrored into $_ENV /
+ * $_SERVER. The CLI server (and any SAPI whose variables_order lacks "E") does
+ * not mirror them, so a value in .env.local would silently beat one set in the
+ * process environment. So the process environment is first copied into $_ENV
+ * and $_SERVER (never replacing what is already there): Dotenv then leaves
+ * those variables alone, and code reading $_ENV directly sees them too.
  */
 final class EnvLoader
 {
@@ -26,12 +22,10 @@ final class EnvLoader
 
     public static function create(string $dir): Dotenv
     {
-        $repository = RepositoryBuilder::createWithNoAdapters()
-            ->addReader(PutenvAdapter::class)
-            ->addAdapter(EnvConstAdapter::class)
-            ->addAdapter(ServerConstAdapter::class)
-            ->immutable()
-            ->make();
-        return Dotenv::create($repository, $dir, self::FILES, false);
+        foreach (getenv() as $name => $value) {
+            $_ENV[$name]    ??= $value;
+            $_SERVER[$name] ??= $value;
+        }
+        return Dotenv::createImmutable($dir, self::FILES, false);
     }
 }

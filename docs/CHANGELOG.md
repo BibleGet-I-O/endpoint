@@ -15,12 +15,22 @@ Deprecated / Fixed / Removed / Security where applicable.
   `bibleget_admin` role and website app through cdcf-infra's provisioner and
   writes `ZITADEL_ISSUER` / `ZITADEL_AUDIENCE` into `.env.local`.
 
+### Fixed: verified email from userinfo
+
+- Zitadel puts no `email` / `email_verified` in access tokens, so every real
+  developer got `403` on `POST /applications`. When the token lacks
+  `email_verified: true`, the endpoint now asks the issuer's
+  `/oidc/v1/userinfo` with the same token (same `sub` required; Zitadel
+  unreachable → `503`, token rejected → `401`).
+
 ### Fixed: process environment wins over `.env*` files
 
 - Under the CLI server the process environment is not mirrored into `$_ENV`,
   so a value in `.env.local` silently beat one set in the environment (the
   test servers' `ZITADEL_ISSUER`, for one). `.env*` loading now goes through
-  `EnvLoader`, which also reads `getenv()`.
+  `EnvLoader`, which first copies the process environment into `$_ENV` /
+  `$_SERVER` (so code reading `$_ENV` directly, like the Router's
+  `API_BASE_PATH`, sees it too).
 
 ### Added: API keys and plugin installations (#97)
 

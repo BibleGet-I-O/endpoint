@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Auth\CredentialFactory;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
@@ -17,6 +18,7 @@ use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Repositories\ApiKeyRepository;
 use BibleGet\Api\Repositories\ApplicationRepository;
 use BibleGet\Api\Repositories\Cast;
+use BibleGet\Api\Services\UserInfoClient;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -105,7 +107,7 @@ class ApplicationsHandler extends AbstractHandler
         if ($route === 'collection') {
             return match ($method) {
                 'GET'   => $this->listApplications($request, $owner),
-                'POST'  => $this->createApplication($request, $owner, ( $user['email_verified'] ?? false ) === true),
+                'POST'  => $this->createApplication($request, $owner, $this->emailVerified($request, $user, $owner)),
                 default => throw new MethodNotAllowedException(),
             };
         }
@@ -164,6 +166,26 @@ class ApplicationsHandler extends AbstractHandler
     {
         $apps = array_map(self::publicApplication(...), $this->apps()->listForOwner($owner));
         return $this->json($request, ['applications' => $apps, 'total' => count($apps)]);
+    }
+
+    /**
+     * The token's email_verified when it is true; otherwise Zitadel's userinfo,
+     * since Zitadel puts no email claims in access tokens (and an address may
+     * have been verified after the token was issued).
+     *
+     * @param array<mixed> $user
+     */
+    private function emailVerified(ServerRequestInterface $request, array $user, string $owner): bool
+    {
+        if (( $user['email_verified'] ?? null ) === true) {
+            return true;
+        }
+        $token  = $request->getAttribute('oidc_token');
+        $issuer = CredentialFactory::env('ZITADEL_ISSUER');
+        if (!is_string($token) || !is_string($issuer)) {
+            return false;
+        }
+        return ( new UserInfoClient($issuer) )->emailVerified($token, $owner);
     }
 
     private function createApplication(ServerRequestInterface $request, string $owner, bool $emailVerified): ResponseInterface

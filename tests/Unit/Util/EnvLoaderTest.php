@@ -41,6 +41,8 @@ final class EnvLoaderTest extends TestCase
         putenv(self::KEY . '=from-process');
         EnvLoader::create($this->dir)->safeLoad();
         self::assertSame('from-process', CredentialFactory::env(self::KEY));
+        // Code that reads $_ENV directly (Router's API_BASE_PATH) must see it too.
+        self::assertSame('from-process', $_ENV[self::KEY] ?? null);
     }
 
     public function testFileValueIsUsedWhenTheProcessDoesNotSetIt(): void
