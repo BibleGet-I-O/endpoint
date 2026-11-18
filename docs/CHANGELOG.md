@@ -34,6 +34,10 @@ migration `048`).
   OpenAPI description of `POST /installations`).
 - **Developer routes** (Zitadel Bearer token): `/applications` and
   `/applications/{id}[/resubmit|/keys[/{keyId}[/rotate]]]`.
+  There is no cap on projects per developer; each one needs approval. A new
+  name or website on an approved project moves it to `changes_pending` until an
+  admin approves, rejects or revokes the change: its keys keep working (and can
+  be rotated) meanwhile, but no new keys are issued.
 - **Admin routes** (Bearer token, role `bibleget_admin`): approve, reject and
   revoke applications, view one application (system ones included) with its
   keys and revoke a single key (`GET /admin/applications/{id}`,

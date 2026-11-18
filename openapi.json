@@ -1612,7 +1612,7 @@
             },
             "patch": {
                 "summary": "Update a project",
-                "description": "At least one of name, description, website.",
+                "description": "At least one of name, description, website. A new name or website on an approved project moves it to `changes_pending` until an admin reviews the change; its existing keys keep working meanwhile (and can be rotated), but no new keys are issued. A description edit, or a name or website sent unchanged, keeps the approval.",
                 "operationId": "updateApplication",
                 "tags": [
                     "DevelopersAPI"
@@ -2027,7 +2027,7 @@
                         "$ref": "#/components/responses/BearerUnauthorized"
                     },
                     "409": {
-                        "description": "The application is not approved and active: keys are issued only for approved applications.",
+                        "description": "The application is neither approved nor awaiting review of a change (`changes_pending`), or is inactive.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2059,6 +2059,7 @@
                             "enum": [
                                 "pending",
                                 "approved",
+                                "changes_pending",
                                 "rejected",
                                 "revoked"
                             ]
@@ -2172,7 +2173,7 @@
         "/admin/applications/{id}/approve": {
             "post": {
                 "summary": "Approve a project",
-                "description": "pending or rejected → approved. Any other transition is a 409.",
+                "description": "pending, rejected or changes_pending → approved. Any other transition is a 409.",
                 "operationId": "adminApproveApplication",
                 "tags": [
                     "AdminAPI"
@@ -2247,7 +2248,7 @@
         "/admin/applications/{id}/reject": {
             "post": {
                 "summary": "Reject a project",
-                "description": "pending → rejected. Any other transition is a 409.",
+                "description": "pending or changes_pending → rejected (rejecting a change also stops the project's keys until it is approved again). Any other transition is a 409.",
                 "operationId": "adminRejectApplication",
                 "tags": [
                     "AdminAPI"
@@ -2322,7 +2323,7 @@
         "/admin/applications/{id}/revoke": {
             "post": {
                 "summary": "Revoke a project",
-                "description": "approved → revoked (also deactivates the project's keys). Any other transition is a 409.",
+                "description": "approved or changes_pending → revoked (also deactivates the project's keys). Any other transition is a 409.",
                 "operationId": "adminRevokeApplication",
                 "tags": [
                     "AdminAPI"
@@ -17572,6 +17573,7 @@
                         "enum": [
                             "pending",
                             "approved",
+                            "changes_pending",
                             "rejected",
                             "revoked"
                         ]

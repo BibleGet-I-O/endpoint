@@ -21,7 +21,7 @@ class ApiKeyRepository
              FROM api_keys k JOIN applications a ON a.id = k.application_id
              WHERE k.key_hash = :h AND k.is_active
                AND (k.expires_at IS NULL OR k.expires_at > now())
-               AND a.status = 'approved' AND a.is_active"
+               AND a.status IN ('approved', 'changes_pending') AND a.is_active"
         );
         $stmt->execute([':h' => $hash]);
         $row = $stmt->fetch();

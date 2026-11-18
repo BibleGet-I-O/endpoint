@@ -262,7 +262,7 @@ class ApplicationsHandler extends AbstractHandler
     {
         $appId = self::idOf($app);
         $this->ownedKey($appId, $keyId);
-        self::requireApproved($app);
+        self::requireApproved($app, ['approved', 'changes_pending']);
         $rotated = $this->keys()->rotate($keyId);
         if ($rotated === null) {
             throw new NotFoundException('API key not found, or already revoked.');
@@ -305,10 +305,16 @@ class ApplicationsHandler extends AbstractHandler
         throw new NotFoundException('API key not found.');
     }
 
-    /** @param array<string, mixed> $app */
-    private static function requireApproved(array $app): void
+    /**
+     * New keys need an approved application; rotating an existing one is also
+     * allowed while a name or website change awaits review (changes_pending).
+     *
+     * @param array<string, mixed> $app
+     * @param list<string> $allowed
+     */
+    private static function requireApproved(array $app, array $allowed = ['approved']): void
     {
-        if (( $app['status'] ?? null ) !== 'approved' || !Cast::bool($app['is_active'] ?? false)) {
+        if (!in_array($app['status'] ?? null, $allowed, true) || !Cast::bool($app['is_active'] ?? false)) {
             $status = is_string($app['status'] ?? null) ? $app['status'] : 'unknown';
             throw new ConflictException("API keys can only be issued for approved applications; this one is {$status}.");
         }
