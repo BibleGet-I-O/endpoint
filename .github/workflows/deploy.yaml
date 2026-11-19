@@ -269,6 +269,8 @@ jobs:
           # all_or_nothing: the pending migrations run in one transaction, so a failure applies none of them.
           # No -f: a 500 carries Doctrine's own output (the reason), which -f would discard. curl's exit
           # code is recorded so a partial body is still printed.
+          # --data-binary '': the server answers 403 to a POST without Content-Length (its own error page,
+          # before PHP), which `curl -X POST` alone does not send; an empty body sends Content-Length: 0.
           # OPcache on the server revalidates files every 2 s (PHP's default revalidate_freq): wait it out,
           # so the request reaches the Router just deployed, not a cached one without /_ops.
           sleep 3
@@ -278,7 +280,7 @@ jobs:
             curl_rc=0
             status="$(curl -sS --max-time 600 \
               -o "${body}" -w '%{http_code}' \
-              -X POST \
+              -X POST --data-binary '' \
               -H "X-Deploy-Token: ${DEPLOY_TOKEN}" \
               -H "Accept: text/plain" \
               "${API_ORIGIN%/}/${SUBDIR}/_ops/migrate")" || curl_rc=$?
