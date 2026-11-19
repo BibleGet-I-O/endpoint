@@ -182,6 +182,7 @@ class MetadataHandler extends AbstractHandler
         $validversions          = [];
         $validversions_fullname = [];
         $copyrightversions      = [];
+        $liturgicalversions     = [];
 
         if ($type !== '') {
             $stmt = $pdo->prepare('SELECT * FROM versions_available WHERE type = ? ORDER BY sigla');
@@ -209,12 +210,16 @@ class MetadataHandler extends AbstractHandler
             if (StringUtils::asInt($row['copyright']) === 1) {
                 $copyrightversions[] = $row['sigla'];
             }
+            if (filter_var($row['liturgical'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $liturgicalversions[] = $row['sigla'];
+            }
         }
 
         return [
             'validversions'          => $validversions,
             'validversions_fullname' => $validversions_fullname,
             'copyrightversions'      => $copyrightversions,
+            'liturgicalversions'     => $liturgicalversions,
             'errors'                 => [],
         ];
     }

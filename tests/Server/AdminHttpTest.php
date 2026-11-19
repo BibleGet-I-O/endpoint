@@ -90,7 +90,7 @@ class AdminHttpTest extends ServerTestCase
             Connection::reset();
             return;
         }
-        $this->db->exec("UPDATE versions_available SET reader_full_text = FALSE WHERE type = 'BIBLE'");
+        $this->db->exec("UPDATE versions_available SET reader_full_text = FALSE, liturgical = FALSE WHERE type = 'BIBLE'");
         foreach ($this->clientKeyIds as $id) {
             $this->db->prepare('DELETE FROM usage_daily WHERE credential_id IN (SELECT id FROM installations WHERE client_key_id = ?)')->execute([$id]);
             $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$id]);
@@ -415,10 +415,11 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame($siglas, array_column($body['versions'], 'sigla'));
         foreach ($body['versions'] as $v) {
             self::assertIsArray($v);
-            self::assertSame(['sigla', 'fullname', 'year', 'language', 'copyright', 'reader_full_text'], array_keys($v));
+            self::assertSame(['sigla', 'fullname', 'year', 'language', 'copyright', 'reader_full_text', 'liturgical'], array_keys($v));
             self::assertIsInt($v['year']);
             self::assertIsBool($v['copyright']);
             self::assertFalse($v['reader_full_text']);
+            self::assertFalse($v['liturgical']);
         }
         $test2 = array_values(array_filter($body['versions'], static fn ($v): bool => is_array($v) && $v['sigla'] === 'TEST2'));
         self::assertIsArray($test2[0]);
@@ -457,6 +458,44 @@ class AdminHttpTest extends ServerTestCase
 
         $one = self::okJson(self::call('GET', '/v3/admin/versions/TEST2'));
         self::assertSame('TEST2', $one['sigla']);
+    }
+
+    public function testPatchVersionLiturgicalRoundTrips(): void
+    {
+        $on = self::okJson(self::call('PATCH', '/v3/admin/versions/TEST2', ['liturgical' => true]));
+        self::assertTrue($on['liturgical']);
+        self::assertFalse($on['reader_full_text']);
+        self::assertTrue(self::okJson(self::call('GET', '/v3/admin/versions/TEST2'))['liturgical']);
+
+        $off = self::okJson(self::call('PATCH', '/v3/admin/versions/TEST2', ['liturgical' => false]));
+        self::assertFalse($off['liturgical']);
+    }
+
+    public function testPatchVersionBothFlagsInOneRequest(): void
+    {
+        $both = self::okJson(self::call('PATCH', '/v3/admin/versions/TEST2', ['reader_full_text' => true, 'liturgical' => true]));
+        self::assertTrue($both['reader_full_text']);
+        self::assertTrue($both['liturgical']);
+        // A PATCH naming one flag leaves the other alone.
+        $one = self::okJson(self::call('PATCH', '/v3/admin/versions/TEST2', ['liturgical' => false]));
+        self::assertTrue($one['reader_full_text']);
+        self::assertFalse($one['liturgical']);
+    }
+
+    public function testPatchVersionLiturgicalRejectsNonBoolean(): void
+    {
+        self::assertSame(422, self::call('PATCH', '/v3/admin/versions/TEST2', ['liturgical' => 'yes'])['status']);
+        self::assertSame(422, self::call('PATCH', '/v3/admin/versions/TEST2', ['liturgical' => 1])['status']);
+        // Nothing is applied when the other field in the same PATCH is invalid.
+        self::assertSame(422, self::call('PATCH', '/v3/admin/versions/TEST2', ['liturgical' => true, 'reader_full_text' => 'no'])['status']);
+        self::assertFalse(self::okJson(self::call('GET', '/v3/admin/versions/TEST2'))['liturgical']);
+        self::assertSame(404, self::call('PATCH', '/v3/admin/versions/XYZ', ['liturgical' => true])['status']);
+    }
+
+    public function testPatchVersion403ForNonAdminLiturgical(): void
+    {
+        $user = self::bearer('plain-user', []);
+        self::assertSame(403, self::call('PATCH', '/v3/admin/versions/TEST2', ['liturgical' => true], $user)['status']);
     }
 
     public function testPatchVersionRejectsBadInput(): void

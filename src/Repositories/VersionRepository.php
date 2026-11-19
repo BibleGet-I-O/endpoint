@@ -6,14 +6,15 @@ namespace BibleGet\Api\Repositories;
 
 /**
  * Bible editions (versions_available, type BIBLE) and the flag that lets the
- * `reader` credential serve one whole. `copyright` is the same column
+ * `reader` credential serve one whole, and the one that marks an edition as the
+ * liturgical text of its language. `copyright` is the same column
  * QuoteContext reads into COPYRIGHT_VERSIONS.
  *
- * @phpstan-type VersionRow array{sigla: string, fullname: string, year: int, language: string, copyright: bool, reader_full_text: bool}
+ * @phpstan-type VersionRow array{sigla: string, fullname: string, year: int, language: string, copyright: bool, reader_full_text: bool, liturgical: bool}
  */
 class VersionRepository
 {
-    private const COLUMNS = 'sigla, fullname, year, language, copyright, reader_full_text';
+    private const COLUMNS = 'sigla, fullname, year, language, copyright, reader_full_text, liturgical';
 
     public function __construct(private readonly \PDO $db)
     {
@@ -58,6 +59,16 @@ class VersionRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** False when there is no such edition. */
+    public function setLiturgical(string $sigla, bool $on): bool
+    {
+        $stmt = $this->db->prepare("UPDATE versions_available SET liturgical = :on WHERE type = 'BIBLE' AND sigla = :s");
+        $stmt->bindValue(':on', $on, \PDO::PARAM_BOOL);
+        $stmt->bindValue(':s', $sigla);
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
+    }
+
     /**
      * @param array<string, mixed> $r
      * @return VersionRow
@@ -71,6 +82,7 @@ class VersionRepository
             'language'         => Cast::string($r['language'] ?? null),
             'copyright'        => Cast::int($r['copyright'] ?? null) === 1,
             'reader_full_text' => Cast::bool($r['reader_full_text'] ?? null),
+            'liturgical'       => Cast::bool($r['liturgical'] ?? null),
         ];
     }
 }

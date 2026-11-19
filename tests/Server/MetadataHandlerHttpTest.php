@@ -56,6 +56,7 @@ class MetadataHandlerHttpTest extends ServerTestCase
         self::assertArrayHasKey('validversions', $body);
         self::assertArrayHasKey('validversions_fullname', $body);
         self::assertArrayHasKey('copyrightversions', $body);
+        self::assertArrayHasKey('liturgicalversions', $body);
         self::assertContains('TEST1', $body['validversions']);
         self::assertContains('TEST2', $body['validversions']);
     }
