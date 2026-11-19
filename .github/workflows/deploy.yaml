@@ -83,6 +83,7 @@ jobs:
           DEPLOY_PATH="${APP_DIR%/}/${SUBDIR}"
           {
             echo "ref=${REF}"
+            echo "target=${TARGET}"
             echo "deploy_subdir=${SUBDIR}"
             echo "deploy_path=${DEPLOY_PATH}"
           } >> "${GITHUB_OUTPUT}"
@@ -105,9 +106,11 @@ jobs:
         # deployed commit. Not under public/, and denied in .htaccess.
         env:
           TARGET_REF: ${{ steps.params.outputs.ref }}
+          TARGET: ${{ steps.params.outputs.target }}
         run: |
           set -euo pipefail
-          if [ "${TARGET_REF}" = "development" ]; then
+          # By target, not by branch: any staging deploy reports its commit.
+          if [ "${TARGET}" = "staging" ]; then
             git rev-parse HEAD > VERSION
           else
             printf '%s\n' "${TARGET_REF}" > VERSION
