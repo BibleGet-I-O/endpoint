@@ -18,9 +18,9 @@
 #                                      including the one-time client secret (600)
 #
 # cdcf-infra comes from CDCF_INFRA_DIR (a local checkout) if set, otherwise it
-# is cloned into .stack-out/cdcf-infra at CDCF_INFRA_REF (default main). Until
-# CatholicOS/cdcf-infra#55 is merged, main lacks --provision-bibleget: use
-# CDCF_INFRA_REF=feat/provision-bibleget (the script checks and says so).
+# is cloned into .stack-out/cdcf-infra at CDCF_INFRA_REF (default main). The
+# BibleGet actions arrived in CatholicOS/cdcf-infra#55; an older checkout is
+# refused with a hint to update it.
 # Never prints the client secret. Idempotent: a re-run finds the existing
 # Project and app, but Zitadel cannot return an existing app's secret, so the
 # website file keeps the secret from the first run. If a run fails after the
@@ -87,7 +87,7 @@ fi
 [[ -x "$INFRA_DIR/auth/setup-zitadel.sh" ]] || { echo "No auth/setup-zitadel.sh in $INFRA_DIR" >&2; exit 1; }
 grep -q -- '--provision-bibleget-website' "$INFRA_DIR/auth/setup-zitadel.sh" || {
     echo "$INFRA_DIR/auth/setup-zitadel.sh has no --provision-bibleget (CatholicOS/cdcf-infra#55)." >&2
-    echo "  Use CDCF_INFRA_REF=feat/provision-bibleget, or CDCF_INFRA_DIR=<a checkout of it>." >&2
+    echo "  Update that checkout to cdcf-infra main (git pull), or unset CDCF_INFRA_DIR to clone main." >&2
     exit 1
 }
 
