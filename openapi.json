@@ -3041,7 +3041,7 @@
         "/admin/versions/{sigla}": {
             "get": {
                 "summary": "Show one Bible edition",
-                "description": "",
+                "description": "Returns one edition's `versions_available` record, including whether the website reader may show its full text (`reader_full_text`).",
                 "operationId": "adminGetVersion",
                 "tags": [
                     "AdminAPI"
@@ -17912,6 +17912,14 @@
             },
             "VersionRecord": {
                 "type": "object",
+                "required": [
+                    "sigla",
+                    "fullname",
+                    "year",
+                    "language",
+                    "copyright",
+                    "reader_full_text"
+                ],
                 "properties": {
                     "sigla": {
                         "type": "string"
@@ -18149,7 +18157,7 @@
             "numbering": {
                 "name": "numbering",
                 "in": "query",
-                "description": "How a Psalm number in `query` is read. `hebrew` (the default; any other value falls back to it): as the Hebrew number, which is mapped to each edition's own numbering (VGCL and DRB store the Psalms under their Vulgate numbers), so `Ps22` is Vulgate Psalm 21 in VGCL. `edition`: as each requested edition's own number, checked against that edition's index, so `Ps22` is VGCL's Psalm 22 (Hebrew 23); a Hebrew-numbered edition reads the same either way. Every Psalms row carries its Hebrew reference in `psalm_hebrew`. Copyright limits apply as with `hebrew`.",
+                "description": "How a Psalm number in `query` is read. `hebrew` (the default; any other value falls back to it): as the Hebrew number, which is mapped to each edition's own numbering (VGCL and DRB store the Psalms under their Vulgate numbers), so `Ps22` is Vulgate Psalm 21 in VGCL. `edition`: as each requested edition's own number, checked against that edition's index, so `Ps22` is VGCL's Psalm 22 (Hebrew 23); a Hebrew-numbered edition reads the same either way. Of two numbers (`Ps22(23)` or `Ps23(22)`), each edition takes the one it prints: the smaller (Vulgate) in VGCL and DRB, the larger (Hebrew) in the others, so both give VGCL Psalm 22 and NABRE Psalm 23. Every Psalms row carries its Hebrew reference in `psalm_hebrew`. Copyright limits apply as with `hebrew`.",
                 "required": false,
                 "schema": {
                     "type": "string",

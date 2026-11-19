@@ -309,6 +309,26 @@ class QuoteHandlerHttpTest extends ServerTestCase
         self::assertSame('22:1', $hebrew[0]['psalm_hebrew']);
     }
 
+    public function testEditionNumberingReadsADualCitationAsTheEditionsOwnNumber(): void
+    {
+        // Ps 22(23) and Ps 23(22) are the same psalm: Vulgate 22, Hebrew 23.
+        foreach (['Ps22(23)', 'Ps23(22)'] as $query) {
+            $vgcl = self::results('/v3/quote?query=' . rawurlencode($query) . '&version=VGCL&numbering=edition');
+            self::assertCount(6, $vgcl, $query);
+            self::assertSame([22], array_values(array_unique(array_column($vgcl, 'chapter'))), $query);
+            self::assertSame('23:1', $vgcl[0]['psalm_hebrew'], $query);
+
+            $test1 = self::results('/v3/quote?query=' . rawurlencode($query) . '&version=TEST1&numbering=edition');
+            self::assertCount(6, $test1, $query);
+            self::assertSame([23], array_values(array_unique(array_column($test1, 'chapter'))), $query);
+            self::assertSame('TEST1 Ps 23:1', $test1[0]['text'], $query);
+        }
+
+        // Both editions in one request: each gets its own number.
+        $both = self::results('/v3/quote?query=' . rawurlencode('Ps22(23),1') . '&version=VGCL,TEST1&numbering=edition');
+        self::assertSame(['VGCL Ps 22:1', 'TEST1 Ps 23:1'], array_column($both, 'text'));
+    }
+
     public function testEditionNumberingIsTheDefaultForHebrewEditions(): void
     {
         $edition = self::results('/v3/quote?query=Ps23&version=TEST1&numbering=edition');

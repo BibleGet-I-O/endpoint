@@ -49,6 +49,9 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * and those differences are not mapped.
  *
  * With numbering=edition the reference is not resolved: it is each edition's own number.
+ * A reference that gives two numbers is then read per edition (editionChapters): the larger
+ * for a Hebrew-numbered edition, the smaller for a Vulgate-numbered one, so "Psalm 22 (23)"
+ * is VGCL 22 and NABRE 23, as each edition prints it.
  * toHebrew() inverts the table for one stored verse, and every Psalms result row carries
  * its Hebrew reference (psalm_hebrew) so editions numbered differently can be aligned.
  *
@@ -89,6 +92,45 @@ final class PsalmNumbering
         return $ref->alternateChapter === null
             ? $ref->chapter
             : max($ref->chapter, $ref->alternateChapter);
+    }
+
+    /**
+     * The number $version gives a Psalm reference with numbering=edition: its only number, or of
+     * its two the larger (Hebrew) for a Hebrew-numbered edition, the smaller (Vulgate) for VGCL
+     * and DRB.
+     */
+    public static function editionChapter(VerseRef $ref, string $version): int
+    {
+        if ($ref->alternateChapter === null) {
+            return $ref->chapter;
+        }
+        return self::isVulgateNumbered($version)
+            ? min($ref->chapter, $ref->alternateChapter)
+            : max($ref->chapter, $ref->alternateChapter);
+    }
+
+    /**
+     * The query with numbering=edition: every Psalm reference keeps its verse and takes the
+     * chapter $version numbers it by (editionChapter), with no alternate chapter left. Any
+     * other book is returned unchanged.
+     */
+    public function editionChapters(BibleQuery $query, string $version): BibleQuery
+    {
+        if ($query->book !== self::PSALMS_BOOK_NUM) {
+            return $query;
+        }
+
+        $segments = [];
+        foreach ($query->segments as $segment) {
+            $segments[] = $segment instanceof VerseRange
+                ? new VerseRange(
+                    $this->ref($segment->from, self::editionChapter($segment->from, $version), $segment->from->verse),
+                    $this->ref($segment->to, self::editionChapter($segment->to, $version), $segment->to->verse),
+                )
+                : $this->ref($segment, self::editionChapter($segment, $version), $segment->verse);
+        }
+
+        return new BibleQuery($query->book, $segments);
     }
 
     /**

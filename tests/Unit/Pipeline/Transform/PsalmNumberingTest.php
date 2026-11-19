@@ -294,4 +294,45 @@ final class PsalmNumberingTest extends TestCase
             }
         }
     }
+
+    /**
+     * @return array<string, array{string, int, ?int, int}>
+     */
+    public static function editionReadings(): array
+    {
+        return [
+            // version, chapter, alternate => the edition's own chapter
+            'VGCL, Vulgate first'  => ['VGCL', 22, 23, 22],
+            'VGCL, Hebrew first'   => ['VGCL', 23, 22, 22],
+            'DRB, Hebrew first'    => ['DRB', 51, 50, 50],
+            'TEST1, Vulgate first' => ['TEST1', 22, 23, 23],
+            'NABRE, Hebrew first'  => ['NABRE', 23, 22, 23],
+            'one number, VGCL'     => ['VGCL', 22, null, 22],
+            'one number, NABRE'    => ['NABRE', 22, null, 22],
+        ];
+    }
+
+    #[DataProvider('editionReadings')]
+    public function testEditionChaptersPickTheEditionsOwnNumber(string $version, int $chapter, ?int $alternate, int $expected): void
+    {
+        $query = new BibleQuery(23, [
+            new VerseRange(new VerseRef(23, $chapter, $alternate, 2, 'a', 7), new VerseRef(23, $chapter, $alternate, 4)),
+        ]);
+
+        $range = $this->numbering->editionChapters($query, $version)->segments[0];
+        self::assertInstanceOf(VerseRange::class, $range);
+        self::assertSame([$expected, 2], self::chapterVerse($range->from));
+        self::assertSame([$expected, 4], self::chapterVerse($range->to));
+        self::assertNull($range->from->alternateChapter);
+        self::assertNull($range->to->alternateChapter);
+        self::assertSame('a', $range->from->partialSuffix);
+        self::assertSame(7, $range->from->position);
+    }
+
+    public function testEditionChaptersLeaveOtherBooksAlone(): void
+    {
+        $query = new BibleQuery(1, [new VerseRef(1, 51, 50, 1)]);
+
+        self::assertSame($query, $this->numbering->editionChapters($query, 'VGCL'));
+    }
 }

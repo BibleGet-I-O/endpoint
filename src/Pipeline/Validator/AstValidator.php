@@ -128,12 +128,13 @@ final class AstValidator
         // Shape (numbers >= 1, ranges in order), once, on the reference as written
         // with Psalms read as Hebrew numbers; then bounds, per version, on the
         // reference as that version stores it. With edition numbering the
-        // reference as written is what every version stores.
+        // reference as written is what every version stores, a two-number psalm
+        // read as the number each version prints (the larger one for the shape).
         $resolvedQuery = new BibleQuery($nonZeroBookIdx, $query->segments);
-        $this->validateShape($this->editionNumbering ? $resolvedQuery : $this->psalmNumbering->resolve($resolvedQuery, ''));
+        $this->validateShape($this->stored($resolvedQuery, ''));
         if (empty($this->errors)) {
             foreach ($this->validatedVariants as $variant) {
-                $stored = $this->editionNumbering ? $resolvedQuery : $this->psalmNumbering->resolve($resolvedQuery, $variant);
+                $stored = $this->stored($resolvedQuery, $variant);
                 $this->validateBounds($stored, $nonZeroBookIdx, $variant);
             }
         }
@@ -144,6 +145,17 @@ final class AstValidator
 
         // Return a new BibleQuery with the resolved book index
         return new BibleQuery($nonZeroBookIdx, $query->segments);
+    }
+
+    /**
+     * The reference as $variant stores it ('' for the Hebrew reading): Psalms resolved from
+     * Hebrew numbers, or with numbering=edition, taken as the edition's own numbers.
+     */
+    private function stored(BibleQuery $query, string $variant): BibleQuery
+    {
+        return $this->editionNumbering
+            ? $this->psalmNumbering->editionChapters($query, $variant)
+            : $this->psalmNumbering->resolve($query, $variant);
     }
 
     /**
