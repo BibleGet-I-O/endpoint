@@ -6,7 +6,7 @@
 # from PyPI. The pin also keeps embeddings reproducible: upgrade it
 # deliberately (and re-check vectors) rather than as a deploy side effect.
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.11.0+cpu
+torch==2.12.1+cpu
 fastapi>=0.100.0
 uvicorn>=0.23.0
 sentence-transformers>=2.2.0
