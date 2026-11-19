@@ -131,4 +131,47 @@ final class EstherRemapperTest extends TestCase
         $this->assertStringContainsString('GREEK', $pos[0]);
         $this->assertSame('', $pos[1]);
     }
+
+    // ── numbering=edition: as the edition prints it ────────────
+
+    public function testEditionRemapReadsVulgateChapter16AsStored(): void
+    {
+        foreach (EstherRemapper::SUPPLEMENTARY_VERSIONS as $version) {
+            $query          = new BibleQuery(19, [new VerseRef(19, 16, null, null)]);
+            [$result, $pos] = $this->remapper->editionRemap($query, $version, " AND text_tradition = 'GREEK'", false);
+
+            $this->assertVerseRef($result, 0, 16, null);
+            $this->assertSame([" AND text_tradition = 'GREEK' AND verse_segment IS NULL"], $pos, $version);
+        }
+    }
+
+    public function testEditionRemapKeepsAnExplicitTextTradition(): void
+    {
+        $query          = new BibleQuery(19, [new VerseRef(19, 1, null, null), new VerseRef(19, 2, null, 1)]);
+        [$result, $pos] = $this->remapper->editionRemap($query, 'DRB', " AND text_tradition = 'HEBREW'", true);
+
+        $this->assertVerseRef($result, 0, 1, null);
+        $this->assertSame([" AND text_tradition = 'HEBREW'", " AND text_tradition = 'HEBREW'"], $pos);
+    }
+
+    public function testEditionRemapLeavesParallelEditionsAndOtherBooksAlone(): void
+    {
+        $query   = new BibleQuery(19, [new VerseRef(19, 1, null, null)]);
+        [, $pos] = $this->remapper->editionRemap($query, 'CEI2008', " AND text_tradition = 'GREEK'", false);
+        $this->assertSame([" AND text_tradition = 'GREEK'"], $pos);
+
+        $genesis        = new BibleQuery(1, [new VerseRef(1, 16, null, null)]);
+        [$result, $pos] = $this->remapper->editionRemap($genesis, 'VGCL', '', false);
+        $this->assertVerseRef($result, 0, 16, null);
+        $this->assertSame([''], $pos);
+    }
+
+    public function testEditionOrderReadsSupplementaryEstherByNumber(): void
+    {
+        foreach (EstherRemapper::SUPPLEMENTARY_VERSIONS as $version) {
+            $this->assertSame('chapter, verse, sort_order', $this->remapper->editionOrder(19, $version), $version);
+        }
+        $this->assertSame('sort_order', $this->remapper->editionOrder(19, 'CEI2008'));
+        $this->assertSame('sort_order', $this->remapper->editionOrder(23, 'VGCL'));
+    }
 }
