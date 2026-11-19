@@ -83,6 +83,7 @@ jobs:
           DEPLOY_PATH="${APP_DIR%/}/${SUBDIR}"
           {
             echo "ref=${REF}"
+            echo "target=${TARGET}"
             echo "deploy_subdir=${SUBDIR}"
             echo "deploy_path=${DEPLOY_PATH}"
           } >> "${GITHUB_OUTPUT}"
@@ -92,8 +93,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.params.outputs.ref }}
-          # Full history and tags, so `git describe` below can name the version.
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Record the deployed commit
@@ -102,11 +101,20 @@ jobs:
 
       - name: Write the VERSION file
         # Read by src/Util/AppVersion.php for the X-BibleGet-Version header and
-        # info.ENDPOINT_VERSION. A release tag gives e.g. v4.0.0, staging gives
-        # e.g. v3.0.1-415-g892935b. Not under public/, and denied in .htaccess.
+        # info.ENDPOINT_VERSION. Production gives the release tag name (e.g.
+        # v4.0.0); staging gives the full 40-character commit SHA of the
+        # deployed commit. Not under public/, and denied in .htaccess.
+        env:
+          TARGET_REF: ${{ steps.params.outputs.ref }}
+          TARGET: ${{ steps.params.outputs.target }}
         run: |
           set -euo pipefail
-          git describe --tags --always > VERSION
+          # By target, not by branch: any staging deploy reports its commit.
+          if [ "${TARGET}" = "staging" ]; then
+            git rev-parse HEAD > VERSION
+          else
+            printf '%s\n' "${TARGET_REF}" > VERSION
+          fi
           echo "::notice::Deploying version $(cat VERSION)"
 
       - name: Verify modern codebase shape

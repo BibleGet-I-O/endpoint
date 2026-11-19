@@ -18295,7 +18295,7 @@
                 }
             },
             "ApiVersion": {
-                "description": "Version of the API that served the request: the release tag in production (e.g. `v4.0.0`), `git describe` output on staging (e.g. `v3.0.1-415-g892935b`), `dev` in local development. Equal to `info.ENDPOINT_VERSION` in response bodies. Exposed to browsers through `Access-Control-Expose-Headers`.",
+                "description": "Version of the API that served the request: the release tag in production (e.g. `v4.0.0`), the full 40-character commit SHA on staging (e.g. `8afaf1d3c5b2e7a94f06d1b8e3a7c2f5094d6b1e`), `dev` in local development. Equal to `info.ENDPOINT_VERSION` in response bodies. Exposed to browsers through `Access-Control-Expose-Headers`.",
                 "schema": {
                     "type": "string",
                     "maxLength": 64,

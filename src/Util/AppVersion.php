@@ -9,7 +9,7 @@ namespace BibleGet\Api\Util;
  * info.ENDPOINT_VERSION.
  *
  * The deploy workflow writes a VERSION file at the project root with the
- * output of `git describe --tags --always`. When the file is absent (local
+ * release tag name (production) or the full commit SHA (staging). When the file is absent (local
  * development) or its content is not a plain version string, the version is
  * "dev"; git is never run at request time.
  */
