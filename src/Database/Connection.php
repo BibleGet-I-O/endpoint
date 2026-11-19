@@ -22,17 +22,7 @@ class Connection
             return self::$instance;
         }
 
-        $server   = self::env('DB_HOST');
-        $dbuser   = self::env('DB_USER');
-        $dbpass   = self::env('DB_PASS');
-        $database = self::env('DB_NAME');
-        $port     = self::env('DB_PORT', '5432');
-
-        if ($server === '' || $dbuser === '' || $database === '') {
-            throw new InternalServerErrorException(
-                'Database credentials not found. Set DB_HOST, DB_USER, DB_PASS, DB_NAME environment variables.'
-            );
-        }
+        ['host' => $server, 'port' => $port, 'dbname' => $database, 'user' => $dbuser, 'password' => $dbpass] = self::params();
 
         try {
             $pdo = new \PDO(
@@ -56,6 +46,30 @@ class Connection
         self::$instance = $pdo;
 
         return self::$instance;
+    }
+
+    /**
+     * The connection settings from the environment (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS), shared by the
+     * PDO connection above and the Doctrine connection of the migrations runner.
+     *
+     * @return array{host: string, port: string, dbname: string, user: string, password: string}
+     * @throws InternalServerErrorException when DB_HOST, DB_USER or DB_NAME is missing
+     */
+    public static function params(): array
+    {
+        $params = [
+            'host'     => self::env('DB_HOST'),
+            'port'     => self::env('DB_PORT', '5432'),
+            'dbname'   => self::env('DB_NAME'),
+            'user'     => self::env('DB_USER'),
+            'password' => self::env('DB_PASS'),
+        ];
+        if ($params['host'] === '' || $params['user'] === '' || $params['dbname'] === '') {
+            throw new InternalServerErrorException(
+                'Database credentials not found. Set DB_HOST, DB_USER, DB_PASS, DB_NAME environment variables.'
+            );
+        }
+        return $params;
     }
 
     /**

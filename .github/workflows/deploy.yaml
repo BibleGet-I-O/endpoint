@@ -246,6 +246,60 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -p ${VPS_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=2" \
             ./ "${VPS_USER}@${VPS_HOST}:${DEPLOY_PATH%/}/"
 
+      - name: Run database migrations
+        # Doctrine Migrations (src/Migrations, configured in doctrine-migrations.php), applied by the deployed
+        # API itself through POST /_ops/migrate: the deploy user cannot run PHP against the database over SSH,
+        # while the PHP serving the API has its credentials. DEPLOY_TOKEN is a secret of the GitHub
+        # environment (staging / production) and must equal DEPLOY_TOKEN in that server's .env file.
+        # Migrations 001-052 predate Doctrine and were applied by hand; 052 is the first one Doctrine runs.
+        if: steps.shape.outputs.skip != 'true'
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          API_ORIGIN: ${{ vars.API_ORIGIN || 'https://query.bibleget.io' }}
+          SUBDIR: ${{ steps.params.outputs.deploy_subdir }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_TOKEN}" ]; then
+            echo "::error::DEPLOY_TOKEN secret is empty for this environment." >&2
+            exit 1
+          fi
+          # One request, retried only when the connection is refused (curl exit 7: PHP-FPM restarting). Not
+          # on 5xx or a timeout: the run may still be going on the server (ignore_user_abort), and a failed
+          # migration fails the same way again. A second run while one holds the lock answers 409.
+          # all_or_nothing: the pending migrations run in one transaction, so a failure applies none of them.
+          # No -f: a 500 carries Doctrine's own output (the reason), which -f would discard. curl's exit
+          # code is recorded so a partial body is still printed.
+          # OPcache on the server revalidates files every 2 s (PHP's default revalidate_freq): wait it out,
+          # so the request reaches the Router just deployed, not a cached one without /_ops.
+          sleep 3
+          body="$(mktemp)"
+          status=""
+          for attempt in 1 2 3; do
+            curl_rc=0
+            status="$(curl -sS --max-time 600 \
+              -o "${body}" -w '%{http_code}' \
+              -X POST \
+              -H "X-Deploy-Token: ${DEPLOY_TOKEN}" \
+              -H "Accept: text/plain" \
+              "${API_ORIGIN%/}/${SUBDIR}/_ops/migrate")" || curl_rc=$?
+            [ "${curl_rc}" -eq 7 ] && [ "${attempt}" -lt 3 ] || break
+            sleep 5
+          done
+          # Server output is data, not workflow commands.
+          stop_token="migrate-$(openssl rand -hex 16)"
+          echo "::stop-commands::${stop_token}"
+          cat "${body}"
+          echo "::${stop_token}::"
+          if [ "${curl_rc}" -ne 0 ] || [ "${status}" != "200" ]; then
+            reason="$(grep -m1 -E '\[error\]|Error:' "${body}" | tr -d '\r' | cut -c1-300 || true)"
+            if [ "${curl_rc}" -ne 0 ]; then
+              echo "::error::Database migration request failed (curl exit ${curl_rc}, HTTP ${status:-000}): the run may still be going on the server; check GET /_ops/migrate/status. ${reason:-See the output above.}" >&2
+            else
+              echo "::error::Database migration failed (HTTP ${status}). ${reason:-See the output above.}" >&2
+            fi
+            exit 1
+          fi
+
       - name: Clean up SSH key
         if: always() && steps.shape.outputs.skip != 'true'
         run: rm -f ~/.ssh/deploy_key
@@ -254,8 +308,9 @@ jobs:
     # Runs the Live suite (tests/Live) against staging once the deploy job has
     # put the code there. The code is already live when this runs: a failure
     # turns the run red as the signal, it does not roll anything back.
-    # Migrations are applied by hand; apply a PR's migration to staging before
-    # deploying its code, or the tests that depend on it fail here.
+    # The deploy job has applied the Doctrine migrations (POST /_ops/migrate) by
+    # then; a migration still applied by hand (a private archive's data half)
+    # must be applied to staging before its code is deployed.
     name: Live tests (staging)
     needs: deploy
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'staging'

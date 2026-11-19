@@ -13,13 +13,12 @@
 -- is on (an admin switch).
 --
 -- Idempotent: rerunning sets the same values.
-
-BEGIN;
+--
+-- The first migration applied by Doctrine (src/Migrations/Version052NvbseCopyright.php),
+-- on deploy: Doctrine opens the transaction, so this file has no BEGIN/COMMIT.
 
 UPDATE versions_available
    SET year = 1986,
        copyright = 1,
        copyright_holder = 'Libreria Editrice Vaticana'
  WHERE sigla = 'NVBSE';
-
-COMMIT;
