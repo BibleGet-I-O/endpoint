@@ -11,7 +11,8 @@ use Nyholm\Psr7\ServerRequest;
 /**
  * POST /_ops/migrate and GET /_ops/migrate/status against the PostgreSQL test database, with the real
  * configuration (doctrine-migrations.php) and its migrations, Version052NvbseCopyright first, then
- * Version053BtuReviewStore.
+ * Version053BtuReviewStore and Version054NvbseBracketedVerses (the test database has no NVBSE table, so 054 checks
+ * nothing there).
  */
 final class MigrateHandlerTest extends DatabaseTestCase
 {
@@ -54,10 +55,14 @@ final class MigrateHandlerTest extends DatabaseTestCase
         self::assertNotFalse($row);
         self::assertEquals(['year' => 1986, 'copyright' => 1, 'copyright_holder' => 'Libreria Editrice Vaticana'], $row->fetch());
 
-        $versions = $pdo->query('SELECT version FROM doctrine_migration_versions');
+        $versions = $pdo->query('SELECT version FROM doctrine_migration_versions ORDER BY version');
         self::assertNotFalse($versions);
         self::assertSame(
-            ['BibleGet\\Api\\Migrations\\Version052NvbseCopyright', 'BibleGet\\Api\\Migrations\\Version053BtuReviewStore'],
+            [
+                'BibleGet\\Api\\Migrations\\Version052NvbseCopyright',
+                'BibleGet\\Api\\Migrations\\Version053BtuReviewStore',
+                'BibleGet\\Api\\Migrations\\Version054NvbseBracketedVerses',
+            ],
             $versions->fetchAll(\PDO::FETCH_COLUMN)
         );
         $tables = $pdo->query("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('btu_unit', 'btu_stretch', 'btu_link')");
@@ -69,7 +74,7 @@ final class MigrateHandlerTest extends DatabaseTestCase
         self::assertSame(200, $second->getStatusCode(), (string) $second->getBody());
         $count = $pdo->query('SELECT count(*) FROM doctrine_migration_versions');
         self::assertNotFalse($count);
-        self::assertSame(2, (int) $count->fetchColumn());
+        self::assertSame(3, (int) $count->fetchColumn());
     }
 
     public function testStatusListsTheMigrations(): void

@@ -7,6 +7,24 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Fixed: NVBSE verses behind a bracketed number (#230)
+
+- **Sir 1:20, Ez 40:15 and Act 24:8 are rows of their own** (migration
+  `054`). vatican.va prints the number of a verse the Nova Vulgata omits in
+  parentheses, then the next verse with its own number. In these three
+  places the 2015 import kept that next verse in the row before, after the
+  bracketed number; `042`'s scan for inline numbers missed them because each
+  sits behind a bracket. The bracketed number stays at the end of the verse
+  before, as NVBSE keeps it for its other omitted verses (Mt 17:20 "…
+  (21)"). Sir 1:20 drops the stray "(" of vatican.va's "(20 Plenitudo".
+  **Ez 40:42-43** are stored in printed order, 42a, 43a, 42b, 43b (new case
+  `nvbse-ez-40-42-43`). The rows are changed by the private archive's data
+  half (`NVBSE-vatican/migrations/054-nvbse-bracketed-verses.sql`, applied
+  with psql FIRST); the public migration checks its md5 and recounts
+  `NVBSE_idx` (Sir 1, Ez 40 and Act 24 gain a verse each). Found while
+  seeding CatholicOS/cbtudr from NVBSE's verse structure. Re-embed NVBSE
+  afterwards (6 rows).
+
 ### Added: local Zitadel stack
 
 - `docker compose --profile zitadel` runs Zitadel v4.15.0 (as in production),
