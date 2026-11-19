@@ -433,6 +433,14 @@ class QuoteHandlerHttpTest extends ServerTestCase
     {
         $rows = self::results('/v3/quote?query=Est1&version=DRB&numbering=edition&text_tradition=HEBREW');
         self::assertSame(['DRB Est 1:1 hebrew', 'DRB Est 1:2 hebrew', 'DRB Est 1:3 hebrew'], array_column($rows, 'text'));
+
+        // An explicit GREEK is applied as asked: the lettered additions stay.
+        $greek = self::results('/v3/quote?query=Est1&version=DRB&numbering=edition&text_tradition=GREEK');
+        self::assertSame(
+            ['DRB Est 1:1a greek', 'DRB Est 1:1b greek', 'DRB Est 1:1 greek', 'DRB Est 1:2 greek', 'DRB Est 1:3 greek'],
+            array_column($greek, 'text')
+        );
+        self::assertSame(['a', 'b', null, null, null], array_column($greek, 'verse_segment'));
     }
 
     public function testEditionNumberingLeavesParallelPatternEstherUnchanged(): void
