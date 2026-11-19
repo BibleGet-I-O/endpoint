@@ -41,6 +41,8 @@ final class LiturgicalEditionsMigrationTest extends DatabaseTestCase
         );
         $sql = (string) file_get_contents(self::MIGRATION);
 
+        // First application: the column is added and the editions flagged.
+        $pdo->exec('ALTER TABLE versions_available DROP COLUMN liturgical');
         $pdo->exec($sql);
         $after = $this->flagged();
         $pdo->exec($sql);
@@ -48,5 +50,19 @@ final class LiturgicalEditionsMigrationTest extends DatabaseTestCase
         self::assertSame(['NABRE'], $after);
         self::assertSame($after, $this->flagged());
         self::assertNotContains('BLPD', $this->flagged());
+    }
+
+    public function testRerunDoesNotReflagAnEditionAnAdminSwitchedOff(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->exec(
+            "INSERT INTO versions_available (sigla, fullname, year, language, type, liturgical) VALUES
+                ('NABRE', 'New American Bible', 2011, 'English', 'BIBLE', FALSE)"
+        );
+        $sql = (string) file_get_contents(self::MIGRATION);
+
+        $pdo->exec($sql);
+
+        self::assertSame([], $this->flagged());
     }
 }

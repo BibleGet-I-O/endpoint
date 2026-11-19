@@ -14,19 +14,30 @@
 -- recognized it, but its use in the Lectionary is unconfirmed. An admin can
 -- switch it on later.
 --
--- Idempotent: the column is added only if missing, and rerunning the UPDATE
--- sets the same rows to the same value (editions an admin has since switched
--- on are untouched; ones switched off for these three would be flagged again,
--- so apply this once).
+-- Idempotent: the initial flags are set only when the column is first added,
+-- so rerunning this changes nothing, and editions an admin has since switched
+-- on or off keep their value.
 
 BEGIN;
 
-ALTER TABLE versions_available
-    ADD COLUMN IF NOT EXISTS liturgical BOOLEAN NOT NULL DEFAULT FALSE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'versions_available'
+           AND column_name = 'liturgical'
+    ) THEN
+        ALTER TABLE versions_available
+            ADD COLUMN liturgical BOOLEAN NOT NULL DEFAULT FALSE;
 
-UPDATE versions_available
-   SET liturgical = TRUE
- WHERE sigla IN ('NABRE', 'CEI2008', 'NVBSE')
-   AND type = 'BIBLE';
+        UPDATE versions_available
+           SET liturgical = TRUE
+         WHERE sigla IN ('NABRE', 'CEI2008', 'NVBSE')
+           AND type = 'BIBLE';
+    END IF;
+END
+$$;
 
 COMMIT;
