@@ -11,6 +11,7 @@ use BibleGet\Api\Handlers\Admin\StatsHandler;
 use BibleGet\Api\Handlers\Admin\VersionAdminHandler;
 use BibleGet\Api\Handlers\ApplicationsHandler;
 use BibleGet\Api\Handlers\Ops\MigrateHandler;
+use BibleGet\Api\Handlers\Review\ReviewHandler;
 use BibleGet\Api\Handlers\InstallationsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
@@ -39,7 +40,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class Router
 {
-    public const ADMIN_ROLE = 'bibleget_admin';
+    public const ADMIN_ROLE    = 'bibleget_admin';
+    public const REVIEWER_ROLE = 'bibleget_reviewer';
 
     public static string $apiBase = '/';
     private RequestHandlerInterface $handler;
@@ -196,15 +198,16 @@ class Router
 
     /**
      * Bearer-token authentication for the developer routes (any signed-in
-     * user) and the admin routes (role bibleget_admin: every admin path,
-     * including unknown ones, needs the role before it can 404); null for
-     * every other route.
+     * user), the admin routes (role bibleget_admin: every admin path,
+     * including unknown ones, needs the role before it can 404) and the
+     * review routes (role bibleget_reviewer); null for every other route.
      */
     private static function oidcMiddleware(string $route): ?OidcBearerMiddleware
     {
         return match ($route) {
             'applications' => new OidcBearerMiddleware(),
             'admin'        => ( new OidcBearerMiddleware() )->requireRole(self::ADMIN_ROLE),
+            'review'       => ( new OidcBearerMiddleware() )->requireRole(self::REVIEWER_ROLE),
             default        => null,
         };
     }
@@ -225,6 +228,8 @@ class Router
             'applications' => new ApplicationsHandler($this->psr17Factory, $pathParts),
             // Admin routes: a Zitadel access token with the bibleget_admin role (see the pipeline in route()).
             'admin'        => $this->createAdminHandler($pathParts),
+            // Review of CBTUDR unit links: a Zitadel access token with the bibleget_reviewer role.
+            'review'       => new ReviewHandler($this->psr17Factory, ['review', ...$pathParts]),
             // Deploy-time operations: X-Deploy-Token only (see the pipeline in route()), no credential or OIDC.
             '_ops'         => match ($pathParts) {
                 ['migrate']           => new MigrateHandler(false),

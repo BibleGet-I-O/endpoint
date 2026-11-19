@@ -56,6 +56,7 @@ The Router parses the URL path and dispatches to the appropriate PSR-15 handler:
 | `/v3/metadata/bibleversions` | `MetadataHandler`      | Available Bible versions |
 | `/v3/metadata/versionindex`  | `MetadataHandler`      | Chapter/verse indexes |
 | `/v3/search`                 | `SearchHandler`        | Keyword search |
+| `/v3/review/...`             | `ReviewHandler`        | Review of the links from editions' verses to CBTUDR units (role `bibleget_reviewer`; tables `btu_*`, migration 053, loaded by `scripts/load_cbtudr.php`) |
 
 ### Middleware Pipeline
 

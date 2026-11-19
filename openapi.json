@@ -3339,6 +3339,430 @@
                     }
                 }
             }
+        },
+        "/review/editions": {
+            "get": {
+                "summary": "Editions with links to CBTUDR units",
+                "operationId": "reviewListEditions",
+                "tags": [
+                    "ReviewAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Role bibleget_reviewer. Each edition's counts of draft, reviewed and rule links.",
+                "responses": {
+                    "200": {
+                        "description": "Editions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "editions": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "edition": {
+                                                        "type": "string"
+                                                    },
+                                                    "draft": {
+                                                        "type": "integer"
+                                                    },
+                                                    "reviewed": {
+                                                        "type": "integer"
+                                                    },
+                                                    "rule": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/review/editions/{sigla}/chapters": {
+            "get": {
+                "summary": "Chapters with drafts, least confident first",
+                "operationId": "reviewListChapters",
+                "tags": [
+                    "ReviewAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "sigla",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2,10}$"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chapters.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "chapters": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "book": {
+                                                        "type": "integer"
+                                                    },
+                                                    "chapter": {
+                                                        "type": "integer"
+                                                    },
+                                                    "drafts": {
+                                                        "type": "integer"
+                                                    },
+                                                    "min_confidence": {
+                                                        "type": "number"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/review/editions/{sigla}/books/{book}/chapters/{chapter}": {
+            "get": {
+                "summary": "One chapter's links and the units they may be relinked to",
+                "operationId": "reviewGetChapter",
+                "tags": [
+                    "ReviewAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "sigla",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2,10}$"
+                        }
+                    },
+                    {
+                        "name": "book",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 73
+                        }
+                    },
+                    {
+                        "name": "chapter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The chapter.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "links": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BtuLink"
+                                            }
+                                        },
+                                        "units": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "ref": {
+                                                        "type": "string"
+                                                    },
+                                                    "stretch": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/review/editions/{sigla}/books/{book}/chapters/{chapter}/accept": {
+            "post": {
+                "summary": "Accept the chapter's remaining drafts",
+                "operationId": "reviewAcceptChapter",
+                "tags": [
+                    "ReviewAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "sigla",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2,10}$"
+                        }
+                    },
+                    {
+                        "name": "book",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 73
+                        }
+                    },
+                    {
+                        "name": "chapter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "How many were accepted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "accepted": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/review/links/{id}": {
+            "patch": {
+                "summary": "Review one link",
+                "operationId": "reviewPatchLink",
+                "tags": [
+                    "ReviewAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Exactly one of: accept; relink to units of the link's own stretch; none (no counterpart); split (a note; the link stays a draft); or kind. Links made by rule are not reviewed (422).",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "action"
+                                        ],
+                                        "properties": {
+                                            "action": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "accept",
+                                                    "none"
+                                                ]
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "action",
+                                            "units"
+                                        ],
+                                        "properties": {
+                                            "action": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "relink"
+                                                ]
+                                            },
+                                            "units": {
+                                                "type": "array",
+                                                "minItems": 1,
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "action",
+                                            "note"
+                                        ],
+                                        "properties": {
+                                            "action": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "split"
+                                                ]
+                                            },
+                                            "note": {
+                                                "type": "string",
+                                                "maxLength": 1000
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "kind"
+                                        ],
+                                        "properties": {
+                                            "kind": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "same",
+                                                    "corresponding"
+                                                ]
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The link.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BtuLink"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    },
+                    "422": {
+                        "description": "Not a valid review of this link."
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -18118,6 +18542,53 @@
                         "nullable": true
                     }
                 }
+            },
+            "BtuLink": {
+                "type": "object",
+                "description": "A link from one verse of an edition to CBTUDR units (CatholicOS/cbtudr).",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "ref": {
+                        "type": "string",
+                        "example": "5:3"
+                    },
+                    "units": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "btu:tb.5.4"
+                        }
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "same",
+                            "corresponding"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "rule",
+                            "draft",
+                            "reviewed"
+                        ]
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "nullable": true
+                    },
+                    "stretch": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "note": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
             }
         },
         "parameters": {
@@ -18434,6 +18905,10 @@
         {
             "name": "AdminAPI",
             "description": "Approval, client keys, installations and statistics. Bearer token with the `bibleget_admin` role."
+        },
+        {
+            "name": "ReviewAPI",
+            "description": "Review of the links from editions' verses to CBTUDR units (role bibleget_reviewer)."
         }
     ]
 }
