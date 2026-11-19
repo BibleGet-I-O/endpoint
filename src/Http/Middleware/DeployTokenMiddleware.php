@@ -13,13 +13,15 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Authenticates the deploy workflow's requests to /_ops/* with a long random shared token (DEPLOY_TOKEN, in
  * the server's .env.staging / .env.production and the GitHub environment's secrets), sent as X-Deploy-Token.
- * Fail-closed: APP_ENV outside {staging, production} or an empty DEPLOY_TOKEN answers 503, a missing or wrong
+ * Fail-closed: APP_ENV outside {staging, production} or a DEPLOY_TOKEN shorter than 32 characters answers 503, a missing or wrong
  * header 401. hash_equals keeps the comparison constant-time. Ported from the Liturgical Calendar API.
  */
 final class DeployTokenMiddleware implements MiddlewareInterface
 {
     public const HEADER           = 'X-Deploy-Token';
     private const ALLOWED_APP_ENV = ['staging', 'production'];
+    /** `openssl rand -hex 32` gives 64; anything under 32 characters is treated as not configured. */
+    private const MIN_TOKEN_LENGTH = 32;
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
@@ -27,7 +29,7 @@ final class DeployTokenMiddleware implements MiddlewareInterface
             return self::text(503, "Deploy endpoint disabled in this environment\n");
         }
         $expected = self::env('DEPLOY_TOKEN');
-        if ($expected === '') {
+        if (strlen($expected) < self::MIN_TOKEN_LENGTH) {
             return self::text(503, "Deploy endpoint not configured\n");
         }
         $provided = $request->getHeaderLine(self::HEADER);

@@ -62,6 +62,7 @@ final class DeployTokenMiddlewareTest extends TestCase
         yield 'production, right token'         => ['production', self::TOKEN, self::TOKEN, 200];
         yield 'development is disabled'         => ['development', self::TOKEN, self::TOKEN, 503];
         yield 'no token configured'             => ['staging', '', '', 503];
+        yield 'a short token is not configured' => ['staging', 'short-token', 'short-token', 503];
         yield 'missing header'                  => ['staging', self::TOKEN, null, 401];
         yield 'wrong token'                     => ['staging', self::TOKEN, 'not-the-token', 401];
         yield 'a prefix of the token is wrong'  => ['staging', self::TOKEN, substr(self::TOKEN, 0, 10), 401];

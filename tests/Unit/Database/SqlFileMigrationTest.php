@@ -22,6 +22,17 @@ final class SqlFileMigrationTest extends TestCase
         yield 'a tagged DO body'            => ["DO \$body\$\nBEGIN\n  PERFORM 1;\nEND;\n\$body\$;\n", false];
         yield 'BEGIN in a comment'          => ["-- BEGIN;\n/* COMMIT; */\nUPDATE t SET a = 1;\n", false];
         yield 'a column named begin_date'   => ["UPDATE t SET begin_date = now();\n", false];
+        yield 'COMMIT WORK'                 => ["UPDATE t SET a = 1;\nCOMMIT WORK;\n", true];
+        yield 'COMMIT AND CHAIN'            => ["UPDATE t SET a = 1;\nCOMMIT AND CHAIN;\n", true];
+        yield 'END TRANSACTION'             => ["UPDATE t SET a = 1;\nEND TRANSACTION;\n", true];
+        yield 'ROLLBACK WORK'               => ["UPDATE t SET a = 1;\nROLLBACK WORK;\n", true];
+        yield 'BEGIN ISOLATION LEVEL'       => ["BEGIN ISOLATION LEVEL SERIALIZABLE;\nUPDATE t SET a = 1;\n", true];
+        yield 'START TRANSACTION READ ONLY' => ["START TRANSACTION READ ONLY;\n", true];
+        yield 'SAVEPOINT'                   => ["SAVEPOINT s1;\nUPDATE t SET a = 1;\nRELEASE s1;\n", true];
+        yield 'PREPARE TRANSACTION'         => ["UPDATE t SET a = 1;\nPREPARE TRANSACTION 'x';\n", true];
+        yield 'COMMIT after a -- string'    => ["UPDATE t SET a = '--';\nCOMMIT;\n", true];
+        yield 'COMMIT inside a string'      => ["UPDATE t SET note = 'x; COMMIT; y';\n", false];
+        yield 'a dollar tag with digits'    => ["DO \$f1\$\nBEGIN\n  PERFORM 1;\nEND;\n\$f1\$;\n", false];
     }
 
     #[DataProvider('sql')]

@@ -35,6 +35,12 @@ use Symfony\Component\Console\Output\StreamOutput;
  */
 final class MigrateHandler implements RequestHandlerInterface
 {
+    /**
+     * The PostgreSQL advisory lock a run holds, so that a second POST (a retried or a parallel deploy) answers
+     * 409 instead of running the same migrations at the same time.
+     */
+    public const int LOCK_KEY = 4_220_052;
+
     public function __construct(
         private readonly bool $status,
         private ?Connection $connection = null,
@@ -77,6 +83,21 @@ final class MigrateHandler implements RequestHandlerInterface
         $app->setCatchExceptions(true);
         $app->addCommands([new SyncMetadataCommand($factory), new MigrateCommand($factory), new StatusCommand($factory)]);
 
+        $connection = $this->connection;
+        if (!$this->status && $connection->fetchOne('SELECT pg_try_advisory_lock(' . self::LOCK_KEY . ')') !== true) {
+            return new Response(409, ['Content-Type' => 'text/plain'], "Another migration run is in progress; check GET /_ops/migrate/status.\n");
+        }
+        try {
+            return $this->run($app, $count, $to);
+        } finally {
+            if (!$this->status) {
+                $connection->executeStatement('SELECT pg_advisory_unlock(' . self::LOCK_KEY . ')');
+            }
+        }
+    }
+
+    private function run(Application $app, int $count, ?string $to): ResponseInterface
+    {
         $stream = fopen('php://temp', 'w+b');
         if ($stream === false) {
             return new Response(500, ['Content-Type' => 'text/plain'], "Failed to open output stream\n");

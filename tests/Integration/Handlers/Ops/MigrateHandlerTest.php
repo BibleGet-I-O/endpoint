@@ -27,6 +27,7 @@ final class MigrateHandlerTest extends DatabaseTestCase
         if (!$this->status()->isSkipped()) {
             $pdo = $this->getConnection();
             $pdo->exec('DROP TABLE IF EXISTS doctrine_migration_versions');
+            $pdo->exec('DROP TABLE IF EXISTS migration_probe');
             $pdo->exec("DELETE FROM versions_available WHERE sigla = 'NVBSE'");
         }
         if ($this->emptyDir !== null) {
@@ -93,17 +94,50 @@ final class MigrateHandlerTest extends DatabaseTestCase
 
     public function testNoMigrationsAtAllIsASuccess(): void
     {
+        $response = ( new MigrateHandler(false, null, $this->writeConfig([])) )->handle(new ServerRequest('POST', '/_ops/migrate'));
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        self::assertStringContainsString('nothing to apply', (string) $response->getBody());
+    }
+
+    public function testAMigrationFileWithSeveralStatementsRunsWhole(): void
+    {
+        $config = $this->writeConfig(['BibleGet\\Tests\\Support\\Migrations' => dirname(__DIR__, 3) . '/Support/Migrations']);
+
+        $response = ( new MigrateHandler(false, null, $config) )->handle(new ServerRequest('POST', '/_ops/migrate'));
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $sum = $this->getConnection()->query('SELECT sum(n) FROM migration_probe');
+        self::assertNotFalse($sum);
+        self::assertSame(3, (int) $sum->fetchColumn());
+    }
+
+    public function testASecondRunWhileOneHoldsTheLockAnswers409(): void
+    {
+        $holder = $this->getConnection();
+        $holder->exec('SELECT pg_advisory_lock(' . MigrateHandler::LOCK_KEY . ')');
+        try {
+            $response = ( new MigrateHandler(false) )->handle(new ServerRequest('POST', '/_ops/migrate'));
+        } finally {
+            $holder->exec('SELECT pg_advisory_unlock(' . MigrateHandler::LOCK_KEY . ')');
+        }
+        self::assertSame(409, $response->getStatusCode(), (string) $response->getBody());
+        $exists = $this->getConnection()->query("SELECT to_regclass('doctrine_migration_versions')");
+        self::assertNotFalse($exists);
+        self::assertNull($exists->fetchColumn());
+    }
+
+    /** @param array<string, string> $paths */
+    private function writeConfig(array $paths): string
+    {
         $dir = sys_get_temp_dir() . '/bibleget_migrate_' . bin2hex(random_bytes(4));
         mkdir($dir);
         $this->emptyDir = $dir;
         $config         = $dir . '/config.php';
         file_put_contents($config, '<?php return ' . var_export([
-            'migrations_paths' => ['BibleGet\\Tests\\Empty' => $dir],
+            'migrations_paths' => $paths === [] ? ['BibleGet\\Tests\\Empty' => $dir] : $paths,
             'transactional'    => true,
+            'all_or_nothing'   => true,
         ], true) . ';');
-
-        $response = ( new MigrateHandler(false, null, $config) )->handle(new ServerRequest('POST', '/_ops/migrate'));
-        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
-        self::assertStringContainsString('nothing to apply', (string) $response->getBody());
+        return $config;
     }
 }
