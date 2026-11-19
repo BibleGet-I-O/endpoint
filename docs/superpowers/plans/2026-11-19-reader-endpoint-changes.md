@@ -93,7 +93,7 @@
 - Modify: `scripts/mint-reader-key.php`, `CLAUDE.md` ("Minting keys")
 - Test: `tests/Integration/Scripts/MintScriptsTest.php` (extend)
 
-**Interfaces:** `php scripts/mint-reader-key.php [--scope=reader|read] [key name]` — default scope `reader` (unchanged behaviour); `read` mints a `read`-scope key with `rate_limit_per_hour` NULL on the same system application "BibleGet website"; default name for `read`: `Website visitors`.
+**Interfaces:** `php scripts/mint-reader-key.php [--scope=reader|read] [key name]` — default scope `reader` (unchanged behaviour); `read` mints a `read`-scope key with `rate_limit_per_hour` NULL on the same system application "BibleGet website"; it is unlimited because `RateLimitMiddleware` exempts `is_system` applications (a NULL limit alone means the default, 1000 an hour); default name for `read`: `Website visitors`; `--scope=` at most once.
 
 - [ ] **Step 1: Tests:** `testDefaultStillMintsAReaderKey`; `testReadScopeMintsAnUnlimitedReadKeyOnTheSystemApplication` (scope `read`, `rate_limit_per_hour` null, same `application_id` as the reader key); `testRerunAddsAnotherKey` (two runs → two active keys); `testUnknownScopeExitsNonZero` (`--scope=admin` → exit ≠ 0, nothing written).
 - [ ] **Step 2: Run** → FAIL.

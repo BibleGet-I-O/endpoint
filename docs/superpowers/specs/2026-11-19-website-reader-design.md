@@ -142,8 +142,13 @@ application "BibleGet website" (`scripts/mint-reader-key.php` upserts it):
 
 | Request from | Key | API returns |
 | --- | --- | --- |
-| a signed-in user's page | `reader` scope, no rate limit | whole chapter where `reader_full_text` |
-| a visitor's page | `read` scope, no rate limit (`rate_limit_per_hour` NULL) | ≤ 30 verses of a copyrighted edition |
+| a signed-in user's page | `reader` scope, not rate-limited (system application) | whole chapter where `reader_full_text` |
+| a visitor's page | `read` scope, not rate-limited (system application) | ≤ 30 verses of a copyrighted edition |
+
+Neither key is limited because both belong to the `is_system` application,
+which `RateLimitMiddleware` exempts. Their `rate_limit_per_hour` is NULL, but
+NULL means the default limit (1000 an hour for a project key), not "no limit":
+a `read` key on any other application is limited.
 
 The site picks the key from the session on its server, never from anything the
 browser sends. The API truncates an over-long copyrighted request to its first
@@ -160,7 +165,9 @@ show the "sign in for the rest" notice.
 2. **`/quote` without vectors:** results stop carrying `embedding_labse` /
    `embedding` (several KB per verse today; nothing reads them).
 3. **The visitor key:** `scripts/mint-reader-key.php` (or a sibling) can also
-   mint the `read`-scope key with no rate limit on the same system application.
+   mint the `read`-scope key on the same system application, which makes it
+   exempt from rate limiting (its `rate_limit_per_hour` NULL alone would mean
+   the default limit).
 4. **Native numbering:** a request parameter that reads chapter and verse in
    the edition's own numbering (no Hebrew-first Psalm mapping), and, on psalm
    results, each row's Hebrew reference (from `PsalmNumbering`). Applies to
