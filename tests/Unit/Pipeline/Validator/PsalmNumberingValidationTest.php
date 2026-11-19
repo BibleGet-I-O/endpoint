@@ -33,7 +33,7 @@ final class PsalmNumberingValidationTest extends TestCase
     /**
      * @param string[] $versions
      */
-    private function validator(array $versions): AstValidator
+    private function validator(array $versions, bool $editionNumbering = false): AstValidator
     {
         $bibleBooks     = array_fill(0, 73, []);
         $bibleBooks[22] = [1 => ['Psalms', 'Psalm', 'Ps', 'Salmo', 'Psalmo']];
@@ -46,17 +46,17 @@ final class PsalmNumberingValidationTest extends TestCase
         ];
         $indexes        = ['HEB' => $index(self::HEBREW_VERSES), 'VGCL' => $index(self::VULGATE_VERSES)];
 
-        return new AstValidator($bibleBooks, $indexes, $versions);
+        return new AstValidator($bibleBooks, $indexes, $versions, $editionNumbering);
     }
 
     /**
      * @param string[] $versions
      * @return string[] the error messages
      */
-    private function errorsFor(string $input, array $versions): array
+    private function errorsFor(string $input, array $versions, bool $editionNumbering = false): array
     {
         $tokens    = ( new ReferenceTokenizer() )->tokenize($input);
-        $validator = $this->validator($versions);
+        $validator = $this->validator($versions, $editionNumbering);
         $validator->validate(( new ReferenceParser() )->parse($tokens), $tokens);
 
         return array_map(static fn($e): string => $e->message, $validator->getErrors());
@@ -140,5 +140,53 @@ final class PsalmNumberingValidationTest extends TestCase
         self::assertSame([], $this->errorsFor('Psalm9,21', ['HEB', 'VGCL']));
         self::assertSame([], $this->errorsFor('Psalm10(9),1', ['HEB', 'VGCL']));
         self::assertSame([], $this->errorsFor('Psalm114,8', ['HEB', 'VGCL']));
+    }
+
+    public function testAVulgateRangeWithTwoNumbersPerEndpointRunsForwardInItsOwnNumbering(): void
+    {
+        // VGCL 114:9 through 115:1; read as the larger (Hebrew) number it would be 116:9-116:1.
+        self::assertSame([], $this->errorsFor('Ps114(116),9-115(116),1', ['VGCL'], true));
+    }
+
+    /**
+     * @return array<string, array{string, string[]}>
+     */
+    public static function backwardRangesInTheEditionsOwnNumbering(): array
+    {
+        return [
+            'VGCL 115:1 back to 114:9'    => ['Ps115,1-114,9', ['VGCL']],
+            'VGCL 115:5 back to 115:2'    => ['Ps115,5-2', ['VGCL']],
+            'Hebrew 116:9 back to 116:1'  => ['Ps114(116),9-115(116),1', ['HEB']],
+            'Hebrew-numbered beside VGCL' => ['Ps114(116),9-115(116),1', ['HEB', 'VGCL']],
+        ];
+    }
+
+    /**
+     * @param string[] $versions
+     */
+    #[DataProvider('backwardRangesInTheEditionsOwnNumbering')]
+    public function testARangeBackwardInAnEditionsOwnNumberingIsRejected(string $input, array $versions): void
+    {
+        $errors = $this->errorsFor($input, $versions, true);
+
+        self::assertCount(1, $errors);
+        self::assertStringContainsString('Invalid range', $errors[0]);
+    }
+
+    public function testAnEditionShapeErrorIsReportedOnceForAllVersions(): void
+    {
+        $errors = $this->errorsFor('Psalm51,5-3', ['HEB', 'VGCL'], true);
+
+        self::assertCount(1, $errors);
+        self::assertStringContainsString('Invalid range', $errors[0]);
+    }
+
+    public function testTheHebrewReadingOfATwoNumberRangeIsUnchanged(): void
+    {
+        // Without numbering=edition both endpoints are read as Hebrew 116: a backward range.
+        $errors = $this->errorsFor('Ps114(116),9-115(116),1', ['VGCL']);
+
+        self::assertCount(1, $errors);
+        self::assertStringContainsString('Invalid range', $errors[0]);
     }
 }

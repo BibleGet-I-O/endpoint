@@ -125,17 +125,18 @@ final class AstValidator
             return null;
         }
 
-        // Shape (numbers >= 1, ranges in order), once, on the reference as written
-        // with Psalms read as Hebrew numbers; then bounds, per version, on the
-        // reference as that version stores it. With edition numbering the
-        // reference as written is what every version stores, a two-number psalm
-        // read as the number each version prints (the larger one for the shape).
         $resolvedQuery = new BibleQuery($nonZeroBookIdx, $query->segments);
-        $this->validateShape($this->stored($resolvedQuery, ''));
-        if (empty($this->errors)) {
-            foreach ($this->validatedVariants as $variant) {
-                $stored = $this->stored($resolvedQuery, $variant);
-                $this->validateBounds($stored, $nonZeroBookIdx, $variant);
+        if ($this->editionNumbering) {
+            $this->validateEditionReadings($resolvedQuery, $nonZeroBookIdx);
+        } else {
+            // Shape (numbers >= 1, ranges in order), once, on the reference as written
+            // with Psalms read as Hebrew numbers; then bounds, per version, on the
+            // reference as that version stores it.
+            $this->validateShape($this->stored($resolvedQuery, ''));
+            if (empty($this->errors)) {
+                foreach ($this->validatedVariants as $variant) {
+                    $this->validateBounds($this->stored($resolvedQuery, $variant), $nonZeroBookIdx, $variant);
+                }
             }
         }
 
@@ -145,6 +146,33 @@ final class AstValidator
 
         // Return a new BibleQuery with the resolved book index
         return new BibleQuery($nonZeroBookIdx, $query->segments);
+    }
+
+    /**
+     * With numbering=edition each version reads a two-number psalm as the number it prints
+     * (Vulgate for VGCL and DRB, Hebrew otherwise), so a range runs forward or backward in
+     * that version's own numbering: shape on each version's reading, then (if every reading
+     * has a valid shape) bounds on each. A shape error that several readings share (any
+     * non-Psalm reference) is reported once.
+     */
+    private function validateEditionReadings(BibleQuery $query, int $nonZeroBookIdx): void
+    {
+        $readings    = [];
+        $shapeErrors = [];
+        foreach ($this->validatedVariants as $variant) {
+            $readings[$variant] = $this->stored($query, $variant);
+            $this->validateShape($readings[$variant]);
+            foreach ($this->errors as $error) {
+                $shapeErrors[$error->message . "\0" . $error->position] = $error;
+            }
+            $this->errors = [];
+        }
+        $this->errors = array_values($shapeErrors);
+        if (empty($this->errors)) {
+            foreach ($readings as $variant => $stored) {
+                $this->validateBounds($stored, $nonZeroBookIdx, $variant);
+            }
+        }
     }
 
     /**
