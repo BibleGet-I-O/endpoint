@@ -23,6 +23,12 @@ class QuoteContext
 
     public const ALLOWED_TEXT_TRADITIONS = ['GREEK', 'HEBREW'];
 
+    /**
+     * How a Psalm number is read: `hebrew` (the default) maps it to each edition's own
+     * numbering (PsalmNumbering); `edition` takes it as the edition's own number.
+     */
+    public const NUMBERINGS = ['hebrew', 'edition'];
+
     /** @var array<int|string, string> */
     public static array $errorMessages = [
         0 => 'The first query must start with a valid book indicator.',
@@ -43,6 +49,7 @@ class QuoteContext
         'return'         => '',
         'version'        => '',
         'text_tradition' => '',
+        'numbering'      => '',
     ];
 
     public \PDO $pdo;
@@ -120,10 +127,20 @@ class QuoteContext
         $this->DATA                   = array_merge(self::$defaultParameters, $params);
         $textTraditionUpper           = strtoupper($this->DATA['text_tradition']);
         $this->DATA['text_tradition'] = in_array($textTraditionUpper, self::ALLOWED_TEXT_TRADITIONS, true) ? $textTraditionUpper : '';
+        $numbering                    = strtolower($this->DATA['numbering']);
+        $this->DATA['numbering']      = in_array($numbering, self::NUMBERINGS, true) ? $numbering : self::NUMBERINGS[0];
         $this->logger                 = $logger ?? new NullLogger();
         $this->originHeader           = $originHeader;
         $this->requestMethod          = $requestMethod;
         $this->credential             = $credential;
+    }
+
+    /**
+     * Whether Psalm numbers are read as each edition's own (numbering=edition).
+     */
+    public function editionNumbering(): bool
+    {
+        return $this->DATA['numbering'] === 'edition';
     }
 
     /**

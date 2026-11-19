@@ -237,4 +237,61 @@ final class PsalmNumberingTest extends TestCase
         self::assertSame(89, PsalmNumbering::hebrewChapter(new VerseRef(23, 89, 88)));
         self::assertSame(88, PsalmNumbering::hebrewChapter(new VerseRef(23, 88)));
     }
+
+    public function testToHebrewIsIdentityForHebrewEditions(): void
+    {
+        self::assertSame([23, 4], PsalmNumbering::toHebrew(23, 4, 'NABRE'));
+        self::assertSame([9, 22], PsalmNumbering::toHebrew(9, 22, 'TEST1'));
+    }
+
+    /**
+     * @return array<string, array{string, int, int, int, int}>
+     */
+    public static function vulgateToHebrew(): array
+    {
+        return [
+            'VGCL 9:1'    => ['VGCL', 9, 1, 9, 1],
+            'VGCL 9:22'   => ['VGCL', 9, 22, 10, 1],
+            'VGCL 9:39'   => ['VGCL', 9, 39, 10, 18],
+            'VGCL 22:4'   => ['VGCL', 22, 4, 23, 4],
+            'VGCL 113:9'  => ['VGCL', 113, 9, 115, 1],
+            'VGCL 114:9'  => ['VGCL', 114, 9, 116, 9],
+            'VGCL 115:1'  => ['VGCL', 115, 1, 116, 10],
+            'VGCL 146:11' => ['VGCL', 146, 11, 147, 11],
+            'VGCL 147:1'  => ['VGCL', 147, 1, 147, 12],
+            'VGCL 150:6'  => ['VGCL', 150, 6, 150, 6],
+            'DRB 115:10'  => ['DRB', 115, 10, 116, 10],
+            'DRB 147:12'  => ['DRB', 147, 12, 147, 12],
+        ];
+    }
+
+    #[DataProvider('vulgateToHebrew')]
+    public function testToHebrewInvertsTheVulgateNumbering(string $version, int $chapter, int $verse, int $hebrewChapter, int $hebrewVerse): void
+    {
+        self::assertSame([$hebrewChapter, $hebrewVerse], PsalmNumbering::toHebrew($chapter, $verse, $version));
+    }
+
+    /**
+     * Every Hebrew verse of a psalm the Vulgate splits or joins (all verses up to
+     * hebrewVerseLimit), and verse 1 of every other psalm (outside the split zones the
+     * verse number is kept as it is, so one verse per psalm checks its chapter).
+     */
+    public function testToHebrewRoundTripsResolve(): void
+    {
+        foreach (['VGCL', 'DRB'] as $version) {
+            for ($chapter = 1; $chapter <= 150; $chapter++) {
+                $last = PsalmNumbering::hebrewVerseLimit($chapter) ?? 1;
+                for ($verse = 1; $verse <= $last; $verse++) {
+                    $ref = $this->numbering->resolve(self::psalm($chapter, null, $verse), $version)->segments[0];
+                    self::assertInstanceOf(VerseRef::class, $ref);
+                    self::assertNotNull($ref->verse);
+                    self::assertSame(
+                        [$chapter, $verse],
+                        PsalmNumbering::toHebrew($ref->chapter, $ref->verse, $version),
+                        "$version Hebrew $chapter:$verse"
+                    );
+                }
+            }
+        }
+    }
 }

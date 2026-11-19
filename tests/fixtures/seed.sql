@@ -128,6 +128,16 @@ INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
 (48, 9, 44, 'Where their worm dieth not, and the fire is not quenched.', 2, 7)
 ON CONFLICT DO NOTHING;
 
+-- Synthetic Psalm 23 (Hebrew-numbered, as TEST1_idx counts it) for numbering=edition.
+INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
+(23, 23, 1, 'TEST1 Ps 23:1', 1, 7),
+(23, 23, 2, 'TEST1 Ps 23:2', 1, 7),
+(23, 23, 3, 'TEST1 Ps 23:3', 1, 7),
+(23, 23, 4, 'TEST1 Ps 23:4', 1, 7),
+(23, 23, 5, 'TEST1 Ps 23:5', 1, 7),
+(23, 23, 6, 'TEST1 Ps 23:6', 1, 7)
+ON CONFLICT DO NOTHING;
+
 -- Bible text tables for TEST2 (same sample verses)
 CREATE TABLE IF NOT EXISTS "TEST2" (
     "verseID"     SERIAL PRIMARY KEY,
@@ -268,6 +278,88 @@ INSERT INTO "VGCL" (book, chapter, verse, text, testament, section) VALUES
 -- The Clementine's own spellings, for accent-insensitive keyword search (#196)
 (1, 1, 1, 'In principio creavit Deus cælum et terram.', 1, 1),
 (2, 4, 22, 'dicesque ad eum: Hæc dicit Dominus: Filius meus primogenitus Israël.', 1, 1)
+ON CONFLICT DO NOTHING;
+
+-- Synthetic VGCL Psalms 9 (= Hebrew 9 + 10), 21 and 22 (= Hebrew 22, 23), as VGCL_idx counts
+-- them, for numbering=edition and psalm_hebrew (QuoteHandlerHttpTest).
+INSERT INTO "VGCL" (book, chapter, verse, text, testament, section) VALUES
+(23, 9, 1, 'VGCL Ps 9:1', 1, 7),
+(23, 9, 2, 'VGCL Ps 9:2', 1, 7),
+(23, 9, 3, 'VGCL Ps 9:3', 1, 7),
+(23, 9, 4, 'VGCL Ps 9:4', 1, 7),
+(23, 9, 5, 'VGCL Ps 9:5', 1, 7),
+(23, 9, 6, 'VGCL Ps 9:6', 1, 7),
+(23, 9, 7, 'VGCL Ps 9:7', 1, 7),
+(23, 9, 8, 'VGCL Ps 9:8', 1, 7),
+(23, 9, 9, 'VGCL Ps 9:9', 1, 7),
+(23, 9, 10, 'VGCL Ps 9:10', 1, 7),
+(23, 9, 11, 'VGCL Ps 9:11', 1, 7),
+(23, 9, 12, 'VGCL Ps 9:12', 1, 7),
+(23, 9, 13, 'VGCL Ps 9:13', 1, 7),
+(23, 9, 14, 'VGCL Ps 9:14', 1, 7),
+(23, 9, 15, 'VGCL Ps 9:15', 1, 7),
+(23, 9, 16, 'VGCL Ps 9:16', 1, 7),
+(23, 9, 17, 'VGCL Ps 9:17', 1, 7),
+(23, 9, 18, 'VGCL Ps 9:18', 1, 7),
+(23, 9, 19, 'VGCL Ps 9:19', 1, 7),
+(23, 9, 20, 'VGCL Ps 9:20', 1, 7),
+(23, 9, 21, 'VGCL Ps 9:21', 1, 7),
+(23, 9, 22, 'VGCL Ps 9:22', 1, 7),
+(23, 9, 23, 'VGCL Ps 9:23', 1, 7),
+(23, 9, 24, 'VGCL Ps 9:24', 1, 7),
+(23, 9, 25, 'VGCL Ps 9:25', 1, 7),
+(23, 9, 26, 'VGCL Ps 9:26', 1, 7),
+(23, 9, 27, 'VGCL Ps 9:27', 1, 7),
+(23, 9, 28, 'VGCL Ps 9:28', 1, 7),
+(23, 9, 29, 'VGCL Ps 9:29', 1, 7),
+(23, 9, 30, 'VGCL Ps 9:30', 1, 7),
+(23, 9, 31, 'VGCL Ps 9:31', 1, 7),
+(23, 9, 32, 'VGCL Ps 9:32', 1, 7),
+(23, 9, 33, 'VGCL Ps 9:33', 1, 7),
+(23, 9, 34, 'VGCL Ps 9:34', 1, 7),
+(23, 9, 35, 'VGCL Ps 9:35', 1, 7),
+(23, 9, 36, 'VGCL Ps 9:36', 1, 7),
+(23, 9, 37, 'VGCL Ps 9:37', 1, 7),
+(23, 9, 38, 'VGCL Ps 9:38', 1, 7),
+(23, 9, 39, 'VGCL Ps 9:39', 1, 7),
+(23, 21, 1, 'VGCL Ps 21:1', 1, 7),
+(23, 21, 2, 'VGCL Ps 21:2', 1, 7),
+(23, 21, 3, 'VGCL Ps 21:3', 1, 7),
+(23, 21, 4, 'VGCL Ps 21:4', 1, 7),
+(23, 21, 5, 'VGCL Ps 21:5', 1, 7),
+(23, 21, 6, 'VGCL Ps 21:6', 1, 7),
+(23, 21, 7, 'VGCL Ps 21:7', 1, 7),
+(23, 21, 8, 'VGCL Ps 21:8', 1, 7),
+(23, 21, 9, 'VGCL Ps 21:9', 1, 7),
+(23, 21, 10, 'VGCL Ps 21:10', 1, 7),
+(23, 21, 11, 'VGCL Ps 21:11', 1, 7),
+(23, 21, 12, 'VGCL Ps 21:12', 1, 7),
+(23, 21, 13, 'VGCL Ps 21:13', 1, 7),
+(23, 21, 14, 'VGCL Ps 21:14', 1, 7),
+(23, 21, 15, 'VGCL Ps 21:15', 1, 7),
+(23, 21, 16, 'VGCL Ps 21:16', 1, 7),
+(23, 21, 17, 'VGCL Ps 21:17', 1, 7),
+(23, 21, 18, 'VGCL Ps 21:18', 1, 7),
+(23, 21, 19, 'VGCL Ps 21:19', 1, 7),
+(23, 21, 20, 'VGCL Ps 21:20', 1, 7),
+(23, 21, 21, 'VGCL Ps 21:21', 1, 7),
+(23, 21, 22, 'VGCL Ps 21:22', 1, 7),
+(23, 21, 23, 'VGCL Ps 21:23', 1, 7),
+(23, 21, 24, 'VGCL Ps 21:24', 1, 7),
+(23, 21, 25, 'VGCL Ps 21:25', 1, 7),
+(23, 21, 26, 'VGCL Ps 21:26', 1, 7),
+(23, 21, 27, 'VGCL Ps 21:27', 1, 7),
+(23, 21, 28, 'VGCL Ps 21:28', 1, 7),
+(23, 21, 29, 'VGCL Ps 21:29', 1, 7),
+(23, 21, 30, 'VGCL Ps 21:30', 1, 7),
+(23, 21, 31, 'VGCL Ps 21:31', 1, 7),
+(23, 21, 32, 'VGCL Ps 21:32', 1, 7),
+(23, 22, 1, 'VGCL Ps 22:1', 1, 7),
+(23, 22, 2, 'VGCL Ps 22:2', 1, 7),
+(23, 22, 3, 'VGCL Ps 22:3', 1, 7),
+(23, 22, 4, 'VGCL Ps 22:4', 1, 7),
+(23, 22, 5, 'VGCL Ps 22:5', 1, 7),
+(23, 22, 6, 'VGCL Ps 22:6', 1, 7)
 ON CONFLICT DO NOTHING;
 
 -- ── DRB (Douay-Rheims Bible) ───────────────────────────────────────────
