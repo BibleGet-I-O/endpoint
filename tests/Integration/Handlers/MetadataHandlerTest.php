@@ -25,6 +25,14 @@ class MetadataHandlerTest extends DatabaseTestCase
         return $handler;
     }
 
+    protected function tearDown(): void
+    {
+        if (!$this->status()->isSkipped()) {
+            $this->getConnection()->exec("UPDATE versions_available SET liturgical = FALSE WHERE type = 'BIBLE'");
+        }
+        parent::tearDown();
+    }
+
     // ── Bible books ────────────────────────────────────────
 
     public function testBibleBooksJson(): void
@@ -99,6 +107,28 @@ class MetadataHandlerTest extends DatabaseTestCase
         self::assertIsArray($body);
         self::assertContains('TEST2', $body['copyrightversions']);
         self::assertNotContains('TEST1', $body['copyrightversions']);
+    }
+
+    public function testLiturgicalVersionsListsExactlyTheFlaggedEditions(): void
+    {
+        $this->getConnection()->exec("UPDATE versions_available SET liturgical = TRUE WHERE sigla IN ('TEST3', 'VGCL')");
+        $handler  = $this->createHandler(['bibleversions']);
+        $response = $handler->handle(new ServerRequest('GET', '/v3/metadata/bibleversions'));
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertSame(['TEST3', 'VGCL'], $body['liturgicalversions']);
+        self::assertContains('TEST2', $body['copyrightversions']);
+    }
+
+    public function testLiturgicalVersionsEmptyWhenNoneFlagged(): void
+    {
+        $handler  = $this->createHandler(['bibleversions']);
+        $response = $handler->handle(new ServerRequest('GET', '/v3/metadata/bibleversions'));
+
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertSame([], $body['liturgicalversions']);
     }
 
     // ── Version index ──────────────────────────────────────

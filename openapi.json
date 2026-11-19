@@ -2994,7 +2994,7 @@
         "/admin/versions": {
             "get": {
                 "summary": "List Bible editions with their full-text flag",
-                "description": "Every Bible edition, ordered by sigla. reader_full_text says whether the `reader` key may serve the edition's chapters whole; copyright is the flag behind the 30-verse limit.",
+                "description": "Every Bible edition, ordered by sigla. reader_full_text says whether the `reader` key may serve the edition's chapters whole; liturgical marks the edition used in the liturgy of its language; copyright is the flag behind the 30-verse limit.",
                 "operationId": "adminListVersions",
                 "tags": [
                     "AdminAPI"
@@ -3041,7 +3041,7 @@
         "/admin/versions/{sigla}": {
             "get": {
                 "summary": "Show one Bible edition",
-                "description": "Returns one edition's `versions_available` record, including whether the website reader may show its full text (`reader_full_text`).",
+                "description": "Returns one edition's `versions_available` record, including whether the website reader may show its full text (`reader_full_text`) and whether it is a liturgical edition (`liturgical`).",
                 "operationId": "adminGetVersion",
                 "tags": [
                     "AdminAPI"
@@ -3112,7 +3112,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/VersionFullTextInput"
+                                "$ref": "#/components/schemas/VersionFlagsInput"
                             }
                         }
                     }
@@ -4129,6 +4129,13 @@
                             "type": "string"
                         }
                     },
+                    "liturgicalversions": {
+                        "type": "array",
+                        "description": "An array containing the acronyms of the Bible versions whose text is the one used in the liturgy of their language (for example the basis of a country's Lectionary, or the Latin typical edition). Empty when none is flagged.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "errors": {
                         "type": "array",
                         "description": "An array of any error messages that may have been generated indicating a badly formed `query` parameter or an API server error",
@@ -4176,6 +4183,11 @@
                         "CEI2008",
                         "NABRE",
                         "BLPD"
+                    ],
+                    "liturgicalversions": [
+                        "CEI2008",
+                        "NABRE",
+                        "NVBSE"
                     ]
                 }
             },
@@ -17918,7 +17930,8 @@
                     "year",
                     "language",
                     "copyright",
-                    "reader_full_text"
+                    "reader_full_text",
+                    "liturgical"
                 ],
                 "properties": {
                     "sigla": {
@@ -17938,16 +17951,21 @@
                     },
                     "reader_full_text": {
                         "type": "boolean"
+                    },
+                    "liturgical": {
+                        "type": "boolean",
+                        "description": "Whether the edition's text is the one used in the liturgy of its language."
                     }
                 }
             },
-            "VersionFullTextInput": {
+            "VersionFlagsInput": {
                 "type": "object",
-                "required": [
-                    "reader_full_text"
-                ],
+                "minProperties": 1,
                 "properties": {
                     "reader_full_text": {
+                        "type": "boolean"
+                    },
+                    "liturgical": {
                         "type": "boolean"
                     }
                 }

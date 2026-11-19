@@ -12,7 +12,7 @@ class VersionRepositoryTest extends DatabaseTestCase
     protected function tearDown(): void
     {
         if (!$this->status()->isSkipped()) {
-            $this->getConnection()->exec("UPDATE versions_available SET reader_full_text = FALSE WHERE type = 'BIBLE'");
+            $this->getConnection()->exec("UPDATE versions_available SET reader_full_text = FALSE, liturgical = FALSE WHERE type = 'BIBLE'");
         }
         parent::tearDown();
     }
@@ -27,6 +27,7 @@ class VersionRepositoryTest extends DatabaseTestCase
         self::assertNotEmpty($versions);
         foreach ($versions as $v) {
             self::assertFalse($v['reader_full_text'], $v['sigla']);
+            self::assertFalse($v['liturgical'], $v['sigla']);
             self::assertIsInt($v['year']);
             self::assertIsString($v['fullname']);
             self::assertIsString($v['language']);
@@ -52,6 +53,27 @@ class VersionRepositoryTest extends DatabaseTestCase
         $test2 = $repo->find('TEST2');
         self::assertNotNull($test2);
         self::assertFalse($test2['reader_full_text']);
+    }
+
+    public function testSetLiturgicalFlipsOneEditionOnly(): void
+    {
+        $repo = new VersionRepository($this->getConnection());
+        self::assertTrue($repo->setLiturgical('TEST2', true));
+        $test2 = $repo->find('TEST2');
+        self::assertNotNull($test2);
+        self::assertTrue($test2['liturgical']);
+        self::assertFalse($test2['reader_full_text']);
+        foreach (array_diff(array_column($repo->list(), 'sigla'), ['TEST2']) as $other) {
+            $v = $repo->find($other);
+            self::assertNotNull($v);
+            self::assertFalse($v['liturgical'], $other);
+        }
+
+        self::assertTrue($repo->setLiturgical('TEST2', false));
+        $test2 = $repo->find('TEST2');
+        self::assertNotNull($test2);
+        self::assertFalse($test2['liturgical']);
+        self::assertFalse($repo->setLiturgical('XYZ', true));
     }
 
     public function testSetReaderFullTextOnUnknownSiglaReturnsFalse(): void
