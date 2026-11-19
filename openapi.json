@@ -3419,6 +3419,19 @@
                             "type": "string",
                             "pattern": "^[A-Z0-9]{2,10}$"
                         }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "reviewed"
+                            ]
+                        },
+                        "description": "Instead of the chapters with drafts least confident first: the chapters that have links of this status, in book and chapter order, each with its count of such links (for the export to CBTUDR)."
                     }
                 ],
                 "responses": {
@@ -3465,6 +3478,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "description": "status is neither draft nor reviewed."
                     }
                 }
             }

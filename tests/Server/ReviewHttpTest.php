@@ -213,4 +213,13 @@ class ReviewHttpTest extends ServerTestCase
         self::assertSame(['accepted' => 2], self::body($r));
         self::assertSame('draft', $this->db->query("SELECT status FROM btu_link WHERE ref = '9:1'")?->fetchColumn());
     }
+
+    public function testChaptersCanBeListedByStatusForTheExport(): void
+    {
+        self::httpPatch(self::BASE . '/links/' . $this->linkId('9:1'), '{"action":"accept"}', self::json());
+        $r = self::httpGet(self::BASE . '/editions/TEST/chapters?status=reviewed', self::auth());
+        self::assertSame(200, $r['status'], $r['body']);
+        self::assertSame([['book' => 17, 'chapter' => 9, 'links' => 1]], self::body($r)['chapters']);
+        self::assertSame(422, self::httpGet(self::BASE . '/editions/TEST/chapters?status=rule', self::auth())['status']);
+    }
 }

@@ -168,6 +168,28 @@ class BtuRepository
     }
 
     /**
+     * The chapters of an edition that have links of a status, in book and chapter order (for the export of
+     * reviewed links back to CBTUDR).
+     *
+     * @return list<array{book: int, chapter: int, links: int}>
+     */
+    public function chaptersWithStatus(string $sigla, string $status): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT book, ' . self::REF_CHAPTER . ' AS chapter, count(*) AS links FROM btu_link WHERE edition = ? AND status = ? GROUP BY 1, 2 ORDER BY 1, 2'
+        );
+        $stmt->execute([$sigla, $status]);
+        $out = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $r = Cast::row($row);
+            if ($r !== null) {
+                $out[] = ['book' => Cast::int($r['book']), 'chapter' => Cast::int($r['chapter']), 'links' => Cast::int($r['links'])];
+            }
+        }
+        return $out;
+    }
+
+    /**
      * A chapter's links, in the edition's order, and the units of the stretches they belong to.
      *
      * @return array{links: list<Link>, units: list<array{id: string, ref: string, stretch: string}>}

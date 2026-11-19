@@ -18,6 +18,7 @@ use Psr\Http\Message\ServerRequestInterface;
  *
  *   GET   /review/editions                                     each edition's counts of draft, reviewed and rule links
  *   GET   /review/editions/{sigla}/chapters                    chapters with drafts, least confident first
+ *                                                              (?status=draft|reviewed: chapters with such links, in order)
  *   GET   /review/editions/{sigla}/books/{book}/chapters/{c}   the chapter's links, and the units of their stretches
  *   POST  /review/editions/{sigla}/books/{book}/chapters/{c}/accept   accept the chapter's remaining drafts
  *   PATCH /review/links/{id}   exactly one of {"action":"accept"}, {"action":"relink","units":[…]},
@@ -51,7 +52,7 @@ class ReviewHandler extends AbstractAdminHandler
         $rest  = array_slice($path, 1);
         if ($rest === ['chapters']) {
             self::requireMethod($method, ['GET']);
-            return $this->json($request, ['chapters' => $this->repo()->chaptersWithDrafts($sigla)]);
+            return $this->json($request, ['chapters' => $this->chapters($request, $sigla)]);
         }
         if (count($rest) < 4 || $rest[0] !== 'books' || $rest[2] !== 'chapters' || count($rest) > 5) {
             throw new NotFoundException();
@@ -69,6 +70,24 @@ class ReviewHandler extends AbstractAdminHandler
         $data          = $this->repo()->chapter($sigla, $book, $chapter);
         $data['links'] = array_map(self::public(...), $data['links']);
         return $this->json($request, $data);
+    }
+
+    /**
+     * Chapters with drafts, the least confident first; with ?status=reviewed or ?status=draft, the chapters
+     * that have links of that status, in order (for the export to CBTUDR).
+     *
+     * @return list<array<string, int|float>>
+     */
+    private function chapters(ServerRequestInterface $request, string $sigla): array
+    {
+        $status = $request->getQueryParams()['status'] ?? null;
+        if ($status === null) {
+            return $this->repo()->chaptersWithDrafts($sigla);
+        }
+        if (!in_array($status, ['draft', 'reviewed'], true)) {
+            throw new ValidationException('status must be draft or reviewed.');
+        }
+        return $this->repo()->chaptersWithStatus($sigla, $status);
     }
 
     /** @param list<string> $path the segments after /review/links */

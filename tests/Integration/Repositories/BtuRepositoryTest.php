@@ -189,4 +189,12 @@ class BtuRepositoryTest extends DatabaseTestCase
         self::assertNull($this->repo()->review($this->idOf('5:1'), ['action' => 'accept'], 'user-1'));
         self::assertSame('rule', $this->repo()->link($this->idOf('5:1'))['status'] ?? null);
     }
+
+    public function testChaptersWithReviewedLinksForTheExport(): void
+    {
+        $this->load();
+        $this->repo()->review($this->idOf('6:1'), ['action' => 'accept'], 'user-1');
+        self::assertSame([['book' => 17, 'chapter' => 6, 'links' => 1]], $this->repo()->chaptersWithStatus('TEST', 'reviewed'));
+        self::assertSame([['book' => 17, 'chapter' => 5, 'links' => 2]], $this->repo()->chaptersWithStatus('TEST', 'draft'));
+    }
 }
