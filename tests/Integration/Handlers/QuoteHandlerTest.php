@@ -71,6 +71,28 @@ class QuoteHandlerTest extends DatabaseTestCase
         }
     }
 
+    public function testQuoteRowsCarryNoEmbeddingColumns(): void
+    {
+        $pdo    = $this->getConnection();
+        $vector = '[' . implode(',', array_fill(0, 768, '0.1')) . ']';
+        $pdo->prepare('UPDATE "TEST1" SET embedding_labse = :v WHERE book = 1 AND chapter = 1 AND verse <= 3')
+            ->execute(['v' => $vector]);
+        try {
+            $request  = new ServerRequest('GET', '/v3/quote?query=Genesis1,1-3&version=TEST1');
+            $response = $this->createHandler()->handle($request);
+            $body     = json_decode((string) $response->getBody(), true);
+            self::assertIsArray($body);
+            self::assertNotEmpty($body['results']);
+            foreach ($body['results'] as $row) {
+                foreach (['embedding', 'embedding_labse', 'text_hash', 'embedded_text_hash'] as $key) {
+                    self::assertArrayNotHasKey($key, $row);
+                }
+            }
+        } finally {
+            $pdo->exec('UPDATE "TEST1" SET embedding_labse = NULL WHERE book = 1 AND chapter = 1 AND verse <= 3');
+        }
+    }
+
     public function testVerseRangeJson(): void
     {
         $handler  = $this->createHandler();
