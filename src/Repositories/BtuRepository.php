@@ -7,7 +7,15 @@ namespace BibleGet\Api\Repositories;
 /**
  * The review store of CBTUDR unit links (migration 053): the registry's units, each edition's links from its
  * verses to them, and the stretches of drafted links. A link is `rule`, `draft` or `reviewed`; only a reviewer's
- * action makes it `reviewed`, and loading new drafts never overwrites a reviewed link.
+ * action makes it `reviewed`.
+ *
+ * A link a reviewer has touched (`reviewed_by` set: accepted, relinked, marked without counterpart, flagged for a
+ * split, or re-kinded) is never overwritten or removed by loading new drafts, even by a load that runs while the
+ * reviewer works: the upsert itself skips it. Its stretch is frozen when it is first touched (a copy with the id
+ * `r<link id>`), because each drafting run numbers its stretches anew.
+ *
+ * A chapter view and "accept the chapter" take every text tradition of the chapter together (Esther's Greek and
+ * Hebrew runs, `10:3@GREEK` and `10:3@HEBREW`).
  *
  * Arrays of unit ids travel as JSON (array_to_json / json_array_elements_text), never as hand-built literals.
  *
@@ -64,9 +72,13 @@ class BtuRepository
             }
             $result = $this->writeLinks($sigla, $book, $links, $status);
             $keep   = array_map(static fn (array $l) => $l['ref'], $links);
-            $del    = $this->db->prepare("DELETE FROM btu_link WHERE edition = ? AND book = ? AND status <> 'reviewed' AND NOT (ref = ANY(" . self::JSON_ARRAY . '))');
+            $del    = $this->db->prepare('DELETE FROM btu_link WHERE edition = ? AND book = ? AND reviewed_by IS NULL AND NOT (ref = ANY(' . self::JSON_ARRAY . '))');
             $del->execute([$sigla, $book, json_encode($keep)]);
-            $this->db->prepare('DELETE FROM btu_stretch WHERE edition = ? AND book = ?')->execute([$sigla, $book]);
+            // Every stretch but the frozen copies that touched links still use.
+            $this->db->prepare(
+                'DELETE FROM btu_stretch s WHERE s.edition = ? AND s.book = ? AND NOT EXISTS
+                   (SELECT 1 FROM btu_link l WHERE l.edition = s.edition AND l.book = s.book AND l.stretch = s.id AND l.reviewed_by IS NOT NULL)'
+            )->execute([$sigla, $book]);
             $ins = $this->db->prepare('INSERT INTO btu_stretch (edition, book, id, units) VALUES (?, ?, ?, ' . self::JSON_ARRAY . ')');
             foreach ($stretches as $s) {
                 $ins->execute([$sigla, $book, $s['id'], json_encode($s['units'])]);
@@ -90,15 +102,12 @@ class BtuRepository
             'INSERT INTO btu_link (edition, book, ord, ref, units, kind, status, confidence, stretch)
              VALUES (?, ?, ?, ?, ' . self::JSON_ARRAY . ', ?, ?, ?, ?)
              ON CONFLICT (edition, book, ref) DO UPDATE SET ord = EXCLUDED.ord, units = EXCLUDED.units, kind = EXCLUDED.kind,
-                 status = EXCLUDED.status, confidence = EXCLUDED.confidence, stretch = EXCLUDED.stretch'
+                 status = EXCLUDED.status, confidence = EXCLUDED.confidence, stretch = EXCLUDED.stretch
+             WHERE btu_link.reviewed_by IS NULL'
         );
         $count  = ['inserted' => 0, 'updated' => 0, 'kept' => 0];
         foreach ($links as $l) {
             $was = $status[$l['ref']] ?? null;
-            if ($was === 'reviewed') {
-                $count['kept']++;
-                continue;
-            }
             $upsert->execute([
                 $sigla,
                 $book,
@@ -110,7 +119,8 @@ class BtuRepository
                 $l['confidence'] ?? null,
                 $l['stretch'] ?? null,
             ]);
-            $count[$was === null ? 'inserted' : 'updated']++;
+            // No row written: a reviewer touched the link (now or while this load ran).
+            $count[$upsert->rowCount() === 0 ? 'kept' : ( $was === null ? 'inserted' : 'updated' )]++;
         }
         return $count;
     }
@@ -210,10 +220,12 @@ class BtuRepository
      * Applies one reviewer action, already validated by the caller:
      * accept; relink (to `units`); none (no counterpart); split (a `note`; the link stays a draft); or `kind`.
      *
+     * Null when the link is gone or is a rule link (a reload may have changed it since it was read).
+     *
      * @param array{action?: string, units?: list<string>, note?: string, kind?: string} $change
-     * @return Link
+     * @return ?Link
      */
-    public function review(int $id, array $change, string $sub): array
+    public function review(int $id, array $change, string $sub): ?array
     {
         $set = match ($change['action'] ?? 'kind') {
             'accept' => ["status = 'reviewed'", []],
@@ -222,21 +234,44 @@ class BtuRepository
             'split'  => ['note = ?', [$change['note'] ?? '']],
             default  => ['kind = ?', [$change['kind'] ?? 'same']],
         };
-        $stmt = $this->db->prepare('UPDATE btu_link SET ' . $set[0] . ', reviewed_by = ?, reviewed_at = now() WHERE id = ?');
-        $stmt->execute([...$set[1], $sub, $id]);
-        $link = $this->link($id);
-        if ($link === null) {
-            throw new \RuntimeException('link vanished');
+        $this->db->beginTransaction();
+        try {
+            $this->freezeStretch($id);
+            $stmt = $this->db->prepare('UPDATE btu_link SET ' . $set[0] . ", reviewed_by = ?, reviewed_at = now() WHERE id = ? AND status <> 'rule'");
+            $stmt->execute([...$set[1], $sub, $id]);
+            if ($stmt->rowCount() === 0) {
+                $this->db->rollBack();
+                return null;
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
         }
-        return $link;
+        return $this->link($id);
     }
 
-    /** Accepts the chapter's remaining drafts; returns how many. */
+    /** Points a link about to be touched at its own copy of its stretch (`r<id>`), which reloads keep. */
+    private function freezeStretch(int $id): void
+    {
+        $this->db->prepare(
+            "INSERT INTO btu_stretch (edition, book, id, units)
+             SELECT l.edition, l.book, 'r' || l.id, s.units FROM btu_link l
+             JOIN btu_stretch s ON s.edition = l.edition AND s.book = l.book AND s.id = l.stretch
+             WHERE l.id = ? AND l.stretch NOT LIKE 'r%' ON CONFLICT DO NOTHING"
+        )->execute([$id]);
+        $this->db->prepare(
+            "UPDATE btu_link SET stretch = 'r' || id WHERE id = ? AND stretch IS NOT NULL AND stretch NOT LIKE 'r%'
+               AND EXISTS (SELECT 1 FROM btu_stretch s WHERE s.edition = btu_link.edition AND s.book = btu_link.book AND s.id = 'r' || btu_link.id)"
+        )->execute([$id]);
+    }
+
+    /** Accepts the chapter's remaining drafts, except those flagged for a split; returns how many. */
     public function acceptChapter(string $sigla, int $book, int $chapter, string $sub): int
     {
         $stmt = $this->db->prepare(
             "UPDATE btu_link SET status = 'reviewed', reviewed_by = ?, reviewed_at = now()
-             WHERE edition = ? AND book = ? AND status = 'draft' AND " . self::REF_CHAPTER . ' = ?'
+             WHERE edition = ? AND book = ? AND status = 'draft' AND note IS NULL AND " . self::REF_CHAPTER . ' = ?'
         );
         $stmt->execute([$sub, $sigla, $book, $chapter]);
         return $stmt->rowCount();

@@ -53,6 +53,13 @@ function readJson(string $path): array
 ini_set('error_log', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 fwrite(STDERR, sprintf('APP_ENV=%s DB_NAME=%s' . PHP_EOL, CredentialFactory::currentEnv(), CredentialFactory::env('DB_NAME') ?? ''));
 
+$editions = readJson($dir . '/data/editions.json')['editions'] ?? [];
+$slugs    = array_map(static fn ($e) => is_array($e) && is_string($e['slug'] ?? null) ? $e['slug'] : '', is_array($editions) ? $editions : []);
+if ($only !== null && !in_array($only, $slugs, true)) {
+    fwrite(STDERR, "No edition '$only' in data/editions.json" . PHP_EOL);
+    exit(1);
+}
+
 $repo = new BtuRepository(Connection::getConnection());
 
 // Units: the book number is the file name's prefix (01-gn.json), the order is the file's.
@@ -74,7 +81,6 @@ foreach (glob($dir . '/data/units/*.json') ?: [] as $file) {
 }
 fwrite(STDERR, sprintf('%d units' . PHP_EOL, $repo->upsertUnits($units)));
 
-$editions = readJson($dir . '/data/editions.json')['editions'] ?? [];
 foreach (is_array($editions) ? $editions : [] as $ed) {
     $slug = is_array($ed) && is_string($ed['slug'] ?? null) ? $ed['slug'] : '';
     if ($slug === '' || ($only !== null && $slug !== $only)) {
@@ -107,12 +113,18 @@ foreach (is_array($editions) ? $editions : [] as $ed) {
             if (!is_array($v) || !is_string($v['ref'] ?? null) || ($v['omitted'] ?? false) === true) {
                 continue;
             }
-            $ref = $v['ref'];
+            $ref    = $v['ref'];
+            $kind   = $v['kind'] ?? 'same';
+            $status = $v['status'] ?? 'rule';
+            if (!in_array($kind, ['same', 'corresponding'], true) || !in_array($status, ['rule', 'draft', 'reviewed'], true)) {
+                fwrite(STDERR, sprintf('%s %s: skipped, kind or status not recognised' . PHP_EOL, basename($file), $ref));
+                continue;
+            }
             $links[] = [
                 'ref' => $ref, 'ord' => (int) $ord,
                 'units' => array_values(array_filter(is_array($v['units'] ?? null) ? $v['units'] : [], 'is_string')),
-                'kind' => is_string($v['kind'] ?? null) ? $v['kind'] : 'same',
-                'status' => is_string($v['status'] ?? null) ? $v['status'] : 'rule',
+                'kind' => $kind,
+                'status' => $status,
                 'confidence' => is_numeric($conf[$ref] ?? null) ? (float) $conf[$ref] : null,
                 'stretch' => $stretchOf[$ref] ?? null,
             ];

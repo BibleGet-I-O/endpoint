@@ -6,6 +6,7 @@ namespace BibleGet\Api\Handlers\Review;
 
 use BibleGet\Api\Handlers\Admin\AbstractAdminHandler;
 use BibleGet\Api\Handlers\Admin\VersionAdminHandler;
+use BibleGet\Api\Http\Exception\ConflictException;
 use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Repositories\BtuRepository;
@@ -85,7 +86,11 @@ class ReviewHandler extends AbstractAdminHandler
             throw new ValidationException('Links made by rule are not reviewed.');
         }
         $change = $this->change($this->getJsonBodyParams($request), $found);
-        return $this->json($request, self::public($this->repo()->review($found['link']['id'], $change, $sub)));
+        $link   = $this->repo()->review($found['link']['id'], $change, $sub);
+        if ($link === null) {
+            throw new ConflictException('The link changed while it was being reviewed: reload the chapter.');
+        }
+        return $this->json($request, self::public($link));
     }
 
     /**
@@ -103,8 +108,13 @@ class ReviewHandler extends AbstractAdminHandler
             }
             return ['kind' => $body['kind']];
         }
-        $action = $body['action'] ?? null;
-        $extra  = array_diff(array_keys($body), ['action', $action === 'relink' ? 'units' : ( $action === 'split' ? 'note' : '' )]);
+        $action  = $body['action'] ?? null;
+        $allowed = match ($action) {
+            'relink' => ['action', 'units'],
+            'split'  => ['action', 'note'],
+            default  => ['action'],
+        };
+        $extra = array_diff(array_map('strval', array_keys($body)), $allowed);
         if (!is_string($action) || $extra !== []) {
             throw new ValidationException('The body must be one of: accept, relink with units, none, split with a note, or kind.');
         }

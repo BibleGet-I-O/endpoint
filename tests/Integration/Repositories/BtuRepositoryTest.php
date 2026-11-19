@@ -148,4 +148,45 @@ class BtuRepositoryTest extends DatabaseTestCase
         self::assertSame(['rule', 'reviewed', 'reviewed'], array_column($this->repo()->chapter('TEST', 17, 5)['links'], 'status'));
         self::assertSame(['draft'], array_column($this->repo()->chapter('TEST', 17, 6)['links'], 'status'));
     }
+
+    public function testReloadKeepsLinksAReviewerTouched(): void
+    {
+        $this->load();
+        $this->repo()->review($this->idOf('6:1'), ['kind' => 'corresponding'], 'user-1');
+        $this->repo()->review($this->idOf('5:2'), ['action' => 'split', 'note' => 'two parts'], 'user-1');
+        $this->load(0.7, 0.2);
+        self::assertSame('corresponding', $this->repo()->link($this->idOf('6:1'))['kind'] ?? null);
+        $split = $this->repo()->link($this->idOf('5:2'));
+        self::assertSame(['two parts', 0.8], [$split['note'] ?? null, round((float) ( $split['confidence'] ?? 0 ), 4)]);
+    }
+
+    public function testAReviewedLinkKeepsItsStretchAcrossReloads(): void
+    {
+        $this->load();
+        $this->repo()->review($this->idOf('5:3'), ['action' => 'accept'], 'user-1');
+        // The next drafting run numbers its stretches anew: stretch 1 is now chapter 6's.
+        $this->repo()->loadEdition('TEST', 17, [
+            ['ref' => '5:2', 'ord' => 1, 'units' => ['btu:tb.5.2'], 'kind' => 'same', 'status' => 'rule'],
+            ['ref' => '6:1', 'ord' => 3, 'units' => ['btu:tb.6.1'], 'kind' => 'same', 'status' => 'draft', 'confidence' => 0.9, 'stretch' => '1'],
+        ], [['id' => '1', 'units' => ['btu:tb.6.1']]]);
+        $link = $this->repo()->find($this->idOf('5:3'));
+        self::assertNotNull($link);
+        self::assertNotNull($link['link']['stretch']);
+        self::assertSame(['btu:tb.5.2', 'btu:tb.5.3', 'btu:tb.5.4'], $this->repo()->stretchUnits('TEST', 17, (string) $link['link']['stretch']));
+    }
+
+    public function testAcceptChapterLeavesDraftsFlaggedForASplit(): void
+    {
+        $this->load();
+        $this->repo()->review($this->idOf('5:2'), ['action' => 'split', 'note' => 'two parts'], 'user-1');
+        self::assertSame(1, $this->repo()->acceptChapter('TEST', 17, 5, 'user-1'));
+        self::assertSame('draft', $this->repo()->link($this->idOf('5:2'))['status'] ?? null);
+    }
+
+    public function testReviewOfALinkMadeByRuleIsRefused(): void
+    {
+        $this->load();
+        self::assertNull($this->repo()->review($this->idOf('5:1'), ['action' => 'accept'], 'user-1'));
+        self::assertSame('rule', $this->repo()->link($this->idOf('5:1'))['status'] ?? null);
+    }
 }

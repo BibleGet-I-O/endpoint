@@ -144,8 +144,8 @@ Steps:
 **Interfaces:**
 - Tables:
   - `btu_unit(id text PK, book smallint not null, ord integer not null, parent text null, after text null, nv_omitted boolean not null default false)`;
-  - `btu_stretch(edition varchar(16), book smallint, id integer, units text[] not null, PK(edition,book,id))`;
-  - `btu_link(id bigserial PK, edition varchar(16) not null, book smallint not null, ord integer not null, ref text not null, units text[] not null, kind text not null check (kind in ('same','corresponding')), status text not null check (status in ('rule','draft','reviewed')), confidence real null, stretch integer null, note text null, reviewed_by text null, reviewed_at timestamptz null, UNIQUE(edition,book,ref))`.
+  - `btu_stretch(edition varchar(16), book smallint, id text, units text[] not null, PK(edition,book,id))` (text: Esther's stretches are per text tradition, `GREEK-1`; a touched link's frozen copy is `r<link id>`);
+  - `btu_link(id bigserial PK, edition varchar(16) not null, book smallint not null, ord integer not null, ref text not null, units text[] not null, kind text not null check (kind in ('same','corresponding')), status text not null check (status in ('rule','draft','reviewed')), confidence real null, stretch text null, note text null, reviewed_by text null, reviewed_at timestamptz null, UNIQUE(edition,book,ref))`.
   - Indexes: `(edition, status)` and `(edition, book, ord)`.
 - `BtuRepository` methods:
   - `upsertUnits(list $units): int`;

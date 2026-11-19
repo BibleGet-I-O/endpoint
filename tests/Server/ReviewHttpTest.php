@@ -184,7 +184,7 @@ class ReviewHttpTest extends ServerTestCase
     public function testBadBodiesAre422(): void
     {
         $id = $this->linkId('5:2');
-        foreach (['{"action":"merge"}', '{}', '{"action":"accept","kind":"same"}', '{"kind":"similar"}', '{"action":"split","note":""}', '{"action":"relink","units":[]}'] as $body) {
+        foreach (['{"action":"merge"}', '{}', '{"action":"accept","kind":"same"}', '{"kind":"similar"}', '{"action":"split","note":""}', '{"action":"relink","units":[]}', '{"action":"accept","":1}', '{"action":"none","units":[]}'] as $body) {
             self::assertSame(422, self::httpPatch(self::BASE . '/links/' . $id, $body, self::json())['status'], $body);
         }
     }
