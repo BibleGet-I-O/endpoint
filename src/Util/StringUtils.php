@@ -79,8 +79,10 @@ class StringUtils
      */
     public static function foldDiacritics(string $str): string
     {
+        // is_string, not === false: without ext-intl, symfony/polyfill-intl-normalizer's untyped
+        // Normalizer is the one PHPStan sees (CI's analysis job), and it returns mixed.
         $decomposed = \Normalizer::normalize($str, \Normalizer::FORM_D);
-        if ($decomposed === false) {
+        if (!is_string($decomposed)) {
             return $str;
         }
         $stripped = preg_replace('/(?<=[\p{Latin}\p{Greek}\p{Cyrillic}])\p{Mn}+/u', '', $decomposed);
@@ -88,7 +90,7 @@ class StringUtils
             return $str;
         }
         $composed = \Normalizer::normalize($stripped, \Normalizer::FORM_C);
-        return $composed === false ? $str : $composed;
+        return is_string($composed) ? $composed : $str;
     }
 
     /**
