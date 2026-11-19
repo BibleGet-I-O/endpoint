@@ -31,6 +31,13 @@ docker compose up -d          # Start PostgreSQL + app
 docker compose down            # Stop services
 ```
 
+Local Zitadel (developer sign-in), opt-in profile, one origin at `http://localhost:8095`:
+```bash
+docker compose --profile zitadel up -d zitadel-proxy
+scripts/setup-zitadel-local.sh   # BibleGet Org/Project/bibleget_admin + website app → .env.local
+```
+It runs cdcf-infra's `auth/setup-zitadel.sh --target local` (set `CDCF_INFRA_DIR` to use a local checkout; until CatholicOS/cdcf-infra#55 merges, `CDCF_INFRA_REF=feat/provision-bibleget`). The issuer `http://localhost:8095` is reachable from the host only, so run the API on the host (`php -S`, `composer test`), not in the compose `app` container. Console `/ui/console` (root / RootPassword1!), mail in Mailpit at `:8026`; the website app's one-time client secret goes to `.stack-out/bibleget-website.env`. `.env*` files never override the process environment (`src/Util/EnvLoader.php`). Zitadel access tokens carry no email claims: `POST /applications` gets `email_verified` from `/oidc/v1/userinfo` (`src/Services/UserInfoClient.php`).
+
 For local development with PHP's built-in server (requires external PostgreSQL):
 ```bash
 php -S localhost:8000 -t public public/router.php

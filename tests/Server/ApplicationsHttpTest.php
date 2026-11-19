@@ -21,6 +21,9 @@ class ApplicationsHttpTest extends ServerTestCase
     private static OidcTestIssuer $issuer;
     private static string $jwksFile;
     private static string $tmpDir;
+    /** @var resource|null the stub userinfo server (tests/Support/userinfo-stub.php) */
+    private static $userinfoStub = null;
+    private static string $userinfoUrl;
 
     private \PDO $db;
     /** @var list<string> */
@@ -37,6 +40,7 @@ class ApplicationsHttpTest extends ServerTestCase
             'ZITADEL_ISSUER'          => OidcTestIssuer::ISSUER,
             'ZITADEL_AUDIENCE'        => OidcTestIssuer::AUDIENCE,
             'ZITADEL_JWKS_FILE'       => self::$jwksFile,
+            'ZITADEL_USERINFO_URL'    => self::$userinfoUrl,
             'JWKS_CACHE_PATH'         => self::$tmpDir . '/jwks.json',
             'RATE_LIMIT_STORAGE_PATH' => self::$tmpDir . '/rate_limits',
             'REQUIRE_CREDENTIALS'     => 'true',
@@ -49,12 +53,44 @@ class ApplicationsHttpTest extends ServerTestCase
         self::$jwksFile = self::$issuer->writeJwksFile();
         self::$tmpDir   = sys_get_temp_dir() . '/bibleget-apps-' . bin2hex(random_bytes(6));
         mkdir(self::$tmpDir);
+        self::startUserinfoStub();
         parent::setUpBeforeClass();
+    }
+
+    private static function startUserinfoStub(): void
+    {
+        $sock = stream_socket_server('tcp://127.0.0.1:0');
+        self::assertNotFalse($sock);
+        $name = (string) stream_socket_get_name($sock, false);
+        fclose($sock);
+        $port              = (int) substr($name, strrpos($name, ':') + 1);
+        self::$userinfoUrl = "http://127.0.0.1:{$port}/oidc/v1/userinfo";
+        $stub              = proc_open(
+            [PHP_BINARY, '-S', "127.0.0.1:{$port}", __DIR__ . '/../Support/userinfo-stub.php'],
+            [['file', '/dev/null', 'r'], ['file', '/dev/null', 'w'], ['file', '/dev/null', 'w']],
+            $pipes
+        );
+        self::assertIsResource($stub);
+        self::$userinfoStub = $stub;
+        for ($i = 0; $i < 50; $i++) {
+            $c = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.1);
+            if ($c !== false) {
+                fclose($c);
+                return;
+            }
+            usleep(100000);
+        }
+        self::fail('The userinfo stub did not start.');
     }
 
     public static function tearDownAfterClass(): void
     {
         parent::tearDownAfterClass();
+        if (self::$userinfoStub !== null) {
+            proc_terminate(self::$userinfoStub);
+            proc_close(self::$userinfoStub);
+            self::$userinfoStub = null;
+        }
         @unlink(self::$jwksFile);
         foreach (glob(self::$tmpDir . '/rate_limits/*') ?: [] as $f) {
             @unlink($f);
@@ -173,6 +209,31 @@ class ApplicationsHttpTest extends ServerTestCase
         $list = self::call('GET', '/v3/applications', $bearer);
         self::assertSame(200, $list['status'], $list['body']);
         self::assertSame(0, self::jsonBody($list['body'])['total'] ?? null);
+    }
+
+    /** Zitadel puts no email claims in access tokens: the endpoint asks userinfo instead. */
+    public function testEmailVerifiedComesFromUserinfoWhenTheTokenLacksIt(): void
+    {
+        $zitadelShaped = ['email' => null, 'email_verified' => null];
+
+        $ok = self::call('POST', '/v3/applications', $this->bearer($zitadelShaped + ['userinfo_verified' => true]), ['name' => 'Via userinfo']);
+        self::assertSame(201, $ok['status'], $ok['body']);
+
+        $unverified = self::call('POST', '/v3/applications', $this->bearer($zitadelShaped), ['name' => 'Nope']);
+        self::assertSame(403, $unverified['status'], $unverified['body']);
+
+        // A token claim of false is not final either: the address may have been verified since.
+        $since = self::call('POST', '/v3/applications', $this->bearer(['email_verified' => false, 'userinfo_verified' => true]), ['name' => 'Verified since']);
+        self::assertSame(201, $since['status'], $since['body']);
+    }
+
+    public function testUserinfoFailuresAreNotTreatedAsVerified(): void
+    {
+        $base = ['email' => null, 'email_verified' => null, 'userinfo_verified' => true];
+        foreach (['error' => 503, 'garbage' => 503, 'unauthorized' => 401, 'othersub' => 401] as $mode => $status) {
+            $r = self::call('POST', '/v3/applications', $this->bearer($base + ['userinfo_mode' => $mode]), ['name' => "Mode {$mode}"]);
+            self::assertSame($status, $r['status'], "{$mode}: " . $r['body']);
+        }
     }
 
     public function testCreateValidatesFields(): void

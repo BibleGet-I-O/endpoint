@@ -45,6 +45,7 @@ phpunit.xml.dist
 captainhook.json
 redocly.yaml
 docker-compose.yml
+docker/
 docker-compose.yaml
 Dockerfile
 docker-entrypoint.sh

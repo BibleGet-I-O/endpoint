@@ -54,7 +54,7 @@ v3 stays up and open (MariaDB, IP limits, as today) until clients have moved. It
 ## Constraints
 
 - PostgreSQL, plain SQL migrations in `migrations/` (next free number, today 048), PHP 8.4, PSR-15 middleware as in `src/Http/`.
-- Identity: the shared Zitadel instance at `auth.catholicdigitalcommons.org`, organization `BibleGet` (pre-provisioned, unused). Login names are email addresses. A handoff note `cdcf-infra/auth/handoffs/bibleget.md` records the non-secret values.
+- Identity: the shared Zitadel instance at `auth.catholicdigitalcommons.org`, organization `BibleGet` (pre-provisioned, unused). Login names are email addresses. A handoff note `cdcf-infra/auth/handoffs/bibleget.md` records the non-secret values. Zitadel access tokens carry no email claims (verified 2026-11-18), so the verified-email check reads `email_verified` from the issuer's userinfo endpoint, asked with the caller's own token, when the token lacks it.
 - Reference implementation: LiturgicalCalendarAPI (`ApiKeyRepository`, `ApiKeyMiddleware`, `ApiKeyRateLimitMiddleware`, `ApplicationsHandler`, `Admin/ApplicationAdminHandler`, `OidcAuthMiddleware`, `CookieHelper`). Mirror its names and shapes where they fit; its keys are optional and it has no installations, so those parts are new here.
 - Little disk on the server (about 24 GB free): telemetry is counters and last-seen timestamps, not per-request rows beyond the existing request log.
 

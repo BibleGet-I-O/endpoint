@@ -37,9 +37,9 @@ use BibleGet\Api\Auth\CredentialFactory;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Handlers\Admin\ClientKeyAdminHandler;
 use BibleGet\Api\Repositories\ClientKeyRepository;
-use Dotenv\Dotenv;
+use BibleGet\Api\Util\EnvLoader;
 
-Dotenv::createImmutable(dirname(__DIR__), ['.env', '.env.local', '.env.development', '.env.test', '.env.staging', '.env.production'], false)->safeLoad();
+EnvLoader::create(dirname(__DIR__))->safeLoad();
 
 $plugin  = $argv[1] ?? '';
 $version = $argv[2] ?? '';

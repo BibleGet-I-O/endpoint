@@ -1497,7 +1497,7 @@
             },
             "post": {
                 "summary": "Create a project",
-                "description": "Needs a verified email. The project starts `pending` until an admin approves it; keys are issued only for approved projects.",
+                "description": "Needs a verified email: `email_verified` in the access token, or else (Zitadel puts no email claims in access tokens) from the issuer's `/oidc/v1/userinfo`, asked with the same token. The project starts `pending` until an admin approves it; keys are issued only for approved projects.",
                 "operationId": "createApplication",
                 "tags": [
                     "DevelopersAPI"
@@ -1537,7 +1537,7 @@
                         "$ref": "#/components/responses/MalformedJson"
                     },
                     "403": {
-                        "description": "The signed-in user's email address is not verified (`email_verified` is not true in the access token).",
+                        "description": "The signed-in user's email address is not verified (neither the access token nor userinfo reports `email_verified` true).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

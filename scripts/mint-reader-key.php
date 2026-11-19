@@ -39,9 +39,9 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 use BibleGet\Api\Auth\CredentialFactory;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Repositories\ApiKeyRepository;
-use Dotenv\Dotenv;
+use BibleGet\Api\Util\EnvLoader;
 
-Dotenv::createImmutable(dirname(__DIR__), ['.env', '.env.local', '.env.development', '.env.test', '.env.staging', '.env.production'], false)->safeLoad();
+EnvLoader::create(dirname(__DIR__))->safeLoad();
 
 const SYSTEM_APPLICATION = 'BibleGet website';
 
