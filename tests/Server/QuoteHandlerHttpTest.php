@@ -385,4 +385,61 @@ class QuoteHandlerHttpTest extends ServerTestCase
         self::assertCount(1, $rows);
         self::assertArrayNotHasKey('psalm_hebrew', $rows[0]);
     }
+
+    // ── Esther in the Vulgate-pattern editions (DRB, VGCL) ──
+
+    public function testHebrewNumberingReadsDrbEsther16AsTheGreek812(): void
+    {
+        // Unchanged default: the Vulgate's chapter 16 is the Greek 8:12a ff.
+        $rows = self::results('/v3/quote?query=Est16&version=DRB');
+        self::assertSame(['DRB Est 8:12 greek', 'DRB Est 8:12a greek', 'DRB Est 8:12b greek'], array_column($rows, 'text'));
+        self::assertSame([8], array_values(array_unique(array_column($rows, 'chapter'))));
+    }
+
+    public function testHebrewNumberingReadsDrbEsther1WithItsLetteredAdditions(): void
+    {
+        $rows = self::results('/v3/quote?query=Est1&version=DRB');
+        self::assertSame(
+            ['DRB Est 1:1a greek', 'DRB Est 1:1b greek', 'DRB Est 1:1 greek', 'DRB Est 1:2 greek', 'DRB Est 1:3 greek'],
+            array_column($rows, 'text')
+        );
+    }
+
+    public function testEditionNumberingReadsDrbEsther16AsStored(): void
+    {
+        $rows = self::results('/v3/quote?query=Est16&version=DRB&numbering=edition');
+        self::assertSame(['16:1', '16:2', '16:3', '16:4'], self::refs($rows));
+        self::assertSame('DRB Est 16:1 greek', $rows[0]['text']);
+
+        $range = self::results('/v3/quote?query=Est16,2-3&version=DRB&numbering=edition');
+        self::assertSame(['DRB Est 16:2 greek', 'DRB Est 16:3 greek'], array_column($range, 'text'));
+    }
+
+    public function testEditionNumberingReadsDrbEsther1WithoutLetteredAdditions(): void
+    {
+        $rows = self::results('/v3/quote?query=Est1&version=DRB&numbering=edition');
+        self::assertSame(['DRB Est 1:1 greek', 'DRB Est 1:2 greek', 'DRB Est 1:3 greek'], array_column($rows, 'text'));
+        self::assertSame([null], array_values(array_unique(array_column($rows, 'verse_segment'))));
+    }
+
+    public function testEditionNumberingReadsDrbEsther10WithItsGreekContinuation(): void
+    {
+        $rows = self::results('/v3/quote?query=Est10&version=DRB&numbering=edition');
+        self::assertSame(['10:1', '10:2', '10:3', '10:4', '10:5'], self::refs($rows));
+        self::assertSame(['GREEK'], array_values(array_unique(array_column($rows, 'text_tradition'))));
+    }
+
+    public function testEditionNumberingKeepsAnExplicitTextTraditionOnDrbEsther(): void
+    {
+        $rows = self::results('/v3/quote?query=Est1&version=DRB&numbering=edition&text_tradition=HEBREW');
+        self::assertSame(['DRB Est 1:1 hebrew', 'DRB Est 1:2 hebrew', 'DRB Est 1:3 hebrew'], array_column($rows, 'text'));
+    }
+
+    public function testEditionNumberingLeavesParallelPatternEstherUnchanged(): void
+    {
+        $edition = self::results('/v3/quote?query=Est1&version=TEST3&numbering=edition');
+        $hebrew  = self::results('/v3/quote?query=Est1&version=TEST3');
+        self::assertNotSame([], $edition);
+        self::assertSame(array_column($hebrew, 'text'), array_column($edition, 'text'));
+    }
 }

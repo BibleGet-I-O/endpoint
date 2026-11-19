@@ -51,12 +51,16 @@ class QueryFormulator
                 // Determine base textTradition for this book/version
                 $baseTextTradition = $this->buildTextTradition($parsedQuery->book, $version);
 
-                // Apply Esther Greek additions remapping (AST → AST)
-                [$remappedQuery, $perSegmentOrigins] = $this->estherRemapper->remap(
-                    $parsedQuery,
-                    $version,
-                    $baseTextTradition
-                );
+                // Apply Esther Greek additions remapping (AST → AST); with numbering=edition,
+                // Esther is read as the edition prints it (VGCL, DRB: chapters 11-16 as stored).
+                [$remappedQuery, $perSegmentOrigins] = $this->ctx->editionNumbering()
+                    ? $this->estherRemapper->editionRemap(
+                        $parsedQuery,
+                        $version,
+                        $baseTextTradition,
+                        $this->ctx->DATA['text_tradition'] !== ''
+                    )
+                    : $this->estherRemapper->remap($parsedQuery, $version, $baseTextTradition);
 
                 // Resolve Psalm numbers (Hebrew by default) to this version's chapter and verse;
                 // with numbering=edition they already are this version's own, and of two

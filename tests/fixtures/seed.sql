@@ -423,6 +423,44 @@ ALTER TABLE "TEST2" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL
 ALTER TABLE "VGCL" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
 ALTER TABLE "DRB" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
 
+-- DRB Esther, synthetic, shaped like the supplementary (Vulgate) pattern: the
+-- index has 16 chapters; chapters 1-10 store HEBREW and GREEK rows, the GREEK
+-- ones with the additions as lettered sub-verses (verseequiv '1a', which
+-- migration 046 turns into verse_segment 'a'); 10:4-5 are GREEK-only
+-- continuation verses; chapter 16 is the Vulgate's royal decree (GREEK only),
+-- which the default numbering reads as the Greek 8:12a ff.
+INSERT INTO "DRB_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
+('Esth', 'Esther', 16, '3,1,1,1,1,1,1,12,1,5,1,1,1,1,1,4', 19)
+ON CONFLICT DO NOTHING;
+INSERT INTO "DRB" (book, chapter, verse, verseorigin, verseequiv, text, testament, section)
+SELECT * FROM (VALUES
+    (19, 1, 1, 'HEBREW', NULL, 'DRB Est 1:1 hebrew', 1, 4),
+    (19, 1, 2, 'HEBREW', NULL, 'DRB Est 1:2 hebrew', 1, 4),
+    (19, 1, 3, 'HEBREW', NULL, 'DRB Est 1:3 hebrew', 1, 4),
+    (19, 1, 1, 'GREEK', '1a', 'DRB Est 1:1a greek', 1, 4),
+    (19, 1, 1, 'GREEK', '1b', 'DRB Est 1:1b greek', 1, 4),
+    (19, 1, 1, 'GREEK', NULL, 'DRB Est 1:1 greek', 1, 4),
+    (19, 1, 2, 'GREEK', NULL, 'DRB Est 1:2 greek', 1, 4),
+    (19, 1, 3, 'GREEK', NULL, 'DRB Est 1:3 greek', 1, 4),
+    (19, 8, 12, 'HEBREW', NULL, 'DRB Est 8:12 hebrew', 1, 4),
+    (19, 8, 12, 'GREEK', NULL, 'DRB Est 8:12 greek', 1, 4),
+    (19, 8, 12, 'GREEK', '12a', 'DRB Est 8:12a greek', 1, 4),
+    (19, 8, 12, 'GREEK', '12b', 'DRB Est 8:12b greek', 1, 4),
+    (19, 10, 1, 'HEBREW', NULL, 'DRB Est 10:1 hebrew', 1, 4),
+    (19, 10, 2, 'HEBREW', NULL, 'DRB Est 10:2 hebrew', 1, 4),
+    (19, 10, 3, 'HEBREW', NULL, 'DRB Est 10:3 hebrew', 1, 4),
+    (19, 10, 1, 'GREEK', NULL, 'DRB Est 10:1 greek', 1, 4),
+    (19, 10, 2, 'GREEK', NULL, 'DRB Est 10:2 greek', 1, 4),
+    (19, 10, 3, 'GREEK', NULL, 'DRB Est 10:3 greek', 1, 4),
+    (19, 10, 4, 'GREEK', NULL, 'DRB Est 10:4 greek', 1, 4),
+    (19, 10, 5, 'GREEK', NULL, 'DRB Est 10:5 greek', 1, 4),
+    (19, 16, 1, 'GREEK', NULL, 'DRB Est 16:1 greek', 1, 4),
+    (19, 16, 2, 'GREEK', NULL, 'DRB Est 16:2 greek', 1, 4),
+    (19, 16, 3, 'GREEK', NULL, 'DRB Est 16:3 greek', 1, 4),
+    (19, 16, 4, 'GREEK', NULL, 'DRB Est 16:4 greek', 1, 4)
+) AS v(book, chapter, verse, verseorigin, verseequiv, text, testament, section)
+WHERE NOT EXISTS (SELECT 1 FROM "DRB" WHERE book = 19);
+
 -- ── TEST3: verses printed under a label in another chapter ────────────
 -- Mirrors NABRE's layout with placeholder text: NABRE prints Wis 12:1 after
 -- 11:26 (chapter 12 starts at verse 2) and the first words of Job 10:1 after
