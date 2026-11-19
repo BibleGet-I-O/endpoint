@@ -31,6 +31,14 @@ class AppVersionTest extends TestCase
         self::assertSame('v3.0.1-415-g892935b', AppVersion::read($this->root));
     }
 
+    public function testAcceptsFullCommitSha(): void
+    {
+        $sha = '8afaf1d3c5b2e7a94f06d1b8e3a7c2f5094d6b1e';
+        self::assertSame(40, strlen($sha));
+        file_put_contents($this->root . '/VERSION', $sha . "\n");
+        self::assertSame($sha, AppVersion::read($this->root));
+    }
+
     public function testAbsentFileFallsBackToDev(): void
     {
         self::assertSame('dev', AppVersion::read($this->root));

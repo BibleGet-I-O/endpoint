@@ -8,7 +8,7 @@
  * @author  John Romano D'Orazio <priest@johnromanodorazio.com>
  * @link    https://query.bibleget.io
  * @license Apache 2.0 License
- * @version 3.0
+ * @version 4.0
  */
 
 declare(strict_types=1);
