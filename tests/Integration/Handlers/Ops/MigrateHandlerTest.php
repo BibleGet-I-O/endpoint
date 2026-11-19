@@ -10,7 +10,8 @@ use Nyholm\Psr7\ServerRequest;
 
 /**
  * POST /_ops/migrate and GET /_ops/migrate/status against the PostgreSQL test database, with the real
- * configuration (doctrine-migrations.php) and its migrations, Version052NvbseCopyright first.
+ * configuration (doctrine-migrations.php) and its migrations, Version052NvbseCopyright first, then
+ * Version053BtuReviewStore.
  */
 final class MigrateHandlerTest extends DatabaseTestCase
 {
@@ -55,14 +56,20 @@ final class MigrateHandlerTest extends DatabaseTestCase
 
         $versions = $pdo->query('SELECT version FROM doctrine_migration_versions');
         self::assertNotFalse($versions);
-        self::assertSame(['BibleGet\\Api\\Migrations\\Version052NvbseCopyright'], $versions->fetchAll(\PDO::FETCH_COLUMN));
+        self::assertSame(
+            ['BibleGet\\Api\\Migrations\\Version052NvbseCopyright', 'BibleGet\\Api\\Migrations\\Version053BtuReviewStore'],
+            $versions->fetchAll(\PDO::FETCH_COLUMN)
+        );
+        $tables = $pdo->query("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('btu_unit', 'btu_stretch', 'btu_link')");
+        self::assertNotFalse($tables);
+        self::assertSame(3, (int) $tables->fetchColumn());
 
         // Nothing left to apply: still a success, and nothing runs twice.
         $second = ( new MigrateHandler(false) )->handle(new ServerRequest('POST', '/_ops/migrate'));
         self::assertSame(200, $second->getStatusCode(), (string) $second->getBody());
         $count = $pdo->query('SELECT count(*) FROM doctrine_migration_versions');
         self::assertNotFalse($count);
-        self::assertSame(1, (int) $count->fetchColumn());
+        self::assertSame(2, (int) $count->fetchColumn());
     }
 
     public function testStatusListsTheMigrations(): void
