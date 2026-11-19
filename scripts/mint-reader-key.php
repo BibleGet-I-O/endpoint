@@ -7,17 +7,20 @@
  *
  * --scope=reader (default, name "Frontend reader"): the key of signed-in users,
  * whole chapters where the admin allows. --scope=read (name "Website visitors"):
- * an unlimited key (no rate limit) for visitors' pages; the API still applies
- * the 30-verse cap to copyrighted editions.
+ * the key for visitors' pages; the API still applies the 30-verse cap to
+ * copyrighted editions. Give --scope= at most once.
  *
  * Upserts the system application "BibleGet website" (idempotent: it is created
  * once, approved, and reused on later runs; if it exists but is not approved
- * and active the script stops), then adds a new key with the chosen scope and
- * no rate limit. The reader scope is allowed only on is_system applications
- * (database trigger). Run once per environment; the plaintext key goes to
- * stdout and is never stored. To rotate, run again, then revoke the old key
- * with POST /admin/api-keys/{id}/revoke (its id is listed by
- * GET /admin/applications/{application id}).
+ * and active the script stops), then adds a new key with the chosen scope.
+ * Both keys are unlimited because they belong to an is_system application,
+ * which RateLimitMiddleware exempts; the key's rate_limit_per_hour is left
+ * NULL, which on any other application would mean the default limit, not "no
+ * limit". The reader scope is allowed only on is_system applications (database
+ * trigger). Run once per environment; the plaintext key goes to stdout and is
+ * never stored. To rotate, run again, then revoke the old key with POST
+ * /admin/api-keys/{id}/revoke (its id is listed by GET
+ * /admin/applications/{application id}).
  *
  * The scripts are NOT deployed (the rsync excludes scripts/, and files outside
  * public/ might be web-reachable): run them from a local checkout against the
@@ -56,7 +59,7 @@ ini_set('error_log', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 
 fwrite(STDERR, sprintf('APP_ENV=%s DB_NAME=%s' . PHP_EOL, CredentialFactory::currentEnv(), CredentialFactory::env('DB_NAME') ?? ''));
 
-$scope      = 'reader';
+$scope      = null;
 $positional = [];
 $usage      = 'Usage: php scripts/mint-reader-key.php [--scope=reader|read] [key name]';
 foreach (array_slice($argv, 1) as $arg) {
@@ -65,11 +68,16 @@ foreach (array_slice($argv, 1) as $arg) {
             fwrite(STDERR, 'Failed: unrecognised option "' . $arg . '"; no key was minted. ' . $usage . PHP_EOL);
             exit(1);
         }
+        if ($scope !== null) {
+            fwrite(STDERR, 'Failed: --scope= given more than once; no key was minted. ' . $usage . PHP_EOL);
+            exit(1);
+        }
         $scope = substr($arg, strlen('--scope='));
     } else {
         $positional[] = $arg;
     }
 }
+$scope ??= 'reader';
 if (!in_array($scope, ['reader', 'read'], true) || count($positional) > 1) {
     fwrite(STDERR, 'Failed: bad arguments (scope must be reader or read, at most one key name); no key was minted. ' . $usage . PHP_EOL);
     exit(1);
@@ -96,7 +104,7 @@ try {
     if (!is_string($appId)) {
         $stmt = $db->prepare(
             "INSERT INTO applications (zitadel_user_id, name, description, status, is_system, reviewed_by, reviewed_at)
-             VALUES ('system', :n, 'First-party frontend (reader scope)', 'approved', TRUE, 'system', now())
+             VALUES ('system', :n, 'First-party website: reader key (signed-in users) and read key (visitors)', 'approved', TRUE, 'system', now())
              RETURNING id"
         );
         $stmt->execute([':n' => SYSTEM_APPLICATION]);

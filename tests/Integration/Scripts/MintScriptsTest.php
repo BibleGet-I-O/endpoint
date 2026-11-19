@@ -164,13 +164,15 @@ final class MintScriptsTest extends DatabaseTestCase
     public static function badArguments(): array
     {
         return [
-            'unknown scope'   => [['--scope=admin']],
-            'space form'      => [['--scope', 'read']],
-            'bare --scope'    => [['--scope']],
-            'empty scope'     => [['--scope=']],
-            'unknown option'  => [['--foo']],
-            'two names'       => [['one', 'two']],
-            'flag, two names' => [['--scope=read', 'one', 'two']],
+            'unknown scope'    => [['--scope=admin']],
+            'space form'       => [['--scope', 'read']],
+            'bare --scope'     => [['--scope']],
+            'empty scope'      => [['--scope=']],
+            'unknown option'   => [['--foo']],
+            'two names'        => [['one', 'two']],
+            'flag, two names'  => [['--scope=read', 'one', 'two']],
+            'repeated scope'   => [['--scope=read', '--scope=reader']],
+            'same scope twice' => [['--scope=read', '--scope=read']],
         ];
     }
 
