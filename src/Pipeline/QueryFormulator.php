@@ -74,7 +74,10 @@ class QueryFormulator
                     $remappedQuery,
                     $version,
                     $perSegmentOrigins,
-                    $this->ctx->copyrightLimitedVersions()
+                    $this->ctx->copyrightLimitedVersions(),
+                    $this->ctx->editionNumbering()
+                        ? $this->estherRemapper->editionOrder($parsedQuery->book, $version)
+                        : SqlCompiler::STORAGE_ORDER
                 );
 
                 $originalQuery = $this->ctx->validatedQueries[$i];

@@ -16,7 +16,7 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * - Non-consecutive verses (multiple segments → multiple SQL queries)
  * - text_tradition annotation for Psalms
  * - Copyright-limited verse count (LIMIT 30)
- * - ORDER BY sort_order
+ * - ORDER BY sort_order (storage order), or the order the caller passes
  *
  * A reference selects verses by their number: every row is stored at its
  * identity (chapter, verse), and where the edition prints it is recorded
@@ -25,6 +25,9 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  */
 final class SqlCompiler
 {
+    /** Reading order as stored. */
+    public const STORAGE_ORDER = 'sort_order';
+
     /**
      * Compile a BibleQuery AST into one or more SQL SELECT statements.
      *
@@ -35,6 +38,7 @@ final class SqlCompiler
      * @param string|array<int, string> $textTradition  Single string (applied to all segments)
      *                                                  or per-segment array of textTradition suffixes
      * @param array<int, string> $limitedVersions Editions limited to 30 verses (copyrighted, unless the reader scope lifts it)
+     * @param string $orderBy The ORDER BY columns: storage (reading) order unless the caller knows better.
      * @return array<int, string> SQL queries
      */
     public function compile(
@@ -42,6 +46,7 @@ final class SqlCompiler
         string $version,
         string|array $textTradition,
         array $limitedVersions,
+        string $orderBy = self::STORAGE_ORDER,
     ): array {
         $sqlBase  = 'SELECT * FROM "' . $version . '" WHERE book = ' . $query->book;
         $queries  = [];
@@ -58,7 +63,7 @@ final class SqlCompiler
                 ? ( $textTradition[$i] ?? '' )
                 : $textTradition;
             $sql          .= $segmentOrigin;
-            $sql          .= ' ORDER BY sort_order';
+            $sql          .= ' ORDER BY ' . $orderBy;
 
             if ($isCopied) {
                 $sql .= ' LIMIT 30';

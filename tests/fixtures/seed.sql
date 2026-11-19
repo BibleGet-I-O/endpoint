@@ -423,43 +423,73 @@ ALTER TABLE "TEST2" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL
 ALTER TABLE "VGCL" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
 ALTER TABLE "DRB" ADD COLUMN IF NOT EXISTS verseequiv VARCHAR(10) DEFAULT NULL;
 
--- DRB Esther, synthetic, shaped like the supplementary (Vulgate) pattern: the
--- index has 16 chapters; chapters 1-10 store HEBREW and GREEK rows, the GREEK
--- ones with the additions as lettered sub-verses (verseequiv '1a', which
--- migration 046 turns into verse_segment 'a'); 10:4-5 are GREEK-only
--- continuation verses; chapter 16 is the Vulgate's royal decree (GREEK only),
--- which the default numbering reads as the Greek 8:12a ff.
+-- Esther in the supplementary (Vulgate) pattern, synthetic: the index has 16
+-- chapters; chapters 1-10 store HEBREW and GREEK rows, the GREEK ones with the
+-- additions as lettered sub-verses (verseequiv '1a', which migration 046 turns
+-- into verse_segment 'a'); chapters 11-16 are GREEK only (the default numbering
+-- reads 16 as the Greek 8:12a ff.). DRB prints 10:1-13 in both traditions;
+-- VGCL's HEBREW chapter 10 has 1-3 only, 10:4-13 being GREEK continuation.
+-- "verseID" (sort_order) mirrors staging's storage order, which is not reading
+-- order: DRB stores HEBREW 1-10, GREEK 11-16, the lettered rows, GREEK 1-9,
+-- then GREEK 10; VGCL stores GREEK 10:4-13 before GREEK 10:1-3.
 INSERT INTO "DRB_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
-('Esth', 'Esther', 16, '3,1,1,1,1,1,1,12,1,5,1,1,1,1,1,4', 19)
+('Esth', 'Esther', 16, '3,1,1,1,1,1,1,12,1,5,2,1,1,1,1,4', 19)
 ON CONFLICT DO NOTHING;
-INSERT INTO "DRB" (book, chapter, verse, verseorigin, verseequiv, text, testament, section)
+INSERT INTO "DRB" ("verseID", book, chapter, verse, verseorigin, verseequiv, text, testament, section)
 SELECT * FROM (VALUES
-    (19, 1, 1, 'HEBREW', NULL, 'DRB Est 1:1 hebrew', 1, 4),
-    (19, 1, 2, 'HEBREW', NULL, 'DRB Est 1:2 hebrew', 1, 4),
-    (19, 1, 3, 'HEBREW', NULL, 'DRB Est 1:3 hebrew', 1, 4),
-    (19, 1, 1, 'GREEK', '1a', 'DRB Est 1:1a greek', 1, 4),
-    (19, 1, 1, 'GREEK', '1b', 'DRB Est 1:1b greek', 1, 4),
-    (19, 1, 1, 'GREEK', NULL, 'DRB Est 1:1 greek', 1, 4),
-    (19, 1, 2, 'GREEK', NULL, 'DRB Est 1:2 greek', 1, 4),
-    (19, 1, 3, 'GREEK', NULL, 'DRB Est 1:3 greek', 1, 4),
-    (19, 8, 12, 'HEBREW', NULL, 'DRB Est 8:12 hebrew', 1, 4),
-    (19, 8, 12, 'GREEK', NULL, 'DRB Est 8:12 greek', 1, 4),
-    (19, 8, 12, 'GREEK', '12a', 'DRB Est 8:12a greek', 1, 4),
-    (19, 8, 12, 'GREEK', '12b', 'DRB Est 8:12b greek', 1, 4),
-    (19, 10, 1, 'HEBREW', NULL, 'DRB Est 10:1 hebrew', 1, 4),
-    (19, 10, 2, 'HEBREW', NULL, 'DRB Est 10:2 hebrew', 1, 4),
-    (19, 10, 3, 'HEBREW', NULL, 'DRB Est 10:3 hebrew', 1, 4),
-    (19, 10, 1, 'GREEK', NULL, 'DRB Est 10:1 greek', 1, 4),
-    (19, 10, 2, 'GREEK', NULL, 'DRB Est 10:2 greek', 1, 4),
-    (19, 10, 3, 'GREEK', NULL, 'DRB Est 10:3 greek', 1, 4),
-    (19, 10, 4, 'GREEK', NULL, 'DRB Est 10:4 greek', 1, 4),
-    (19, 10, 5, 'GREEK', NULL, 'DRB Est 10:5 greek', 1, 4),
-    (19, 16, 1, 'GREEK', NULL, 'DRB Est 16:1 greek', 1, 4),
-    (19, 16, 2, 'GREEK', NULL, 'DRB Est 16:2 greek', 1, 4),
-    (19, 16, 3, 'GREEK', NULL, 'DRB Est 16:3 greek', 1, 4),
-    (19, 16, 4, 'GREEK', NULL, 'DRB Est 16:4 greek', 1, 4)
-) AS v(book, chapter, verse, verseorigin, verseequiv, text, testament, section)
+    (13001, 19, 1, 1, 'HEBREW', NULL, 'DRB Est 1:1 hebrew', 1, 4),
+    (13002, 19, 1, 2, 'HEBREW', NULL, 'DRB Est 1:2 hebrew', 1, 4),
+    (13003, 19, 1, 3, 'HEBREW', NULL, 'DRB Est 1:3 hebrew', 1, 4),
+    (13004, 19, 8, 12, 'HEBREW', NULL, 'DRB Est 8:12 hebrew', 1, 4),
+    (13005, 19, 10, 1, 'HEBREW', NULL, 'DRB Est 10:1 hebrew', 1, 4),
+    (13006, 19, 10, 2, 'HEBREW', NULL, 'DRB Est 10:2 hebrew', 1, 4),
+    (13007, 19, 10, 3, 'HEBREW', NULL, 'DRB Est 10:3 hebrew', 1, 4),
+    (13008, 19, 10, 4, 'HEBREW', NULL, 'DRB Est 10:4 hebrew', 1, 4),
+    (13009, 19, 10, 5, 'HEBREW', NULL, 'DRB Est 10:5 hebrew', 1, 4),
+    (13010, 19, 11, 1, 'GREEK', NULL, 'DRB Est 11:1 greek', 1, 4),
+    (13011, 19, 11, 2, 'GREEK', NULL, 'DRB Est 11:2 greek', 1, 4),
+    (13012, 19, 16, 1, 'GREEK', NULL, 'DRB Est 16:1 greek', 1, 4),
+    (13013, 19, 16, 2, 'GREEK', NULL, 'DRB Est 16:2 greek', 1, 4),
+    (13014, 19, 16, 3, 'GREEK', NULL, 'DRB Est 16:3 greek', 1, 4),
+    (13015, 19, 16, 4, 'GREEK', NULL, 'DRB Est 16:4 greek', 1, 4),
+    (13016, 19, 1, 1, 'GREEK', '1a', 'DRB Est 1:1a greek', 1, 4),
+    (13017, 19, 1, 1, 'GREEK', '1b', 'DRB Est 1:1b greek', 1, 4),
+    (13018, 19, 8, 12, 'GREEK', '12a', 'DRB Est 8:12a greek', 1, 4),
+    (13019, 19, 8, 12, 'GREEK', '12b', 'DRB Est 8:12b greek', 1, 4),
+    (13020, 19, 1, 1, 'GREEK', NULL, 'DRB Est 1:1 greek', 1, 4),
+    (13021, 19, 1, 2, 'GREEK', NULL, 'DRB Est 1:2 greek', 1, 4),
+    (13022, 19, 1, 3, 'GREEK', NULL, 'DRB Est 1:3 greek', 1, 4),
+    (13023, 19, 8, 12, 'GREEK', NULL, 'DRB Est 8:12 greek', 1, 4),
+    (13024, 19, 10, 1, 'GREEK', NULL, 'DRB Est 10:1 greek', 1, 4),
+    (13025, 19, 10, 2, 'GREEK', NULL, 'DRB Est 10:2 greek', 1, 4),
+    (13026, 19, 10, 3, 'GREEK', NULL, 'DRB Est 10:3 greek', 1, 4),
+    (13027, 19, 10, 4, 'GREEK', NULL, 'DRB Est 10:4 greek', 1, 4),
+    (13028, 19, 10, 5, 'GREEK', NULL, 'DRB Est 10:5 greek', 1, 4)
+) AS v("verseID", book, chapter, verse, verseorigin, verseequiv, text, testament, section)
 WHERE NOT EXISTS (SELECT 1 FROM "DRB" WHERE book = 19);
+INSERT INTO "VGCL_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
+('Esth', 'Esther', 16, '1,1,1,1,1,1,1,1,1,13,1,1,1,1,1,1', 19)
+ON CONFLICT DO NOTHING;
+INSERT INTO "VGCL" ("verseID", book, chapter, verse, verseorigin, verseequiv, text, testament, section)
+SELECT * FROM (VALUES
+    (13001, 19, 10, 1, 'HEBREW', NULL, 'VGCL Est 10:1 hebrew', 1, 4),
+    (13002, 19, 10, 2, 'HEBREW', NULL, 'VGCL Est 10:2 hebrew', 1, 4),
+    (13003, 19, 10, 3, 'HEBREW', NULL, 'VGCL Est 10:3 hebrew', 1, 4),
+    (13004, 19, 10, 4, 'GREEK', NULL, 'VGCL Est 10:4 greek', 1, 4),
+    (13005, 19, 10, 5, 'GREEK', NULL, 'VGCL Est 10:5 greek', 1, 4),
+    (13006, 19, 10, 6, 'GREEK', NULL, 'VGCL Est 10:6 greek', 1, 4),
+    (13007, 19, 10, 7, 'GREEK', NULL, 'VGCL Est 10:7 greek', 1, 4),
+    (13008, 19, 10, 8, 'GREEK', NULL, 'VGCL Est 10:8 greek', 1, 4),
+    (13009, 19, 10, 9, 'GREEK', NULL, 'VGCL Est 10:9 greek', 1, 4),
+    (13010, 19, 10, 10, 'GREEK', NULL, 'VGCL Est 10:10 greek', 1, 4),
+    (13011, 19, 10, 11, 'GREEK', NULL, 'VGCL Est 10:11 greek', 1, 4),
+    (13012, 19, 10, 12, 'GREEK', NULL, 'VGCL Est 10:12 greek', 1, 4),
+    (13013, 19, 10, 13, 'GREEK', NULL, 'VGCL Est 10:13 greek', 1, 4),
+    (13014, 19, 10, 1, 'GREEK', NULL, 'VGCL Est 10:1 greek', 1, 4),
+    (13015, 19, 10, 2, 'GREEK', NULL, 'VGCL Est 10:2 greek', 1, 4),
+    (13016, 19, 10, 3, 'GREEK', NULL, 'VGCL Est 10:3 greek', 1, 4)
+) AS v("verseID", book, chapter, verse, verseorigin, verseequiv, text, testament, section)
+WHERE NOT EXISTS (SELECT 1 FROM "VGCL" WHERE book = 19);
 
 -- ── TEST3: verses printed under a label in another chapter ────────────
 -- Mirrors NABRE's layout with placeholder text: NABRE prints Wis 12:1 after

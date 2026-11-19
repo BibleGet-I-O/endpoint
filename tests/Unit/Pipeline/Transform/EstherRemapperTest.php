@@ -165,4 +165,13 @@ final class EstherRemapperTest extends TestCase
         $this->assertVerseRef($result, 0, 16, null);
         $this->assertSame([''], $pos);
     }
+
+    public function testEditionOrderReadsSupplementaryEstherByNumber(): void
+    {
+        foreach (EstherRemapper::SUPPLEMENTARY_VERSIONS as $version) {
+            $this->assertSame('chapter, verse, sort_order', $this->remapper->editionOrder(19, $version), $version);
+        }
+        $this->assertSame('sort_order', $this->remapper->editionOrder(19, 'CEI2008'));
+        $this->assertSame('sort_order', $this->remapper->editionOrder(23, 'VGCL'));
+    }
 }

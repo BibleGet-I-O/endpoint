@@ -156,6 +156,15 @@ final class SqlCompilerTest extends TestCase
         );
     }
 
+    public function testOrderByIsTheCallersWhenGiven(): void
+    {
+        $query  = new BibleQuery(19, [new VerseRef(19, 10, null, null)]);
+        $result = $this->compiler->compile($query, 'VGCL', '', [], 'chapter, verse, sort_order');
+
+        $this->assertStringEndsWith(' ORDER BY chapter, verse, sort_order', $result[0]);
+        $this->assertStringEndsWith(' ORDER BY sort_order', $this->compile($query, 'VGCL')[0]);
+    }
+
     public function testNoQueryParsesVerseequiv(): void
     {
         $query  = new BibleQuery(27, [new VerseRef(27, 12, null, 1)]);

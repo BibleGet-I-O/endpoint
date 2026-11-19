@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline\Transform;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
+use BibleGet\Api\Pipeline\Compiler\SqlCompiler;
 
 /**
  * AST→AST transformation that remaps Esther chapter/verse numbers for
@@ -36,6 +37,9 @@ final class EstherRemapper
      * print there: the lettered sub-verses (it prints them as chapters 11-16).
      */
     private const NOT_LETTERED = ' AND verse_segment IS NULL';
+
+    /** Chapter, verse, then storage order within a verse. */
+    private const PRINTED_ORDER = 'chapter, verse, sort_order';
 
     /**
      * Esther verse-mapping rules for VGCL/DRB versions (Greek additions).
@@ -121,6 +125,19 @@ final class EstherRemapper
             $textTradition .= self::NOT_LETTERED;
         }
         return [$query, array_fill(0, count($query->segments), $textTradition)];
+    }
+
+    /**
+     * numbering=edition: the ORDER BY for a query into $book of $version. A
+     * supplementary edition does not store Esther in reading order (DRB: HEBREW
+     * 1-10, GREEK 11-16, the lettered rows, GREEK 1-9, GREEK 10; VGCL: GREEK
+     * 10:4-13 before 10:1-3), so its chapters 1-16 are read by number; sort_order
+     * still orders the lettered rows of a verse (an explicit GREEK). Otherwise
+     * storage order.
+     */
+    public function editionOrder(int $book, string $version): string
+    {
+        return $this->shouldRemap($book, $version) ? self::PRINTED_ORDER : SqlCompiler::STORAGE_ORDER;
     }
 
     private function shouldRemap(int $book, string $version): bool
