@@ -229,7 +229,7 @@ sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
 
 ### Minting keys (scripts are not deployed)
 
-`scripts/mint-reader-key.php` (the frontend's `reader` key) and
+`scripts/mint-reader-key.php` (the website's keys, both on the system application "BibleGet website": `reader` by default, for signed-in users; `--scope=read` for an unlimited `read` key for visitors' pages, to which the API still applies the 30-verse cap on copyrighted editions) and
 `scripts/mint-client-key.php` (a plugin release's client key) are excluded
 from the rsync deploy on purpose: anything outside `public/` might be
 web-reachable. Run them from a local checkout through an SSH tunnel to the
