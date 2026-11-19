@@ -31,7 +31,7 @@ EnvLoader::create(dirname(__DIR__))->safeLoad();
 
 $dir  = $argv[1] ?? '';
 $only = null;
-if (($argv[2] ?? '') === '--edition') {
+if (( $argv[2] ?? '' ) === '--edition') {
     $only = $argv[3] ?? '';
 }
 if ($dir === '' || !is_file($dir . '/data/books.json') || $only === '') {
@@ -40,20 +40,19 @@ if ($dir === '' || !is_file($dir . '/data/books.json') || $only === '') {
 }
 
 /** @return array<mixed> */
-function readJson(string $path): array
-{
+$readJson = static function (string $path): array {
     $v = json_decode((string) file_get_contents($path), true);
     if (!is_array($v)) {
         fwrite(STDERR, "Not JSON: $path" . PHP_EOL);
         exit(1);
     }
     return $v;
-}
+};
 
 ini_set('error_log', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 fwrite(STDERR, sprintf('APP_ENV=%s DB_NAME=%s' . PHP_EOL, CredentialFactory::currentEnv(), CredentialFactory::env('DB_NAME') ?? ''));
 
-$editions = readJson($dir . '/data/editions.json')['editions'] ?? [];
+$editions = $readJson($dir . '/data/editions.json')['editions'] ?? [];
 $slugs    = array_map(static fn ($e) => is_array($e) && is_string($e['slug'] ?? null) ? $e['slug'] : '', is_array($editions) ? $editions : []);
 if ($only !== null && !in_array($only, $slugs, true)) {
     fwrite(STDERR, "No edition '$only' in data/editions.json" . PHP_EOL);
@@ -66,16 +65,18 @@ $repo = new BtuRepository(Connection::getConnection());
 $units = [];
 foreach (glob($dir . '/data/units/*.json') ?: [] as $file) {
     $book = (int) basename($file);
-    $data = readJson($file);
+    $data = $readJson($file);
     foreach (is_array($data['units'] ?? null) ? $data['units'] : [] as $ord => $u) {
         if (!is_array($u) || !is_string($u['id'] ?? null)) {
             continue;
         }
         $units[] = [
-            'id' => $u['id'], 'book' => $book, 'ord' => (int) $ord,
-            'parent' => is_string($u['parent'] ?? null) ? $u['parent'] : null,
-            'after' => is_string($u['after'] ?? null) ? $u['after'] : null,
-            'nv_omitted' => ($u['nv_omitted'] ?? false) === true,
+            'id'         => $u['id'],
+            'book'       => $book,
+            'ord'        => (int) $ord,
+            'parent'     => is_string($u['parent'] ?? null) ? $u['parent'] : null,
+            'after'      => is_string($u['after'] ?? null) ? $u['after'] : null,
+            'nv_omitted' => ( $u['nv_omitted'] ?? false ) === true,
         ];
     }
 }
@@ -83,24 +84,24 @@ fwrite(STDERR, sprintf('%d units' . PHP_EOL, $repo->upsertUnits($units)));
 
 foreach (is_array($editions) ? $editions : [] as $ed) {
     $slug = is_array($ed) && is_string($ed['slug'] ?? null) ? $ed['slug'] : '';
-    if ($slug === '' || ($only !== null && $slug !== $only)) {
+    if ($slug === '' || ( $only !== null && $slug !== $only )) {
         continue;
     }
     $sigla = strtoupper($slug);
     $total = ['inserted' => 0, 'updated' => 0, 'kept' => 0];
     foreach (glob($dir . '/data/maps/' . $slug . '/*.json') ?: [] as $file) {
-        $book   = (int) basename($file);
-        $map    = readJson($file);
-        $dfile  = $dir . '/drafts/' . $slug . '/' . basename($file);
-        $drafts = is_file($dfile) ? readJson($dfile) : [];
-        $conf   = is_array($drafts['confidence'] ?? null) ? $drafts['confidence'] : [];
+        $book      = (int) basename($file);
+        $map       = $readJson($file);
+        $dfile     = $dir . '/drafts/' . $slug . '/' . basename($file);
+        $drafts    = is_file($dfile) ? $readJson($dfile) : [];
+        $conf      = is_array($drafts['confidence'] ?? null) ? $drafts['confidence'] : [];
         $stretchOf = [];
         $stretches = [];
         foreach (is_array($drafts['stretches'] ?? null) ? $drafts['stretches'] : [] as $st) {
             if (!is_array($st)) {
                 continue;
             }
-            $sid = (string) (is_scalar($st['id'] ?? null) ? $st['id'] : '');
+            $sid         = (string) ( is_scalar($st['id'] ?? null) ? $st['id'] : '' );
             $stretches[] = ['id' => $sid, 'units' => array_values(array_filter(is_array($st['units'] ?? null) ? $st['units'] : [], 'is_string'))];
             foreach (is_array($st['verses'] ?? null) ? $st['verses'] : [] as $ref) {
                 if (is_string($ref)) {
@@ -110,7 +111,7 @@ foreach (is_array($editions) ? $editions : [] as $ed) {
         }
         $links = [];
         foreach (is_array($map['verses'] ?? null) ? $map['verses'] : [] as $ord => $v) {
-            if (!is_array($v) || !is_string($v['ref'] ?? null) || ($v['omitted'] ?? false) === true) {
+            if (!is_array($v) || !is_string($v['ref'] ?? null) || ( $v['omitted'] ?? false ) === true) {
                 continue;
             }
             $ref    = $v['ref'];
@@ -121,12 +122,13 @@ foreach (is_array($editions) ? $editions : [] as $ed) {
                 continue;
             }
             $links[] = [
-                'ref' => $ref, 'ord' => (int) $ord,
-                'units' => array_values(array_filter(is_array($v['units'] ?? null) ? $v['units'] : [], 'is_string')),
-                'kind' => $kind,
-                'status' => $status,
+                'ref'        => $ref,
+                'ord'        => (int) $ord,
+                'units'      => array_values(array_filter(is_array($v['units'] ?? null) ? $v['units'] : [], 'is_string')),
+                'kind'       => $kind,
+                'status'     => $status,
                 'confidence' => is_numeric($conf[$ref] ?? null) ? (float) $conf[$ref] : null,
-                'stretch' => $stretchOf[$ref] ?? null,
+                'stretch'    => $stretchOf[$ref] ?? null,
             ];
         }
         foreach ($repo->loadEdition($sigla, $book, $links, $stretches) as $k => $n) {
