@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\NotFoundException;
@@ -19,9 +20,8 @@ use Psr\Log\LoggerInterface;
 
 class SimilarSearchHandler extends AbstractHandler
 {
-    private const ENDPOINT_VERSION = '3.0';
-    private const DEFAULT_LIMIT    = 10;
-    private const MAX_LIMIT        = 100;
+    private const DEFAULT_LIMIT = 10;
+    private const MAX_LIMIT     = 100;
 
     /** @var list<string>|null */
     private static ?array $cachedValidVersions = null;
@@ -131,7 +131,7 @@ class SimilarSearchHandler extends AbstractHandler
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION, 'model' => $model];
+        $body->info    = ['ENDPOINT_VERSION' => AppVersion::current(), 'model' => $model];
 
         $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -471,7 +471,7 @@ class SimilarSearchHandler extends AbstractHandler
             $xml->addChild('errors');
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
-            $xmlInfo->addAttribute('ENDPOINT_VERSION', self::ENDPOINT_VERSION);
+            $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

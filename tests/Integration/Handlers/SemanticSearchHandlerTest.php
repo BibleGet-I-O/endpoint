@@ -113,7 +113,7 @@ class SemanticSearchHandlerTest extends DatabaseTestCase
         self::assertIsArray($body);
         self::assertArrayHasKey('results', $body);
         self::assertArrayHasKey('info', $body);
-        self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
+        self::assertSame(\BibleGet\Api\Util\AppVersion::current(), $body['info']['ENDPOINT_VERSION']);
     }
 
     public function testSemanticSearchResultHasScoreField(): void

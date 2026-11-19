@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
@@ -19,7 +20,6 @@ use Psr\Log\LoggerInterface;
 
 class SemanticSearchHandler extends AbstractHandler
 {
-    private const ENDPOINT_VERSION  = '3.0';
     private const DEFAULT_LIMIT     = 20;
     private const MAX_LIMIT         = 100;
     private const DEFAULT_THRESHOLD = 0.0;
@@ -120,7 +120,7 @@ class SemanticSearchHandler extends AbstractHandler
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION, 'model' => $model];
+        $body->info    = ['ENDPOINT_VERSION' => AppVersion::current(), 'model' => $model];
 
         $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -196,7 +196,7 @@ class SemanticSearchHandler extends AbstractHandler
             $xml->addChild('errors');
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
-            $xmlInfo->addAttribute('ENDPOINT_VERSION', self::ENDPOINT_VERSION);
+            $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\NotFoundException;
@@ -17,8 +18,6 @@ use Psr\Log\LoggerInterface;
 
 class MetadataHandler extends AbstractHandler
 {
-    private const ENDPOINT_VERSION = '3.0';
-
     private LoggerInterface $logger;
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -61,7 +60,7 @@ class MetadataHandler extends AbstractHandler
                 throw new NotFoundException('Unknown metadata query: ' . $subResource);
         }
 
-        $data['info'] = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
+        $data['info'] = ['ENDPOINT_VERSION' => AppVersion::current()];
 
         if ($contentType === 'application/json') {
             $response = $this->jsonResponse($response, $data);
@@ -288,7 +287,7 @@ class MetadataHandler extends AbstractHandler
         $xml  = new \SimpleXMLElement($root);
         $xml->addChild('errors');
         $info = $xml->addChild('info');
-        $info->addAttribute('ENDPOINT_VERSION', self::ENDPOINT_VERSION);
+        $info->addAttribute('ENDPOINT_VERSION', AppVersion::current());
 
         // Simplified XML — encode data as JSON in the @data attribute for backward
         // compatibility with existing consumers of the legacy XML format.

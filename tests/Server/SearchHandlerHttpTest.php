@@ -97,6 +97,6 @@ class SearchHandlerHttpTest extends ServerTestCase
     {
         $r    = self::httpGet('/v3/search?keyword=light&version=TEST1');
         $body = self::jsonBody($r['body']);
-        self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
+        self::assertSame($r['headers']['x-bibleget-version'], $body['info']['ENDPOINT_VERSION']);
     }
 }

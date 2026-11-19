@@ -137,6 +137,6 @@ class MetadataHandlerHttpTest extends ServerTestCase
     {
         $r    = self::httpGet('/v3/metadata/bibleversions');
         $body = self::jsonBody($r['body']);
-        self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
+        self::assertSame($r['headers']['x-bibleget-version'], $body['info']['ENDPOINT_VERSION']);
     }
 }

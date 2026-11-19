@@ -174,7 +174,7 @@ class HybridSearchHandlerTest extends DatabaseTestCase
         }
         self::assertArrayNotHasKey('sort_order', $row);
         self::assertSame([], $body['errors']);
-        self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
+        self::assertSame(\BibleGet\Api\Util\AppVersion::current(), $body['info']['ENDPOINT_VERSION']);
 
         // canonical_order ranks rows by sort_order within the version, not by fused score.
         $orders = array_column($body['results'], 'canonical_order');

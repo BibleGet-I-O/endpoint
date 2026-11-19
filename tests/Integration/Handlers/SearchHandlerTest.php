@@ -161,7 +161,7 @@ class SearchHandlerTest extends DatabaseTestCase
 
         $body = json_decode((string) $response->getBody(), true);
         self::assertIsArray($body);
-        self::assertSame('3.0', $body['info']['ENDPOINT_VERSION']);
+        self::assertSame(\BibleGet\Api\Util\AppVersion::current(), $body['info']['ENDPOINT_VERSION']);
     }
 
     // ── OPTIONS ────────────────────────────────────────────

@@ -106,6 +106,13 @@ class AdminHttpTest extends ServerTestCase
         Connection::reset();
     }
 
+    public function testUnauthorizedAdminResponseCarriesVersionHeader(): void
+    {
+        $r = self::httpGet('/v3/admin/stats');
+        self::assertSame(401, $r['status']);
+        self::assertMatchesRegularExpression('/\A[A-Za-z0-9._+-]{1,64}\z/', $r['headers']['x-bibleget-version']);
+    }
+
     /** @param list<string> $roles */
     private static function bearer(string $sub, array $roles = [self::ADMIN]): string
     {
