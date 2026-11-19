@@ -2988,6 +2988,169 @@
                 }
             }
         },
+        "/admin/versions": {
+            "get": {
+                "summary": "List Bible editions with their full-text flag",
+                "description": "Every Bible edition, ordered by sigla. reader_full_text says whether the `reader` key may serve the edition's chapters whole; copyright is the flag behind the 30-verse limit.",
+                "operationId": "adminListVersions",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Editions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "versions": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/VersionRecord"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/versions/{sigla}": {
+            "get": {
+                "summary": "Show one Bible edition",
+                "description": "",
+                "operationId": "adminGetVersion",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "sigla",
+                        "in": "path",
+                        "required": true,
+                        "description": "Edition sigla, upper case",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2,10}$"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edition.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VersionRecord"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Switch an edition's full text for the reader key",
+                "description": "Turns on or off the `reader` key's right to receive this edition's chapters whole instead of at most 30 verses.",
+                "operationId": "adminSetVersionFullText",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "sigla",
+                        "in": "path",
+                        "required": true,
+                        "description": "Edition sigla, upper case",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2,10}$"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VersionFullTextInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VersionRecord"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
         "/admin/stats": {
             "get": {
                 "summary": "Usage statistics",
@@ -17707,6 +17870,40 @@
                     },
                     "record": {
                         "$ref": "#/components/schemas/ApiKeyRecord"
+                    }
+                }
+            },
+            "VersionRecord": {
+                "type": "object",
+                "properties": {
+                    "sigla": {
+                        "type": "string"
+                    },
+                    "fullname": {
+                        "type": "string"
+                    },
+                    "year": {
+                        "type": "integer"
+                    },
+                    "language": {
+                        "type": "string"
+                    },
+                    "copyright": {
+                        "type": "boolean"
+                    },
+                    "reader_full_text": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "VersionFullTextInput": {
+                "type": "object",
+                "required": [
+                    "reader_full_text"
+                ],
+                "properties": {
+                    "reader_full_text": {
+                        "type": "boolean"
                     }
                 }
             },

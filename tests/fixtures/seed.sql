@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS "TEST2_idx" (
 );
 
 INSERT INTO "TEST2_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
-('Gen', 'Genesis', 3, '10,8,5', 1),
+('Gen', 'Genesis', 3, '10,8,35', 1),
 ('Exod', 'Exodus', 2, '7,5', 2),
 ('Lev', 'Leviticus', 2, '6,4', 3),
 ('Ps', 'Psalms', 55, '6,12,8,8,12,10,17,9,21,18,7,8,6,7,5,11,15,10,21,18,7,8,6,10,12,12,10,17,9,3,5,16,8,8,10,13,18,7,14,11,19,17,8,4,3,13,14,7,13,12,19,6,12,8,6,12,5,4,8,3,11,11,8,10,13,6,5,17,9,14,10,17,7,13,20,6,10,7,13,7,18,6', 23)
@@ -165,6 +165,46 @@ INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 5, 'And God called the light Day, and the darkness he called Night.', 1, 1),
 (1, 2, 1, 'Thus the heavens and the earth were finished, and all the host of them.', 1, 1),
 (2, 1, 1, 'Now these are the names of the children of Israel.', 1, 2)
+ON CONFLICT DO NOTHING;
+
+-- Synthetic text (no real copyrighted wording): one TEST2 chapter longer than the
+-- 30-verse limit, for the reader full-text switch (AdminHttpTest).
+INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
+(1, 3, 1, 'TEST2 Gen 3:1', 1, 1),
+(1, 3, 2, 'TEST2 Gen 3:2', 1, 1),
+(1, 3, 3, 'TEST2 Gen 3:3', 1, 1),
+(1, 3, 4, 'TEST2 Gen 3:4', 1, 1),
+(1, 3, 5, 'TEST2 Gen 3:5', 1, 1),
+(1, 3, 6, 'TEST2 Gen 3:6', 1, 1),
+(1, 3, 7, 'TEST2 Gen 3:7', 1, 1),
+(1, 3, 8, 'TEST2 Gen 3:8', 1, 1),
+(1, 3, 9, 'TEST2 Gen 3:9', 1, 1),
+(1, 3, 10, 'TEST2 Gen 3:10', 1, 1),
+(1, 3, 11, 'TEST2 Gen 3:11', 1, 1),
+(1, 3, 12, 'TEST2 Gen 3:12', 1, 1),
+(1, 3, 13, 'TEST2 Gen 3:13', 1, 1),
+(1, 3, 14, 'TEST2 Gen 3:14', 1, 1),
+(1, 3, 15, 'TEST2 Gen 3:15', 1, 1),
+(1, 3, 16, 'TEST2 Gen 3:16', 1, 1),
+(1, 3, 17, 'TEST2 Gen 3:17', 1, 1),
+(1, 3, 18, 'TEST2 Gen 3:18', 1, 1),
+(1, 3, 19, 'TEST2 Gen 3:19', 1, 1),
+(1, 3, 20, 'TEST2 Gen 3:20', 1, 1),
+(1, 3, 21, 'TEST2 Gen 3:21', 1, 1),
+(1, 3, 22, 'TEST2 Gen 3:22', 1, 1),
+(1, 3, 23, 'TEST2 Gen 3:23', 1, 1),
+(1, 3, 24, 'TEST2 Gen 3:24', 1, 1),
+(1, 3, 25, 'TEST2 Gen 3:25', 1, 1),
+(1, 3, 26, 'TEST2 Gen 3:26', 1, 1),
+(1, 3, 27, 'TEST2 Gen 3:27', 1, 1),
+(1, 3, 28, 'TEST2 Gen 3:28', 1, 1),
+(1, 3, 29, 'TEST2 Gen 3:29', 1, 1),
+(1, 3, 30, 'TEST2 Gen 3:30', 1, 1),
+(1, 3, 31, 'TEST2 Gen 3:31', 1, 1),
+(1, 3, 32, 'TEST2 Gen 3:32', 1, 1),
+(1, 3, 33, 'TEST2 Gen 3:33', 1, 1),
+(1, 3, 34, 'TEST2 Gen 3:34', 1, 1),
+(1, 3, 35, 'TEST2 Gen 3:35', 1, 1)
 ON CONFLICT DO NOTHING;
 
 -- ── VGCL (Vulgata Clementina) ──────────────────────────────────────────

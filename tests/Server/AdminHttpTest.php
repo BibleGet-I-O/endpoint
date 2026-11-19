@@ -90,6 +90,7 @@ class AdminHttpTest extends ServerTestCase
             Connection::reset();
             return;
         }
+        $this->db->exec("UPDATE versions_available SET reader_full_text = FALSE WHERE type = 'BIBLE'");
         foreach ($this->clientKeyIds as $id) {
             $this->db->prepare('DELETE FROM usage_daily WHERE credential_id IN (SELECT id FROM installations WHERE client_key_id = ?)')->execute([$id]);
             $this->db->prepare('DELETE FROM installations WHERE client_key_id = ?')->execute([$id]);
@@ -403,6 +404,80 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame(200, self::httpGet(self::QUOTE, ['X-Api-Key' => $reader['plain']])['status']);
         self::assertSame(204, self::call('POST', "/v3/admin/api-keys/{$reader['id']}/revoke")['status']);
         self::assertSame(401, self::httpGet(self::QUOTE, ['X-Api-Key' => $reader['plain']])['status']);
+    }
+
+    public function testVersionsListShowsFullTextFlags(): void
+    {
+        $siglas = $this->db->query("SELECT sigla FROM versions_available WHERE type = 'BIBLE' ORDER BY sigla")?->fetchAll(\PDO::FETCH_COLUMN);
+        $body   = self::okJson(self::call('GET', '/v3/admin/versions'));
+        self::assertIsArray($body['versions']);
+        self::assertSame(count($siglas ?: []), $body['total']);
+        self::assertSame($siglas, array_column($body['versions'], 'sigla'));
+        foreach ($body['versions'] as $v) {
+            self::assertIsArray($v);
+            self::assertSame(['sigla', 'fullname', 'year', 'language', 'copyright', 'reader_full_text'], array_keys($v));
+            self::assertIsInt($v['year']);
+            self::assertIsBool($v['copyright']);
+            self::assertFalse($v['reader_full_text']);
+        }
+        $test2 = array_values(array_filter($body['versions'], static fn ($v): bool => is_array($v) && $v['sigla'] === 'TEST2'));
+        self::assertIsArray($test2[0]);
+        self::assertTrue($test2[0]['copyright']);
+    }
+
+    public function testPatchVersionTurnsFullTextOnAndOff(): void
+    {
+        $owner          = 'test-owner-' . bin2hex(random_bytes(6));
+        $this->owners[] = $owner;
+        $stmt           = $this->db->prepare(
+            "INSERT INTO applications (zitadel_user_id, name, status, is_system, reviewed_by, reviewed_at)
+             VALUES (?, 'Full text app', 'approved', TRUE, 'system', now()) RETURNING id"
+        );
+        $stmt->execute([$owner]);
+        $appId = $stmt->fetchColumn();
+        self::assertIsString($appId);
+        $reader = ( new ApiKeyRepository($this->db) )->mint($appId, 'Frontend reader', 'reader', null);
+        $quote  = '/v3/quote?query=Genesis3&version=TEST2';
+        $count  = static function () use ($quote, $reader): int {
+            $r = self::httpGet($quote, ['X-Api-Key' => $reader['plain']]);
+            self::assertSame(200, $r['status'], $r['body']);
+            $results = self::jsonBody($r['body'])['results'];
+            return is_array($results) ? count($results) : -1;
+        };
+
+        self::assertSame(30, $count());
+        $on = self::okJson(self::call('PATCH', '/v3/admin/versions/TEST2', ['reader_full_text' => true]));
+        self::assertSame('TEST2', $on['sigla']);
+        self::assertTrue($on['reader_full_text']);
+        self::assertSame(35, $count());
+
+        $off = self::okJson(self::call('PATCH', '/v3/admin/versions/TEST2', ['reader_full_text' => false]));
+        self::assertFalse($off['reader_full_text']);
+        self::assertSame(30, $count());
+
+        $one = self::okJson(self::call('GET', '/v3/admin/versions/TEST2'));
+        self::assertSame('TEST2', $one['sigla']);
+    }
+
+    public function testPatchVersionRejectsBadInput(): void
+    {
+        self::assertSame(422, self::call('PATCH', '/v3/admin/versions/TEST2', ['reader_full_text' => 'yes'])['status']);
+        self::assertSame(422, self::call('PATCH', '/v3/admin/versions/TEST2', [])['status']);
+        self::assertSame(404, self::call('PATCH', '/v3/admin/versions/XYZ', ['reader_full_text' => true])['status']);
+        self::assertSame(404, self::call('PATCH', '/v3/admin/versions/test2', ['reader_full_text' => true])['status']);
+        self::assertSame(404, self::call('PATCH', '/v3/admin/versions/TEST2/extra', ['reader_full_text' => true])['status']);
+        self::assertSame(405, self::call('POST', '/v3/admin/versions', [])['status']);
+        self::assertSame(405, self::call('POST', '/v3/admin/versions/TEST2', ['reader_full_text' => true])['status']);
+        self::assertSame(405, self::call('PATCH', '/v3/admin/versions', ['reader_full_text' => true])['status']);
+    }
+
+    public function testVersionsNeedAdmin(): void
+    {
+        $user = self::bearer('test-plain-user', []);
+        self::assertSame(403, self::call('GET', '/v3/admin/versions', null, $user)['status']);
+        self::assertSame(403, self::call('PATCH', '/v3/admin/versions/TEST2', ['reader_full_text' => true], $user)['status']);
+        self::assertSame(401, self::httpGet('/v3/admin/versions')['status']);
+        self::assertSame(401, self::httpPatch('/v3/admin/versions/TEST2', '{"reader_full_text":true}', ['Content-Type' => 'application/json'])['status']);
     }
 
     public function testMintClientKeyReturnsPlainOnce(): void

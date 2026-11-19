@@ -8,6 +8,7 @@ use BibleGet\Api\Handlers\Admin\ApplicationAdminHandler;
 use BibleGet\Api\Handlers\Admin\ClientKeyAdminHandler;
 use BibleGet\Api\Handlers\Admin\InstallationAdminHandler;
 use BibleGet\Api\Handlers\Admin\StatsHandler;
+use BibleGet\Api\Handlers\Admin\VersionAdminHandler;
 use BibleGet\Api\Handlers\ApplicationsHandler;
 use BibleGet\Api\Handlers\InstallationsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
@@ -266,6 +267,7 @@ class Router
             'client-keys'              => new ClientKeyAdminHandler($this->psr17Factory, $pathParts),
             'installations'            => new InstallationAdminHandler($this->psr17Factory, $pathParts),
             'stats'                    => new StatsHandler($this->psr17Factory, $pathParts),
+            'versions'                 => new VersionAdminHandler($this->psr17Factory, $pathParts),
             default                    => $this->createNotFoundHandler(),
         };
     }
