@@ -8,14 +8,19 @@ class ApplicationRepository
 {
     private const UPDATABLE = ['name', 'description', 'website'];
 
+    /** Fields whose change sends an approved application back for review. */
+    private const REVIEWED = ['name', 'website'];
+
     /**
      * Review transitions: the target status => the statuses it may be reached from.
      * A rejected application can still be approved; a revoked one is final.
+     * changes_pending is an approved application whose name or website changed:
+     * its keys keep working until the change is approved, rejected or revoked.
      */
     public const TRANSITIONS = [
-        'approved' => ['pending', 'rejected'],
-        'rejected' => ['pending'],
-        'revoked'  => ['approved'],
+        'approved' => ['pending', 'rejected', 'changes_pending'],
+        'rejected' => ['pending', 'changes_pending'],
+        'revoked'  => ['approved', 'changes_pending'],
     ];
 
     public function __construct(private readonly \PDO $db)
@@ -53,19 +58,29 @@ class ApplicationRepository
 
     /**
      * Updates name, description and website; returns false when the application is not the owner's.
+     * A new name or website moves an approved application to changes_pending, in
+     * the same statement, comparing against the stored values.
      *
      * @param array<string, mixed> $fields
      */
     public function update(string $id, string $ownerId, array $fields): bool
     {
-        $sets   = ['updated_at = now()'];
-        $params = [':id' => $id, ':u' => $ownerId];
+        $sets    = ['updated_at = now()'];
+        $params  = [':id' => $id, ':u' => $ownerId];
+        $changed = [];
         foreach (self::UPDATABLE as $col) {
             if (array_key_exists($col, $fields)) {
                 $v               = $fields[$col];
                 $sets[]          = "$col = :$col";
                 $params[":$col"] = is_scalar($v) ? (string) $v : null;
+                if (in_array($col, self::REVIEWED, true)) {
+                    $changed[] = "$col IS DISTINCT FROM :$col";
+                }
             }
+        }
+        if ($changed !== []) {
+            $sets[] = "status = CASE WHEN status = 'approved' AND (" . implode(' OR ', $changed)
+                . ") THEN 'changes_pending' ELSE status END";
         }
         $stmt = $this->db->prepare(
             'UPDATE applications SET ' . implode(', ', $sets) . ' WHERE id = :id AND zitadel_user_id = :u AND NOT is_system'

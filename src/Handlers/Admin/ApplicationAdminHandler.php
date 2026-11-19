@@ -27,7 +27,7 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class ApplicationAdminHandler extends AbstractAdminHandler
 {
-    private const STATUSES = ['pending', 'approved', 'rejected', 'revoked'];
+    private const STATUSES = ['pending', 'approved', 'changes_pending', 'rejected', 'revoked'];
     private const ACTIONS  = ['approve', 'reject', 'revoke'];
 
     protected function dispatch(ServerRequestInterface $request, string $method, array $path, string $admin): ResponseInterface

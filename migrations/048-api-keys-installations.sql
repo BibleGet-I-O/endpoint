@@ -19,8 +19,10 @@ CREATE TABLE IF NOT EXISTS applications (
     name             TEXT NOT NULL,
     description      TEXT,
     website          TEXT,
+    -- changes_pending: an approved application whose owner changed its name or
+    -- website; its keys keep working until an admin approves or rejects the change.
     status           TEXT NOT NULL DEFAULT 'pending'
-                     CHECK (status IN ('pending', 'approved', 'rejected', 'revoked')),
+                     CHECK (status IN ('pending', 'approved', 'changes_pending', 'rejected', 'revoked')),
     review_notes     TEXT,
     reviewed_by      TEXT,
     reviewed_at      TIMESTAMPTZ,

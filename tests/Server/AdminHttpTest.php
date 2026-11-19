@@ -261,6 +261,29 @@ class AdminHttpTest extends ServerTestCase
         }
     }
 
+    public function testChangesPendingCanBeListedApprovedOrRevoked(): void
+    {
+        $repo  = new ApplicationRepository($this->db);
+        $appId = $this->application('Edited app');
+        $owner = (string) $this->column('SELECT zitadel_user_id FROM applications WHERE id = ?', $appId);
+        $base  = "/v3/admin/applications/{$appId}";
+        $repo->approve($appId, 'admin', null);
+        self::assertTrue($repo->update($appId, $owner, ['name' => 'Edited app, renamed']));
+
+        $list = self::okJson(self::call('GET', '/v3/admin/applications?status=changes_pending'));
+        self::assertIsArray($list['applications']);
+        self::assertContains($appId, array_column($list['applications'], 'id'));
+
+        $app = self::okJson(self::call('POST', "$base/approve"))['application'];
+        self::assertIsArray($app);
+        self::assertSame('approved', $app['status']);
+
+        self::assertTrue($repo->update($appId, $owner, ['website' => 'https://changed.test']));
+        $app = self::okJson(self::call('POST', "$base/revoke", ['notes' => 'Not what was approved']))['application'];
+        self::assertIsArray($app);
+        self::assertSame('revoked', $app['status'], 'changes_pending → revoked');
+    }
+
     public function testApproveRejectRevokeTransitions(): void
     {
         $appId = $this->application('Transitions app');

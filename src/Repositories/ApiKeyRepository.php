@@ -21,7 +21,7 @@ class ApiKeyRepository
              FROM api_keys k JOIN applications a ON a.id = k.application_id
              WHERE k.key_hash = :h AND k.is_active
                AND (k.expires_at IS NULL OR k.expires_at > now())
-               AND a.status = 'approved' AND a.is_active"
+               AND a.status IN ('approved', 'changes_pending') AND a.is_active"
         );
         $stmt->execute([':h' => $hash]);
         $row = $stmt->fetch();
@@ -61,6 +61,40 @@ class ApiKeyRepository
         $stmt->bindValue(':r', $ratePerHour, $ratePerHour === null ? \PDO::PARAM_NULL : \PDO::PARAM_INT);
         $stmt->execute();
         return ['plain' => $c['plain'], 'id' => Cast::string($stmt->fetchColumn())];
+    }
+
+    /**
+     * Mints a key only while the application is active and in one of $statuses,
+     * re-reading the status under a row lock (FOR SHARE, which waits for an
+     * edit in flight) in the same transaction as the insert. So a concurrent
+     * name or website change cannot slip a new key into changes_pending.
+     * Runs in its own transaction, or in the caller's when one is open.
+     *
+     * @param list<string> $statuses
+     * @return array{plain: string, id: string}|null null when the application is absent, inactive or in another status
+     */
+    public function mintForApplicationIn(string $applicationId, string $name, array $statuses, string $scope = 'read'): ?array
+    {
+        $own = !$this->db->inTransaction();
+        if ($own) {
+            $this->db->beginTransaction();
+        }
+        try {
+            $stmt = $this->db->prepare('SELECT status, is_active FROM applications WHERE id = :id FOR SHARE');
+            $stmt->execute([':id' => $applicationId]);
+            $row = $stmt->fetch();
+            $ok  = is_array($row) && in_array($row['status'], $statuses, true) && Cast::bool($row['is_active']);
+            $new = $ok ? $this->mint($applicationId, $name, $scope) : null;
+            if ($own) {
+                $ok ? $this->db->commit() : $this->db->rollBack();
+            }
+            return $new;
+        } catch (\Throwable $e) {
+            if ($own) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /** @return list<array<string, mixed>> never includes key_hash */

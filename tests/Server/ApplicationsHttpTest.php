@@ -319,6 +319,60 @@ class ApplicationsHttpTest extends ServerTestCase
         self::assertSame(200, $q['status'], $q['body']);
     }
 
+    /** @return array<string, mixed> the application after the PATCH */
+    private static function patch(string $bearer, string $appId, array $body): array
+    {
+        $r = self::call('PATCH', "/v3/applications/{$appId}", $bearer, $body);
+        self::assertSame(200, $r['status'], $r['body']);
+        $app = self::jsonBody($r['body'])['application'] ?? null;
+        self::assertIsArray($app);
+        return $app;
+    }
+
+    public function testEditingApprovedNameOrWebsiteSendsItBackForReviewKeysKeepWorking(): void
+    {
+        $bearer = $this->bearer();
+        $appId  = self::create($bearer, 'Parish site');
+        $repo   = new ApplicationRepository($this->db);
+        $repo->approve($appId, 'admin', null);
+        $minted = self::jsonBody(self::call('POST', "/v3/applications/{$appId}/keys", $bearer, ['name' => 'k'])['body']);
+        self::assertIsString($minted['key']);
+        self::assertIsArray($minted['record']);
+        $keyId = $minted['record']['id'];
+        self::assertIsString($keyId);
+
+        // A description edit, or a name and website sent unchanged, keeps the approval.
+        self::assertSame('approved', self::patch($bearer, $appId, ['description' => 'Daily readings'])['status']);
+        self::assertSame('approved', self::patch($bearer, $appId, ['name' => 'Parish site', 'website' => 'https://example.test'])['status']);
+
+        // A new name sends it back for review; its keys keep working meanwhile.
+        self::assertSame('changes_pending', self::patch($bearer, $appId, ['name' => 'Diocese site'])['status']);
+        self::assertSame(200, self::httpGet(self::QUOTE, ['X-Api-Key' => $minted['key']])['status'], 'keys keep working during re-review');
+        self::assertSame(409, self::call('POST', "/v3/applications/{$appId}/keys", $bearer, ['name' => 'k2'])['status'], 'no new keys during re-review');
+        $rot = self::call('POST', "/v3/applications/{$appId}/keys/{$keyId}/rotate", $bearer);
+        self::assertSame(200, $rot['status'], 'a key can still be rotated during re-review: ' . $rot['body']);
+        $rotated = self::jsonBody($rot['body']);
+        self::assertIsString($rotated['key']);
+        self::assertSame(200, self::httpGet(self::QUOTE, ['X-Api-Key' => $rotated['key']])['status'], 'the rotated key authenticates during re-review');
+
+        self::assertTrue($repo->approve($appId, 'admin', null), 'an admin can approve the changes');
+        self::assertSame('approved', self::patch($bearer, $appId, ['description' => 'x'])['status']);
+
+        // A new website does the same; rejecting the changes stops the keys.
+        self::assertSame('changes_pending', self::patch($bearer, $appId, ['website' => 'https://other.test'])['status']);
+        self::assertTrue($repo->reject($appId, 'admin', 'Unknown website'));
+        self::assertSame(401, self::httpGet(self::QUOTE, ['X-Api-Key' => $rotated['key']])['status'], 'rejected changes stop the keys');
+    }
+
+    public function testEditingPendingOrRejectedApplicationKeepsItsStatus(): void
+    {
+        $bearer = $this->bearer();
+        $appId  = self::create($bearer);
+        self::assertSame('pending', self::patch($bearer, $appId, ['name' => 'New name'])['status']);
+        ( new ApplicationRepository($this->db) )->reject($appId, 'admin', null);
+        self::assertSame('rejected', self::patch($bearer, $appId, ['name' => 'Newer name'])['status']);
+    }
+
     public function testRotateAndRevokeOwnKey(): void
     {
         $alice  = $this->bearer();

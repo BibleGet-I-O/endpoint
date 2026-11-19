@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BibleGet\Tests\Integration\Repositories;
 
 use BibleGet\Api\Auth\CredentialFactory;
+use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Repositories\ApiKeyRepository;
 use BibleGet\Api\Repositories\ApplicationRepository;
 use BibleGet\Tests\Integration\DatabaseTestCase;
@@ -55,6 +56,50 @@ class ApiKeyRepositoryTest extends DatabaseTestCase
 
         $apps->revoke($this->appId, 'admin', 'abuse');
         self::assertNull($keys->findActiveByHash($hash));
+    }
+
+    public function testMintForApplicationInChecksTheCurrentStatus(): void
+    {
+        $apps  = new ApplicationRepository($this->getConnection());
+        $keys  = new ApiKeyRepository($this->getConnection());
+        $count = fn (): int => (int) $this->getConnection()->query(
+            "SELECT count(*) FROM api_keys WHERE application_id = '{$this->appId}'"
+        )->fetchColumn();
+
+        self::assertNull($keys->mintForApplicationIn($this->appId, 'k', ['approved']), 'pending');
+        $apps->approve($this->appId, 'admin', null);
+        self::assertNotNull($keys->mintForApplicationIn($this->appId, 'k', ['approved']));
+        self::assertTrue($apps->update($this->appId, 'test-user-repo', ['name' => 'Renamed repo test app']));
+        self::assertNull($keys->mintForApplicationIn($this->appId, 'k', ['approved']), 'changes_pending');
+        self::assertSame(1, $count(), 'only the approved mint inserted a key');
+    }
+
+    /**
+     * An edit in flight (row locked, changes_pending not yet committed) must
+     * hold the mint back rather than let it insert on the stale status.
+     */
+    public function testMintForApplicationInWaitsForAnEditInFlight(): void
+    {
+        ( new ApplicationRepository($this->getConnection()) )->approve($this->appId, 'admin', null);
+        $editor = $this->getConnection();
+        Connection::reset();
+        $minter = Connection::getConnection();
+        try {
+            $editor->beginTransaction();
+            ( new ApplicationRepository($editor) )->update($this->appId, 'test-user-repo', ['name' => 'Edit in flight']);
+            $minter->exec("SET lock_timeout = '200ms'");
+            try {
+                ( new ApiKeyRepository($minter) )->mintForApplicationIn($this->appId, 'k', ['approved']);
+                self::fail('Expected the mint to wait for the edit\'s row lock');
+            } catch (\PDOException $e) {
+                self::assertSame('55P03', $e->getCode(), $e->getMessage());
+            }
+        } finally {
+            if ($editor->inTransaction()) {
+                $editor->rollBack();
+            }
+            Connection::reset();
+        }
     }
 
     public function testRevokingApplicationDeactivatesItsKeys(): void
