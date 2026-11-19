@@ -1,0 +1,46 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Doctrine Migrations on the command line, for local and CI databases (migrations:status, migrate, generate,
+ * version --add ...). Reads DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS like the API: the process environment
+ * first, then the .env* files. Not deployed (bin/ is in .github/deploy/rsync-exclude.txt): on the servers the
+ * deploy workflow migrates through POST /_ops/migrate.
+ */
+
+declare(strict_types=1);
+
+use BibleGet\Api\Database\Connection as Pdo;
+use BibleGet\Api\Util\EnvLoader;
+use Doctrine\DBAL\DriverManager;
+use Doctrine\Migrations\Configuration\Connection\ExistingConnection;
+use Doctrine\Migrations\Configuration\Migration\PhpFile;
+use Doctrine\Migrations\DependencyFactory;
+use Doctrine\Migrations\Tools\Console\ConsoleRunner;
+
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+
+EnvLoader::create($root)->safeLoad();
+
+try {
+    $p = Pdo::params();
+} catch (\Throwable $e) {
+    fwrite(STDERR, $e->getMessage() . "\n");
+    exit(1);
+}
+
+$connection = DriverManager::getConnection([
+    'driver'   => 'pdo_pgsql',
+    'host'     => $p['host'],
+    'port'     => (int) $p['port'],
+    'dbname'   => $p['dbname'],
+    'user'     => $p['user'],
+    'password' => $p['password'],
+    'charset'  => 'UTF8',
+]);
+
+ConsoleRunner::run([], DependencyFactory::fromConnection(
+    new PhpFile($root . '/doctrine-migrations.php'),
+    new ExistingConnection($connection)
+));

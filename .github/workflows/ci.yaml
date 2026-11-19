@@ -102,7 +102,9 @@ jobs:
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/046-verse-identity-columns.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/048-api-keys-installations.sql
           PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/051-liturgical-editions.sql
-          PGPASSWORD=bibleget_test psql -h 127.0.0.1 -U bibleget_test -d bibleget_test -v ON_ERROR_STOP=1 -f migrations/052-nvbse-copyright.sql
+          # From 052 on, migrations are Doctrine's (src/Migrations): run them as the deploy does.
+          php bin/doctrine-migrations migrations:sync-metadata-storage --no-interaction
+          php bin/doctrine-migrations migrate --no-interaction
 
       - name: Run unit tests
         run: vendor/bin/phpunit --testsuite Unit --testdox --display-warnings

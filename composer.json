@@ -24,7 +24,9 @@
         "psr/log": "^3.0",
         "monolog/monolog": "^3.9",
         "vlucas/phpdotenv": "^5.6",
-        "firebase/php-jwt": "^7.0"
+        "firebase/php-jwt": "^7.0",
+        "doctrine/dbal": "^4.4",
+        "doctrine/migrations": "^3.9"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.0@stable",
@@ -55,7 +57,9 @@
         "lint": "phpcs",
         "lint:fix": "phpcbf",
         "lint:openapi": "npx @redocly/cli lint openapi.json",
-        "lint:python": "uvx --from xenon==0.9.3 xenon --max-absolute C scripts services/embedding"
+        "lint:python": "uvx --from xenon==0.9.3 xenon --max-absolute C scripts services/embedding",
+        "db:migrate": "@php bin/doctrine-migrations migrate --no-interaction",
+        "db:migrations:status": "@php bin/doctrine-migrations status"
     },
     "config": {
         "allow-plugins": {

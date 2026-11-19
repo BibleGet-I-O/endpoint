@@ -34,6 +34,8 @@ docs/
 # offline batch job run on demand from a local checkout.
 services/
 scripts/
+# bin/doctrine-migrations is the local runner; the servers migrate through POST /_ops/migrate.
+/bin/
 
 # --- Build / dev configuration that has no runtime role ---
 phpcs.xml

@@ -10,6 +10,7 @@ use BibleGet\Api\Handlers\Admin\InstallationAdminHandler;
 use BibleGet\Api\Handlers\Admin\StatsHandler;
 use BibleGet\Api\Handlers\Admin\VersionAdminHandler;
 use BibleGet\Api\Handlers\ApplicationsHandler;
+use BibleGet\Api\Handlers\Ops\MigrateHandler;
 use BibleGet\Api\Handlers\InstallationsHandler;
 use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Handlers\MetadataHandler;
@@ -21,6 +22,7 @@ use BibleGet\Api\Handlers\SimilarSearchHandler;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Middleware\CredentialMiddleware;
+use BibleGet\Api\Http\Middleware\DeployTokenMiddleware;
 use BibleGet\Api\Http\Middleware\ErrorHandlingMiddleware;
 use BibleGet\Api\Http\Middleware\LoggingMiddleware;
 use BibleGet\Api\Http\Middleware\OidcBearerMiddleware;
@@ -82,65 +84,15 @@ class Router
         $requestPathParts = array_values(array_filter(explode('/', $pathParams)));
         $route            = array_shift($requestPathParts) ?? '';
 
-        switch ($route) {
-            case '':
-            case 'quote':
-                $this->handler = new QuoteHandler($this->psr17Factory, $requestPathParts);
-                break;
-
-            case 'metadata':
-                $this->handler = new MetadataHandler($this->psr17Factory, $requestPathParts);
-                break;
-
-            case 'installations':
-                // No CredentialMiddleware: the handler validates the client key or installation token itself.
-                $this->handler = new InstallationsHandler($this->psr17Factory, $requestPathParts);
-                break;
-
-            case 'applications':
-                // Developer routes: a Zitadel access token in Authorization: Bearer, never an X-Api-Key credential.
-                $this->handler = new ApplicationsHandler($this->psr17Factory, $requestPathParts);
-                break;
-
-            case 'admin':
-                // Admin routes: a Zitadel access token with the bibleget_admin role (see the pipeline below).
-                $this->handler = $this->createAdminHandler($requestPathParts);
-                break;
-
-            case 'search':
-                $subRoute     = $requestPathParts[0] ?? '';
-                $subPathParts = array_slice($requestPathParts, 1);
-                switch ($subRoute) {
-                    case 'keyword':
-                        $this->handler = new KeywordSearchHandler($this->psr17Factory, $subPathParts);
-                        break;
-                    case 'semantic':
-                        $this->handler = new SemanticSearchHandler($this->psr17Factory, $subPathParts);
-                        break;
-                    case 'hybrid':
-                        $this->handler = new HybridSearchHandler($this->psr17Factory, $subPathParts);
-                        break;
-                    case 'similar':
-                        $this->handler = new SimilarSearchHandler($this->psr17Factory, $subPathParts);
-                        break;
-                    case '':
-                        // Backward-compatible alias: /v3/search → SearchHandler (delegates to KeywordSearchHandler)
-                        $this->handler = new SearchHandler($this->psr17Factory, $requestPathParts);
-                        break;
-                    default:
-                        $this->handler = $this->createNotFoundHandler();
-                        break;
-                }
-                break;
-
-            default:
-                $this->handler = $this->createNotFoundHandler();
-                break;
-        }
+        $this->handler = $this->createHandler($route, $requestPathParts);
 
         $pipeline = new MiddlewarePipeline($this->handler);
         $pipeline->pipe(new ErrorHandlingMiddleware($this->psr17Factory, self::$debug));
         $pipeline->pipe(new LoggingMiddleware(self::$debug));
+
+        if ($route === '_ops') {
+            $pipeline->pipe(new DeployTokenMiddleware());
+        }
 
         $oidc = self::oidcMiddleware($route);
         if ($oidc !== null) {
@@ -254,6 +206,52 @@ class Router
             'applications' => new OidcBearerMiddleware(),
             'admin'        => ( new OidcBearerMiddleware() )->requireRole(self::ADMIN_ROLE),
             default        => null,
+        };
+    }
+
+    /**
+     * The handler for a route (the first path segment) and the segments after it.
+     *
+     * @param list<string> $pathParts
+     */
+    private function createHandler(string $route, array $pathParts): RequestHandlerInterface
+    {
+        return match ($route) {
+            '', 'quote'    => new QuoteHandler($this->psr17Factory, $pathParts),
+            'metadata'     => new MetadataHandler($this->psr17Factory, $pathParts),
+            // No CredentialMiddleware: the handler validates the client key or installation token itself.
+            'installations' => new InstallationsHandler($this->psr17Factory, $pathParts),
+            // Developer routes: a Zitadel access token in Authorization: Bearer, never an X-Api-Key credential.
+            'applications' => new ApplicationsHandler($this->psr17Factory, $pathParts),
+            // Admin routes: a Zitadel access token with the bibleget_admin role (see the pipeline in route()).
+            'admin'        => $this->createAdminHandler($pathParts),
+            // Deploy-time operations: X-Deploy-Token only (see the pipeline in route()), no credential or OIDC.
+            '_ops'         => match ($pathParts) {
+                ['migrate']           => new MigrateHandler(false),
+                ['migrate', 'status'] => new MigrateHandler(true),
+                default               => $this->createNotFoundHandler(),
+            },
+            'search'       => $this->createSearchHandler($pathParts),
+            default        => $this->createNotFoundHandler(),
+        };
+    }
+
+    /**
+     * The handler for /search/{kind}/...; /search alone is the backward-compatible keyword search.
+     *
+     * @param list<string> $pathParts the segments after /search
+     */
+    private function createSearchHandler(array $pathParts): RequestHandlerInterface
+    {
+        $subPathParts = array_slice($pathParts, 1);
+        return match ($pathParts[0] ?? '') {
+            'keyword'  => new KeywordSearchHandler($this->psr17Factory, $subPathParts),
+            'semantic' => new SemanticSearchHandler($this->psr17Factory, $subPathParts),
+            'hybrid'   => new HybridSearchHandler($this->psr17Factory, $subPathParts),
+            'similar'  => new SimilarSearchHandler($this->psr17Factory, $subPathParts),
+            // Backward-compatible alias: /v3/search → SearchHandler (delegates to KeywordSearchHandler)
+            ''         => new SearchHandler($this->psr17Factory, $pathParts),
+            default    => $this->createNotFoundHandler(),
         };
     }
 
