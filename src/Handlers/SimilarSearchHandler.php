@@ -10,6 +10,7 @@ use BibleGet\Api\Http\Exception\NotFoundException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Util\SearchUtils;
+use BibleGet\Api\Pipeline\Transform\PsalmNumbering;
 use BibleGet\Api\Util\Placement;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
@@ -340,6 +341,8 @@ class SimilarSearchHandler extends AbstractHandler
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
                 // Verse identity and how the edition prints it (Placement).
                 ...Placement::verseFields($row),
+                // A psalm row's Hebrew chapter:verse, to align editions numbered differently.
+                ...PsalmNumbering::hebrewField($row['book'] ?? null, $row['chapter'] ?? null, $row['verse'] ?? null, $version),
                 'score'       => $exact === null ? null : round($exact, 4),
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder

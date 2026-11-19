@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS "TEST2_idx" (
 );
 
 INSERT INTO "TEST2_idx" (abbrev, fullname, chapters, verses_last, book) VALUES
-('Gen', 'Genesis', 3, '10,8,5', 1),
+('Gen', 'Genesis', 3, '10,8,35', 1),
 ('Exod', 'Exodus', 2, '7,5', 2),
 ('Lev', 'Leviticus', 2, '6,4', 3),
 ('Ps', 'Psalms', 55, '6,12,8,8,12,10,17,9,21,18,7,8,6,7,5,11,15,10,21,18,7,8,6,10,12,12,10,17,9,3,5,16,8,8,10,13,18,7,14,11,19,17,8,4,3,13,14,7,13,12,19,6,12,8,6,12,5,4,8,3,11,11,8,10,13,6,5,17,9,14,10,17,7,13,20,6,10,7,13,7,18,6', 23)
@@ -128,6 +128,16 @@ INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
 (48, 9, 44, 'Where their worm dieth not, and the fire is not quenched.', 2, 7)
 ON CONFLICT DO NOTHING;
 
+-- Synthetic Psalm 23 (Hebrew-numbered, as TEST1_idx counts it) for numbering=edition.
+INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES
+(23, 23, 1, 'TEST1 Ps 23:1', 1, 7),
+(23, 23, 2, 'TEST1 Ps 23:2', 1, 7),
+(23, 23, 3, 'TEST1 Ps 23:3', 1, 7),
+(23, 23, 4, 'TEST1 Ps 23:4', 1, 7),
+(23, 23, 5, 'TEST1 Ps 23:5', 1, 7),
+(23, 23, 6, 'TEST1 Ps 23:6', 1, 7)
+ON CONFLICT DO NOTHING;
+
 -- Bible text tables for TEST2 (same sample verses)
 CREATE TABLE IF NOT EXISTS "TEST2" (
     "verseID"     SERIAL PRIMARY KEY,
@@ -165,6 +175,46 @@ INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
 (1, 1, 5, 'And God called the light Day, and the darkness he called Night.', 1, 1),
 (1, 2, 1, 'Thus the heavens and the earth were finished, and all the host of them.', 1, 1),
 (2, 1, 1, 'Now these are the names of the children of Israel.', 1, 2)
+ON CONFLICT DO NOTHING;
+
+-- Synthetic text (no real copyrighted wording): one TEST2 chapter longer than the
+-- 30-verse limit, for the reader full-text switch (AdminHttpTest).
+INSERT INTO "TEST2" (book, chapter, verse, text, testament, section) VALUES
+(1, 3, 1, 'TEST2 Gen 3:1', 1, 1),
+(1, 3, 2, 'TEST2 Gen 3:2', 1, 1),
+(1, 3, 3, 'TEST2 Gen 3:3', 1, 1),
+(1, 3, 4, 'TEST2 Gen 3:4', 1, 1),
+(1, 3, 5, 'TEST2 Gen 3:5', 1, 1),
+(1, 3, 6, 'TEST2 Gen 3:6', 1, 1),
+(1, 3, 7, 'TEST2 Gen 3:7', 1, 1),
+(1, 3, 8, 'TEST2 Gen 3:8', 1, 1),
+(1, 3, 9, 'TEST2 Gen 3:9', 1, 1),
+(1, 3, 10, 'TEST2 Gen 3:10', 1, 1),
+(1, 3, 11, 'TEST2 Gen 3:11', 1, 1),
+(1, 3, 12, 'TEST2 Gen 3:12', 1, 1),
+(1, 3, 13, 'TEST2 Gen 3:13', 1, 1),
+(1, 3, 14, 'TEST2 Gen 3:14', 1, 1),
+(1, 3, 15, 'TEST2 Gen 3:15', 1, 1),
+(1, 3, 16, 'TEST2 Gen 3:16', 1, 1),
+(1, 3, 17, 'TEST2 Gen 3:17', 1, 1),
+(1, 3, 18, 'TEST2 Gen 3:18', 1, 1),
+(1, 3, 19, 'TEST2 Gen 3:19', 1, 1),
+(1, 3, 20, 'TEST2 Gen 3:20', 1, 1),
+(1, 3, 21, 'TEST2 Gen 3:21', 1, 1),
+(1, 3, 22, 'TEST2 Gen 3:22', 1, 1),
+(1, 3, 23, 'TEST2 Gen 3:23', 1, 1),
+(1, 3, 24, 'TEST2 Gen 3:24', 1, 1),
+(1, 3, 25, 'TEST2 Gen 3:25', 1, 1),
+(1, 3, 26, 'TEST2 Gen 3:26', 1, 1),
+(1, 3, 27, 'TEST2 Gen 3:27', 1, 1),
+(1, 3, 28, 'TEST2 Gen 3:28', 1, 1),
+(1, 3, 29, 'TEST2 Gen 3:29', 1, 1),
+(1, 3, 30, 'TEST2 Gen 3:30', 1, 1),
+(1, 3, 31, 'TEST2 Gen 3:31', 1, 1),
+(1, 3, 32, 'TEST2 Gen 3:32', 1, 1),
+(1, 3, 33, 'TEST2 Gen 3:33', 1, 1),
+(1, 3, 34, 'TEST2 Gen 3:34', 1, 1),
+(1, 3, 35, 'TEST2 Gen 3:35', 1, 1)
 ON CONFLICT DO NOTHING;
 
 -- ── VGCL (Vulgata Clementina) ──────────────────────────────────────────
@@ -228,6 +278,88 @@ INSERT INTO "VGCL" (book, chapter, verse, text, testament, section) VALUES
 -- The Clementine's own spellings, for accent-insensitive keyword search (#196)
 (1, 1, 1, 'In principio creavit Deus cælum et terram.', 1, 1),
 (2, 4, 22, 'dicesque ad eum: Hæc dicit Dominus: Filius meus primogenitus Israël.', 1, 1)
+ON CONFLICT DO NOTHING;
+
+-- Synthetic VGCL Psalms 9 (= Hebrew 9 + 10), 21 and 22 (= Hebrew 22, 23), as VGCL_idx counts
+-- them, for numbering=edition and psalm_hebrew (QuoteHandlerHttpTest).
+INSERT INTO "VGCL" (book, chapter, verse, text, testament, section) VALUES
+(23, 9, 1, 'VGCL Ps 9:1', 1, 7),
+(23, 9, 2, 'VGCL Ps 9:2', 1, 7),
+(23, 9, 3, 'VGCL Ps 9:3', 1, 7),
+(23, 9, 4, 'VGCL Ps 9:4', 1, 7),
+(23, 9, 5, 'VGCL Ps 9:5', 1, 7),
+(23, 9, 6, 'VGCL Ps 9:6', 1, 7),
+(23, 9, 7, 'VGCL Ps 9:7', 1, 7),
+(23, 9, 8, 'VGCL Ps 9:8', 1, 7),
+(23, 9, 9, 'VGCL Ps 9:9', 1, 7),
+(23, 9, 10, 'VGCL Ps 9:10', 1, 7),
+(23, 9, 11, 'VGCL Ps 9:11', 1, 7),
+(23, 9, 12, 'VGCL Ps 9:12', 1, 7),
+(23, 9, 13, 'VGCL Ps 9:13', 1, 7),
+(23, 9, 14, 'VGCL Ps 9:14', 1, 7),
+(23, 9, 15, 'VGCL Ps 9:15', 1, 7),
+(23, 9, 16, 'VGCL Ps 9:16', 1, 7),
+(23, 9, 17, 'VGCL Ps 9:17', 1, 7),
+(23, 9, 18, 'VGCL Ps 9:18', 1, 7),
+(23, 9, 19, 'VGCL Ps 9:19', 1, 7),
+(23, 9, 20, 'VGCL Ps 9:20', 1, 7),
+(23, 9, 21, 'VGCL Ps 9:21', 1, 7),
+(23, 9, 22, 'VGCL Ps 9:22', 1, 7),
+(23, 9, 23, 'VGCL Ps 9:23', 1, 7),
+(23, 9, 24, 'VGCL Ps 9:24', 1, 7),
+(23, 9, 25, 'VGCL Ps 9:25', 1, 7),
+(23, 9, 26, 'VGCL Ps 9:26', 1, 7),
+(23, 9, 27, 'VGCL Ps 9:27', 1, 7),
+(23, 9, 28, 'VGCL Ps 9:28', 1, 7),
+(23, 9, 29, 'VGCL Ps 9:29', 1, 7),
+(23, 9, 30, 'VGCL Ps 9:30', 1, 7),
+(23, 9, 31, 'VGCL Ps 9:31', 1, 7),
+(23, 9, 32, 'VGCL Ps 9:32', 1, 7),
+(23, 9, 33, 'VGCL Ps 9:33', 1, 7),
+(23, 9, 34, 'VGCL Ps 9:34', 1, 7),
+(23, 9, 35, 'VGCL Ps 9:35', 1, 7),
+(23, 9, 36, 'VGCL Ps 9:36', 1, 7),
+(23, 9, 37, 'VGCL Ps 9:37', 1, 7),
+(23, 9, 38, 'VGCL Ps 9:38', 1, 7),
+(23, 9, 39, 'VGCL Ps 9:39', 1, 7),
+(23, 21, 1, 'VGCL Ps 21:1', 1, 7),
+(23, 21, 2, 'VGCL Ps 21:2', 1, 7),
+(23, 21, 3, 'VGCL Ps 21:3', 1, 7),
+(23, 21, 4, 'VGCL Ps 21:4', 1, 7),
+(23, 21, 5, 'VGCL Ps 21:5', 1, 7),
+(23, 21, 6, 'VGCL Ps 21:6', 1, 7),
+(23, 21, 7, 'VGCL Ps 21:7', 1, 7),
+(23, 21, 8, 'VGCL Ps 21:8', 1, 7),
+(23, 21, 9, 'VGCL Ps 21:9', 1, 7),
+(23, 21, 10, 'VGCL Ps 21:10', 1, 7),
+(23, 21, 11, 'VGCL Ps 21:11', 1, 7),
+(23, 21, 12, 'VGCL Ps 21:12', 1, 7),
+(23, 21, 13, 'VGCL Ps 21:13', 1, 7),
+(23, 21, 14, 'VGCL Ps 21:14', 1, 7),
+(23, 21, 15, 'VGCL Ps 21:15', 1, 7),
+(23, 21, 16, 'VGCL Ps 21:16', 1, 7),
+(23, 21, 17, 'VGCL Ps 21:17', 1, 7),
+(23, 21, 18, 'VGCL Ps 21:18', 1, 7),
+(23, 21, 19, 'VGCL Ps 21:19', 1, 7),
+(23, 21, 20, 'VGCL Ps 21:20', 1, 7),
+(23, 21, 21, 'VGCL Ps 21:21', 1, 7),
+(23, 21, 22, 'VGCL Ps 21:22', 1, 7),
+(23, 21, 23, 'VGCL Ps 21:23', 1, 7),
+(23, 21, 24, 'VGCL Ps 21:24', 1, 7),
+(23, 21, 25, 'VGCL Ps 21:25', 1, 7),
+(23, 21, 26, 'VGCL Ps 21:26', 1, 7),
+(23, 21, 27, 'VGCL Ps 21:27', 1, 7),
+(23, 21, 28, 'VGCL Ps 21:28', 1, 7),
+(23, 21, 29, 'VGCL Ps 21:29', 1, 7),
+(23, 21, 30, 'VGCL Ps 21:30', 1, 7),
+(23, 21, 31, 'VGCL Ps 21:31', 1, 7),
+(23, 21, 32, 'VGCL Ps 21:32', 1, 7),
+(23, 22, 1, 'VGCL Ps 22:1', 1, 7),
+(23, 22, 2, 'VGCL Ps 22:2', 1, 7),
+(23, 22, 3, 'VGCL Ps 22:3', 1, 7),
+(23, 22, 4, 'VGCL Ps 22:4', 1, 7),
+(23, 22, 5, 'VGCL Ps 22:5', 1, 7),
+(23, 22, 6, 'VGCL Ps 22:6', 1, 7)
 ON CONFLICT DO NOTHING;
 
 -- ── DRB (Douay-Rheims Bible) ───────────────────────────────────────────

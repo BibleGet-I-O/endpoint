@@ -265,4 +265,124 @@ class QuoteHandlerHttpTest extends ServerTestCase
             Connection::reset();
         }
     }
+
+    // ── numbering=edition and psalm_hebrew ─────────────────
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function body(string $path): array
+    {
+        $r = self::httpGet($path);
+        self::assertSame(200, $r['status'], $r['body']);
+        return self::jsonBody($r['body']);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<string> Each row's chapter:verse.
+     */
+    private static function refs(array $rows): array
+    {
+        return array_map(
+            static fn (array $row): string => self::scalar($row['chapter']) . ':' . self::scalar($row['verse']),
+            $rows
+        );
+    }
+
+    private static function scalar(mixed $value): string
+    {
+        return is_scalar($value) ? (string) $value : '';
+    }
+
+    public function testEditionNumberingReadsVulgatePsalmsByTheirOwnNumber(): void
+    {
+        $edition = self::results('/v3/quote?query=Ps22&version=VGCL&numbering=edition');
+        self::assertCount(6, $edition);
+        self::assertSame([22], array_values(array_unique(array_column($edition, 'chapter'))));
+        self::assertSame('23:1', $edition[0]['psalm_hebrew']);
+        self::assertSame('VGCL Ps 22:1', $edition[0]['text']);
+
+        $hebrew = self::results('/v3/quote?query=Ps22&version=VGCL');
+        self::assertCount(32, $hebrew);
+        self::assertSame([21], array_values(array_unique(array_column($hebrew, 'chapter'))));
+        self::assertSame('22:1', $hebrew[0]['psalm_hebrew']);
+    }
+
+    public function testEditionNumberingReadsADualCitationAsTheEditionsOwnNumber(): void
+    {
+        // Ps 22(23) and Ps 23(22) are the same psalm: Vulgate 22, Hebrew 23.
+        foreach (['Ps22(23)', 'Ps23(22)'] as $query) {
+            $vgcl = self::results('/v3/quote?query=' . rawurlencode($query) . '&version=VGCL&numbering=edition');
+            self::assertCount(6, $vgcl, $query);
+            self::assertSame([22], array_values(array_unique(array_column($vgcl, 'chapter'))), $query);
+            self::assertSame('23:1', $vgcl[0]['psalm_hebrew'], $query);
+
+            $test1 = self::results('/v3/quote?query=' . rawurlencode($query) . '&version=TEST1&numbering=edition');
+            self::assertCount(6, $test1, $query);
+            self::assertSame([23], array_values(array_unique(array_column($test1, 'chapter'))), $query);
+            self::assertSame('TEST1 Ps 23:1', $test1[0]['text'], $query);
+        }
+
+        // Both editions in one request: each gets its own number.
+        $both = self::results('/v3/quote?query=' . rawurlencode('Ps22(23),1') . '&version=VGCL,TEST1&numbering=edition');
+        self::assertSame(['VGCL Ps 22:1', 'TEST1 Ps 23:1'], array_column($both, 'text'));
+    }
+
+    public function testEditionNumberingIsTheDefaultForHebrewEditions(): void
+    {
+        $edition = self::results('/v3/quote?query=Ps23&version=TEST1&numbering=edition');
+        $hebrew  = self::results('/v3/quote?query=Ps23&version=TEST1');
+
+        self::assertCount(6, $edition);
+        self::assertSame(self::refs($hebrew), self::refs($edition));
+        self::assertSame(array_column($hebrew, 'text'), array_column($edition, 'text'));
+        self::assertSame('23:4', $edition[3]['psalm_hebrew']);
+    }
+
+    public function testVulgatePsalmSpanningTwoHebrewPsalmsReportsBoth(): void
+    {
+        $rows = self::results('/v3/quote?query=Ps9&version=VGCL&numbering=edition');
+
+        self::assertCount(39, $rows);
+        self::assertSame('9:1', $rows[0]['psalm_hebrew']);
+        self::assertSame('9:21', $rows[20]['psalm_hebrew']);
+        self::assertSame('10:1', $rows[21]['psalm_hebrew']);
+        self::assertSame('10:18', $rows[38]['psalm_hebrew']);
+    }
+
+    public function testEditionNumberingBoundsUseTheEditionIndex(): void
+    {
+        $edition = self::body('/v3/quote?query=Ps9,39&version=VGCL&numbering=edition');
+        self::assertSame([], $edition['errors']);
+        self::assertIsArray($edition['results']);
+        self::assertCount(1, $edition['results']);
+        self::assertSame('10:18', $edition['results'][0]['psalm_hebrew']);
+
+        $hebrew = self::body('/v3/quote?query=Ps9,39&version=VGCL');
+        self::assertSame([], $hebrew['results']);
+        self::assertStringContainsString('Psalm <9> in the Hebrew numbering', (string) json_encode($hebrew['errors']));
+    }
+
+    public function testEditionNumberingKeepsTheThirtyVerseCap(): void
+    {
+        // TEST2 is copyrighted; its synthetic Genesis 3 has 35 verses.
+        self::assertCount(30, self::results('/v3/quote?query=Genesis3&version=TEST2&numbering=edition'));
+    }
+
+    public function testUnknownNumberingFallsBackToHebrew(): void
+    {
+        $rows = self::results('/v3/quote?query=Ps22&version=VGCL&numbering=foo');
+
+        self::assertSame(self::refs(self::results('/v3/quote?query=Ps22&version=VGCL')), self::refs($rows));
+        self::assertSame([21], array_values(array_unique(array_column($rows, 'chapter'))));
+    }
+
+    public function testOtherBooksCarryNoPsalmHebrew(): void
+    {
+        $rows = self::results('/v3/quote?query=Genesis1,1&version=TEST1&numbering=edition');
+
+        self::assertCount(1, $rows);
+        self::assertArrayNotHasKey('psalm_hebrew', $rows[0]);
+    }
 }

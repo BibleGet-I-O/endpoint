@@ -58,8 +58,12 @@ class QueryFormulator
                     $baseTextTradition
                 );
 
-                // Resolve Psalm numbers (Hebrew by default) to this version's chapter and verse
-                $remappedQuery = $this->psalmNumbering->resolve($remappedQuery, $version);
+                // Resolve Psalm numbers (Hebrew by default) to this version's chapter and verse;
+                // with numbering=edition they already are this version's own, and of two
+                // numbers the one this version prints is taken.
+                $remappedQuery = $this->ctx->editionNumbering()
+                    ? $this->psalmNumbering->editionChapters($remappedQuery, $version)
+                    : $this->psalmNumbering->resolve($remappedQuery, $version);
 
                 // Compile AST → SQL with per-segment textTradition
                 $sqls = $this->compiler->compile(

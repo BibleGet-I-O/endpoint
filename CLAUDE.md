@@ -146,7 +146,7 @@ JSON (default), XML, and HTML. Controlled by `return` query param or `Accept` he
 - Bible notation auto-detection converts between ENGLISH and EUROPEAN formats
 - Copyright-restricted versions enforce a 30-verse-per-request limit
 - Verse ordering uses `verseID` field to handle Greek subverses correctly
-- Credentials, not IPs: data routes need `X-Api-Key` (project key `bibleget_…` or installation token `bginst_…`; client keys `bgclient_…` only register installations via `POST /installations`). Required when `APP_ENV=production` or `REQUIRE_CREDENTIALS=true`. Per-credential sliding-hour rate limit (project 1000, installation 300, system `reader` exempt) → `TooManyRequestsException` (429); `/applications` and `/admin/*` take a Zitadel Bearer token (role `bibleget_admin` for admin). Design: `docs/superpowers/specs/2026-11-17-api-keys-installations-design.md`
+- Credentials, not IPs: data routes need `X-Api-Key` (project key `bibleget_…` or installation token `bginst_…`; client keys `bgclient_…` only register installations via `POST /installations`). Required when `APP_ENV=production` or `REQUIRE_CREDENTIALS=true`. Per-credential sliding-hour rate limit (project 1000, installation 300; a key's `rate_limit_per_hour` overrides it, and NULL means that default, not unlimited; keys of an `is_system` application, such as the website's `reader` and `read` keys, are exempt) → `TooManyRequestsException` (429); `/applications` and `/admin/*` take a Zitadel Bearer token (role `bibleget_admin` for admin). Design: `docs/superpowers/specs/2026-11-17-api-keys-installations-design.md`
 
 ## Live infrastructure (catholicdigitalcommons.org)
 
@@ -229,7 +229,7 @@ sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
 
 ### Minting keys (scripts are not deployed)
 
-`scripts/mint-reader-key.php` (the frontend's `reader` key) and
+`scripts/mint-reader-key.php` (the website's keys, both on the system application "BibleGet website": `reader` by default, for signed-in users; `--scope=read` for a `read` key for visitors' pages, to which the API still applies the 30-verse cap on copyrighted editions; both are unlimited because the system application is exempt from rate limiting, not because of their NULL `rate_limit_per_hour`) and
 `scripts/mint-client-key.php` (a plugin release's client key) are excluded
 from the rsync deploy on purpose: anything outside `public/` might be
 web-reachable. Run them from a local checkout through an SSH tunnel to the

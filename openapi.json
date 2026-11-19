@@ -42,6 +42,9 @@
                     },
                     {
                         "$ref": "#/components/parameters/text_tradition"
+                    },
+                    {
+                        "$ref": "#/components/parameters/numbering"
                     }
                 ],
                 "responses": {
@@ -2988,6 +2991,169 @@
                 }
             }
         },
+        "/admin/versions": {
+            "get": {
+                "summary": "List Bible editions with their full-text flag",
+                "description": "Every Bible edition, ordered by sigla. reader_full_text says whether the `reader` key may serve the edition's chapters whole; copyright is the flag behind the 30-verse limit.",
+                "operationId": "adminListVersions",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Editions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "versions": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/VersionRecord"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
+        "/admin/versions/{sigla}": {
+            "get": {
+                "summary": "Show one Bible edition",
+                "description": "Returns one edition's `versions_available` record, including whether the website reader may show its full text (`reader_full_text`).",
+                "operationId": "adminGetVersion",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "sigla",
+                        "in": "path",
+                        "required": true,
+                        "description": "Edition sigla, upper case",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2,10}$"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edition.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VersionRecord"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Switch an edition's full text for the reader key",
+                "description": "Turns on or off the `reader` key's right to receive this edition's chapters whole instead of at most 30 verses.",
+                "operationId": "adminSetVersionFullText",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "sigla",
+                        "in": "path",
+                        "required": true,
+                        "description": "Edition sigla, upper case",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2,10}$"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VersionFullTextInput"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VersionRecord"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/MalformedJson"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/BearerUnauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/ServiceUnavailable"
+                    }
+                }
+            }
+        },
         "/admin/stats": {
             "get": {
                 "summary": "Usage statistics",
@@ -3191,6 +3357,15 @@
                             "HEBREW"
                         ],
                         "example": "GREEK"
+                    },
+                    "numbering": {
+                        "type": "string",
+                        "description": "How a Psalm number in `query` is read: `hebrew` (default; any other value falls back to it) maps the Hebrew number to each edition's own numbering, `edition` takes it as each edition's own number. See the `numbering` query parameter.",
+                        "enum": [
+                            "hebrew",
+                            "edition"
+                        ],
+                        "default": "hebrew"
                     }
                 },
                 "required": [
@@ -3447,6 +3622,11 @@
                                 "omitted": {
                                     "type": "boolean",
                                     "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                                },
+                                "psalm_hebrew": {
+                                    "type": "string",
+                                    "description": "On a Psalms row (book 23) only, in every edition: the row's chapter and verse in the Hebrew numbering, as `chapter:verse` (VGCL Ps 9:22 is `10:1`, VGCL Ps 22:4 is `23:4`; a Hebrew-numbered edition gives its own `chapter:verse`). Lets a reader align editions numbered differently. Absent on rows of other books.",
+                                    "example": "23:4"
                                 },
                                 "text_tradition": {
                                     "type": "string",
@@ -3832,6 +4012,11 @@
                     "omitted": {
                         "type": "boolean",
                         "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                    },
+                    "psalm_hebrew": {
+                        "type": "string",
+                        "description": "On a Psalms row (book 23) only, in every edition: the row's chapter and verse in the Hebrew numbering, as `chapter:verse` (VGCL Ps 9:22 is `10:1`, VGCL Ps 22:4 is `23:4`; a Hebrew-numbered edition gives its own `chapter:verse`). Lets a reader align editions numbered differently. Absent on rows of other books.",
+                        "example": "23:4"
                     },
                     "text_tradition": {
                         "type": "string",
@@ -16757,6 +16942,11 @@
                                     "type": "boolean",
                                     "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
                                 },
+                                "psalm_hebrew": {
+                                    "type": "string",
+                                    "description": "On a Psalms row (book 23) only, in every edition: the row's chapter and verse in the Hebrew numbering, as `chapter:verse` (VGCL Ps 9:22 is `10:1`, VGCL Ps 22:4 is `23:4`; a Hebrew-numbered edition gives its own `chapter:verse`). Lets a reader align editions numbered differently. Absent on rows of other books.",
+                                    "example": "23:4"
+                                },
                                 "text_tradition": {
                                     "type": "string",
                                     "description": "Which text tradition the row belongs to, where an edition prints two (Esther: `HEBREW` or `GREEK`). Null for most verses.",
@@ -17199,6 +17389,11 @@
                         "type": "boolean",
                         "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
                     },
+                    "psalm_hebrew": {
+                        "type": "string",
+                        "description": "On a Psalms row (book 23) only, in every edition: the row's chapter and verse in the Hebrew numbering, as `chapter:verse` (VGCL Ps 9:22 is `10:1`, VGCL Ps 22:4 is `23:4`; a Hebrew-numbered edition gives its own `chapter:verse`). Lets a reader align editions numbered differently. Absent on rows of other books.",
+                        "example": "23:4"
+                    },
                     "text": {
                         "type": "string",
                         "description": "The verse text"
@@ -17354,6 +17549,11 @@
                     "omitted": {
                         "type": "boolean",
                         "description": "The edition prints the verse number without text: the critical text omits the verse (e.g. Mk 9:44 in CEI 2008). `text` is empty. Omitted verses are never returned by search."
+                    },
+                    "psalm_hebrew": {
+                        "type": "string",
+                        "description": "On a Psalms row (book 23) only, in every edition: the row's chapter and verse in the Hebrew numbering, as `chapter:verse` (VGCL Ps 9:22 is `10:1`, VGCL Ps 22:4 is `23:4`; a Hebrew-numbered edition gives its own `chapter:verse`). Lets a reader align editions numbered differently. Absent on rows of other books.",
+                        "example": "23:4"
                     },
                     "text": {
                         "type": "string",
@@ -17710,6 +17910,48 @@
                     }
                 }
             },
+            "VersionRecord": {
+                "type": "object",
+                "required": [
+                    "sigla",
+                    "fullname",
+                    "year",
+                    "language",
+                    "copyright",
+                    "reader_full_text"
+                ],
+                "properties": {
+                    "sigla": {
+                        "type": "string"
+                    },
+                    "fullname": {
+                        "type": "string"
+                    },
+                    "year": {
+                        "type": "integer"
+                    },
+                    "language": {
+                        "type": "string"
+                    },
+                    "copyright": {
+                        "type": "boolean"
+                    },
+                    "reader_full_text": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "VersionFullTextInput": {
+                "type": "object",
+                "required": [
+                    "reader_full_text"
+                ],
+                "properties": {
+                    "reader_full_text": {
+                        "type": "boolean"
+                    }
+                }
+            },
             "ClientKeyRecord": {
                 "type": "object",
                 "properties": {
@@ -17910,6 +18152,20 @@
                         "value": "html",
                         "summary": "return data in HTML format"
                     }
+                }
+            },
+            "numbering": {
+                "name": "numbering",
+                "in": "query",
+                "description": "How a Psalm number in `query` is read. `hebrew` (the default; any other value falls back to it): as the Hebrew number, which is mapped to each edition's own numbering (VGCL and DRB store the Psalms under their Vulgate numbers), so `Ps22` is Vulgate Psalm 21 in VGCL. `edition`: as each requested edition's own number, checked against that edition's index, so `Ps22` is VGCL's Psalm 22 (Hebrew 23); a Hebrew-numbered edition reads the same either way. Of two numbers (`Ps22(23)` or `Ps23(22)`), each edition takes the one it prints: the smaller (Vulgate) in VGCL and DRB, the larger (Hebrew) in the others, so both give VGCL Psalm 22 and NABRE Psalm 23. Every Psalms row carries its Hebrew reference in `psalm_hebrew`. Copyright limits apply as with `hebrew`.",
+                "required": false,
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "hebrew",
+                        "edition"
+                    ],
+                    "default": "hebrew"
                 }
             },
             "text_tradition": {

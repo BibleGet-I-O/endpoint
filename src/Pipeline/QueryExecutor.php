@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Pipeline;
 
+use BibleGet\Api\Pipeline\Transform\PsalmNumbering;
 use BibleGet\Api\Util\Placement;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
@@ -108,10 +109,12 @@ class QueryExecutor
         $row['book']        = $this->ctx->INDEXES[$currentVariant]['biblebooks'][$booknum];
 
         $row['section'] = is_numeric($row['section']) ? (int) $row['section'] : 0;
+        // A psalm row's Hebrew chapter:verse, to align editions numbered differently.
+        $row += PsalmNumbering::hebrewField($universal_booknum, $row['chapter'], $row['verse'], $currentVariant);
         // sort_order is kept here so SearchUtils::assignCanonicalOrder (called by
         // QuoteHandler after the pipeline runs) can rank rows; it is unset
         // by the helper before the row leaves the API boundary.
-        unset($row['embedding'], $row['text_hash'], $row['embedded_text_hash']);
+        unset($row['embedding'], $row['embedding_labse'], $row['text_hash'], $row['embedded_text_hash']);
         // How the edition prints the row (printed_chapter, verse_label, omitted).
         $row                  = array_merge($row, Placement::fromRow($row));
         $row['originalquery'] = $this->ctx->originalQueries[$this->i] ?? '';

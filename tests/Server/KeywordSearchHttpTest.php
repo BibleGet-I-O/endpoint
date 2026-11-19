@@ -34,6 +34,17 @@ class KeywordSearchHttpTest extends ServerTestCase
         self::assertSame([[10, 1, 9, '10:1', false], [12, 1, 11, '12:1', false]], $rows);
     }
 
+    public function testPsalmRowCarriesItsHebrewReference(): void
+    {
+        // VGCL 9:22 (synthetic text "VGCL Ps 9:22") is Hebrew 10:1.
+        $r = self::httpGet('/v3/search/keyword?keyword=' . rawurlencode('Ps 9:22') . '&version=VGCL&match=exact');
+        self::assertSame(200, $r['status'], $r['body']);
+
+        $body = self::jsonBody($r['body']);
+        self::assertCount(1, $body['results']);
+        self::assertSame('10:1', $body['results'][0]['psalm_hebrew'] ?? 'missing');
+    }
+
     public function testKeywordRouteStemmingWorks(): void
     {
         // "create" should match "created" via English stemmer

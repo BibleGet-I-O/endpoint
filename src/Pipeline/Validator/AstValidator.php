@@ -25,7 +25,9 @@ use BibleGet\Api\Util\StringUtils;
  *
  * A Psalm reference is checked against each version as that version stores it
  * (PsalmNumbering): "Salmo 131 (132), 6-7" is Hebrew 132 in CEI2008 and
- * Vulgate 131 in VGCL, and each must exist where it is looked up.
+ * Vulgate 131 in VGCL, and each must exist where it is looked up. With edition numbering
+ * (numbering=edition) a Psalm number is the edition's own: it is checked as written against
+ * each edition's index, and the Hebrew verse limits do not apply.
  */
 final class AstValidator
 {
@@ -53,17 +55,22 @@ final class AstValidator
 
     private PsalmNumbering $psalmNumbering;
 
+    /** Psalm numbers are each edition's own (numbering=edition), not Hebrew. */
+    private bool $editionNumbering;
+
     /**
      * @param array<int, array<int, array<int, string>>> $bibleBooks
      * @param array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> $indexes
      * @param array<int, string> $requestedVersions
+     * @param bool $editionNumbering Psalm numbers are each edition's own (numbering=edition).
      */
-    public function __construct(array $bibleBooks, array $indexes, array $requestedVersions)
+    public function __construct(array $bibleBooks, array $indexes, array $requestedVersions, bool $editionNumbering = false)
     {
         $this->bibleBooks        = $bibleBooks;
         $this->indexes           = $indexes;
         $this->requestedVersions = $requestedVersions;
         $this->psalmNumbering    = new PsalmNumbering();
+        $this->editionNumbering  = $editionNumbering;
     }
 
     /**
@@ -118,14 +125,18 @@ final class AstValidator
             return null;
         }
 
-        // Shape (numbers >= 1, ranges in order), once, on the reference as written
-        // with Psalms read as Hebrew numbers; then bounds, per version, on the
-        // reference as that version stores it.
         $resolvedQuery = new BibleQuery($nonZeroBookIdx, $query->segments);
-        $this->validateShape($this->psalmNumbering->resolve($resolvedQuery, ''));
-        if (empty($this->errors)) {
-            foreach ($this->validatedVariants as $variant) {
-                $this->validateBounds($this->psalmNumbering->resolve($resolvedQuery, $variant), $nonZeroBookIdx, $variant);
+        if ($this->editionNumbering) {
+            $this->validateEditionReadings($resolvedQuery, $nonZeroBookIdx);
+        } else {
+            // Shape (numbers >= 1, ranges in order), once, on the reference as written
+            // with Psalms read as Hebrew numbers; then bounds, per version, on the
+            // reference as that version stores it.
+            $this->validateShape($this->stored($resolvedQuery, ''));
+            if (empty($this->errors)) {
+                foreach ($this->validatedVariants as $variant) {
+                    $this->validateBounds($this->stored($resolvedQuery, $variant), $nonZeroBookIdx, $variant);
+                }
             }
         }
 
@@ -135,6 +146,44 @@ final class AstValidator
 
         // Return a new BibleQuery with the resolved book index
         return new BibleQuery($nonZeroBookIdx, $query->segments);
+    }
+
+    /**
+     * With numbering=edition each version reads a two-number psalm as the number it prints
+     * (Vulgate for VGCL and DRB, Hebrew otherwise), so a range runs forward or backward in
+     * that version's own numbering: shape on each version's reading, then (if every reading
+     * has a valid shape) bounds on each. A shape error that several readings share (any
+     * non-Psalm reference) is reported once.
+     */
+    private function validateEditionReadings(BibleQuery $query, int $nonZeroBookIdx): void
+    {
+        $readings    = [];
+        $shapeErrors = [];
+        foreach ($this->validatedVariants as $variant) {
+            $readings[$variant] = $this->stored($query, $variant);
+            $this->validateShape($readings[$variant]);
+            foreach ($this->errors as $error) {
+                $shapeErrors[$error->message . "\0" . $error->position] = $error;
+            }
+            $this->errors = [];
+        }
+        $this->errors = array_values($shapeErrors);
+        if (empty($this->errors)) {
+            foreach ($readings as $variant => $stored) {
+                $this->validateBounds($stored, $nonZeroBookIdx, $variant);
+            }
+        }
+    }
+
+    /**
+     * The reference as $variant stores it ('' for the Hebrew reading): Psalms resolved from
+     * Hebrew numbers, or with numbering=edition, taken as the edition's own numbers.
+     */
+    private function stored(BibleQuery $query, string $variant): BibleQuery
+    {
+        return $this->editionNumbering
+            ? $this->psalmNumbering->editionChapters($query, $variant)
+            : $this->psalmNumbering->resolve($query, $variant);
     }
 
     /**
@@ -243,7 +292,7 @@ final class AstValidator
                         sprintf('Invalid verse number: %d. Verses must be 1 or greater.', $ref->verse),
                         $ref->position
                     );
-                } elseif ($query->book === PsalmNumbering::PSALMS_BOOK_NUM && $ref->verse !== null) {
+                } elseif (!$this->editionNumbering && $query->book === PsalmNumbering::PSALMS_BOOK_NUM && $ref->verse !== null) {
                     $limit = PsalmNumbering::hebrewVerseLimit($ref->chapter);
                     if ($limit !== null && $ref->verse > $limit) {
                         $this->errors[] = new ValidationError(

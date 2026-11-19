@@ -32,6 +32,8 @@ class CredentialsHttpTest extends ServerTestCase
     private string $clientKeyId;
     private string $clientKey;
     private string $installationToken;
+    /** @var list<string> keys minted on the system application by mint-reader-key.php */
+    private array $systemKeyIds = [];
 
     protected static function serverPort(): int
     {
@@ -93,7 +95,45 @@ class CredentialsHttpTest extends ServerTestCase
         foreach ($this->appIds as $appId) {
             $this->db->prepare('DELETE FROM applications WHERE id = ?')->execute([$appId]);
         }
+        foreach ($this->systemKeyIds as $keyId) {
+            $this->db->prepare('DELETE FROM api_keys WHERE id = ?')->execute([$keyId]);
+        }
         Connection::reset();
+    }
+
+    /**
+     * Mints a key with scripts/mint-reader-key.php, as the website's keys are minted, against
+     * the test database (the effective .env.test values are passed to the child explicitly,
+     * as in MintScriptsTest).
+     *
+     * @return array{plain: string, id: string}
+     */
+    private function mintWebsiteKey(string $scope): array
+    {
+        $env = [];
+        foreach (['APP_ENV', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS'] as $k) {
+            if (isset($_ENV[$k]) && is_scalar($_ENV[$k])) {
+                $env[$k] = (string) $_ENV[$k];
+            }
+        }
+        self::assertStringEndsWith('_test', $env['DB_NAME'] ?? '', 'the script must run against the test database');
+        $cmd = [PHP_BINARY, dirname(__DIR__, 2) . '/scripts/mint-reader-key.php', '--scope=' . $scope, 'credentials-http-test'];
+        $p   = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, array_merge(getenv(), $env));
+        self::assertIsResource($p);
+        $plain = trim((string) stream_get_contents($pipes[1]));
+        $err   = (string) stream_get_contents($pipes[2]);
+        self::assertSame(0, proc_close($p), $err);
+
+        $stmt = $this->db->query(
+            "SELECT k.id FROM api_keys k JOIN applications a ON a.id = k.application_id
+             WHERE a.is_system AND a.name = 'BibleGet website' ORDER BY k.created_at DESC, k.id DESC LIMIT 1"
+        );
+        self::assertNotFalse($stmt);
+        $id = $stmt->fetchColumn();
+        self::assertIsString($id);
+        $this->systemKeyIds[]  = $id;
+        $this->credentialIds[] = $id;
+        return ['plain' => $plain, 'id' => $id];
     }
 
     /**
@@ -211,5 +251,26 @@ class CredentialsHttpTest extends ServerTestCase
             [['route' => 'metadata', 'requests' => 1], ['route' => 'quote', 'requests' => 1]],
             $s->fetchAll()
         );
+    }
+
+    public function testWebsiteReadKeyIsNotRateLimited(): void
+    {
+        // A NULL rate_limit_per_hour is the default limit, not "unlimited": a project key
+        // minted with no limit still counts against 1000 an hour.
+        $project = $this->projectKey(null);
+        $r       = self::httpGet(self::QUOTE, ['X-Api-Key' => $project['plain']]);
+        self::assertSame(200, $r['status'], $r['body']);
+        self::assertSame('1000', $r['headers']['x-ratelimit-limit'] ?? null);
+
+        // The website's read key is unlimited because it sits on the is_system application:
+        // no limit is enforced, so no X-RateLimit-* headers are sent.
+        $website = $this->mintWebsiteKey('read');
+        for ($i = 0; $i < 3; $i++) {
+            $r = self::httpGet(self::QUOTE, ['X-Api-Key' => $website['plain']]);
+            self::assertSame(200, $r['status'], $r['body']);
+            self::assertArrayNotHasKey('x-ratelimit-limit', $r['headers']);
+            self::assertArrayNotHasKey('x-ratelimit-remaining', $r['headers']);
+            self::assertArrayNotHasKey('x-ratelimit-reset', $r['headers']);
+        }
     }
 }

@@ -100,7 +100,8 @@ class QueryValidator
         $validator = new AstValidator(
             $this->ctx->BIBLEBOOKS,
             $this->ctx->INDEXES,
-            $this->ctx->REQUESTED_VERSIONS
+            $this->ctx->REQUESTED_VERSIONS,
+            $this->ctx->editionNumbering()
         );
 
         if ($ast->book !== 0) {

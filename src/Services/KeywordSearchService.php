@@ -6,6 +6,7 @@ namespace BibleGet\Api\Services;
 
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Pipeline\Transform\PsalmNumbering;
 use BibleGet\Api\Util\Placement;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
@@ -288,6 +289,8 @@ class KeywordSearchService
                 'section'     => is_numeric($row['section']) ? (int) $row['section'] : 0,
                 // Verse identity and how the edition prints it (Placement).
                 ...Placement::verseFields($row),
+                // A psalm row's Hebrew chapter:verse, to align editions numbered differently.
+                ...PsalmNumbering::hebrewField($row['book'] ?? null, $row['chapter'] ?? null, $row['verse'] ?? null, $version),
                 'score'       => $exact === null ? null : round($exact, 4),
                 'score_exact' => $exact,
                 // Carried forward solely so SearchUtils::assignCanonicalOrder

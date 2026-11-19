@@ -48,6 +48,13 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * Hebrew one in places (its Ps 15 has 10 verses, where Hebrew 16 and the Nova Vulgata have 11),
  * and those differences are not mapped.
  *
+ * With numbering=edition the reference is not resolved: it is each edition's own number.
+ * A reference that gives two numbers is then read per edition (editionChapters): the larger
+ * for a Hebrew-numbered edition, the smaller for a Vulgate-numbered one, so "Psalm 22 (23)"
+ * is VGCL 22 and NABRE 23, as each edition prints it.
+ * toHebrew() inverts the table for one stored verse, and every Psalms result row carries
+ * its Hebrew reference (psalm_hebrew) so editions numbered differently can be aligned.
+ *
  * Pure function of the AST: no database access, no SQL.
  */
 final class PsalmNumbering
@@ -85,6 +92,45 @@ final class PsalmNumbering
         return $ref->alternateChapter === null
             ? $ref->chapter
             : max($ref->chapter, $ref->alternateChapter);
+    }
+
+    /**
+     * The number $version gives a Psalm reference with numbering=edition: its only number, or of
+     * its two the larger (Hebrew) for a Hebrew-numbered edition, the smaller (Vulgate) for VGCL
+     * and DRB.
+     */
+    public static function editionChapter(VerseRef $ref, string $version): int
+    {
+        if ($ref->alternateChapter === null) {
+            return $ref->chapter;
+        }
+        return self::isVulgateNumbered($version)
+            ? min($ref->chapter, $ref->alternateChapter)
+            : max($ref->chapter, $ref->alternateChapter);
+    }
+
+    /**
+     * The query with numbering=edition: every Psalm reference keeps its verse and takes the
+     * chapter $version numbers it by (editionChapter), with no alternate chapter left. Any
+     * other book is returned unchanged.
+     */
+    public function editionChapters(BibleQuery $query, string $version): BibleQuery
+    {
+        if ($query->book !== self::PSALMS_BOOK_NUM) {
+            return $query;
+        }
+
+        $segments = [];
+        foreach ($query->segments as $segment) {
+            $segments[] = $segment instanceof VerseRange
+                ? new VerseRange(
+                    $this->ref($segment->from, self::editionChapter($segment->from, $version), $segment->from->verse),
+                    $this->ref($segment->to, self::editionChapter($segment->to, $version), $segment->to->verse),
+                )
+                : $this->ref($segment, self::editionChapter($segment, $version), $segment->verse);
+        }
+
+        return new BibleQuery($query->book, $segments);
     }
 
     /**
@@ -169,6 +215,53 @@ final class PsalmNumbering
         }
 
         return $this->ref($ref, $span[2], $verse + $span[3]);
+    }
+
+    /**
+     * The Hebrew chapter and verse of a psalm verse as $version stores it: the inverse of
+     * resolve() for one verse. Hebrew-numbered editions are returned as they are; for VGCL and
+     * DRB the split zones (SPANS, DRB_SPANS) and the chapter − 1 zones are inverted.
+     *
+     * @return array{int, int}
+     */
+    public static function toHebrew(int $chapter, int $verse, string $version): array
+    {
+        if (!self::isVulgateNumbered($version)) {
+            return [$chapter, $verse];
+        }
+
+        $spans = $version === 'DRB' ? self::DRB_SPANS + self::SPANS : self::SPANS;
+        foreach ($spans as $hebrew => $zone) {
+            foreach ($zone as [$first, $last, $vulgate, $offset]) {
+                $hebrewVerse = $verse - $offset;
+                if ($vulgate === $chapter && $hebrewVerse >= $first && $hebrewVerse <= $last) {
+                    return [$hebrew, $hebrewVerse];
+                }
+            }
+        }
+
+        // Outside the split zones: the Hebrew psalm whose Vulgate number is $chapter.
+        $next = $chapter + 1;
+        if (!isset($spans[$next]) && self::vulgateChapter($next) === $chapter) {
+            return [$next, $verse];
+        }
+        return [$chapter, $verse];
+    }
+
+    /**
+     * The `psalm_hebrew` field of a result row: its Hebrew "chapter:verse" (toHebrew) when the
+     * row is a psalm verse, nothing for any other book. Row values come straight from the
+     * database, so they are taken as they are fetched.
+     *
+     * @return array{psalm_hebrew?: string}
+     */
+    public static function hebrewField(mixed $book, mixed $chapter, mixed $verse, string $version): array
+    {
+        if (!is_numeric($book) || (int) $book !== self::PSALMS_BOOK_NUM || !is_numeric($chapter) || !is_numeric($verse)) {
+            return [];
+        }
+        [$hebrewChapter, $hebrewVerse] = self::toHebrew((int) $chapter, (int) $verse, $version);
+        return ['psalm_hebrew' => $hebrewChapter . ':' . $hebrewVerse];
     }
 
     /**
