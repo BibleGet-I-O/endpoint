@@ -76,6 +76,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -253,6 +256,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -324,6 +330,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -392,6 +401,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -492,6 +504,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -654,6 +669,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -744,6 +762,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -860,6 +881,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -978,6 +1002,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -1125,6 +1152,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -1233,6 +1263,9 @@
                             },
                             "X-RateLimit-Reset": {
                                 "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
                             }
                         }
                     },
@@ -4159,7 +4192,7 @@
                 "example": {
                     "errors": [],
                     "info": {
-                        "ENDPOINT_VERSION": "3.0"
+                        "ENDPOINT_VERSION": "v4.0.0"
                     },
                     "validversions": [
                         "CEI2008",
@@ -14841,7 +14874,7 @@
                     ],
                     "errors": [],
                     "info": {
-                        "ENDPOINT_VERSION": "3.0"
+                        "ENDPOINT_VERSION": "v4.0.0"
                     },
                     "languages": [
                         "ENGLISH",
@@ -14905,7 +14938,7 @@
                 "example": {
                     "errors": [],
                     "info": {
-                        "ENDPOINT_VERSION": "3.0"
+                        "ENDPOINT_VERSION": "v4.0.0"
                     },
                     "indexes": {
                         "NABRE": {
@@ -17185,7 +17218,7 @@
                     ],
                     "errors": [],
                     "info": {
-                        "ENDPOINT_VERSION": "3.0",
+                        "ENDPOINT_VERSION": "v4.0.0",
                         "keyword": "brokenhearted",
                         "version": "NABRE"
                     }
@@ -18259,6 +18292,15 @@
                 "description": "The authentication challenge: `ApiKey header=\"X-Api-Key\"` on data routes, `Bearer realm=\"bibleget\"` on /applications and /admin.",
                 "schema": {
                     "type": "string"
+                }
+            },
+            "ApiVersion": {
+                "description": "Version of the API that served the request: the release tag in production (e.g. `v4.0.0`), `git describe` output on staging (e.g. `v3.0.1-415-g892935b`), `dev` in local development. Equal to `info.ENDPOINT_VERSION` in response bodies. Exposed to browsers through `Access-Control-Expose-Headers`.",
+                "schema": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9._+-]+$",
+                    "example": "v4.0.0"
                 }
             }
         },

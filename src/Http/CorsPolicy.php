@@ -19,12 +19,13 @@ use Psr\Http\Message\ServerRequestInterface;
  * When CORS_ALLOWED_ORIGINS is unset or empty, any origin is treated as
  * allowed (preserving the previous open behaviour).
  *
- * Every response exposes the rate-limit headers (X-RateLimit-*, Retry-After)
+ * Every response exposes the rate-limit headers (X-RateLimit-*, Retry-After) and the
+ * API version (X-BibleGet-Version)
  * to browser scripts, which otherwise only see the CORS-safelisted ones.
  */
 class CorsPolicy
 {
-    public const EXPOSED_HEADERS = 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After';
+    public const EXPOSED_HEADERS = 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After, X-BibleGet-Version';
 
     /** @var string[] */
     private array $allowedOrigins;

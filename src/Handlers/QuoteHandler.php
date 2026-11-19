@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Exception\ForbiddenException;
 use BibleGet\Api\Http\Exception\ValidationException;
@@ -99,7 +100,7 @@ class QuoteHandler extends AbstractHandler
             $body->errors  = $ctx->errors;
             $body->notices = $ctx->notices;
             $body->info    = [
-                'ENDPOINT_VERSION'  => QuoteContext::ENDPOINT_VERSION,
+                'ENDPOINT_VERSION'  => AppVersion::current(),
                 'detectedNotation'  => $ctx->detectedNotation,
                 'bibleVersionsInfo' => $bibleVersionsInfo,
             ];
@@ -114,7 +115,7 @@ class QuoteHandler extends AbstractHandler
             $info    = $xml->addChild('info');
             $results = $xml->addChild('results');
 
-            $info->addAttribute('ENDPOINT_VERSION', QuoteContext::ENDPOINT_VERSION);
+            $info->addAttribute('ENDPOINT_VERSION', AppVersion::current());
             $info['detectedNotation']  = $ctx->detectedNotation;
             $encoded                   = json_encode($bibleVersionsInfo);
             $info['bibleVersionsInfo'] = $encoded !== false ? $encoded : '{}';
@@ -245,7 +246,7 @@ class QuoteHandler extends AbstractHandler
     private function buildHtmlInfo(string $detectedNotation, array $bibleVersionsInfo, array $notices = []): string
     {
         $html         = '<div class="info bibleQuote">';
-        $html        .= '<input type="hidden" name="ENDPOINT_VERSION" value="' . QuoteContext::ENDPOINT_VERSION . '" class="BibleGetInfo">';
+        $html        .= '<input type="hidden" name="ENDPOINT_VERSION" value="' . AppVersion::current() . '" class="BibleGetInfo">';
         $html        .= '<input type="hidden" name="detectedNotation" value="' . htmlspecialchars($detectedNotation) . '" class="BibleGetInfo">';
         $versionsJson = json_encode($bibleVersionsInfo);
         $html        .= '<input type="hidden" name="bibleVersionsInfo" value="' . htmlspecialchars($versionsJson !== false ? $versionsJson : '{}') . '" class="BibleGetInfo">';

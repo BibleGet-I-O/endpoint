@@ -27,6 +27,7 @@ use BibleGet\Api\Http\Middleware\OidcBearerMiddleware;
 use BibleGet\Api\Http\Middleware\RateLimitMiddleware;
 use BibleGet\Api\Http\Middleware\UsageMiddleware;
 use BibleGet\Api\Http\Server\MiddlewarePipeline;
+use BibleGet\Api\Util\AppVersion;
 use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7Server\ServerRequestCreator;
@@ -154,7 +155,8 @@ class Router
         }
 
         $this->response = $pipeline->handle($this->request)
-            ->withHeader('X-Request-Id', $this->requestId);
+            ->withHeader('X-Request-Id', $this->requestId)
+            ->withHeader('X-BibleGet-Version', AppVersion::current());
         $this->emitResponse();
     }
 

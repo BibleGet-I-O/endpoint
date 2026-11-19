@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
@@ -33,7 +34,6 @@ use Psr\Log\LoggerInterface;
  */
 class HybridSearchHandler extends AbstractHandler
 {
-    private const ENDPOINT_VERSION  = '3.0';
     private const DEFAULT_LIMIT     = 20;
     private const MAX_LIMIT         = 100;
     private const DEFAULT_THRESHOLD = 0.0;
@@ -182,7 +182,7 @@ class HybridSearchHandler extends AbstractHandler
         $body->results = $results;
         $body->errors  = [];
         $body->info    = [
-            'ENDPOINT_VERSION' => self::ENDPOINT_VERSION,
+            'ENDPOINT_VERSION' => AppVersion::current(),
             'model'            => $model,
             'k'                => $k,
             'keyword_weight'   => $keywordWeight,
@@ -344,7 +344,7 @@ class HybridSearchHandler extends AbstractHandler
             $xml->addChild('errors');
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
-            $xmlInfo->addAttribute('ENDPOINT_VERSION', self::ENDPOINT_VERSION);
+            $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

@@ -19,8 +19,6 @@ use Psr\Log\NullLogger;
  */
 class QuoteContext
 {
-    public const ENDPOINT_VERSION = '3.0';
-
     public const ALLOWED_TEXT_TRADITIONS = ['GREEK', 'HEBREW'];
 
     /**

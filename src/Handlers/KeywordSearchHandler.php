@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
@@ -14,8 +15,6 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class KeywordSearchHandler extends AbstractHandler
 {
-    private const ENDPOINT_VERSION = '3.0';
-
     private const VALID_MATCH_MODES = ['fulltext', 'exact', 'boolean'];
 
     /**
@@ -62,7 +61,7 @@ class KeywordSearchHandler extends AbstractHandler
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => self::ENDPOINT_VERSION];
+        $body->info    = ['ENDPOINT_VERSION' => AppVersion::current()];
 
         $response = $this->buildSearchResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -122,7 +121,7 @@ class KeywordSearchHandler extends AbstractHandler
             $xml->addChild('errors');
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
-            $xmlInfo->addAttribute('ENDPOINT_VERSION', self::ENDPOINT_VERSION);
+            $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

@@ -1,3 +1,8 @@
+# Deploy-time version stamp, read by PHP only (see src/Util/AppVersion.php).
+<Files "VERSION">
+    Require all denied
+</Files>
+
 <IfModule mod_rewrite.c>
 RewriteEngine On
 # Pass the Authorization header (Zitadel bearer tokens) to PHP: Apache drops
