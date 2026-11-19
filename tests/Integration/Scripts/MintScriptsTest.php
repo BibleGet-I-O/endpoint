@@ -149,15 +149,47 @@ final class MintScriptsTest extends DatabaseTestCase
         self::assertSame($before + 2, $this->activeKeyCount());
     }
 
-    public function testUnknownScopeExitsNonZero(): void
+    public function testFlagAfterTheNameMintsAReadKeyWithThatName(): void
     {
-        $before = $this->readerKeyCount();
+        $r = self::runScript('mint-reader-key.php', ['My name', '--scope=read']);
 
-        $r = self::runScript('mint-reader-key.php', ['--scope=admin']);
+        self::assertSame(0, $r['code'], $r['stderr']);
+        $row = $this->newestSystemKey();
+        self::assertIsArray($row);
+        self::assertSame('read', $row['scope']);
+        self::assertSame('My name', $row['name']);
+    }
+
+    /** @return array<string, array{list<string>}> */
+    public static function badArguments(): array
+    {
+        return [
+            'unknown scope'   => [['--scope=admin']],
+            'space form'      => [['--scope', 'read']],
+            'bare --scope'    => [['--scope']],
+            'empty scope'     => [['--scope=']],
+            'unknown option'  => [['--foo']],
+            'two names'       => [['one', 'two']],
+            'flag, two names' => [['--scope=read', 'one', 'two']],
+        ];
+    }
+
+    /** @param list<string> $args */
+    #[\PHPUnit\Framework\Attributes\DataProvider('badArguments')]
+    public function testBadArgumentsExitNonZeroAndWriteNothing(array $args): void
+    {
+        $before = $this->allKeyCount();
+
+        $r = self::runScript('mint-reader-key.php', $args);
 
         self::assertNotSame(0, $r['code']);
         self::assertSame('', $r['stdout']);
-        self::assertSame($before, $this->readerKeyCount());
+        self::assertSame($before, $this->allKeyCount());
+    }
+
+    private function allKeyCount(): int
+    {
+        return (int) $this->getConnection()->query('SELECT count(*) FROM api_keys')->fetchColumn();
     }
 
     public function testClientKeyFailurePrintsOnlyAGenericMessage(): void

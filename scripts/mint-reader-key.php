@@ -56,15 +56,25 @@ ini_set('error_log', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 
 fwrite(STDERR, sprintf('APP_ENV=%s DB_NAME=%s' . PHP_EOL, CredentialFactory::currentEnv(), CredentialFactory::env('DB_NAME') ?? ''));
 
-$scope = 'reader';
-$args  = array_slice($argv, 1);
-if (isset($args[0]) && str_starts_with($args[0], '--scope=')) {
-    $scope = substr(array_shift($args), strlen('--scope='));
+$scope      = 'reader';
+$positional = [];
+$usage      = 'Usage: php scripts/mint-reader-key.php [--scope=reader|read] [key name]';
+foreach (array_slice($argv, 1) as $arg) {
+    if (str_starts_with($arg, '--')) {
+        if (!str_starts_with($arg, '--scope=')) {
+            fwrite(STDERR, 'Failed: unrecognised option "' . $arg . '"; no key was minted. ' . $usage . PHP_EOL);
+            exit(1);
+        }
+        $scope = substr($arg, strlen('--scope='));
+    } else {
+        $positional[] = $arg;
+    }
 }
-if (!in_array($scope, ['reader', 'read'], true)) {
-    fwrite(STDERR, 'Failed: unknown scope "' . $scope . '" (use reader or read); no key was minted.' . PHP_EOL);
+if (!in_array($scope, ['reader', 'read'], true) || count($positional) > 1) {
+    fwrite(STDERR, 'Failed: bad arguments (scope must be reader or read, at most one key name); no key was minted. ' . $usage . PHP_EOL);
     exit(1);
 }
+$args        = $positional;
 $defaultName = $scope === 'read' ? 'Website visitors' : 'Frontend reader';
 
 $db = null;
