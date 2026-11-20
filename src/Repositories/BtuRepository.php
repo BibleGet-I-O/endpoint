@@ -11,7 +11,9 @@ namespace BibleGet\Api\Repositories;
  *
  * A link a reviewer has touched (`reviewed_by` set: accepted, relinked, marked without counterpart, flagged for a
  * split, or re-kinded) is never overwritten or removed by loading new drafts, even by a load that runs while the
- * reviewer works: the upsert itself skips it. Its stretch is frozen when it is first touched (a copy with the id
+ * reviewer works: the upsert itself skips it. A link the registry has *reviewed* (a review exported to CBTUDR, or
+ * a split made there) replaces any link here that is not itself reviewed, a touched draft included, and clears its
+ * note; a link reviewed here is kept, being the newer decision. Its stretch is frozen when it is first touched (a copy with the id
  * `r<link id>`), because each drafting run numbers its stretches anew.
  *
  * A chapter view and "accept the chapter" take every text tradition of the chapter together (Esther's Greek and
@@ -102,8 +104,9 @@ class BtuRepository
             'INSERT INTO btu_link (edition, book, ord, ref, units, kind, status, confidence, stretch)
              VALUES (?, ?, ?, ?, ' . self::JSON_ARRAY . ', ?, ?, ?, ?)
              ON CONFLICT (edition, book, ref) DO UPDATE SET ord = EXCLUDED.ord, units = EXCLUDED.units, kind = EXCLUDED.kind,
-                 status = EXCLUDED.status, confidence = EXCLUDED.confidence, stretch = EXCLUDED.stretch
-             WHERE btu_link.reviewed_by IS NULL'
+                 status = EXCLUDED.status, confidence = EXCLUDED.confidence, stretch = EXCLUDED.stretch,
+                 note = CASE WHEN EXCLUDED.status = \'reviewed\' THEN NULL ELSE btu_link.note END
+             WHERE btu_link.reviewed_by IS NULL OR (EXCLUDED.status = \'reviewed\' AND btu_link.status <> \'reviewed\')'
         );
         $count  = ['inserted' => 0, 'updated' => 0, 'kept' => 0];
         foreach ($links as $l) {
