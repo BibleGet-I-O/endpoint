@@ -11,8 +11,8 @@ use Nyholm\Psr7\ServerRequest;
 /**
  * POST /_ops/migrate and GET /_ops/migrate/status against the PostgreSQL test database, with the real
  * configuration (doctrine-migrations.php) and its migrations, Version052NvbseCopyright first, then
- * Version053BtuReviewStore and Version054NvbseBracketedVerses (the test database has no NVBSE table, so 054 checks
- * nothing there).
+ * Version053BtuReviewStore, Version054NvbseBracketedVerses and Version055NvbseOmittedVerses (the test database has
+ * no NVBSE table, so 054 and 055 check nothing there).
  */
 final class MigrateHandlerTest extends DatabaseTestCase
 {
@@ -62,6 +62,7 @@ final class MigrateHandlerTest extends DatabaseTestCase
                 'BibleGet\\Api\\Migrations\\Version052NvbseCopyright',
                 'BibleGet\\Api\\Migrations\\Version053BtuReviewStore',
                 'BibleGet\\Api\\Migrations\\Version054NvbseBracketedVerses',
+                'BibleGet\\Api\\Migrations\\Version055NvbseOmittedVerses',
             ],
             $versions->fetchAll(\PDO::FETCH_COLUMN)
         );
@@ -74,7 +75,7 @@ final class MigrateHandlerTest extends DatabaseTestCase
         self::assertSame(200, $second->getStatusCode(), (string) $second->getBody());
         $count = $pdo->query('SELECT count(*) FROM doctrine_migration_versions');
         self::assertNotFalse($count);
-        self::assertSame(3, (int) $count->fetchColumn());
+        self::assertSame(4, (int) $count->fetchColumn());
     }
 
     public function testStatusListsTheMigrations(): void
