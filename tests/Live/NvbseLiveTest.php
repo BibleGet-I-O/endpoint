@@ -20,8 +20,9 @@ final class NvbseLiveTest extends LiveTestCase
     {
         return [
             'Num 3:9-10'     => ['Num3:9-10', [[3, 9, null], [3, 10, null]]],
-            'Mt 17:20-22'    => ['Mt17:20-22', [[17, 20, null], [17, 22, null]]],
-            'Acts 8:36-38'   => ['Acts8:36-38', [[8, 36, null], [8, 38, null]]],
+            // 055: the omitted verse between them (17:21, 8:37) is a row of its own.
+            'Mt 17:20-22'    => ['Mt17:20-22', [[17, 20, null], [17, 21, null], [17, 22, null]]],
+            'Acts 8:36-38'   => ['Acts8:36-38', [[8, 36, null], [8, 37, null], [8, 38, null]]],
             // 042: printed inline ("... moritur; 8 sive enim vivimus ...").
             'Rom 14:7-8'     => ['Rom14:7-8', [[14, 7, null], [14, 8, null]]],
             'Ezra 1:10-11'   => ['Ezra1:10-11', [[1, 10, null], [1, 11, null]]],
