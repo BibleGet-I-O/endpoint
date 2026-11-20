@@ -227,4 +227,37 @@ class BtuRepositoryTest extends DatabaseTestCase
         self::assertSame(['btu:tb.5.3'], $this->repo()->link($this->idOf('5:3'))['units'] ?? null);
         self::assertSame(1, $result['kept']);
     }
+
+    /** The registry's drafts file can still list a reviewed verse in its stretch. */
+    private function loadWithReviewedInStretch(): void
+    {
+        $this->repo()->loadEdition('TEST', 17, [
+            ['ref' => '5:2', 'ord' => 1, 'units' => ['btu:tb.5.2'], 'kind' => 'same', 'status' => 'draft', 'confidence' => 0.5, 'stretch' => '1'],
+            ['ref' => '5:3', 'ord' => 2, 'units' => ['btu:tb.5.4'], 'kind' => 'same', 'status' => 'reviewed', 'stretch' => '1'],
+        ], [['id' => '1', 'units' => ['btu:tb.5.2', 'btu:tb.5.3', 'btu:tb.5.4']]]);
+    }
+
+    public function testAReloadAfterARegistryReplacementCompletes(): void
+    {
+        $this->load();
+        $this->repo()->review($this->idOf('5:3'), ['action' => 'split', 'note' => 'two parts'], 'user-1');
+        $this->loadWithReviewedInStretch();
+        $this->loadWithReviewedInStretch();
+        $replaced = $this->repo()->link($this->idOf('5:3'));
+        self::assertNotNull($replaced);
+        self::assertNull($replaced['stretch']);
+        self::assertSame(['btu:tb.5.2', 'btu:tb.5.3', 'btu:tb.5.4'], $this->repo()->stretchUnits('TEST', 17, '1'));
+    }
+
+    public function testAReloadAfterAcceptingAChapterCompletes(): void
+    {
+        $this->load();
+        self::assertSame(2, $this->repo()->acceptChapter('TEST', 17, 5, 'user-1'));
+        $accepted = $this->repo()->link($this->idOf('5:3'));
+        self::assertStringStartsWith('r', (string) ( $accepted['stretch'] ?? '' ));
+        $this->load(0.7, 0.2);
+        $this->load(0.7, 0.2);
+        self::assertSame('reviewed', $this->repo()->link($this->idOf('5:3'))['status'] ?? null);
+        self::assertSame(['btu:tb.5.2', 'btu:tb.5.3', 'btu:tb.5.4'], $this->repo()->stretchUnits('TEST', 17, (string) ( $accepted['stretch'] ?? '' )));
+    }
 }

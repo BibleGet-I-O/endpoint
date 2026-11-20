@@ -72,6 +72,8 @@ class BtuRepository
                     $status[Cast::string($r['ref'])] = Cast::string($r['status']);
                 }
             }
+            // Touched links first get their own stretch, so the stretches loaded below cannot clash with theirs.
+            $this->freeze('l.edition = ? AND l.book = ? AND l.reviewed_by IS NOT NULL', [$sigla, $book]);
             $result = $this->writeLinks($sigla, $book, $links, $status);
             $keep   = array_map(static fn (array $l) => $l['ref'], $links);
             $del    = $this->db->prepare('DELETE FROM btu_link WHERE edition = ? AND book = ? AND reviewed_by IS NULL AND NOT (ref = ANY(' . self::JSON_ARRAY . '))');
@@ -104,7 +106,8 @@ class BtuRepository
             'INSERT INTO btu_link (edition, book, ord, ref, units, kind, status, confidence, stretch)
              VALUES (?, ?, ?, ?, ' . self::JSON_ARRAY . ', ?, ?, ?, ?)
              ON CONFLICT (edition, book, ref) DO UPDATE SET ord = EXCLUDED.ord, units = EXCLUDED.units, kind = EXCLUDED.kind,
-                 status = EXCLUDED.status, confidence = EXCLUDED.confidence, stretch = EXCLUDED.stretch,
+                 status = EXCLUDED.status, confidence = EXCLUDED.confidence,
+                 stretch = CASE WHEN EXCLUDED.status = \'reviewed\' THEN NULL ELSE EXCLUDED.stretch END,
                  note = CASE WHEN EXCLUDED.status = \'reviewed\' THEN NULL ELSE btu_link.note END
              WHERE btu_link.reviewed_by IS NULL OR (EXCLUDED.status = \'reviewed\' AND btu_link.status <> \'reviewed\')'
         );
@@ -279,27 +282,45 @@ class BtuRepository
     /** Points a link about to be touched at its own copy of its stretch (`r<id>`), which reloads keep. */
     private function freezeStretch(int $id): void
     {
+        $this->freeze('l.id = ?', [$id]);
+    }
+
+    /**
+     * Gives the links matching `$where` (on `btu_link l`) their own copy of their stretch, `r<id>`, which reloads
+     * keep: drafting runs number stretches anew, so a reviewed link must not share a stretch id with them.
+     *
+     * @param list<int|string> $params
+     */
+    private function freeze(string $where, array $params): void
+    {
         $this->db->prepare(
             "INSERT INTO btu_stretch (edition, book, id, units)
              SELECT l.edition, l.book, 'r' || l.id, s.units FROM btu_link l
              JOIN btu_stretch s ON s.edition = l.edition AND s.book = l.book AND s.id = l.stretch
-             WHERE l.id = ? AND l.stretch NOT LIKE 'r%' ON CONFLICT DO NOTHING"
-        )->execute([$id]);
+             WHERE ($where) AND l.stretch NOT LIKE 'r%' ON CONFLICT DO NOTHING"
+        )->execute($params);
         $this->db->prepare(
-            "UPDATE btu_link SET stretch = 'r' || id WHERE id = ? AND stretch IS NOT NULL AND stretch NOT LIKE 'r%'
-               AND EXISTS (SELECT 1 FROM btu_stretch s WHERE s.edition = btu_link.edition AND s.book = btu_link.book AND s.id = 'r' || btu_link.id)"
-        )->execute([$id]);
+            "UPDATE btu_link AS l SET stretch = 'r' || l.id WHERE ($where) AND l.stretch IS NOT NULL AND l.stretch NOT LIKE 'r%'
+               AND EXISTS (SELECT 1 FROM btu_stretch s WHERE s.edition = l.edition AND s.book = l.book AND s.id = 'r' || l.id)"
+        )->execute($params);
     }
 
     /** Accepts the chapter's remaining drafts, except those flagged for a split; returns how many. */
     public function acceptChapter(string $sigla, int $book, int $chapter, string $sub): int
     {
-        $stmt = $this->db->prepare(
-            "UPDATE btu_link SET status = 'reviewed', reviewed_by = ?, reviewed_at = now()
-             WHERE edition = ? AND book = ? AND status = 'draft' AND note IS NULL AND " . self::REF_CHAPTER . ' = ?'
-        );
-        $stmt->execute([$sub, $sigla, $book, $chapter]);
-        return $stmt->rowCount();
+        $drafts = "l.edition = ? AND l.book = ? AND l.status = 'draft' AND l.note IS NULL AND "
+            . str_replace('ref', 'l.ref', self::REF_CHAPTER) . ' = ?';
+        $this->db->beginTransaction();
+        try {
+            $this->freeze($drafts, [$sigla, $book, $chapter]);
+            $stmt = $this->db->prepare("UPDATE btu_link AS l SET status = 'reviewed', reviewed_by = ?, reviewed_at = now() WHERE " . $drafts);
+            $stmt->execute([$sub, $sigla, $book, $chapter]);
+            $this->db->commit();
+            return $stmt->rowCount();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     /** "btu:tb.5.4.2" -> "5:4" (the Nova Vulgata reference a unit began as). */
