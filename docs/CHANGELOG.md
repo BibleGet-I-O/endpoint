@@ -7,6 +7,25 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Fixed: NVBSE omitted verses as rows of their own (#230 follow-up)
+
+- **The 33 verses the Nova Vulgata omits are rows with `omitted = true`**
+  (migration `055`), as in the other editions since `045`. The Nova
+  Vulgata prints their numbers in parentheses after the verse before
+  ("(21)", "(10. 11)", "(16 17)", "( 6 )"); NVBSE kept that marker at the
+  end of the verse before ("... gaudium dabit.(19)") and had no row, as
+  `045` had decided for it alone. Now the marker leaves the text, and each
+  verse gets a row with empty text (no embedding; the client shows the
+  number with "[]" or the like). 1 Reg 15:6's "( 6 )" and Sir 29:15's
+  "(16 17)" are among them. The rows are changed by the private archive's
+  data half (`NVBSE-vatican/migrations/055-nvbse-omitted-verses.sql`,
+  applied with psql FIRST); the public migration checks its md5 and that
+  exactly the 33 empty rows are omitted, and recounts `NVBSE_idx` (the
+  omitted verses count, as elsewhere). `054`'s check also accepts `055`'s
+  result, for a database that gets both data halves before one deploy.
+  Case `nvbse-omitted-verses` now expects the chapters whole. Re-embed
+  NVBSE afterwards (the 31 verses that lost their marker).
+
 ### Fixed: NVBSE verses behind a bracketed number (#230)
 
 - **Sir 1:20, Ez 40:15 and Act 24:8 are rows of their own** (migration

@@ -1098,7 +1098,7 @@
       "summary": "The Nova Vulgata prints Ez 40:42-43 in four parts, the halves of the two verses interleaved (42a, 43a, 42b, 43b), as on vatican.va. In this order since migration 054 (#230).",
       "expect": {
         "NVBSE": {
-          "33 40": "1-13,15-29,31-41,42a,43a,42b,43b,44-49"
+          "33 40": "1-41,42a,43a,42b,43b,44-49"
         },
         "VGCL": {
           "33 40": "1-49"
@@ -1314,36 +1314,36 @@
     {
       "id": "nvbse-omitted-verses",
       "kind": "omitted-verse",
-      "summary": "The Nova Vulgata leaves out verses its critical text omits (Mt 17:21, Act 8:37, ...) and prints the number in parentheses at the end of the verse before, e.g. '(21)' or '(10. 11)'. Checked against vatican.va (#185). As printed, not a defect. Sir 1:20, Ez 40:15 and Act 24:8, which the import had kept in the verse before after the bracketed number, are rows of their own since migration 054 (#230).",
+      "summary": "The Nova Vulgata leaves out verses its critical text omits (Mt 17:21, Act 8:37, ...) and prints their numbers in parentheses after the verse before, e.g. '(21)', '(10. 11)', '(16 17)'. Checked against vatican.va (#185). As printed, not a defect. Since migration 055 each is a row of its own with empty text and omitted = true, as in the other editions, and the marker is no longer in the verse before (#230); 054 had split out Sir 1:20, Ez 40:15 and Act 24:8, which the import had kept after the marker.",
       "expect": {
         "NVBSE": {
-          "11 15": "1-5,7-34",
-          "28 1": "1-18,20-40",
-          "28 9": "1-9,12-25",
-          "28 19": "1-5,7-28",
-          "28 22": "1-22,24-33",
-          "28 27": "1-2,4-33",
-          "28 29": "1-15,18-20,22,24-35",
-          "28 32": "1-22,24-28",
-          "28 34": "1-10,12-31",
-          "28 35": "1-2,4-26",
-          "28 43": "1-32,34-37",
-          "33 40": "1-13,15-29,31-41,42a,43a,42b,43b,44-49",
-          "47 17": "1-20,22-27",
-          "47 18": "1-10,12-35",
-          "47 23": "1-13,15-39",
-          "48 7": "1-15,17-37",
-          "48 9": "1-43,45,47-50",
-          "48 11": "1-25,27-33",
-          "48 15": "1-27,29-47",
-          "49 17": "1-35,37",
-          "49 23": "1-16,18-56",
-          "50 5": "1-3,5-47",
-          "51 8": "1-36,38-40",
-          "51 15": "1-33,35-41",
-          "51 24": "1-6,8-27",
-          "51 28": "1-28,30-31",
-          "52 16": "1-23,25-27"
+          "11 15": "1-34",
+          "28 1": "1-40",
+          "28 9": "1-25",
+          "28 19": "1-28",
+          "28 22": "1-33",
+          "28 27": "1-33",
+          "28 29": "1-35",
+          "28 32": "1-28",
+          "28 34": "1-31",
+          "28 35": "1-26",
+          "28 43": "1-37",
+          "33 40": "1-41,42a,43a,42b,43b,44-49",
+          "47 17": "1-27",
+          "47 18": "1-35",
+          "47 23": "1-39",
+          "48 7": "1-37",
+          "48 9": "1-50",
+          "48 11": "1-33",
+          "48 15": "1-47",
+          "49 17": "1-37",
+          "49 23": "1-56",
+          "50 5": "1-47",
+          "51 8": "1-40",
+          "51 15": "1-41",
+          "51 24": "1-27",
+          "51 28": "1-31",
+          "52 16": "1-27"
         }
       }
     },

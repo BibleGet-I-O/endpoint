@@ -35,7 +35,10 @@ BEGIN
 
     SELECT md5(string_agg(concat_ws('|', book, chapter, verse, coalesce(verse_segment, ''), coalesce(text_tradition, ''), text),
                           E'\n' ORDER BY sort_order)) INTO digest FROM "NVBSE";
-    IF digest <> '3094d290c61f47e53216ff97c9e295a8' OR (SELECT count(*) FROM "NVBSE") <> 35894 THEN
+    -- Or 055's result (5b4959…, 35927 rows): a database that gets both data halves
+    -- before one deploy runs 054 after 055's data half.
+    IF (digest, (SELECT count(*) FROM "NVBSE")) NOT IN (('3094d290c61f47e53216ff97c9e295a8', 35894),
+                                                       ('5b4959755dae3b402b1a4d3fc0b46520', 35927)) THEN
         RAISE EXCEPTION 'NVBSE does not hold the NVBSE-vatican archive''s text (md5 %): apply NVBSE-vatican/migrations/054-nvbse-bracketed-verses.sql first', digest;
     END IF;
 
