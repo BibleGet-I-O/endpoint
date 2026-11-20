@@ -14,9 +14,10 @@ use PHPUnit\Framework\TestCase;
  * Copyrighted editions' text never goes into these tests: they assert
  * structure and, where the words matter, an md5 of the returned text.
  *
- * When the staging API requires credentials (REQUIRE_CREDENTIALS), set
- * BIBLEGET_LIVE_API_KEY to a project key: it is sent as X-Api-Key. Without it
- * no header is sent, and redirects are never followed (they would carry the
+ * BIBLEGET_LIVE_API_KEY is a project key (scripts/mint-live-test-key.php; the
+ * staging environment's secret in the deploy workflow), sent as X-Api-Key, so
+ * the suite also passes when the staging API requires credentials
+ * (REQUIRE_CREDENTIALS). Without it no header is sent, and redirects are never followed (they would carry the
  * key along). A rate-limited response (429) skips the test with that reason
  * instead of failing it.
  */
