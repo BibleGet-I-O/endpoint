@@ -316,6 +316,9 @@ jobs:
     name: Live tests (staging)
     needs: deploy
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'staging'
+    # The staging environment holds BIBLEGET_LIVE_API_KEY (scripts/mint-live-test-key.php), so a production
+    # key can never reach the suite.
+    environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -232,7 +232,9 @@ sudo -u bibleget-embed XDG_RUNTIME_DIR=/run/user/10004 \
 ### Minting keys (scripts are not deployed)
 
 `scripts/mint-reader-key.php` (the website's keys, both on the system application "BibleGet website": `reader` by default, for signed-in users; `--scope=read` for a `read` key for visitors' pages, to which the API still applies the 30-verse cap on copyrighted editions; both are unlimited because the system application is exempt from rate limiting, not because of their NULL `rate_limit_per_hour`) and
-`scripts/mint-client-key.php` (a plugin release's client key) are excluded
+`scripts/mint-client-key.php` (a plugin release's client key) and `scripts/mint-live-test-key.php` (the live test
+suite's key: an ordinary rate-limited project key on the application "BibleGet live tests"; pipe it into
+`gh secret set BIBLEGET_LIVE_API_KEY --env staging` without showing it) are excluded
 from the rsync deploy on purpose: anything outside `public/` might be
 web-reachable. Run them from a local checkout through an SSH tunnel to the
 target's PostgreSQL:

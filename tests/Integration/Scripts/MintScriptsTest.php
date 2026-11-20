@@ -205,4 +205,34 @@ final class MintScriptsTest extends DatabaseTestCase
         $lines = array_values(array_filter(explode(PHP_EOL, $r['stderr'])));
         self::assertSame('Failed: could not mint the client key (database error); no key was minted.', end($lines));
     }
+
+    private function cleanLiveTestApplication(): void
+    {
+        $this->getConnection()->exec("DELETE FROM applications WHERE zitadel_user_id = 'bibleget-live-tests'");
+    }
+
+    public function testLiveTestKeyIsARateLimitedProjectKeyOnItsOwnApprovedApplication(): void
+    {
+        $this->cleanLiveTestApplication();
+        try {
+            $first  = self::runScript('mint-live-test-key.php');
+            $second = self::runScript('mint-live-test-key.php');
+            self::assertSame(0, $first['code'], $first['stderr']);
+            self::assertSame(0, $second['code'], $second['stderr']);
+            self::assertMatchesRegularExpression('/\Abibleget_test_[A-Za-z0-9_-]+\n\z/', $first['stdout']);
+            self::assertNotSame($first['stdout'], $second['stdout']);
+            self::assertStringContainsString('DB_NAME=', $first['stderr']);
+            $rows = $this->getConnection()->query(
+                "SELECT a.status, a.is_active, a.is_system, k.scope, k.rate_limit_per_hour FROM applications a
+                 JOIN api_keys k ON k.application_id = a.id WHERE a.zitadel_user_id = 'bibleget-live-tests'"
+            )?->fetchAll(\PDO::FETCH_ASSOC) ?? [];
+            // One application, reused; one key per run, each an ordinary read key with the default project limit.
+            self::assertCount(2, $rows);
+            foreach ($rows as $r) {
+                self::assertSame(['approved', true, false, 'read', 1000], [$r['status'], $r['is_active'], $r['is_system'], $r['scope'], $r['rate_limit_per_hour']]);
+            }
+        } finally {
+            $this->cleanLiveTestApplication();
+        }
+    }
 }
