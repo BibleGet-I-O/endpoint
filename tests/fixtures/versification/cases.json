@@ -1093,6 +1093,19 @@
       }
     },
     {
+      "id": "nvbse-ez-40-42-43",
+      "kind": "split-verse",
+      "summary": "The Nova Vulgata prints Ez 40:42-43 in four parts, the halves of the two verses interleaved (42a, 43a, 42b, 43b), as on vatican.va. In this order since migration 054 (#230).",
+      "expect": {
+        "NVBSE": {
+          "33 40": "1-13,15-29,31-41,42a,43a,42b,43b,44-49"
+        },
+        "VGCL": {
+          "33 40": "1-49"
+        }
+      }
+    },
+    {
       "id": "cei-jb-31-40",
       "kind": "split-verse",
       "summary": "CEI 2008 prints Job 31:38-40a before 31:35-37, then 40b.",
@@ -1301,11 +1314,11 @@
     {
       "id": "nvbse-omitted-verses",
       "kind": "omitted-verse",
-      "summary": "The Nova Vulgata leaves out verses its critical text omits (Mt 17:21, Act 8:37, ...) and prints the number in parentheses at the end of the verse before, e.g. '(21)' or '(10. 11)'. Checked against vatican.va (#185). As printed, not a defect.",
+      "summary": "The Nova Vulgata leaves out verses its critical text omits (Mt 17:21, Act 8:37, ...) and prints the number in parentheses at the end of the verse before, e.g. '(21)' or '(10. 11)'. Checked against vatican.va (#185). As printed, not a defect. Sir 1:20, Ez 40:15 and Act 24:8, which the import had kept in the verse before after the bracketed number, are rows of their own since migration 054 (#230).",
       "expect": {
         "NVBSE": {
           "11 15": "1-5,7-34",
-          "28 1": "1-18,21-40",
+          "28 1": "1-18,20-40",
           "28 9": "1-9,12-25",
           "28 19": "1-5,7-28",
           "28 22": "1-22,24-33",
@@ -1315,7 +1328,7 @@
           "28 34": "1-10,12-31",
           "28 35": "1-2,4-26",
           "28 43": "1-32,34-37",
-          "33 40": "1-13,16-29,31-41,42a,42b,43a,43b,44-49",
+          "33 40": "1-13,15-29,31-41,42a,43a,42b,43b,44-49",
           "47 17": "1-20,22-27",
           "47 18": "1-10,12-35",
           "47 23": "1-13,15-39",
@@ -1328,7 +1341,7 @@
           "50 5": "1-3,5-47",
           "51 8": "1-36,38-40",
           "51 15": "1-33,35-41",
-          "51 24": "1-6,9-27",
+          "51 24": "1-6,8-27",
           "51 28": "1-28,30-31",
           "52 16": "1-23,25-27"
         }
