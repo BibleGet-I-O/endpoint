@@ -456,4 +456,35 @@ class HybridSearchHandlerTest extends DatabaseTestCase
             ( new ServerRequest('GET', '/v3/search/hybrid') )->withQueryParams($params)
         );
     }
+
+    // ── The 30-verse copyright cap (TEST2 is copyrighted; every TEST2 verse gets the same embedding) ──
+
+    private function embedAllOfTest2(): void
+    {
+        $this->getConnection()->exec('UPDATE "TEST2" SET embedding = \'' . '[' . implode(',', array_fill(0, 384, 0.1)) . ']' . '\'');
+    }
+
+    private function clearTest2(): void
+    {
+        $this->getConnection()->exec('UPDATE "TEST2" SET embedding = NULL');
+    }
+
+    public function testCopyrightedEditionIsCappedAtThirty(): void
+    {
+        $this->embedAllOfTest2();
+        try {
+            $client = $this->createStub(EmbeddingClient::class);
+            $client->method('embed')->willReturn(array_fill(0, 384, 0.1));
+            $response = $this->createHandler($client)->handle(
+                ( new ServerRequest('GET', '/v3/search/hybrid') )
+                    ->withQueryParams(['query' => 'test2', 'version' => 'TEST2', 'model' => 'minilm', 'limit' => '40'])
+            );
+        } finally {
+            $this->clearTest2();
+        }
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        self::assertCount(30, $body['results']);
+        self::assertSame(['TEST2' => 40], $body['info']['CAPPED']);
+    }
 }

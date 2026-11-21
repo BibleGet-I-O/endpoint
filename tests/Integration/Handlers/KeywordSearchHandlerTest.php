@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BibleGet\Tests\Integration\Handlers;
 
+use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Auth\CredentialType;
 use BibleGet\Api\Handlers\KeywordSearchHandler;
 use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestContentType;
@@ -541,5 +543,80 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessageMatches('/ts_language/i');
         $handler->handle($request);
+    }
+
+    // ── The 30-verse copyright cap (TEST2 is copyrighted; "test2" matches 35 of its verses) ──
+
+    /** @return array<string, mixed> */
+    private function search(array $params, ?Credential $credential = null, string $accept = 'application/json'): array
+    {
+        $request = ( new ServerRequest('GET', '/v3/search/keyword', ['Accept' => $accept]) )->withQueryParams($params);
+        if ($credential !== null) {
+            $request = $request->withAttribute('credential', $credential);
+        }
+        $response = $this->createHandler()->handle($request);
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body);
+        return $body;
+    }
+
+    private static function reader(): Credential
+    {
+        return new Credential(CredentialType::Project, 'k1', 'reader', null, 'a1', null, null, true);
+    }
+
+    public function testVisitorGetsThirtyOfACopyrightedEdition(): void
+    {
+        $body = $this->search(['keyword' => 'test2', 'version' => 'TEST2']);
+        self::assertCount(30, $body['results']);
+        self::assertSame(['TEST2' => 35], $body['info']['CAPPED']);
+    }
+
+    public function testReaderCredentialOnAFullTextEditionGetsEverything(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->exec("UPDATE versions_available SET reader_full_text = true WHERE sigla = 'TEST2'");
+        try {
+            $body = $this->search(['keyword' => 'test2', 'version' => 'TEST2'], self::reader());
+        } finally {
+            $pdo->exec("UPDATE versions_available SET reader_full_text = false WHERE sigla = 'TEST2'");
+        }
+        self::assertCount(35, $body['results']);
+        self::assertArrayNotHasKey('CAPPED', $body['info']);
+    }
+
+    public function testReaderCredentialIsCappedWhereFullTextIsOff(): void
+    {
+        $body = $this->search(['keyword' => 'test2', 'version' => 'TEST2'], self::reader());
+        self::assertCount(30, $body['results']);
+        self::assertSame(['TEST2' => 35], $body['info']['CAPPED']);
+    }
+
+    public function testOnlyTheCopyrightedEditionIsCapped(): void
+    {
+        $alone = $this->search(['keyword' => 'light', 'version' => 'TEST1']);
+        $both  = $this->search(['keyword' => 'light', 'version' => 'TEST1,TEST2']);
+        $test1 = array_filter($both['results'], static fn (array $r): bool => $r['version'] === 'TEST1');
+        self::assertCount(count($alone['results']), $test1);
+        self::assertArrayNotHasKey('CAPPED', $both['info']);
+    }
+
+    public function testPublicDomainIsNeverCapped(): void
+    {
+        $body = $this->search(['keyword' => 'light', 'version' => 'TEST1']);
+        self::assertArrayNotHasKey('CAPPED', $body['info']);
+    }
+
+    public function testXmlReportsTheCap(): void
+    {
+        $request  = ( new ServerRequest('GET', '/v3/search/keyword', ['Accept' => 'application/xml']) )
+            ->withQueryParams(['keyword' => 'test2', 'version' => 'TEST2', 'return' => 'xml']);
+        $response = $this->createHandler()->handle($request);
+        $xml      = simplexml_load_string((string) $response->getBody());
+        self::assertNotFalse($xml);
+        self::assertCount(30, $xml->results->result);
+        self::assertSame('TEST2', (string) $xml->info->capped['version']);
+        self::assertSame('35', (string) $xml->info->capped['total']);
     }
 }

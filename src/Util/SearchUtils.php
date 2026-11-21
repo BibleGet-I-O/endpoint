@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Util;
 
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Services\CopyrightPolicy;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -221,6 +223,64 @@ class SearchUtils
         foreach ($rows as $i => &$row) {
             $row['canonical_order'] = $rankByIndex[$i] ?? 0;
             unset($row['sort_order'], $row['score_exact']);
+        }
+    }
+
+    /**
+     * The 30-verse copyright cap on search results (CopyrightPolicy): for each edition the policy caps for this
+     * credential, keeps the first VERSE_CAP rows in the order given (canonical for keyword search, rank order for the
+     * others), so call it once the rows are in their final order. `capped` maps each edition that lost rows to its
+     * row count before the cap.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array{rows: list<array<string, mixed>>, capped: array<string, int>}
+     */
+    public static function applyCopyrightCap(array $rows, CopyrightPolicy $policy, ?Credential $credential): array
+    {
+        $counts = [];
+        $kept   = [];
+        foreach ($rows as $row) {
+            $version          = is_string($row['version'] ?? null) ? $row['version'] : '';
+            $counts[$version] = ( $counts[$version] ?? 0 ) + 1;
+            if ($counts[$version] <= CopyrightPolicy::VERSE_CAP || !$policy->isCapped($version, $credential)) {
+                $kept[] = $row;
+            }
+        }
+        $capped = [];
+        foreach ($counts as $version => $count) {
+            if ($count > CopyrightPolicy::VERSE_CAP && $policy->isCapped((string) $version, $credential)) {
+                $capped[(string) $version] = $count;
+            }
+        }
+        return ['rows' => $kept, 'capped' => $capped];
+    }
+
+    /**
+     * $info with `CAPPED` (sigla → matches before the cap) when an edition was capped.
+     *
+     * @param array<string, mixed> $info
+     * @param array<string, int>   $capped
+     * @return array<string, mixed>
+     */
+    public static function withCapped(array $info, array $capped): array
+    {
+        if ($capped !== []) {
+            $info['CAPPED'] = $capped;
+        }
+        return $info;
+    }
+
+    /** An XML response's `<info>` gets one `<capped version="…" total="…"/>` per capped edition. */
+    public static function addCappedXml(\SimpleXMLElement $info, mixed $bodyInfo): void
+    {
+        $capped = is_array($bodyInfo) ? ( $bodyInfo['CAPPED'] ?? [] ) : [];
+        if (!is_array($capped)) {
+            return;
+        }
+        foreach ($capped as $version => $total) {
+            $node = $info->addChild('capped');
+            $node->addAttribute('version', (string) $version);
+            $node->addAttribute('total', is_scalar($total) ? (string) $total : '0');
         }
     }
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Util\AppVersion;
+use BibleGet\Api\Services\CopyrightPolicy;
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\NotFoundException;
@@ -101,15 +103,12 @@ class SimilarSearchHandler extends AbstractHandler
                 ? $sourceVersionIndex
                 : $this->loadVersionIndex($pdo, $v);
 
-            // Per-target copyright restriction: cap to 30 for copyrighted versions.
-            $versionLimit = $this->isVersionCopyrighted($pdo, $v) ? min($limit, 30) : $limit;
-
             array_push($allResults, ...$this->searchSimilar(
                 $pdo,
                 $v,
                 $versionIndex,
                 $sourceEmbedding,
-                $versionLimit,
+                $limit,
                 $bookNum,
                 $chapter,
                 $verse,
@@ -125,13 +124,21 @@ class SimilarSearchHandler extends AbstractHandler
             $allResults = array_slice($allResults, 0, $limit);
         }
 
+        $credential = $request->getAttribute('credential');
+        $capped     = SearchUtils::applyCopyrightCap(
+            $allResults,
+            CopyrightPolicy::fromDatabase($pdo),
+            $credential instanceof Credential ? $credential : null
+        );
+        $allResults = $capped['rows'];
+
         // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($allResults);
 
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => AppVersion::current(), 'model' => $model];
+        $body->info    = SearchUtils::withCapped(['ENDPOINT_VERSION' => AppVersion::current(), 'model' => $model], $capped['capped']);
 
         $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -308,8 +315,6 @@ class SimilarSearchHandler extends AbstractHandler
         return $this->mapResults($stmt, $version, $versionIndex);
     }
 
-
-
     /**
      * @param array{abbreviations: list<string>, books: list<string>, book_num: list<string>} $versionIndex
      * @return array<int, array<string, mixed>>
@@ -382,7 +387,6 @@ class SimilarSearchHandler extends AbstractHandler
         }
     }
 
-
     /**
      * Defence-in-depth: the column name comes from a closed allowlist
      * (SearchUtils::EMBEDDING_MODELS) but we still verify the identifier
@@ -415,20 +419,6 @@ class SimilarSearchHandler extends AbstractHandler
             return '';
         }
     }
-
-    private function isVersionCopyrighted(\PDO $pdo, string $version): bool
-    {
-        $stmt = $pdo->prepare('SELECT copyright FROM versions_available WHERE sigla = ?');
-        $stmt->execute([$version]);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        if (!is_array($row)) {
-            return false;
-        }
-        $copyright = $row['copyright'] ?? 0;
-        return is_numeric($copyright) && ( (int) $copyright ) === 1;
-    }
-
-
 
     /**
      * @return array{abbreviations: list<string>, books: list<string>, book_num: list<string>}
@@ -472,6 +462,7 @@ class SimilarSearchHandler extends AbstractHandler
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
             $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
+            SearchUtils::addCappedXml($xmlInfo, $body->info);
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

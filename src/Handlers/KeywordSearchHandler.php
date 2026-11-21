@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
+use BibleGet\Api\Services\CopyrightPolicy;
 use BibleGet\Api\Services\KeywordSearchService;
 use BibleGet\Api\Util\SearchUtils;
 use Psr\Http\Message\ResponseInterface;
@@ -56,12 +58,19 @@ class KeywordSearchHandler extends AbstractHandler
             array_push($allResults, ...$service->mapSearchResults($searchResult, $v, $versionIndex));
         }
 
+        $credential = $request->getAttribute('credential');
+        $capped     = SearchUtils::applyCopyrightCap(
+            $allResults,
+            CopyrightPolicy::fromDatabase($pdo),
+            $credential instanceof Credential ? $credential : null
+        );
+        $allResults = $capped['rows'];
         SearchUtils::assignCanonicalOrder($allResults);
 
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => AppVersion::current()];
+        $body->info    = SearchUtils::withCapped(['ENDPOINT_VERSION' => AppVersion::current()], $capped['capped']);
 
         $response = $this->buildSearchResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -122,6 +131,7 @@ class KeywordSearchHandler extends AbstractHandler
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
             $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
+            SearchUtils::addCappedXml($xmlInfo, $body->info);
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

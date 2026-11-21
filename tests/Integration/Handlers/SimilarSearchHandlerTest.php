@@ -291,4 +291,33 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
             ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1']);
         $handler->handle($request);
     }
+
+    // ── The 30-verse copyright cap (TEST2 is copyrighted; every TEST2 verse gets the same embedding) ──
+
+    private function embedAllOfTest2(): void
+    {
+        $this->getConnection()->exec('UPDATE "TEST2" SET embedding = \'' . '[' . implode(',', array_fill(0, 384, 0.1)) . ']' . '\'');
+    }
+
+    private function clearTest2(): void
+    {
+        $this->getConnection()->exec('UPDATE "TEST2" SET embedding = NULL');
+    }
+
+    public function testCopyrightedEditionIsCappedAtThirty(): void
+    {
+        $this->embedAllOfTest2();
+        try {
+            $response = $this->createHandler()->handle(
+                ( new ServerRequest('GET', '/v3/search/similar') )
+                    ->withQueryParams(['reference' => 'Gen3:1', 'version' => 'TEST2', 'model' => 'minilm', 'limit' => '40'])
+            );
+        } finally {
+            $this->clearTest2();
+        }
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body, (string) $response->getBody());
+        self::assertCount(30, $body['results']);
+        self::assertSame(['TEST2' => 40], $body['info']['CAPPED']);
+    }
 }

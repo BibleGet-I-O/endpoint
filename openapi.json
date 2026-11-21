@@ -539,7 +539,7 @@
         "/search": {
             "get": {
                 "summary": "Search for Bible verses that contain a given keyword",
-                "description": "The API endpoint for performing keyword search queries for Bible verses.",
+                "description": "The API endpoint for performing keyword search queries for Bible verses.\n\nCopyrighted editions give at most 30 results per request (in this route's order) unless the API key has the `reader` scope and the edition may be read whole; `info.CAPPED` then reports each capped edition's matches before the cap.",
                 "operationId": "searchVersesByGET",
                 "tags": [
                     "SearchAPI"
@@ -702,7 +702,7 @@
             },
             "post": {
                 "summary": "Search for Bible verses that contain a given keyword",
-                "description": "The API endpoint for performing keyword search queries for Bible verses.",
+                "description": "The API endpoint for performing keyword search queries for Bible verses.\n\nCopyrighted editions give at most 30 results per request (in this route's order) unless the API key has the `reader` scope and the edition may be read whole; `info.CAPPED` then reports each capped edition's matches before the cap.",
                 "operationId": "searchVersesByPOST",
                 "tags": [
                     "SearchAPI"
@@ -797,7 +797,7 @@
         "/search/keyword": {
             "get": {
                 "summary": "Text-based keyword search with stemming support",
-                "description": "Search Bible verses by keyword with configurable match modes. The `fulltext` mode (default) uses language-aware stemming so that e.g. searching 'forgive' also matches 'forgiveness' and 'forgiven'. The `exact` mode uses regex word-boundary matching with no minimum keyword length. The `boolean` mode supports explicit operators like `&` (AND), `|` (OR), and `!` (NOT). In every mode, accents, diaereses and ligatures are ignored on both sides: 'Israel' also finds 'Israël' and 'Isræl', 'caelum' finds 'cælum'; results keep the edition's spelling.",
+                "description": "Search Bible verses by keyword with configurable match modes. The `fulltext` mode (default) uses language-aware stemming so that e.g. searching 'forgive' also matches 'forgiveness' and 'forgiven'. The `exact` mode uses regex word-boundary matching with no minimum keyword length. The `boolean` mode supports explicit operators like `&` (AND), `|` (OR), and `!` (NOT). In every mode, accents, diaereses and ligatures are ignored on both sides: 'Israel' also finds 'Israël' and 'Isræl', 'caelum' finds 'cælum'; results keep the edition's spelling.\n\nCopyrighted editions give at most 30 results per request (in this route's order) unless the API key has the `reader` scope and the edition may be read whole; `info.CAPPED` then reports each capped edition's matches before the cap.",
                 "operationId": "keywordSearchByGET",
                 "tags": [
                     "SearchAPI"
@@ -910,7 +910,7 @@
         "/search/semantic": {
             "get": {
                 "summary": "Conceptual search using natural language",
-                "description": "Search Bible verses by concept rather than exact keywords. Accepts a natural language query (e.g. 'passages about forgiveness after betrayal'), embeds it into a vector, and finds verses with similar meaning using cosine similarity. Requires the embedding microservice to be running.",
+                "description": "Search Bible verses by concept rather than exact keywords. Accepts a natural language query (e.g. 'passages about forgiveness after betrayal'), embeds it into a vector, and finds verses with similar meaning using cosine similarity. Requires the embedding microservice to be running.\n\nCopyrighted editions give at most 30 results per request (in this route's order) unless the API key has the `reader` scope and the edition may be read whole; `info.CAPPED` then reports each capped edition's matches before the cap.",
                 "operationId": "semanticSearchByGET",
                 "tags": [
                     "SearchAPI"
@@ -1034,7 +1034,7 @@
         "/search/hybrid": {
             "get": {
                 "summary": "Hybrid keyword + semantic search (Reciprocal Rank Fusion)",
-                "description": "Runs the keyword retriever (`/search/keyword` with `match=fulltext`) and the semantic retriever (`/search/semantic`) on the same `query`, then fuses the two ranked lists with weighted Reciprocal Rank Fusion (Cormack et al. 2009): `score(d) = Σ_i w_i / (k + rank_i(d))`, where `rank_i(d)` is the 1-based rank of verse `d` in leg `i` (the term is omitted when `d` was not retrieved by that leg). RRF is rank-based, so the incomparable score scales of `ts_rank_cd` and cosine similarity need no normalization.\n\nEach leg retrieves `min(300, max(limit × 3, 50))` candidates (ranked globally across the requested versions, like the sibling endpoints); the fused list is then trimmed to `limit`. Ties on the fused score are broken by the better best-rank across legs, then by the requested version order, then by canonical order.\n\nA leg whose weight is `0` is not executed (its `components` entry is always `null`). When `query` is shorter than the keyword leg's 4-character minimum, only the semantic leg runs. When the semantic leg runs and the embedding microservice is unavailable, the request fails with 503 — it does not silently degrade to keyword-only; pass `semantic_weight=0` for an explicit keyword-only request.",
+                "description": "Runs the keyword retriever (`/search/keyword` with `match=fulltext`) and the semantic retriever (`/search/semantic`) on the same `query`, then fuses the two ranked lists with weighted Reciprocal Rank Fusion (Cormack et al. 2009): `score(d) = Σ_i w_i / (k + rank_i(d))`, where `rank_i(d)` is the 1-based rank of verse `d` in leg `i` (the term is omitted when `d` was not retrieved by that leg). RRF is rank-based, so the incomparable score scales of `ts_rank_cd` and cosine similarity need no normalization.\n\nEach leg retrieves `min(300, max(limit × 3, 50))` candidates (ranked globally across the requested versions, like the sibling endpoints); the fused list is then trimmed to `limit`. Ties on the fused score are broken by the better best-rank across legs, then by the requested version order, then by canonical order.\n\nA leg whose weight is `0` is not executed (its `components` entry is always `null`). When `query` is shorter than the keyword leg's 4-character minimum, only the semantic leg runs. When the semantic leg runs and the embedding microservice is unavailable, the request fails with 503 — it does not silently degrade to keyword-only; pass `semantic_weight=0` for an explicit keyword-only request.\n\nCopyrighted editions give at most 30 results per request (in this route's order) unless the API key has the `reader` scope and the edition may be read whole; `info.CAPPED` then reports each capped edition's matches before the cap.",
                 "operationId": "hybridSearchByGET",
                 "tags": [
                     "SearchAPI"
@@ -1184,7 +1184,7 @@
         "/search/similar": {
             "get": {
                 "summary": "Find thematically related passages by verse reference",
-                "description": "Given a specific verse reference, finds other passages with similar themes or content using pre-computed embeddings. No embedding service call is needed at query time — similarity is computed directly from stored vectors.",
+                "description": "Given a specific verse reference, finds other passages with similar themes or content using pre-computed embeddings. No embedding service call is needed at query time — similarity is computed directly from stored vectors.\n\nCopyrighted editions give at most 30 results per request (in this route's order) unless the API key has the `reader` scope and the edition may be read whole; `info.CAPPED` then reports each capped edition's matches before the cap.",
                 "operationId": "similarSearchByGET",
                 "tags": [
                     "SearchAPI"
@@ -17540,6 +17540,9 @@
                             "version": {
                                 "type": "string",
                                 "description": "The keyword used to perform the search as indicated by the `keyword` parameter in the request"
+                            },
+                            "CAPPED": {
+                                "$ref": "#/components/schemas/SearchCapped"
                             }
                         }
                     }
@@ -17947,6 +17950,9 @@
                             "ENDPOINT_VERSION": {
                                 "type": "string",
                                 "example": "3.0"
+                            },
+                            "CAPPED": {
+                                "$ref": "#/components/schemas/SearchCapped"
                             }
                         }
                     }
@@ -18167,6 +18173,9 @@
                                     "keyword",
                                     "semantic"
                                 ]
+                            },
+                            "CAPPED": {
+                                "$ref": "#/components/schemas/SearchCapped"
                             }
                         }
                     }
@@ -18201,6 +18210,9 @@
                             "ENDPOINT_VERSION": {
                                 "type": "string",
                                 "example": "3.0"
+                            },
+                            "CAPPED": {
+                                "$ref": "#/components/schemas/SearchCapped"
                             }
                         }
                     }
@@ -18604,6 +18616,17 @@
                         "type": "string",
                         "nullable": true
                     }
+                }
+            },
+            "SearchCapped": {
+                "type": "object",
+                "description": "Present only when the 30-verse copyright cap removed results: each capped edition's sigla, with the number of matches before the cap. A copyrighted edition gives at most 30 results to a request, unless the request's key has the `reader` scope and the edition may be read whole (`reader_full_text`).",
+                "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 31
+                },
+                "example": {
+                    "NABRE": 252
                 }
             }
         },

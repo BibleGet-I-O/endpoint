@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Util\AppVersion;
+use BibleGet\Api\Services\CopyrightPolicy;
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
@@ -110,6 +112,13 @@ class SemanticSearchHandler extends AbstractHandler
         // Global ordering by score DESC across versions (nulls last), then trim to limit.
         SearchUtils::sortByScoreDesc($allResults);
         $allResults = array_slice($allResults, 0, $limit);
+        $credential = $request->getAttribute('credential');
+        $capped     = SearchUtils::applyCopyrightCap(
+            $allResults,
+            CopyrightPolicy::fromDatabase($pdo),
+            $credential instanceof Credential ? $credential : null
+        );
+        $allResults = $capped['rows'];
 
         // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($allResults);
@@ -120,7 +129,7 @@ class SemanticSearchHandler extends AbstractHandler
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = ['ENDPOINT_VERSION' => AppVersion::current(), 'model' => $model];
+        $body->info    = SearchUtils::withCapped(['ENDPOINT_VERSION' => AppVersion::current(), 'model' => $model], $capped['capped']);
 
         $response = $this->buildResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
@@ -197,6 +206,7 @@ class SemanticSearchHandler extends AbstractHandler
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
             $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
+            SearchUtils::addCappedXml($xmlInfo, $body->info);
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

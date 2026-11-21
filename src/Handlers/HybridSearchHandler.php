@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Util\AppVersion;
+use BibleGet\Api\Services\CopyrightPolicy;
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
@@ -159,12 +161,20 @@ class HybridSearchHandler extends AbstractHandler
             $limit
         );
 
-        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
-        SearchUtils::assignCanonicalOrder($results);
         foreach ($results as $i => &$row) {
             $row['components'] = $components[$i];
         }
         unset($row);
+        $credential = $request->getAttribute('credential');
+        $capped     = SearchUtils::applyCopyrightCap(
+            $results,
+            CopyrightPolicy::fromDatabase($pdo),
+            $credential instanceof Credential ? $credential : null
+        );
+        $results    = $capped['rows'];
+
+        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
+        SearchUtils::assignCanonicalOrder($results);
 
         $legs = [];
         if ($runKeyword) {
@@ -190,6 +200,7 @@ class HybridSearchHandler extends AbstractHandler
             'candidates'       => $candidates,
             'legs'             => $legs,
         ];
+        $body->info    = SearchUtils::withCapped($body->info, $capped['capped']);
 
         $response = $this->buildResponse($response, $contentType, $body, $results);
         return $this->withCacheHeaders($request, $response);
@@ -345,6 +356,7 @@ class HybridSearchHandler extends AbstractHandler
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
             $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
+            SearchUtils::addCappedXml($xmlInfo, $body->info);
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');
