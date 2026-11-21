@@ -84,8 +84,9 @@ all), so `/search/keyword` learns to page:
 - With `limit`, `info.TOTAL` is the number of matches this caller may see (after the cap). For a capped edition the
   window is clipped to the first 30: an offset of 30 or more returns no results. `info.CAPPED` is unchanged (matches
   before the cap).
-- `limit`/`offset` apply to a single `version`; with several, `limit` is refused (400), as the canonical merge across
-  editions would make the window ambiguous.
+- `limit`/`offset` apply to a single `version`; with several, `limit` is refused, as the canonical merge across
+  editions would make the window ambiguous. Parameter errors on the search routes answer 422
+  (`ValidationException`), as they already do; this design's "400" means that.
 - `openapi.json` documents both.
 
 ### 3. The word list and `/search/suggest`
@@ -109,7 +110,7 @@ Suggestions come from a precomputed list of each edition's words; computing them
   folded and case-insensitively against `folded`; `limit` default 8, maximum 20. Answers
   `{"suggestions": [{"word": "light", "count": 252}, …], "info": {...}}` ordered by `freq` descending, then
   alphabetically. A data route: it needs a credential like the other search routes, and gets cache headers. Unknown
-  `version` → 422, as on the other search routes (`ValidationException`); bad `prefix` / `limit` → 400.
+  `version` → 422, as on the other search routes (`ValidationException`); bad `prefix` / `limit` → 422 too.
 - Words are not verses: suggestions are not capped.
 - `openapi.json` documents the route.
 
