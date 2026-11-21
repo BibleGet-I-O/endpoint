@@ -147,8 +147,11 @@ it("previousMirrorsNext", () => {
   export function singleTouch(touches: { length: number }): boolean;
   ```
   `Side` is imported from `lib/page-curl.ts`. `vx` is px/ms over the last ~100ms of movement. With `reducedMotion`
-  the outcome is "complete" iff |dx| ≥ 50 and |dx| > 1.5·|dy|; otherwise iff |dx| ≥ 50 and (|dx| ≥ w/3 or a flick
-  in dx's direction). Either way a displacement against `side` (the turn the drag locked, so dx = 0 or sideOf(dx) ≠
+  the outcome is "complete" iff |dx| ≥ 50 and |dx| > 1.5·|dy|; otherwise iff |dx| ≥ 50 and (the corner the reader sees,
+  `clampCorner(side, cornerFor(side, dx, dy, w), w)`, has travelled ≥ w/3 horizontally from the rest corner, or a
+  flick in dx's direction). `cornerFor` (rest corner plus the displacement, only away from its edge, never above the
+  top) lives in `lib/swipe.ts`; test `theCornerTheReaderSeesDecidesNotTheFingersSidewaysPull`: on a 400px page
+  `{ dx: -60, dy: 400, side: "next" }` → "complete", `{ dx: -60, dy: 100, side: "next" }` → "back". Either way a displacement against `side` (the turn the drag locked, so dx = 0 or sideOf(dx) ≠
   side) is "back". `vx` is 0 when the last movement is older than ~100ms at release: a finger that stopped is not
   flicking. In normal motion the 1.5× ratio decides only the axis at the start: once the page curls, pulling the
   corner down is part of the curl, and the corner the reader sees decides.
