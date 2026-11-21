@@ -108,13 +108,17 @@
   - `comparingEstherShowsTheSwitchAndOneText`: `with: "DRB"`, `tradition: "HEBREW"` → `getChapter` called once for NABRE with `HEBREW`; a nav "Esther text" whose "Masoretic text" link has `aria-current`, and whose "Septuagint" link drops `tradition` but keeps `with=DRB`.
   - `eachTextStopsAtItsOwnCap`: Greek chapter `truncated: true`, Hebrew not → `Spread` gets `truncated=[true,false]` (assert no "Not in" text anywhere, one capped notice).
   - `aFailedMasoreticTextLeavesTheSeptuagintWithANote`: Hebrew `getChapter` rejects with `ApiUnavailable` → the page renders the Greek text and a note "Masoretic text could not be loaded. Try again later."
-  - Update `passesTheEstherTraditionOnlyWhereTheEditionHasBoth` and `estherWithBothTextsHas…` to the new shape (no "Esther text" select; both traditions requested when alone; DRB still gets no tradition).
+  - Update `passesTheEstherTraditionOnlyWhereTheEditionHasBoth` and `estherWithBothTextsHas…` to the new shape (no "Esther text" select; both traditions requested when alone). A compared edition whose index holds both Esther texts (DRB does) gets the
+    tradition shown, so a Masoretic comparison pairs NABRE's Hebrew text with DRB's Hebrew text, not its Greek one;
+    an edition with one text gets none. Test `aComparedEditionWithBothTextsFollowsTheSwitch`: `with: "DRB"`,
+    `tradition: "HEBREW"`, DRB's index has `greekVersesPerChapter` → `getChapter` for DRB is called with `HEBREW`.
 - [ ] **Step 2: Run** `npx vitest run app/__tests__/pages.test.tsx` — Expected: the new tests FAIL.
 - [ ] **Step 3: Implement** in `page.tsx`:
   - `twoTexts = hasBothEstherTexts(book) && withSiglas.length === 0`.
   - Extract the existing "fetch the chapter plus its neighbour verses and `placeAsPrinted`" into a local `printed(tradition)` returning `{ rows, truncated }` (it already chooses `greekVersesPerChapter` for Greek).
   - Two texts: `printed("GREEK")` and `printed("HEBREW")` (the latter caught: `ApiUnavailable` → the note above, Greek shown with `BookPage`); render a heading and `Spread` with sides `[{ sigla: edition.sigla, name: edition.fullname, lang, rubric: { full: t("septuagint"), short: t("septuagintShort") } }, { sigla: \`${edition.sigla}-MT\`, …, rubric: { full: t("masoretic"), short: t("masoreticShort") } }]`, `rows={buildRows(greek.rows, [hebrew.rows], book.bookNum)}`, `truncated`, `view`, `gapNotes={false}`; page width `max-w-6xl` unless interlinear.
-  - Comparing with both texts: render `TraditionSwitch` above the `Interlinear`, `hrefFor` built with `compareQuery({ with, view, tradition })` on the current path.
+  - Comparing with both texts: pass the shown tradition to each compared edition whose index has both texts
+    (`getIndex(sigla).books.some(hasBothEstherTexts)`), and render `TraditionSwitch` above the `Interlinear`, `hrefFor` built with `compareQuery({ with, view, tradition })` on the current path.
   - `qs` passes `twoTexts`.
 - [ ] **Step 4: Run** `npx vitest run && npx tsc --noEmit && npm run lint` — Expected: all pass, clean.
 - [ ] **Step 5: Commit** `feat(reader): Esther's Septuagint and Masoretic text side by side`.
