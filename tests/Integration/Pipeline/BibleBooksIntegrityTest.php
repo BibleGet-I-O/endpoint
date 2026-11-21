@@ -192,4 +192,35 @@ final class BibleBooksIntegrityTest extends DatabaseTestCase
         }
         self::assertSame([], $failures, implode("\n", $failures));
     }
+
+    /**
+     * The diacritics-folded pass (#147) is tried only when nothing matches exactly, so a token that no book stores
+     * as such but whose folded form two books' folded variants share would land on the lower-numbered book
+     * whatever the writer meant: 'Jó' (Portuguese Job), before 056 stored it, folded onto Hungarian 'Jóel'. Every
+     * folded form that is not also an exact token must belong to a single book.
+     */
+    public function testNoFoldedFormIsSharedByTwoBooks(): void
+    {
+        $ctx    = $this->contextWithRealBibleBooks();
+        $exact  = [];
+        $folded = [];
+        foreach ($ctx->BIBLEBOOKS as $idx => $languages) {
+            foreach ($languages as $variants) {
+                foreach ($variants as $variant) {
+                    if ($variant === '') {
+                        continue;
+                    }
+                    $exact[$variant]                                         = true;
+                    $folded[StringUtils::foldDiacritics($variant)][$idx + 1] = true;
+                }
+            }
+        }
+        $failures = [];
+        foreach ($folded as $form => $books) {
+            if (count($books) > 1 && !isset($exact[$form])) {
+                $failures[] = "'{$form}' (diacritics folded) is shared by books " . implode(', ', array_keys($books));
+            }
+        }
+        self::assertSame([], $failures, implode("\n", $failures));
+    }
 }
