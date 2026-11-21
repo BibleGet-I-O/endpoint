@@ -9,6 +9,7 @@ use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Util\IndexList;
+use BibleGet\Api\Services\CopyrightPolicy;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -148,9 +149,13 @@ class QuoteContext
      */
     public function fullTextAllowed(string $sigla): bool
     {
-        return $this->credential !== null
-            && $this->credential->scope === 'reader'
-            && in_array($sigla, $this->READER_FULL_TEXT_VERSIONS, true);
+        return $this->copyrightPolicy()->fullTextAllowed($sigla, $this->credential);
+    }
+
+    /** The cap's rule (CopyrightPolicy, shared with search) over the editions this context has loaded. */
+    public function copyrightPolicy(): CopyrightPolicy
+    {
+        return new CopyrightPolicy($this->COPYRIGHT_VERSIONS, $this->READER_FULL_TEXT_VERSIONS);
     }
 
     /**
@@ -162,7 +167,7 @@ class QuoteContext
     {
         return array_values(array_filter(
             $this->COPYRIGHT_VERSIONS,
-            fn (string $sigla): bool => !$this->fullTextAllowed($sigla)
+            fn (string $sigla): bool => $this->copyrightPolicy()->isCapped($sigla, $this->credential)
         ));
     }
 
