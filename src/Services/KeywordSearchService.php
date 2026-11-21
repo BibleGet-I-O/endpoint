@@ -165,93 +165,126 @@ class KeywordSearchService
         string $tsLanguage,
         ?int $limit = null
     ): \PDOStatement {
-        $this->assertValidVersionFormat($version);
-
-        // Validate that tsLanguage is a safe identifier (letters only)
-        if (!preg_match('/^[a-z]+$/', $tsLanguage)) {
-            $tsLanguage = 'simple';
-        }
-        // The language's configuration with accents, diaereses and ligatures folded
-        // (migration 043, #196): "Israel" finds "Israël", "caelum" finds "cælum".
-        $tsConfig = 'bibleget_' . $tsLanguage;
-
         if ($limit !== null && $matchMode !== 'fulltext') {
             throw new \InvalidArgumentException('A ranked limit is only supported for match=fulltext.');
         }
+        $m       = $this->matchClause($version, $keyword, $matchMode, $tsLanguage);
+        $orderBy = $limit === null ? ' ORDER BY sort_order' : ' ORDER BY score DESC, sort_order LIMIT ?';
+        $bind    = [...$m['scoreBind'], ...$m['whereBind']];
+        if ($limit !== null) {
+            $bind[] = $limit;
+        }
+        return $this->run(
+            'SELECT *, ' . $m['score'] . ' AS score FROM "' . $version . '" WHERE ' . $m['where'] . $orderBy,
+            $bind,
+            $m['error']
+        );
+    }
 
-        switch ($matchMode) {
-            case 'exact':
-                // Fold the keyword as the text is folded (unaccent), then escape the
-                // folded keyword's regex metacharacters so it is matched literally:
-                // unaccent maps some symbols to metacharacters ('×' → '*').
-                // No relevance signal in regex matches → score is null per row.
-                try {
-                    $fold = $this->pdo->prepare('SELECT unaccent(?)');
-                    $fold->execute([$keyword]);
-                    $folded         = StringUtils::asString($fold->fetchColumn());
-                    $escapedKeyword = preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $folded) ?? $folded;
-                    $stmt           = $this->pdo->prepare(
-                        'SELECT *, NULL::float8 AS score FROM "' . $version . '" '
-                        . 'WHERE unaccent(text_plain) ~* (\'\y\' || ? || \'\y\') ORDER BY sort_order'
-                    );
-                    $stmt->execute([$escapedKeyword]);
-                } catch (\PDOException) {
-                    throw new ValidationException(
-                        'Search failed for keyword in version ' . $version . '. Please try a different keyword.'
-                    );
-                }
-                break;
+    /**
+     * One window of the matches in canonical (`sort_order`) order, any match mode: rows $offset … $offset+$limit-1.
+     *
+     * @throws ValidationException on a too-short keyword or a query error
+     */
+    public function executeWindow(
+        string $version,
+        string $keyword,
+        string $matchMode,
+        string $tsLanguage,
+        int $limit,
+        int $offset
+    ): \PDOStatement {
+        $m = $this->matchClause($version, $keyword, $matchMode, $tsLanguage);
+        return $this->run(
+            'SELECT *, ' . $m['score'] . ' AS score FROM "' . $version . '" WHERE ' . $m['where']
+                . ' ORDER BY sort_order LIMIT ? OFFSET ?',
+            [...$m['scoreBind'], ...$m['whereBind'], $limit, $offset],
+            $m['error']
+        );
+    }
 
-            case 'boolean':
-                $sanitizedKeyword = preg_replace('/[+\-><~*()]+/', '', $keyword) ?? $keyword;
-                if (mb_strlen($sanitizedKeyword) < self::MIN_KEYWORD_LENGTH) {
-                    throw new ValidationException(self::SHORT_KEYWORD_MESSAGE);
-                }
-                try {
-                    $stmt = $this->pdo->prepare(
-                        'SELECT *, '
-                        . 'ts_rank_cd(to_tsvector(\'' . $tsConfig . '\', text_plain), to_tsquery(\'' . $tsConfig . '\', ?)) AS score '
-                        . 'FROM "' . $version . '" '
-                        . 'WHERE to_tsvector(\'' . $tsConfig . '\', text_plain) @@ to_tsquery(\'' . $tsConfig . '\', ?) '
-                        . 'ORDER BY sort_order'
-                    );
-                    $stmt->execute([$keyword, $keyword]);
-                } catch (\PDOException) {
-                    throw new ValidationException(
-                        'Invalid boolean search expression. Use operators like & (AND), | (OR), ! (NOT).'
-                    );
-                }
-                break;
+    /**
+     * How many verses of $version match, in any match mode.
+     *
+     * @throws ValidationException on a too-short keyword or a query error
+     */
+    public function countMatches(string $version, string $keyword, string $matchMode, string $tsLanguage): int
+    {
+        $m    = $this->matchClause($version, $keyword, $matchMode, $tsLanguage);
+        $stmt = $this->run('SELECT count(*) FROM "' . $version . '" WHERE ' . $m['where'], $m['whereBind'], $m['error']);
+        return StringUtils::asInt($stmt->fetchColumn());
+    }
 
-            default: // fulltext
-                $sanitizedKeyword = self::sanitizeFulltextKeyword($keyword);
-                if (mb_strlen($sanitizedKeyword) < self::MIN_KEYWORD_LENGTH) {
-                    throw new ValidationException(self::SHORT_KEYWORD_MESSAGE);
-                }
-                $orderBy = $limit === null
-                    ? 'ORDER BY sort_order'
-                    : 'ORDER BY score DESC, sort_order LIMIT ?';
-                $bind    = [$sanitizedKeyword, $sanitizedKeyword];
-                if ($limit !== null) {
-                    $bind[] = $limit;
-                }
-                try {
-                    $stmt = $this->pdo->prepare(
-                        'SELECT *, '
-                        . 'ts_rank_cd(to_tsvector(\'' . $tsConfig . '\', text_plain), websearch_to_tsquery(\'' . $tsConfig . '\', ?)) AS score '
-                        . 'FROM "' . $version . '" '
-                        . 'WHERE to_tsvector(\'' . $tsConfig . '\', text_plain) @@ websearch_to_tsquery(\'' . $tsConfig . '\', ?) '
-                        . $orderBy
-                    );
-                    $stmt->execute($bind);
-                } catch (\PDOException) {
-                    throw new ValidationException(
-                        'Full-text search failed. Please try a different keyword.'
-                    );
-                }
-                break;
+    /**
+     * A match mode's relevance expression and condition, with their bindings and the message for a failed query.
+     *
+     * - exact: the keyword folded as the text is folded (unaccent), its regex metacharacters escaped so it is
+     *   matched literally on word boundaries (unaccent maps some symbols to metacharacters: '×' → '*'); no
+     *   relevance signal, so the score is null.
+     * - boolean: to_tsquery syntax (& | !) on the language's folded configuration (migration 043, #196).
+     * - fulltext: websearch_to_tsquery on the same configuration: "Israel" finds "Israël", "caelum" finds "cælum".
+     *
+     * @return array{score: string, where: string, scoreBind: list<string>, whereBind: list<string>, error: string}
+     * @throws ValidationException on a too-short keyword
+     */
+    private function matchClause(string $version, string $keyword, string $matchMode, string $tsLanguage): array
+    {
+        $this->assertValidVersionFormat($version);
+        // tsLanguage must be a safe identifier (letters only)
+        $tsConfig = 'bibleget_' . ( preg_match('/^[a-z]+$/', $tsLanguage) === 1 ? $tsLanguage : 'simple' );
+        $vector   = 'to_tsvector(\'' . $tsConfig . '\', text_plain)';
+
+        if ($matchMode === 'exact') {
+            try {
+                $fold = $this->pdo->prepare('SELECT unaccent(?)');
+                $fold->execute([$keyword]);
+                $folded = StringUtils::asString($fold->fetchColumn());
+            } catch (\PDOException) {
+                throw new ValidationException(
+                    'Search failed for keyword in version ' . $version . '. Please try a different keyword.'
+                );
+            }
+            return [
+                'score'     => 'NULL::float8',
+                'where'     => 'unaccent(text_plain) ~* (\'\y\' || ? || \'\y\')',
+                'scoreBind' => [],
+                'whereBind' => [preg_replace('/([.*+?^${}()|[\]\\\\])/', '\\\\\\1', $folded) ?? $folded],
+                'error'     => 'Search failed for keyword in version ' . $version . '. Please try a different keyword.',
+            ];
         }
 
+        $boolean   = $matchMode === 'boolean';
+        $sanitized = $boolean
+            ? ( preg_replace('/[+\-><~*()]+/', '', $keyword) ?? $keyword )
+            : self::sanitizeFulltextKeyword($keyword);
+        if (mb_strlen($sanitized) < self::MIN_KEYWORD_LENGTH) {
+            throw new ValidationException(self::SHORT_KEYWORD_MESSAGE);
+        }
+        $query = ( $boolean ? 'to_tsquery' : 'websearch_to_tsquery' ) . '(\'' . $tsConfig . '\', ?)';
+        $term  = $boolean ? $keyword : $sanitized;
+        return [
+            'score'     => 'ts_rank_cd(' . $vector . ', ' . $query . ')',
+            'where'     => $vector . ' @@ ' . $query,
+            'scoreBind' => [$term],
+            'whereBind' => [$term],
+            'error'     => $boolean
+                ? 'Invalid boolean search expression. Use operators like & (AND), | (OR), ! (NOT).'
+                : 'Full-text search failed. Please try a different keyword.',
+        ];
+    }
+
+    /**
+     * @param list<string|int> $bind
+     * @throws ValidationException when the query fails
+     */
+    private function run(string $sql, array $bind, string $error): \PDOStatement
+    {
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($bind);
+        } catch (\PDOException) {
+            throw new ValidationException($error);
+        }
         return $stmt;
     }
 

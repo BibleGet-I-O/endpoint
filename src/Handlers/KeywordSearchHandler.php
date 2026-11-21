@@ -14,10 +14,13 @@ use BibleGet\Api\Services\KeywordSearchService;
 use BibleGet\Api\Util\SearchUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
 
 class KeywordSearchHandler extends AbstractHandler
 {
-    private const VALID_MATCH_MODES = ['fulltext', 'exact', 'boolean'];
+    private const VALID_MATCH_MODES  = ['fulltext', 'exact', 'boolean'];
+    private const DEFAULT_PAGE_LIMIT = 50;
+    private const MAX_PAGE_LIMIT     = 100;
 
     /**
      * Reset cached data (for testing only).
@@ -51,29 +54,95 @@ class KeywordSearchHandler extends AbstractHandler
         // shared ts_language (semantic / similar search have no such constraint).
         [$validatedVersions, $tsLanguage] = $service->validateVersions($versions, '/search/keyword');
 
-        $allResults = [];
-        foreach ($validatedVersions as $v) {
-            $versionIndex = SearchUtils::loadVersionIndex($pdo, $v, $logger);
-            $searchResult = $service->executeSearch($v, $keyword, $matchMode, $tsLanguage);
-            array_push($allResults, ...$service->mapSearchResults($searchResult, $v, $versionIndex));
-        }
-
         $credential = $request->getAttribute('credential');
-        $capped     = SearchUtils::applyCopyrightCap(
-            $allResults,
-            CopyrightPolicy::fromDatabase($pdo),
-            $credential instanceof Credential ? $credential : null
-        );
-        $allResults = $capped['rows'];
+        $credential = $credential instanceof Credential ? $credential : null;
+        $policy     = CopyrightPolicy::fromDatabase($pdo);
+        $page       = $this->extractPageParams($params, $validatedVersions);
+        $info       = ['ENDPOINT_VERSION' => AppVersion::current()];
+
+        if ($page === null) {
+            $allResults = [];
+            foreach ($validatedVersions as $v) {
+                $versionIndex = SearchUtils::loadVersionIndex($pdo, $v, $logger);
+                $searchResult = $service->executeSearch($v, $keyword, $matchMode, $tsLanguage);
+                array_push($allResults, ...$service->mapSearchResults($searchResult, $v, $versionIndex));
+            }
+            $capped     = SearchUtils::applyCopyrightCap($allResults, $policy, $credential);
+            $allResults = $capped['rows'];
+            $info       = SearchUtils::withCapped($info, $capped['capped']);
+        } else {
+            [$allResults, $info] = $this->searchPage($service, $policy, $credential, $validatedVersions[0], $keyword, $matchMode, $tsLanguage, $page, $info, $logger);
+        }
         SearchUtils::assignCanonicalOrder($allResults);
 
         $body          = new \stdClass();
         $body->results = $allResults;
         $body->errors  = [];
-        $body->info    = SearchUtils::withCapped(['ENDPOINT_VERSION' => AppVersion::current()], $capped['capped']);
+        $body->info    = $info;
 
         $response = $this->buildSearchResponse($response, $contentType, $body, $allResults);
         return $this->withCacheHeaders($request, $response);
+    }
+
+    /**
+     * One page of one edition's matches in canonical order, the cap applied: a capped edition shows only its first
+     * VERSE_CAP matches, so the window is clipped to them. `info.TOTAL` is what this caller may see.
+     *
+     * @param array{limit: int, offset: int} $page
+     * @param array<string, mixed>           $info
+     * @return array{0: array<int, array<string, mixed>>, 1: array<string, mixed>}
+     */
+    private function searchPage(
+        KeywordSearchService $service,
+        CopyrightPolicy $policy,
+        ?Credential $credential,
+        string $version,
+        string $keyword,
+        string $matchMode,
+        string $tsLanguage,
+        array $page,
+        array $info,
+        LoggerInterface $logger
+    ): array {
+        $count   = $service->countMatches($version, $keyword, $matchMode, $tsLanguage);
+        $capped  = $policy->isCapped($version, $credential);
+        $visible = $capped ? min($count, CopyrightPolicy::VERSE_CAP) : $count;
+        $limit   = min($page['limit'], max(0, $visible - $page['offset']));
+        $rows    = [];
+        if ($limit > 0) {
+            $versionIndex = SearchUtils::loadVersionIndex(Connection::getConnection(), $version, $logger);
+            $stmt         = $service->executeWindow($version, $keyword, $matchMode, $tsLanguage, $limit, $page['offset']);
+            $rows         = $service->mapSearchResults($stmt, $version, $versionIndex);
+        }
+        $info          = SearchUtils::withCapped($info, $capped && $count > CopyrightPolicy::VERSE_CAP ? [$version => $count] : []);
+        $info['TOTAL'] = $visible;
+        return [$rows, $info];
+    }
+
+    /**
+     * `limit` (1–100) and `offset` (≥ 0) for one edition, or null when there is no `limit` (every match, as before).
+     *
+     * @param array<string, mixed> $params
+     * @param list<string>         $versions
+     * @return array{limit: int, offset: int}|null
+     * @throws ValidationException
+     */
+    private function extractPageParams(array $params, array $versions): ?array
+    {
+        if (!isset($params['limit']) || $params['limit'] === '') {
+            return null;
+        }
+        if (count($versions) > 1) {
+            throw new ValidationException('limit and offset page a single version; ask for one version at a time.');
+        }
+        $offsetRaw = $params['offset'] ?? 0;
+        if (!is_numeric($offsetRaw) || (int) $offsetRaw < 0 || (string) (int) $offsetRaw !== trim((string) $offsetRaw)) {
+            throw new ValidationException('offset must be a non-negative integer.');
+        }
+        return [
+            'limit'  => SearchUtils::parseLimitParam($params['limit'], self::DEFAULT_PAGE_LIMIT, self::MAX_PAGE_LIMIT),
+            'offset' => (int) $offsetRaw,
+        ];
     }
 
     /**

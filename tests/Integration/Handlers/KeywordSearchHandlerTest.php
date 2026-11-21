@@ -619,4 +619,82 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         self::assertSame('TEST2', (string) $xml->info->capped['version']);
         self::assertSame('35', (string) $xml->info->capped['total']);
     }
+
+    // ── Paging: limit and offset ──
+
+    private function refused(array $params): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->createHandler()->handle(( new ServerRequest('GET', '/v3/search/keyword') )->withQueryParams($params));
+    }
+
+    public function testLimitAndOffsetReturnACanonicalWindow(): void
+    {
+        $all  = $this->search(['keyword' => 'light', 'version' => 'TEST1']);
+        $page = $this->search(['keyword' => 'light', 'version' => 'TEST1', 'limit' => '1', 'offset' => '1']);
+        self::assertGreaterThan(1, count($all['results']));
+        self::assertCount(1, $page['results']);
+        self::assertSame($all['results'][1]['text'], $page['results'][0]['text']);
+        self::assertSame(count($all['results']), $page['info']['TOTAL']);
+    }
+
+    public function testCappedEditionWindowStopsAtThirty(): void
+    {
+        $first = $this->search(['keyword' => 'test2', 'version' => 'TEST2', 'limit' => '50', 'offset' => '0']);
+        self::assertCount(30, $first['results']);
+        self::assertSame(30, $first['info']['TOTAL']);
+        self::assertSame(['TEST2' => 35], $first['info']['CAPPED']);
+
+        $past = $this->search(['keyword' => 'test2', 'version' => 'TEST2', 'limit' => '50', 'offset' => '30']);
+        self::assertSame([], $past['results']);
+        self::assertSame(30, $past['info']['TOTAL']);
+        self::assertSame(['TEST2' => 35], $past['info']['CAPPED']);
+
+        $tail = $this->search(['keyword' => 'test2', 'version' => 'TEST2', 'limit' => '10', 'offset' => '25']);
+        self::assertCount(5, $tail['results']);
+    }
+
+    public function testReaderOnAFullTextEditionPagesThroughEverything(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->exec("UPDATE versions_available SET reader_full_text = true WHERE sigla = 'TEST2'");
+        try {
+            $body = $this->search(['keyword' => 'test2', 'version' => 'TEST2', 'limit' => '10', 'offset' => '30'], self::reader());
+        } finally {
+            $pdo->exec("UPDATE versions_available SET reader_full_text = false WHERE sigla = 'TEST2'");
+        }
+        self::assertCount(5, $body['results']);
+        self::assertSame(35, $body['info']['TOTAL']);
+        self::assertArrayNotHasKey('CAPPED', $body['info']);
+    }
+
+    public function testLimitWithSeveralVersionsIsRefused(): void
+    {
+        $this->refused(['keyword' => 'light', 'version' => 'TEST1,DRB', 'limit' => '10']);
+    }
+
+    public function testNegativeOffsetIsRefused(): void
+    {
+        $this->refused(['keyword' => 'light', 'version' => 'TEST1', 'limit' => '10', 'offset' => '-1']);
+    }
+
+    public function testNonNumericOffsetIsRefused(): void
+    {
+        $this->refused(['keyword' => 'light', 'version' => 'TEST1', 'limit' => '10', 'offset' => 'x']);
+    }
+
+    public function testWithoutLimitNothingChanges(): void
+    {
+        $body = $this->search(['keyword' => 'light', 'version' => 'TEST1']);
+        self::assertArrayNotHasKey('TOTAL', $body['info']);
+    }
+
+    public function testExactModePagesToo(): void
+    {
+        $all  = $this->search(['keyword' => 'light', 'version' => 'TEST1', 'match' => 'exact']);
+        $page = $this->search(['keyword' => 'light', 'version' => 'TEST1', 'match' => 'exact', 'limit' => '1', 'offset' => '0']);
+        self::assertCount(1, $page['results']);
+        self::assertSame($all['results'][0]['text'], $page['results'][0]['text']);
+        self::assertSame(count($all['results']), $page['info']['TOTAL']);
+    }
 }
