@@ -697,4 +697,12 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         self::assertSame($all['results'][0]['text'], $page['results'][0]['text']);
         self::assertSame(count($all['results']), $page['info']['TOTAL']);
     }
+
+    public function testCanonicalOrderCountsFromTheStartOfTheMatchesNotThePage(): void
+    {
+        $all  = $this->search(['keyword' => 'light', 'version' => 'TEST1']);
+        $page = $this->search(['keyword' => 'light', 'version' => 'TEST1', 'limit' => '1', 'offset' => '1']);
+        self::assertSame($all['results'][1]['canonical_order'], $page['results'][0]['canonical_order']);
+        self::assertSame(2, $page['results'][0]['canonical_order']);
+    }
 }

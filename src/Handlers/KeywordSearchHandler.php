@@ -12,6 +12,7 @@ use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Api\Services\CopyrightPolicy;
 use BibleGet\Api\Services\KeywordSearchService;
 use BibleGet\Api\Util\SearchUtils;
+use BibleGet\Api\Util\StringUtils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -74,6 +75,13 @@ class KeywordSearchHandler extends AbstractHandler
             [$allResults, $info] = $this->searchPage($service, $policy, $credential, $validatedVersions[0], $keyword, $matchMode, $tsLanguage, $page, $info, $logger);
         }
         SearchUtils::assignCanonicalOrder($allResults);
+        if ($page !== null) {
+            // A page's rows count from the start of the matches, not of the page.
+            foreach ($allResults as &$row) {
+                $row['canonical_order'] = StringUtils::asInt($row['canonical_order'] ?? 0) + $page['offset'];
+            }
+            unset($row);
+        }
 
         $body          = new \stdClass();
         $body->results = $allResults;
