@@ -1315,6 +1315,95 @@
                 ]
             }
         },
+        "/search/suggest": {
+            "get": {
+                "summary": "Suggest words of an edition that start with a prefix",
+                "description": "For keyword search suggestions as a reader types: the words of one edition that start with `prefix`, most frequent first (then alphabetically). The prefix is matched without accents and case-insensitively (`isr`, `ISR` and `Ísr` all find `israël`). Only words keyword search accepts are listed: at least 4 letters, and not a stop word of the edition's language. Words are not verses, so no copyright cap applies.",
+                "operationId": "suggestSearchByGET",
+                "tags": [
+                    "SearchAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "prefix",
+                        "in": "query",
+                        "required": true,
+                        "description": "The beginning of the word being typed: 2 to 40 letters.",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 40
+                        },
+                        "example": "lig"
+                    },
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "required": true,
+                        "description": "One edition's sigla.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "How many words, at most.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20,
+                            "default": 8
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Words of the edition starting with the prefix, most frequent first",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuggestSearchResponseJSON"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/RateLimitLimit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/RateLimitRemaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/RateLimitReset"
+                            },
+                            "X-BibleGet-Version": {
+                                "$ref": "#/components/headers/ApiVersion"
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "description": "Validation error: a prefix that is not 2 to 40 letters, an unknown version, or more than one version"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
+            }
+        },
         "/installations": {
             "post": {
                 "summary": "Register a plugin installation",
@@ -18655,6 +18744,49 @@
                 },
                 "example": {
                     "NABRE": 252
+                }
+            },
+            "SuggestSearchResponseJSON": {
+                "type": "object",
+                "required": [
+                    "suggestions",
+                    "info"
+                ],
+                "properties": {
+                    "suggestions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "word",
+                                "count"
+                            ],
+                            "properties": {
+                                "word": {
+                                    "type": "string",
+                                    "description": "The word as the edition prints it, lowercased.",
+                                    "example": "light"
+                                },
+                                "count": {
+                                    "type": "integer",
+                                    "description": "How many of the edition's verses contain it.",
+                                    "example": 252
+                                }
+                            }
+                        }
+                    },
+                    "info": {
+                        "type": "object",
+                        "required": [
+                            "ENDPOINT_VERSION"
+                        ],
+                        "properties": {
+                            "ENDPOINT_VERSION": {
+                                "type": "string",
+                                "example": "3.0"
+                            }
+                        }
+                    }
                 }
             }
         },
