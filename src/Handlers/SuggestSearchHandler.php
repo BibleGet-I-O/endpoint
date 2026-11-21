@@ -26,6 +26,26 @@ class SuggestSearchHandler extends AbstractHandler
     private const MIN_PREFIX    = 2;
     private const MAX_PREFIX    = 40;
 
+    /**
+     * Bound: the sigla, the LIKE pattern (foldedPattern), the limit. The pattern arrives finished, so the planner
+     * sees a constant prefix and searches the (sigla, folded text_pattern_ops) index by range, rather than testing
+     * every word of the edition: unaccent() is only STABLE, so a pattern built in this query would not be constant.
+     */
+    public const QUERY = 'SELECT word, freq FROM search_vocabulary
+          WHERE sigla = ? AND folded LIKE ?
+          ORDER BY freq DESC, word LIMIT ?';
+
+    /**
+     * The prefix folded as search_vocabulary.folded is (unaccent(lower())), as a LIKE prefix pattern. The prefix is
+     * letters only (prefixParam), so it holds no LIKE wildcard to escape.
+     */
+    public static function foldedPattern(\PDO $pdo, string $prefix): string
+    {
+        $stmt = $pdo->prepare('SELECT unaccent(lower(?))');
+        $stmt->execute([$prefix]);
+        return StringUtils::asString($stmt->fetchColumn()) . '%';
+    }
+
     public static function resetCache(): void
     {
         KeywordSearchService::resetCache();
@@ -53,12 +73,8 @@ class SuggestSearchHandler extends AbstractHandler
         $prefix      = self::prefixParam($params['prefix'] ?? null);
         $limit       = SearchUtils::parseLimitParam($params['limit'] ?? null, self::DEFAULT_LIMIT, self::MAX_LIMIT);
 
-        $stmt = $pdo->prepare(
-            'SELECT word, freq FROM search_vocabulary
-              WHERE sigla = ? AND folded LIKE unaccent(lower(?)) || \'%\'
-              ORDER BY freq DESC, word LIMIT ?'
-        );
-        $stmt->execute([$validated[0], $prefix, $limit]);
+        $stmt = $pdo->prepare(self::QUERY);
+        $stmt->execute([$validated[0], self::foldedPattern($pdo, $prefix), $limit]);
         $suggestions = [];
         while (is_array($row = $stmt->fetch(\PDO::FETCH_ASSOC))) {
             $suggestions[] = ['word' => StringUtils::asString($row['word']), 'count' => StringUtils::asInt($row['freq'])];

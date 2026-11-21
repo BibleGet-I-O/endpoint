@@ -8,8 +8,8 @@ use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
-use BibleGet\Api\Util\IndexList;
 use BibleGet\Api\Services\CopyrightPolicy;
+use BibleGet\Api\Util\IndexList;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -165,9 +165,10 @@ class QuoteContext
      */
     public function copyrightLimitedVersions(): array
     {
+        $policy = $this->copyrightPolicy();
         return array_values(array_filter(
             $this->COPYRIGHT_VERSIONS,
-            fn (string $sigla): bool => $this->copyrightPolicy()->isCapped($sigla, $this->credential)
+            fn (string $sigla): bool => $policy->isCapped($sigla, $this->credential)
         ));
     }
 

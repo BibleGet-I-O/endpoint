@@ -106,4 +106,19 @@ final class SuggestSearchHandlerTest extends DatabaseTestCase
         $this->expectException(ValidationException::class);
         $this->suggest(['prefix' => 'lig', 'version' => 'TEST1,DRB']);
     }
+
+    public function testThePrefixIsLookedUpThroughTheIndex(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->exec('SET enable_seqscan = off');
+        try {
+            $stmt = $pdo->prepare('EXPLAIN ' . SuggestSearchHandler::QUERY);
+            $stmt->execute(['TEST1', SuggestSearchHandler::foldedPattern($pdo, 'Lig'), 8]);
+            $plan = implode("\n", $stmt->fetchAll(\PDO::FETCH_COLUMN));
+        } finally {
+            $pdo->exec('SET enable_seqscan = on');
+        }
+        // The word's prefix is part of the index condition, not a filter on every word of the edition.
+        self::assertMatchesRegularExpression('/Index Cond:.*folded ~>=~/s', $plan, $plan);
+    }
 }
