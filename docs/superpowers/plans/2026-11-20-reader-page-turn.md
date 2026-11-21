@@ -31,8 +31,11 @@ Testing Library (jsdom).
   inside one; starting inside an ancestor with `scrollWidth > clientWidth` and `overflow-x` `auto`/`scroll`.
 - `prefers-reduced-motion: reduce`: no curl; a completed swipe fades the page out (~150ms) and navigates; a link
   navigates at once.
-- The curl acts on the viewport: rest corner is the viewport's top-right (next) / top-left (prev); the moving corner P
-  is the rest corner plus the finger's displacement; P is clamped to within one page width of the spine's top corner.
+- The curl acts on the page: the chapter wrapper's box clipped to the viewport (never the header, the footer or, on
+  wide screens, the margins outside `<main>`). The rest corner is that page's top-right (next) / top-left (prev); the
+  moving corner P is the rest corner plus the finger's displacement; P is clamped to within one page width of the
+  spine's top corner. The flap and the fold shadow are fixed overlays, but their clip polygons are the page's, so
+  nothing is drawn outside it.
 - The flap and shadow are `aria-hidden`, `pointer-events: none`; the links stay the accessible way to turn and keep
   working without JavaScript and for modified/middle clicks.
 - Every new English string is added to `messages/en.json`, then `npm run sync-messages`, then translated by hand in
@@ -48,7 +51,9 @@ Testing Library (jsdom).
    `theClipIsTranslatedIntoTheWrappersBox`).
 3. Back after a turn (page restored from the bfcache) must show the chapter unclipped (Task 3 test
    `aRestoredPageIsNotLeftClipped`).
-4. A two-finger pinch must never curl (Task 2 test `twoFingersAreNeverATurn`).
+4. A two-finger pinch must never curl, and a second finger added mid-turn cancels it (Task 2 test
+   `twoFingersAreNeverATurn`, Task 3 test `aSecondFingerCancelsTheTurn`); pinched in, one finger pans the page
+   sideways (`touch-action: auto` on `[data-zoomed]`, Task 3 test `aZoomedInPageCanBePannedSideways`).
 5. A tap or drag starting on a control inside the page (the Esther tradition switch, a capped-notice link) is not a
    swipe (Task 2 test `aTouchOnAControlIsNotASwipe`).
 
@@ -137,13 +142,16 @@ it("previousMirrorsNext", () => {
   export function decideAxis(dx: number, dy: number): "pending" | "scroll" | "turn";
   /** dx < 0 → "next", dx > 0 → "prev". */
   export function sideOf(dx: number): Side;
-  export function releaseOutcome(o: { dx: number; dy: number; w: number; vx: number; reducedMotion: boolean }): "complete" | "back";
+  export function releaseOutcome(o: { dx: number; dy: number; w: number; vx: number; reducedMotion: boolean; side: Side }): "complete" | "back";
   /** True only for exactly one touch. */
   export function singleTouch(touches: { length: number }): boolean;
   ```
   `Side` is imported from `lib/page-curl.ts`. `vx` is px/ms over the last ~100ms of movement. With `reducedMotion`
   the outcome is "complete" iff |dx| ≥ 50 and |dx| > 1.5·|dy|; otherwise iff |dx| ≥ 50 and (|dx| ≥ w/3 or a flick
-  in dx's direction).
+  in dx's direction). Either way a displacement against `side` (the turn the drag locked, so dx = 0 or sideOf(dx) ≠
+  side) is "back". `vx` is 0 when the last movement is older than ~100ms at release: a finger that stopped is not
+  flicking. In normal motion the 1.5× ratio decides only the axis at the start: once the page curls, pulling the
+  corner down is part of the curl, and the corner the reader sees decides.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -172,17 +180,17 @@ it("aSidewaysScrollerKeepsItsOwnSwipes", () => {
 });
 it("selectedTextIsNotTurned", () => { expect(canStartAt(document.body, 200, 400, "In principio")).toBe(false); });
 it("aThirdOfThePageCompletes", () => {
-  expect(releaseOutcome({ dx: -140, dy: 0, w: 400, vx: 0, reducedMotion: false })).toBe("complete");
-  expect(releaseOutcome({ dx: -120, dy: 0, w: 400, vx: 0, reducedMotion: false })).toBe("back");
+  expect(releaseOutcome({ dx: -140, dy: 0, w: 400, vx: 0, reducedMotion: false, side: "next" })).toBe("complete");
+  expect(releaseOutcome({ dx: -120, dy: 0, w: 400, vx: 0, reducedMotion: false, side: "next" })).toBe("back");
 });
 it("aFlickCompletesButNotBelowTheMinimum", () => {
-  expect(releaseOutcome({ dx: -60, dy: 0, w: 400, vx: -0.6, reducedMotion: false })).toBe("complete");
-  expect(releaseOutcome({ dx: -40, dy: 0, w: 400, vx: -2, reducedMotion: false })).toBe("back");
-  expect(releaseOutcome({ dx: -60, dy: 0, w: 400, vx: 0.6, reducedMotion: false })).toBe("back");
+  expect(releaseOutcome({ dx: -60, dy: 0, w: 400, vx: -0.6, reducedMotion: false, side: "next" })).toBe("complete");
+  expect(releaseOutcome({ dx: -40, dy: 0, w: 400, vx: -2, reducedMotion: false, side: "next" })).toBe("back");
+  expect(releaseOutcome({ dx: -60, dy: 0, w: 400, vx: 0.6, reducedMotion: false, side: "next" })).toBe("back");
 });
 it("withReducedMotionASwipeIsEnough", () => {
-  expect(releaseOutcome({ dx: 60, dy: 20, w: 400, vx: 0, reducedMotion: true })).toBe("complete");
-  expect(releaseOutcome({ dx: 60, dy: 50, w: 400, vx: 0, reducedMotion: true })).toBe("back");
+  expect(releaseOutcome({ dx: 60, dy: 20, w: 400, vx: 0, reducedMotion: true, side: "prev" })).toBe("complete");
+  expect(releaseOutcome({ dx: 60, dy: 50, w: 400, vx: 0, reducedMotion: true, side: "prev" })).toBe("back");
 });
 it("leftIsNextRightIsPrevious", () => { expect(sideOf(-1)).toBe("next"); expect(sideOf(1)).toBe("prev"); });
 ```
