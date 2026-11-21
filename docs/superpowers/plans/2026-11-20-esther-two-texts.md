@@ -110,7 +110,7 @@
   - `aFailedMasoreticTextLeavesTheSeptuagintWithANote`: Hebrew `getChapter` rejects with `ApiUnavailable` → the page renders the Greek text and a note "Masoretic text could not be loaded. Try again later."
   - Update `passesTheEstherTraditionOnlyWhereTheEditionHasBoth` and `estherWithBothTextsHas…` to the new shape (no "Esther text" select; both traditions requested when alone). A compared edition whose index holds both Esther texts (DRB does) gets the
     tradition shown, so a Masoretic comparison pairs NABRE's Hebrew text with DRB's Hebrew text, not its Greek one;
-    an edition with one text gets none. Test `aComparedEditionWithBothTextsFollowsTheSwitch`: `with: "DRB"`,
+    an edition with one text gets none. Tests `aComparedEditionWithBothTextsBringsTheSwitch`, `onlyEditionsWithBothTextsGetATradition`: `with: "DRB"`,
     `tradition: "HEBREW"`, DRB's index has `greekVersesPerChapter` → `getChapter` for DRB is called with `HEBREW`.
 - [ ] **Step 2: Run** `npx vitest run app/__tests__/pages.test.tsx` — Expected: the new tests FAIL.
 - [ ] **Step 3: Implement** in `page.tsx`:
