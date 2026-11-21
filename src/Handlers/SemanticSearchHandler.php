@@ -109,14 +109,15 @@ class SemanticSearchHandler extends AbstractHandler
                 $column
             ));
         }
-        // Global ordering by score DESC across versions (nulls last), then trim to limit.
+        // Global ordering by score DESC across versions (nulls last), the cap, then the limit: a capped edition's
+        // extra rows leave room for the other editions'.
         SearchUtils::sortByScoreDesc($allResults);
-        $allResults = array_slice($allResults, 0, $limit);
         $credential = $request->getAttribute('credential');
-        $capped     = SearchUtils::applyCopyrightCap(
+        $capped     = SearchUtils::applyCopyrightCapThenLimit(
             $allResults,
             CopyrightPolicy::fromDatabase($pdo),
-            $credential instanceof Credential ? $credential : null
+            $credential instanceof Credential ? $credential : null,
+            $limit
         );
         $allResults = $capped['rows'];
 

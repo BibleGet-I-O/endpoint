@@ -705,4 +705,24 @@ class KeywordSearchHandlerTest extends DatabaseTestCase
         self::assertSame($all['results'][1]['canonical_order'], $page['results'][0]['canonical_order']);
         self::assertSame(2, $page['results'][0]['canonical_order']);
     }
+
+    public function testPagedXmlCarriesTheTotal(): void
+    {
+        foreach ([['TEST2', 'test2', '30'], ['TEST1', 'light', null]] as [$version, $keyword, $capped]) {
+            $request = ( new ServerRequest('GET', '/v3/search/keyword', ['Accept' => 'application/xml']) )
+                ->withQueryParams(['keyword' => $keyword, 'version' => $version, 'limit' => '10', 'return' => 'xml']);
+            $xml     = simplexml_load_string((string) $this->createHandler()->handle($request)->getBody());
+            self::assertNotFalse($xml);
+            self::assertNotSame('', (string) $xml->info['TOTAL'], $version);
+            if ($capped !== null) {
+                self::assertSame($capped, (string) $xml->info['TOTAL']);
+            }
+        }
+        $unpaged = simplexml_load_string((string) $this->createHandler()->handle(
+            ( new ServerRequest('GET', '/v3/search/keyword', ['Accept' => 'application/xml']) )
+                ->withQueryParams(['keyword' => 'light', 'version' => 'TEST1', 'return' => 'xml'])
+        )->getBody());
+        self::assertNotFalse($unpaged);
+        self::assertSame('', (string) $unpaged->info['TOTAL']);
+    }
 }

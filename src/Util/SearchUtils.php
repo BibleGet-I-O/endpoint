@@ -283,4 +283,30 @@ class SearchUtils
             $node->addAttribute('total', is_scalar($total) ? (string) $total : '0');
         }
     }
+
+    /**
+     * The cap, then the limit, on rows in rank order (semantic, hybrid, similar): a capped edition keeps its best
+     * VERSE_CAP rows, and the limit fills with the next rows of any edition, so a capped edition never crowds the
+     * others out. `capped` reports, for each edition that lost rows, how many it had among the top $limit rows
+     * without the cap: what the route would have returned it.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array{rows: list<array<string, mixed>>, capped: array<string, int>}
+     */
+    public static function applyCopyrightCapThenLimit(array $rows, CopyrightPolicy $policy, ?Credential $credential, int $limit): array
+    {
+        $out   = self::applyCopyrightCap($rows, $policy, $credential);
+        $shown = [];
+        foreach (array_slice($rows, 0, $limit) as $row) {
+            $version         = is_string($row['version'] ?? null) ? $row['version'] : '';
+            $shown[$version] = ( $shown[$version] ?? 0 ) + 1;
+        }
+        $capped = [];
+        foreach (array_keys($out['capped']) as $version) {
+            if (( $shown[$version] ?? 0 ) > CopyrightPolicy::VERSE_CAP) {
+                $capped[$version] = $shown[$version];
+            }
+        }
+        return ['rows' => array_slice($out['rows'], 0, $limit), 'capped' => $capped];
+    }
 }

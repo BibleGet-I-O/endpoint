@@ -209,6 +209,9 @@ class KeywordSearchHandler extends AbstractHandler
             $xmlResults = $xml->addChild('results');
             $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
             SearchUtils::addCappedXml($xmlInfo, $body->info);
+            if (is_array($body->info) && is_int($body->info['TOTAL'] ?? null)) {
+                $xmlInfo->addAttribute('TOTAL', (string) $body->info['TOTAL']);
+            }
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

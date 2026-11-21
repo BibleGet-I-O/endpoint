@@ -156,7 +156,9 @@ Passenger sends); the limiter is a small module with its own tests.
 `/{locale}/read/{edition}/search?mode=keyword|semantic|hybrid&q=…[&match=exact][&page=N]`, server-rendered.
 
 - Calls the matching search route with the visitor's `read` key or the signed-in reader's `reader` key (the existing
-  access logic), with `limit` 30 for semantic and hybrid, and for keyword `limit=50&offset=(page-1)*50`.
+  access logic), with `limit` 30 for semantic and hybrid, and for keyword `limit=50&offset=(page-1)*50`. At
+  `limit` 30 a semantic or hybrid search gives every reader the same 30 results, so it is never capped and shows no
+  notice: only keyword search, which pages through every match, holds results back from visitors.
 - Keyword results come in pages of 50 (`&page=N` in the URL), with Previous / Next and "51–100 of 1,234"; for a capped
   edition there is a single page of at most 30.
 - Shows the question, the mode, the edition and the number of results; then the results in the order the API gives:
@@ -178,8 +180,9 @@ Passenger sends); the limiter is a small module with its own tests.
 
 ### Verses as link targets
 
-Each verse line in the reader gets an `id` (`v{verse}`, plus the letter for lettered verses, e.g. `v1a`) so a result can
-link to `/{locale}/read/{edition}/{book}/{chapter}#v16`; the targeted verse is briefly highlighted (`:target`), and the
+Each verse line in the reader gets an `id` (`v{chapter}.{verse}`, plus the letter for lettered verses, e.g. `v1.1a`: the
+chapter is part of it because a page also prints a neighbour chapter's verse) so a result can link to
+`/{locale}/read/{edition}/{book}/{chapter}#v3.16`; the targeted verse is briefly highlighted (`:target`), and the
 page-turn wrapper does not interfere with the scroll.
 
 ### Strings

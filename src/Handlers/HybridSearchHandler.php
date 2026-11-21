@@ -158,7 +158,7 @@ class HybridSearchHandler extends AbstractHandler
             ['keyword' => $keywordWeight, 'semantic' => $semanticWeight],
             $k,
             array_flip($validatedVersions),
-            $limit
+            PHP_INT_MAX
         );
 
         foreach ($results as $i => &$row) {
@@ -166,12 +166,14 @@ class HybridSearchHandler extends AbstractHandler
         }
         unset($row);
         $credential = $request->getAttribute('credential');
-        $capped     = SearchUtils::applyCopyrightCap(
+        $capped     = SearchUtils::applyCopyrightCapThenLimit(
             $results,
             CopyrightPolicy::fromDatabase($pdo),
-            $credential instanceof Credential ? $credential : null
+            $credential instanceof Credential ? $credential : null,
+            $limit
         );
-        $results    = $capped['rows'];
+        // The cap first, then the limit: a capped edition's extra rows leave room for the other editions'.
+        $results = $capped['rows'];
 
         // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($results);

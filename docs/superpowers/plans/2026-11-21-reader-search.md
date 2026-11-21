@@ -182,8 +182,10 @@ and a word list behind `/search/suggest`.
   (422); HTTP test `testSuggestNeedsACredentialWhenRequired` (as the keyword HTTP test does for its route).
 - [ ] **Step 2: Run** — Expected: FAIL.
 - [ ] **Step 3: Implement**: version validated with `KeywordSearchService::validateVersions([$v], '/search/suggest')`;
-  prefix trimmed, 2–40 letters; query `WHERE sigla = ? AND folded LIKE unaccent(lower(?)) || '%' ORDER BY freq DESC,
-  word LIMIT ?` (escape `%`/`_` in the prefix); cache headers via `withCacheHeaders`.
+  prefix trimmed, 2–40 letters only (so no LIKE wildcard to escape); the prefix is folded first
+  (`SELECT unaccent(lower(?))`) and bound as a finished pattern, `WHERE sigla = ? AND folded LIKE ? ORDER BY freq DESC,
+  word LIMIT ?`, so the planner can search the (sigla, folded) index by range (unaccent() is only STABLE); cache
+  headers via `withCacheHeaders`.
 - [ ] **Step 4: Document** the route in `openapi.json` (tag SearchAPI, `ApiKey` security); `composer lint:openapi`.
 - [ ] **Step 5: Run** `composer test:quick` and `composer analyse` and `composer lint` — Expected: all clean.
 - [ ] **Step 6: Commit** `feat(search): /search/suggest, words of an edition that start with a prefix`.

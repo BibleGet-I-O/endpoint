@@ -487,4 +487,28 @@ class HybridSearchHandlerTest extends DatabaseTestCase
         self::assertCount(30, $body['results']);
         self::assertSame(['TEST2' => 40], $body['info']['CAPPED']);
     }
+
+    public function testTheCapLeavesRoomForTheOtherEditions(): void
+    {
+        // TEST2 (copyrighted) matches best in both legs, TEST1 only semantically: 30 TEST2 rows, then TEST1 fills.
+        $this->embedAllOfTest2();
+        $this->getConnection()->exec('UPDATE "TEST1" SET embedding = \'' . '[' . implode(',', array_merge(array_fill(0, 192, 0.1), array_fill(0, 192, 0.02))) . ']' . '\'');
+        try {
+            $client = $this->createStub(EmbeddingClient::class);
+            $client->method('embed')->willReturn(array_fill(0, 384, 0.1));
+            $response = $this->createHandler($client)->handle(
+                ( new ServerRequest('GET', '/v3/search/hybrid') )
+                    ->withQueryParams(['query' => 'test2', 'version' => 'TEST2,TEST1', 'model' => 'minilm', 'limit' => '40'])
+            );
+        } finally {
+            $this->clearTest2();
+            $this->getConnection()->exec('UPDATE "TEST1" SET embedding = NULL');
+        }
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body, (string) $response->getBody());
+        $by = array_count_values(array_column($body['results'], 'version'));
+        self::assertSame(30, $by['TEST2'] ?? 0);
+        self::assertSame(10, $by['TEST1'] ?? 0);
+        self::assertArrayHasKey('TEST2', $body['info']['CAPPED']);
+    }
 }

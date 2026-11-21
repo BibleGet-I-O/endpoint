@@ -116,20 +116,20 @@ class SimilarSearchHandler extends AbstractHandler
             ));
         }
 
-        // Multi-version: sort globally by score DESC and trim to the user's
-        // limit. Null scores (computation failures) sort to the bottom so a
-        // genuine 0.0 still outranks them.
+        // Multi-version: sort globally by score DESC. Null scores (computation
+        // failures) sort to the bottom so a genuine 0.0 still outranks them.
         if (count($validatedVersions) > 1) {
             SearchUtils::sortByScoreDesc($allResults);
-            $allResults = array_slice($allResults, 0, $limit);
         }
 
         $credential = $request->getAttribute('credential');
-        $capped     = SearchUtils::applyCopyrightCap(
+        $capped     = SearchUtils::applyCopyrightCapThenLimit(
             $allResults,
             CopyrightPolicy::fromDatabase($pdo),
-            $credential instanceof Credential ? $credential : null
+            $credential instanceof Credential ? $credential : null,
+            $limit
         );
+        // The cap first, then the user's limit: a capped edition's extra rows leave room for the other editions'.
         $allResults = $capped['rows'];
 
         // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
