@@ -13,11 +13,13 @@ use BibleGet\Tests\Integration\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * The abbreviations French, German, Portuguese and Spanish citations actually use (056) resolve to the right book,
+ * The abbreviations French, German, Portuguese and Spanish (056), Romanian, Czech, Albanian and Vietnamese (057)
+ * citations actually use resolve to the right book,
  * through the real book tables and the validator's two passes (exact, then diacritics folded).
  *
- * The cases are the citations the SeminaVerbi wikis wrote and BibleGet rejected or misread, plus a few that pin
- * the tokens 056 could not add because another language already uses them for another book.
+ * The cases are the citations the SeminaVerbi wikis wrote and BibleGet rejected or misread, each language's
+ * standard forms, plus a few that pin the tokens 056 and 057 could not add because another language already uses
+ * them for another book.
  */
 final class LocalizedBookAbbreviationsTest extends DatabaseTestCase
 {
@@ -75,6 +77,61 @@ final class LocalizedBookAbbreviationsTest extends DatabaseTestCase
             'it Ab stays Habakkuk' => ['Ab 2,4', 42],
             'hr Br stays Numbers'  => ['Br 6,24', 4],
             'en Sg stays Song'     => ['Sg 8,6', 26],
+            // ro (Catholic ARCB, Cornilescu).
+            'ro Fac'               => ['Fac 1,1', 1],
+            'ro Ieș'               => ['Ieș 3,14', 2],
+            'ro 1 Rg'              => ['1 Rg 19,12', 11],
+            'ro 1 Împ'             => ['1 Împ 19,12', 11],
+            'ro Înț'               => ['Înț 7,26', 27],
+            'ro Plâng'             => ['Plâng 3,22', 31],
+            'ro Il'                => ['Il 3,1', 36],
+            'ro In'                => ['In 3,16', 50],
+            'ro Fap'               => ['Fap 2,1', 51],
+            'ro Evr'               => ['Evr 11,1', 65],
+            'ro Iac'               => ['Iac 2,17', 66],
+            'ro 1 In'              => ['1 In 4,8', 69],
+            // cs (ČEP, Catholic liturgical).
+            'cs Sd'                => ['Sd 6,12', 7],
+            'cs 1 Kr'              => ['1 Kr 19,12', 11],
+            'cs 1 Pa'              => ['1 Pa 1,1', 13],
+            'cs Ž'                 => ['Ž 23,1', 23],
+            'cs Kaz'               => ['Kaz 1,2', 25],
+            'cs Mdr'               => ['Mdr 7,26', 27],
+            'cs L'                 => ['L 1,1', 49],
+            'cs J'                 => ['J 3,16', 50],
+            'cs Sk'                => ['Sk 2,1', 51],
+            'cs Ř'                 => ['Ř 8,28', 52],
+            'cs Žd'                => ['Žd 11,1', 65],
+            'cs 1 Petr'            => ['1 Petr 3,15', 67],
+            'cs Zj'                => ['Zj 21,1', 73],
+            // sq.
+            'sq Zan'               => ['Zan 1,1', 1],
+            'sq Dal'               => ['Dal 3,14', 2],
+            'sq 1 Mb'              => ['1 Mb 19,12', 11],
+            'sq 1 Kron'            => ['1 Kron 1,1', 13],
+            'sq Llu'               => ['Llu 1,1', 49],
+            'sq Gjn'               => ['Gjn 3,16', 50],
+            'sq Vep'               => ['Vep 2,1', 51],
+            'sq Zb'                => ['Zb 21,1', 73],
+            // vi (Nhóm Phiên Dịch Các Giờ Kinh Phụng Vụ).
+            'vi Xh'                => ['Xh 3,14', 2],
+            'vi Đnl'               => ['Đnl 6,4', 5],
+            'vi R'                 => ['R 1,16', 8],
+            'vi 1 V'               => ['1 V 19,12', 11],
+            'vi Gđt'               => ['Gđt 8,1', 18],
+            'vi Tv'                => ['Tv 23,1', 23],
+            'vi Hc'                => ['Hc 24,1', 28],
+            'vi Cv'                => ['Cv 2,1', 51],
+            'vi Gc'                => ['Gc 2,17', 66],
+            'vi 1 Ga'              => ['1 Ga 4,8', 69],
+            'vi Kh'                => ['Kh 21,1', 73],
+            // Tokens 057 leaves to the language that already had them.
+            'es St stays James'    => ['St 1,1', 66],
+            'Gn stays Genesis'     => ['Gn 1,1', 1],
+            'Dt stays Deuteronomy' => ['Dt 6,4', 5],
+            'Ga stays Galatians'   => ['Ga 2,1', 55],
+            'af Pl stays Philemon' => ['Pl 1,1', 64],
+            'Jud stays Jude'       => ['Jud 1,3', 72],
         ];
     }
 
