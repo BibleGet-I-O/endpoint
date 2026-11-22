@@ -122,7 +122,7 @@ class QueryFormulatorIntegrationTest extends DatabaseTestCase
         $ctx = $this->formulateFor('Genesis1', 'TEST2');
 
         self::assertNotEmpty($ctx->formulatedQueries);
-        self::assertStringContainsString('LIMIT 30', $ctx->formulatedQueries[0]);
+        self::assertStringContainsString('LIMIT 31', $ctx->formulatedQueries[0]);
     }
 
     public function testReaderScopeLiftsLimitOnlyOnFlaggedEdition(): void
@@ -132,13 +132,13 @@ class QueryFormulatorIntegrationTest extends DatabaseTestCase
         $pdo    = $this->getConnection();
 
         // Not flagged: limited even for the reader key.
-        self::assertStringContainsString('LIMIT 30', $this->formulateFor('Genesis1', 'TEST2', $reader)->formulatedQueries[0]);
+        self::assertStringContainsString('LIMIT 31', $this->formulateFor('Genesis1', 'TEST2', $reader)->formulatedQueries[0]);
 
         $pdo->exec("UPDATE versions_available SET reader_full_text = TRUE WHERE sigla = 'TEST2'");
         try {
             self::assertStringNotContainsString('LIMIT', $this->formulateFor('Genesis1', 'TEST2', $reader)->formulatedQueries[0]);
-            self::assertStringContainsString('LIMIT 30', $this->formulateFor('Genesis1', 'TEST2', $read)->formulatedQueries[0]);
-            self::assertStringContainsString('LIMIT 30', $this->formulateFor('Genesis1', 'TEST2')->formulatedQueries[0]);
+            self::assertStringContainsString('LIMIT 31', $this->formulateFor('Genesis1', 'TEST2', $read)->formulatedQueries[0]);
+            self::assertStringContainsString('LIMIT 31', $this->formulateFor('Genesis1', 'TEST2')->formulatedQueries[0]);
         } finally {
             $pdo->exec("UPDATE versions_available SET reader_full_text = FALSE WHERE sigla = 'TEST2'");
         }

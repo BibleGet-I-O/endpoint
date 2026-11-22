@@ -3960,7 +3960,7 @@
             },
             "QuoteNotice": {
                 "type": "object",
-                "description": "Informational, never an error. VERSE_OMITTED: every verse a requested segment asks for is omitted in this edition (the rows are still returned, with `omitted: true`). In HTML responses notices are only in a hidden input (`class=\"BibleGetNotices\"`) in the info block.",
+                "description": "Informational, never an error. VERSE_OMITTED: every verse a requested segment asks for is omitted in this edition (the rows are still returned, with `omitted: true`). VERSES_CAPPED: the 30-verse copyright cap cut this segment short in this edition (a copyrighted edition, for a key that may not read it whole): the rows returned are its first 30 verses, `verse_from`–`verse_to`; `limit` is the cap. In HTML responses notices are only in a hidden input (`class=\"BibleGetNotices\"`) in the info block.",
                 "required": [
                     "code",
                     "version",
@@ -3975,7 +3975,8 @@
                     "code": {
                         "type": "string",
                         "enum": [
-                            "VERSE_OMITTED"
+                            "VERSE_OMITTED",
+                            "VERSES_CAPPED"
                         ]
                     },
                     "version": {
@@ -3996,11 +3997,16 @@
                     },
                     "reference": {
                         "type": "string",
-                        "description": "For display only (not to be parsed): the book as the user wrote it, chapter and verses in the user's notation, e.g. `Mk 9:44` or `Mc 9,44`."
+                        "description": "For display only (not to be parsed): VERSE_OMITTED gives the book as the user wrote it, chapter and verses in the user's notation, e.g. `Mk 9:44` or `Mc 9,44`; VERSES_CAPPED gives the query as received, e.g. `Mt5`."
                     },
                     "message": {
                         "type": "string",
                         "description": "English message, e.g. `Mark 9:44 is not in the text of this edition: the critical text omits it; the number is printed without text.`"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "VERSES_CAPPED only: the cap (30).",
+                        "example": 30
                     }
                 }
             },

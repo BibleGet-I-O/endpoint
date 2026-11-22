@@ -181,14 +181,14 @@ final class SqlCompilerTest extends TestCase
         $this->assertStringContainsString("AND text_tradition = 'GREEK'", $result[0]);
     }
 
-    // ── Copyright LIMIT 30 ────────────────────────────────────────
+    // ── Copyright LIMIT 31 (cap + 1) ────────────────────────────────────────
 
     public function testCopyrightLimit(): void
     {
         $query  = new BibleQuery(1, [new VerseRef(1, 1)]);
         $result = $this->compiler->compile($query, 'NABRE', '', ['NABRE']);
 
-        $this->assertStringEndsWith('LIMIT 30', $result[0]);
+        $this->assertStringEndsWith('LIMIT 31', $result[0]);
     }
 
     public function testNoCopyrightLimitForNonCopyrighted(): void
