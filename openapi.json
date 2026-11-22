@@ -4046,7 +4046,7 @@
             },
             "post": {
                 "summary": "Publish a service notice",
-                "description": "Carried in every data-route answer for the credentials it targets, from `published` (default now) until `expires`, which must be later. Dates are ISO 8601 date-times with their offset (`2027-06-30T00:00:00Z`, `2027-06-30T02:00:00+02:00`); a relative expression, a date without offset or an impossible date is a 422. A notice is not edited: a changed notice needs a new id, and the id of a withdrawn notice is never used again (409). Role `bibleget_admin`.",
+                "description": "Carried in every data-route answer for the credentials it targets, from `published` (default now) until `expires`, which must be later. Dates are ISO 8601 date-times with their offset (`2027-06-30T00:00:00Z`, `2027-06-30T02:00:00+02:00`); a relative expression, a date without offset or an impossible date is a 422. Fractions of a second are kept. Any other field is a 422. A notice is not edited: a changed notice needs a new id, and the id of a withdrawn notice is never used again (409). Answers that carry notices may be cached for an hour at most (`max-age=3600`). Role `bibleget_admin`.",
                 "operationId": "adminPublishServiceNotice",
                 "tags": [
                     "AdminAPI"
@@ -4062,6 +4062,7 @@
                         "application/json": {
                             "schema": {
                                 "type": "object",
+                                "additionalProperties": false,
                                 "required": [
                                     "id",
                                     "message"

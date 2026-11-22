@@ -25,6 +25,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 abstract class AbstractHandler implements RequestHandlerInterface
 {
+    /** How long a client may keep an answer that carries service notices (seconds). */
+    protected const SERVICE_NOTICE_MAX_AGE = 3600;
+
     /** A data route (quote, metadata, search): its answers carry the service notices (see withServiceNotices). */
     protected bool $carriesServiceNotices = false;
 
@@ -402,6 +405,11 @@ abstract class AbstractHandler implements RequestHandlerInterface
         $body = (string) $response->getBody();
         $etag = '"' . md5($body) . '"';
 
+        // An answer carrying service notices is kept an hour at most, so a new or withdrawn notice reaches clients
+        // within the hour (its ETag still answers a 304 while nothing changed).
+        if ($this->carriesServiceNotices) {
+            $maxAge = min($maxAge, self::SERVICE_NOTICE_MAX_AGE);
+        }
         $private  = $request->getAttribute('credential') instanceof Credential ? 'private, ' : '';
         $response = $response
             ->withHeader('Cache-Control', $private . 'must-revalidate, max-age=' . $maxAge)

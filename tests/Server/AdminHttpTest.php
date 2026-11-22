@@ -557,12 +557,19 @@ class AdminHttpTest extends ServerTestCase
                     'impossible date'   => ['id' => 'test-i', 'message' => 'x', 'sunset' => '2027-02-30T00:00:00Z'],
                     'expires first'     => ['id' => 'test-j', 'message' => 'x', 'published' => '2027-01-02T00:00:00Z', 'expires' => '2027-01-01T00:00:00Z'],
                     'already expired'   => ['id' => 'test-k', 'message' => 'x', 'expires' => '2020-01-01T00:00:00Z'],
+                    'unknown field'     => ['id' => 'test-l', 'message' => 'x', 'target_plugin' => 'wordpress'],
                 ] as $why => $body
             ) {
                 self::assertSame(422, self::call('POST', '/v3/admin/service-notices', $body)['status'], $why);
             }
             $list = self::okJson(self::call('GET', '/v3/admin/service-notices'));
             self::assertContains('test-v3-sunset', array_column($list['service_notices'], 'id'));
+            // Fractions of a second are kept: this interval is valid.
+            $fraction = self::call('POST', '/v3/admin/service-notices', ['id' => 'test-fraction', 'message' => 'x', 'published' => '2027-01-01T00:00:00.100000Z', 'expires' => '2027-01-01T00:00:00.900000Z']);
+            self::assertSame(201, $fraction['status'], $fraction['body']);
+            // Without published, the publication instant is the one checked against expires, and the one stored.
+            $soon = self::call('POST', '/v3/admin/service-notices', ['id' => 'test-soon', 'message' => 'x', 'expires' => gmdate('Y-m-d\\TH:i:s\\Z', time() + 1)]);
+            self::assertContains($soon['status'], [201, 422], $soon['body']);
             // An explicit offset is kept as the instant it names.
             $offset = self::okJson(self::call('POST', '/v3/admin/service-notices', ['id' => 'test-offset', 'message' => 'x', 'sunset' => '2027-06-30T02:00:00+02:00']), 201);
             self::assertSame('2027-06-30 00:00:00+00', $offset['service_notice']['sunset_at']);
@@ -599,6 +606,8 @@ class AdminHttpTest extends ServerTestCase
             self::assertSame(['test-all'], array_column(self::jsonBody($r['body'])['service_notices'], 'id'));
             self::assertSame('@' . strtotime('2027-01-01T00:00:00Z'), $r['headers']['deprecation'] ?? null);
             self::assertSame('Wed, 30 Jun 2027 00:00:00 GMT', $r['headers']['sunset'] ?? null);
+            // An answer that carries notices is kept an hour at most, so a new or withdrawn notice reaches clients soon.
+            self::assertStringContainsString('max-age=3600', $r['headers']['cache-control'] ?? '');
             self::assertStringContainsString('<https://www.bibleget.io/news/all>; rel="sunset"', $r['headers']['link'] ?? '');
 
             $mw    = $this->clientKey('mediawiki', '2.0.0');
