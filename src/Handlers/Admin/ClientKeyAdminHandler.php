@@ -21,7 +21,7 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class ClientKeyAdminHandler extends AbstractAdminHandler
 {
-    public const PLUGINS         = ['wordpress', 'google-docs', 'libreoffice', 'openoffice', 'msword', 'webword'];
+    public const PLUGINS         = ['wordpress', 'google-docs', 'libreoffice', 'openoffice', 'msword', 'webword', 'mediawiki'];
     public const VERSION_PATTERN = '/^[0-9A-Za-z.+_-]{1,50}\z/';
 
     protected function dispatch(ServerRequestInterface $request, string $method, array $path, string $admin): ResponseInterface

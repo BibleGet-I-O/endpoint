@@ -526,6 +526,17 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame(401, self::httpPatch('/v3/admin/versions/TEST2', '{"reader_full_text":true}', ['Content-Type' => 'application/json'])['status']);
     }
 
+    public function testMintsAClientKeyForTheMediaWikiExtension(): void
+    {
+        $r = self::call('POST', '/v3/admin/client-keys', ['plugin' => 'mediawiki', 'plugin_version' => '2.0.0']);
+        self::assertSame(201, $r['status'], $r['body']);
+        $body = self::jsonBody($r['body']);
+        self::assertIsArray($body['record']);
+        self::assertIsString($body['record']['id']);
+        $this->clientKeyIds[] = $body['record']['id'];
+        self::assertSame('mediawiki', $body['record']['plugin']);
+    }
+
     public function testMintClientKeyReturnsPlainOnce(): void
     {
         foreach (
