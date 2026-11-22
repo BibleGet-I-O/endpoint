@@ -511,4 +511,31 @@ class HybridSearchHandlerTest extends DatabaseTestCase
         self::assertSame(10, $by['TEST1'] ?? 0);
         self::assertArrayHasKey('TEST2', $body['info']['CAPPED']);
     }
+
+    public function testACappedEditionFillingTheCandidatePoolStillLeavesRoom(): void
+    {
+        // 142 TEST2 rows outscore TEST1's, more than the 120 candidates each leg keeps at limit 40.
+        $pdo = $this->getConnection();
+        $pdo->exec("INSERT INTO \"TEST2\" (book, chapter, verse, text, text_plain, testament, section)
+                    SELECT 1, 9, n, 'TEST2 extra ' || n, 'TEST2 extra ' || n, 1, 1 FROM generate_series(1, 100) n");
+        $this->embedAllOfTest2();
+        $pdo->exec('UPDATE "TEST1" SET embedding = \'' . '[' . implode(',', array_merge(array_fill(0, 192, 0.1), array_fill(0, 192, 0.02))) . ']' . '\'');
+        try {
+            $client = $this->createStub(EmbeddingClient::class);
+            $client->method('embed')->willReturn(array_fill(0, 384, 0.1));
+            $response = $this->createHandler($client)->handle(
+                ( new ServerRequest('GET', '/v3/search/hybrid') )
+                    ->withQueryParams(['query' => 'test2', 'version' => 'TEST2,TEST1', 'model' => 'minilm', 'limit' => '40'])
+            );
+        } finally {
+            $pdo->exec('DELETE FROM "TEST2" WHERE book = 1 AND chapter = 9');
+            $this->clearTest2();
+            $pdo->exec('UPDATE "TEST1" SET embedding = NULL');
+        }
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body, (string) $response->getBody());
+        $by = array_count_values(array_column($body['results'], 'version'));
+        self::assertSame(30, $by['TEST2'] ?? 0);
+        self::assertSame(10, $by['TEST1'] ?? 0);
+    }
 }
