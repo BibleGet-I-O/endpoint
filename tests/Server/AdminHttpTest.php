@@ -137,9 +137,10 @@ class AdminHttpTest extends ServerTestCase
             $json                    = json_encode($body, JSON_THROW_ON_ERROR);
         }
         return match ($method) {
-            'GET'   => self::httpGet($path, $headers),
-            'POST'  => self::httpPost($path, $json, $headers),
-            'PATCH' => self::httpPatch($path, $json, $headers),
+            'GET'    => self::httpGet($path, $headers),
+            'POST'   => self::httpPost($path, $json, $headers),
+            'PATCH'  => self::httpPatch($path, $json, $headers),
+            'DELETE' => self::httpDelete($path, $headers),
         };
     }
 
@@ -524,6 +525,88 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame(403, self::call('PATCH', '/v3/admin/versions/TEST2', ['reader_full_text' => true], $user)['status']);
         self::assertSame(401, self::httpGet('/v3/admin/versions')['status']);
         self::assertSame(401, self::httpPatch('/v3/admin/versions/TEST2', '{"reader_full_text":true}', ['Content-Type' => 'application/json'])['status']);
+    }
+
+    // ── Service notices ──
+
+    public function testPublishesListsAndWithdrawsServiceNotices(): void
+    {
+        $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        try {
+            $notice  = [
+                'id'          => 'test-v3-sunset',
+                'message'     => 'The v3 API stops on 30 June 2027.',
+                'link'        => 'https://www.bibleget.io/news/v3',
+                'deprecation' => '2027-01-01T00:00:00Z',
+                'sunset'      => '2027-06-30T00:00:00Z'
+            ];
+            $created = self::okJson(self::call('POST', '/v3/admin/service-notices', $notice), 201);
+            self::assertSame('test-v3-sunset', $created['service_notice']['id']);
+            self::assertSame(409, self::call('POST', '/v3/admin/service-notices', $notice)['status']);
+            foreach (
+                [
+                    'bad id'            => ['id' => 'Bad Id', 'message' => 'x'],
+                    'no message'        => ['id' => 'test-a'],
+                    'http link'         => ['id' => 'test-b', 'message' => 'x', 'link' => 'http://example.org'],
+                    'unknown plugin'    => ['id' => 'test-c', 'message' => 'x', 'plugin' => 'vscode'],
+                    'version no plugin' => ['id' => 'test-d', 'message' => 'x', 'below_version' => '2.0'],
+                    'bad type'          => ['id' => 'test-e', 'message' => 'x', 'credential_type' => 'client'],
+                    'bad date'          => ['id' => 'test-f', 'message' => 'x', 'sunset' => 'soon'],
+                ] as $why => $body
+            ) {
+                self::assertSame(422, self::call('POST', '/v3/admin/service-notices', $body)['status'], $why);
+            }
+            $list = self::okJson(self::call('GET', '/v3/admin/service-notices'));
+            self::assertContains('test-v3-sunset', array_column($list['service_notices'], 'id'));
+            self::assertSame(204, self::call('DELETE', '/v3/admin/service-notices/test-v3-sunset')['status']);
+            self::assertSame(404, self::call('DELETE', '/v3/admin/service-notices/test-v3-sunset')['status']);
+            self::assertSame(403, self::call('GET', '/v3/admin/service-notices', null, self::bearer('someone', []))['status']);
+        } finally {
+            $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        }
+    }
+
+    public function testDataAnswersCarryTheNoticesTheirCredentialIsTargetedBy(): void
+    {
+        $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        $this->db->exec("INSERT INTO service_notices (id, message, link, deprecation_at, sunset_at) VALUES
+            ('test-all', 'For everyone.', 'https://www.bibleget.io/news/all', '2027-01-01T00:00:00Z', '2027-06-30T00:00:00Z')");
+        $this->db->exec("INSERT INTO service_notices (id, message, target_plugin, target_below_version) VALUES
+            ('test-mw-old', 'Upgrade the MediaWiki extension to 2.1.', 'mediawiki', '2.1.0'),
+            ('test-wp', 'For WordPress.', 'wordpress', NULL)");
+        $this->db->exec("INSERT INTO service_notices (id, message, published_at) VALUES ('test-later', 'Not yet.', now() + interval '1 day')");
+        try {
+            $appId = $this->application();
+            self::okJson(self::call('POST', "/v3/admin/applications/{$appId}/approve"));
+            $project = ( new ApiKeyRepository($this->db) )->mint($appId, 'k')['plain'];
+            $r       = self::httpGet(self::QUOTE, ['X-Api-Key' => $project]);
+            self::assertSame(200, $r['status']);
+            self::assertSame(['test-all'], array_column(self::jsonBody($r['body'])['service_notices'], 'id'));
+            self::assertSame('@' . strtotime('2027-01-01T00:00:00Z'), $r['headers']['deprecation'] ?? null);
+            self::assertSame('Wed, 30 Jun 2027 00:00:00 GMT', $r['headers']['sunset'] ?? null);
+            self::assertStringContainsString('<https://www.bibleget.io/news/all>; rel="sunset"', $r['headers']['link'] ?? '');
+
+            $mw    = $this->clientKey('mediawiki', '2.0.0');
+            $token = ( new InstallationRepository($this->db) )->register($mw['id'], '7a1c0de0-0000-4000-8000-0000000000e1', '2.0.0', null)['token'];
+            $ids   = array_column(self::jsonBody(self::httpGet(self::QUOTE, ['X-Api-Key' => $token])['body'])['service_notices'], 'id');
+            sort($ids);
+            self::assertSame(['test-all', 'test-mw-old'], $ids);
+
+            $html = self::httpGet(self::QUOTE . '&return=html', ['X-Api-Key' => $token])['body'];
+            self::assertMatchesRegularExpression('/<input type="hidden" name="service_notices" value="[^"]*test-mw-old[^"]*" class="BibleGetServiceNotices">/', $html);
+            $xml = simplexml_load_string(self::httpGet(self::QUOTE . '&return=xml', ['X-Api-Key' => $token])['body']);
+            self::assertNotFalse($xml);
+            $xmlIds = [];
+            foreach ($xml->service_notices->notice as $n) {
+                $xmlIds[] = (string) $n['id'];
+            }
+            self::assertContains('test-mw-old', $xmlIds);
+
+            $meta = self::jsonBody(self::httpGet('/v3/metadata/bibleversions', ['X-Api-Key' => $project])['body']);
+            self::assertSame(['test-all'], array_column($meta['service_notices'], 'id'));
+        } finally {
+            $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        }
     }
 
     public function testMintsAClientKeyForTheMediaWikiExtension(): void

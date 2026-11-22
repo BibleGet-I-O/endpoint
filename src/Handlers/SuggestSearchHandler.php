@@ -21,6 +21,8 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class SuggestSearchHandler extends AbstractHandler
 {
+    protected bool $carriesServiceNotices = true;
+
     private const DEFAULT_LIMIT = 8;
     private const MAX_LIMIT     = 20;
     private const MIN_PREFIX    = 2;

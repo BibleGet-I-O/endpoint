@@ -18,6 +18,8 @@ use Psr\Log\LoggerInterface;
 
 class MetadataHandler extends AbstractHandler
 {
+    protected bool $carriesServiceNotices = true;
+
     private LoggerInterface $logger;
 
     public function handle(ServerRequestInterface $request): ResponseInterface

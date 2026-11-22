@@ -7,6 +7,7 @@ namespace BibleGet\Api;
 use BibleGet\Api\Handlers\Admin\ApplicationAdminHandler;
 use BibleGet\Api\Handlers\Admin\ClientKeyAdminHandler;
 use BibleGet\Api\Handlers\Admin\InstallationAdminHandler;
+use BibleGet\Api\Handlers\Admin\ServiceNoticeAdminHandler;
 use BibleGet\Api\Handlers\Admin\StatsHandler;
 use BibleGet\Api\Handlers\Admin\VersionAdminHandler;
 use BibleGet\Api\Handlers\ApplicationsHandler;
@@ -275,6 +276,7 @@ class Router
             'installations'            => new InstallationAdminHandler($this->psr17Factory, $pathParts),
             'stats'                    => new StatsHandler($this->psr17Factory, $pathParts),
             'versions'                 => new VersionAdminHandler($this->psr17Factory, $pathParts),
+            'service-notices'          => new ServiceNoticeAdminHandler($this->psr17Factory, $pathParts),
             default                    => $this->createNotFoundHandler(),
         };
     }

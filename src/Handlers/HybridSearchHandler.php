@@ -36,6 +36,8 @@ use Psr\Log\LoggerInterface;
  */
 class HybridSearchHandler extends AbstractHandler
 {
+    protected bool $carriesServiceNotices = true;
+
     private const DEFAULT_LIMIT     = 20;
     private const MAX_LIMIT         = 100;
     private const DEFAULT_THRESHOLD = 0.0;

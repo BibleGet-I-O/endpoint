@@ -20,6 +20,8 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class QuoteHandler extends AbstractHandler
 {
+    protected bool $carriesServiceNotices = true;
+
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if ($request->getMethod() === 'OPTIONS') {
@@ -130,6 +132,16 @@ class QuoteHandler extends AbstractHandler
                 foreach (['code', 'version', 'book', 'chapter', 'chapter_to', 'verse_from', 'verse_to', 'reference', 'limit'] as $key) {
                     if (isset($notice[$key])) {
                         $noticeNode->addAttribute($key, (string) $notice[$key]);
+                    }
+                }
+            }
+
+            $serviceNotices = $xml->addChild('service_notices');
+            foreach ($this->serviceNotices() as $sn) {
+                $node = $serviceNotices->addChild('notice', htmlspecialchars($sn['message'], ENT_XML1, 'UTF-8'));
+                foreach (['id', 'link', 'published', 'deprecation', 'sunset'] as $key) {
+                    if ($sn[$key] !== null) {
+                        $node->addAttribute($key, $sn[$key]);
                     }
                 }
             }
@@ -256,6 +268,9 @@ class QuoteHandler extends AbstractHandler
         // insert this HTML into pages (WordPress, MediaWiki) show nothing new.
         $noticesJson = json_encode($notices);
         $html       .= '<input type="hidden" name="notices" value="' . htmlspecialchars($noticesJson !== false ? $noticesJson : '[]') . '" class="BibleGetNotices">';
+        // The service notices (src/Services/ServiceNotices.php), for a client to show its admins.
+        $serviceJson = json_encode($this->serviceNotices(), JSON_UNESCAPED_UNICODE);
+        $html       .= '<input type="hidden" name="service_notices" value="' . htmlspecialchars($serviceJson !== false ? $serviceJson : '[]') . '" class="BibleGetServiceNotices">';
         $html       .= '</div>';
         return $html;
     }

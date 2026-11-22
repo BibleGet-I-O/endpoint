@@ -22,6 +22,8 @@ use Psr\Log\LoggerInterface;
 
 class SimilarSearchHandler extends AbstractHandler
 {
+    protected bool $carriesServiceNotices = true;
+
     private const DEFAULT_LIMIT = 10;
     private const MAX_LIMIT     = 100;
 
