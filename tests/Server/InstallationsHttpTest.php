@@ -212,7 +212,7 @@ class InstallationsHttpTest extends ServerTestCase
         self::assertSame(422, self::httpPatch('/v3/installations/self', json_encode(['plugin_version' => "2.0\n"], JSON_THROW_ON_ERROR), $h)['status']);
     }
 
-    public function testSiteUrlRejectedForNonWordpressPlugin(): void
+    public function testSiteUrlRejectedFromPluginsWithoutASite(): void
     {
         $key = $this->clientKey('msword');
         $r   = self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1', 'site_url' => 'https://example.com']);
@@ -230,6 +230,58 @@ class InstallationsHttpTest extends ServerTestCase
         $wp = $this->clientKey();
         self::assertSame(422, self::register($wp['plain'], ['install_id' => self::UUID, 'plugin_version' => '1', 'site_url' => 'not a url'])['status']);
         self::assertSame(201, self::register($wp['plain'], ['install_id' => self::UUID, 'plugin_version' => '1', 'site_url' => 'https://example.com'])['status']);
+    }
+
+    /** WordPress and MediaWiki send their site's address: kept as its origin, https only. */
+    public function testSiteUrlIsKeptAsItsHttpsOrigin(): void
+    {
+        foreach (['wordpress', 'mediawiki'] as $i => $plugin) {
+            $key = $this->clientKey($plugin);
+            $id  = sprintf('5a1c0de0-0000-4000-8000-0000000000b%d', $i);
+            $r   = self::register($key['plain'], ['install_id' => $id, 'plugin_version' => '1', 'site_url' => 'https://Wiki.Example.org/w/index.php?title=Main']);
+            self::assertSame(201, $r['status'], $plugin . ': ' . $r['body']);
+            $stored = $this->db->prepare('SELECT site_url FROM installations WHERE install_id = ?');
+            $stored->execute([$id]);
+            self::assertSame('https://wiki.example.org', $stored->fetchColumn(), $plugin);
+
+            $http = self::register($key['plain'], ['install_id' => $id, 'plugin_version' => '1', 'site_url' => 'http://wiki.example.org']);
+            self::assertSame(422, $http['status'], $plugin);
+            self::assertStringContainsString('https URL', $http['body']);
+        }
+    }
+
+    /** Registration counts real installations: a site on an internal address asks for a project key instead. */
+    public function testASiteOnAnInternalAddressCannotRegisterItself(): void
+    {
+        foreach (['wordpress', 'mediawiki'] as $plugin) {
+            $key = $this->clientKey($plugin);
+            foreach (['https://localhost/wiki', 'https://wiki.lan', 'https://192.168.1.10', 'https://[::1]/'] as $url) {
+                $r = self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '1', 'site_url' => $url]);
+                self::assertSame(422, $r['status'], "{$plugin} {$url}");
+                self::assertStringContainsString('project key', $r['body']);
+            }
+        }
+        $reg = self::jsonBody(self::register($this->clientKey()['plain'], ['install_id' => self::UUID, 'plugin_version' => '1'])['body']);
+        self::assertIsString($reg['token']);
+        $patch = self::httpPatch('/v3/installations/self', '{"site_url":"https://wiki.internal"}', ['X-Api-Key' => $reg['token'], 'Content-Type' => 'application/json']);
+        self::assertSame(422, $patch['status']);
+    }
+
+    /** A wiki registers with its address: without one it is not counted as an installation. */
+    public function testAMediaWikiInstallationMustSendItsSiteUrl(): void
+    {
+        $key = $this->clientKey('mediawiki');
+        foreach ([[], ['site_url' => ''], ['site_url' => null]] as $none) {
+            $r = self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '2.0.0'] + $none);
+            self::assertSame(422, $r['status'], json_encode($none, JSON_THROW_ON_ERROR));
+            self::assertStringContainsString('site_url is required', $r['body']);
+        }
+        $reg = self::jsonBody(self::register($key['plain'], ['install_id' => self::UUID, 'plugin_version' => '2.0.0', 'site_url' => 'https://wiki.example.org'])['body']);
+        self::assertIsString($reg['token']);
+        $h = ['X-Api-Key' => $reg['token'], 'Content-Type' => 'application/json'];
+        // Nor can it remove it afterwards; it can change it.
+        self::assertSame(422, self::httpPatch('/v3/installations/self', '{"site_url":""}', $h)['status']);
+        self::assertSame(204, self::httpPatch('/v3/installations/self', '{"site_url":"https://wiki2.example.org/w"}', $h)['status']);
     }
 
     public function testPatchSelfSetsAndClearsContactEmail(): void
@@ -265,7 +317,7 @@ class InstallationsHttpTest extends ServerTestCase
         self::assertIsString($mine['token']);
         $h = ['X-Api-Key' => $mine['token'], 'Content-Type' => 'application/json'];
 
-        self::assertSame(422, self::httpPatch('/v3/installations/self', '{"site_url":"https://example.com"}', $h)['status'], 'site_url is WordPress-only');
+        self::assertSame(422, self::httpPatch('/v3/installations/self', '{"site_url":"https://example.com"}', $h)['status'], 'site_url is only for plugins that run on a site');
         self::assertSame(204, self::httpPatch('/v3/installations/self', '{"plugin_version":"3.0.0"}', $h)['status']);
         $version = $this->db->prepare('SELECT plugin_version FROM installations WHERE id = ?');
         $version->execute([$mine['installation_id']]);

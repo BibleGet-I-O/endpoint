@@ -18,6 +18,7 @@ use BibleGet\Api\Http\Middleware\RateLimitMiddleware;
 use BibleGet\Api\Repositories\ClientKeyRepository;
 use BibleGet\Api\Repositories\InstallationRepository;
 use BibleGet\Api\Services\RateLimiter;
+use BibleGet\Api\Services\SiteUrl;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -166,9 +167,14 @@ class InstallationsHandler extends AbstractHandler
         return is_string($v) && preg_match('/^[0-9A-Za-z.+_-]{1,50}\z/', $v) === 1 ? $v : null;
     }
 
+    /** The plugins that run on a site and send its address; MediaWiki must (a wiki is counted by its address). */
+    private const SITE_PLUGINS          = ['wordpress', 'mediawiki'];
+    private const SITE_REQUIRED_PLUGINS = ['mediawiki'];
+
     /**
-     * The body's site_url: null when absent, null or "" (from any plugin);
-     * otherwise only WordPress installations may send one.
+     * The body's site_url, as its origin (src/Services/SiteUrl.php: a public https address only). Absent, null or
+     * "" means none, from a plugin that does not have to send one; a MediaWiki installation must, on registering
+     * and afterwards.
      *
      * @param array<string, mixed> $params
      */
@@ -176,25 +182,16 @@ class InstallationsHandler extends AbstractHandler
     {
         $v = $params['site_url'] ?? null;
         if ($v === null || $v === '') {
+            if (in_array($plugin, self::SITE_REQUIRED_PLUGINS, true)) {
+                throw new ValidationException(
+                    "site_url is required from {$plugin} installations: the site's public https address, which counts it as an installation."
+                );
+            }
             return null;
         }
-        if ($plugin !== 'wordpress') {
-            throw new ValidationException('site_url is only accepted from WordPress installations.');
+        if (!in_array($plugin, self::SITE_PLUGINS, true)) {
+            throw new ValidationException('site_url is only accepted from WordPress and MediaWiki installations.');
         }
-        return $this->validSiteUrl($v);
-    }
-
-    private function validSiteUrl(mixed $v): ?string
-    {
-        if ($v === '' || $v === null) {
-            return null;
-        }
-        if (
-            !is_string($v) || strlen($v) > 255 || !self::isCleanText($v) || filter_var($v, FILTER_VALIDATE_URL) === false
-            || preg_match('#^https?://#i', $v) !== 1
-        ) {
-            throw new ValidationException('site_url must be an http(s) URL of at most 255 characters.');
-        }
-        return $v;
+        return SiteUrl::origin($v);
     }
 }
