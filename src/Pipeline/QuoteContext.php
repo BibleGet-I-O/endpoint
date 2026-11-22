@@ -106,7 +106,7 @@ class QuoteContext
      * Informational notices (never errors): a VERSE_OMITTED entry per requested
      * segment whose rows are all omitted in an edition.
      *
-     * @var list<array{code: string, version: string, book: int, chapter: int, verse_from: int, verse_to: int, reference: string, message: string}>
+     * @var list<array{code: string, version: string, book: int, chapter: int, chapter_to?: int, verse_from: int, verse_to: int, reference: string, limit?: int, message: string}>
      */
     public array $notices = [];
 

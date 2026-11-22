@@ -178,6 +178,7 @@ class QueryExecutor
             'version'    => $version,
             'book'       => StringUtils::asInt($first['univbooknum'] ?? 0),
             'chapter'    => StringUtils::asInt($first['chapter'] ?? 0),
+            'chapter_to' => StringUtils::asInt($last['chapter'] ?? 0),
             'verse_from' => StringUtils::asInt($first['verse'] ?? 0),
             'verse_to'   => StringUtils::asInt($last['verse'] ?? 0),
             'reference'  => $this->currentOriginalQuery(),

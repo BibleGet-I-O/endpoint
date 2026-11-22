@@ -3960,7 +3960,7 @@
             },
             "QuoteNotice": {
                 "type": "object",
-                "description": "Informational, never an error. VERSE_OMITTED: every verse a requested segment asks for is omitted in this edition (the rows are still returned, with `omitted: true`). VERSES_CAPPED: the 30-verse copyright cap cut this segment short in this edition (a copyrighted edition, for a key that may not read it whole): the rows returned are its first 30 verses, `verse_from`–`verse_to`; `limit` is the cap. In HTML responses notices are only in a hidden input (`class=\"BibleGetNotices\"`) in the info block.",
+                "description": "Informational, never an error. VERSE_OMITTED: every verse a requested segment asks for is omitted in this edition (the rows are still returned, with `omitted: true`). VERSES_CAPPED: the 30-verse copyright cap cut this segment short in this edition (a copyrighted edition, for a key that may not read it whole): the rows returned are its first 30 verses, from `chapter`:`verse_from` to `chapter_to`:`verse_to`; `limit` is the cap. In HTML responses notices are only in a hidden input (`class=\"BibleGetNotices\"`) in the info block.",
                 "required": [
                     "code",
                     "version",
@@ -3988,6 +3988,10 @@
                     },
                     "chapter": {
                         "type": "integer"
+                    },
+                    "chapter_to": {
+                        "type": "integer",
+                        "description": "VERSES_CAPPED only: the chapter of the last verse given (equal to `chapter` when the verses given are in one chapter)."
                     },
                     "verse_from": {
                         "type": "integer"
