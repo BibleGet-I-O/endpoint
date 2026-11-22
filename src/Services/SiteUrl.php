@@ -13,7 +13,8 @@ use BibleGet\Api\Http\Exception\ValidationException;
  * Registration exists to count real installations and their requests, so a site on an internal name or address
  * cannot register itself: it asks the BibleGet website for a project key instead. Internal means a single-label
  * name (localhost, wiki), a name under a TLD that is not public (.local, .lan, .internal, .test, home.arpa, ...),
- * or an IP address that is not globally reachable (private, loopback, link-local, CGNAT, reserved). Nothing is
+ * or an IP address that is not globally reachable (private, loopback, link-local, CGNAT, multicast, reserved, or
+ * IPv6 outside global unicast 2000::/3; a mapped ::ffff: address is judged as its IPv4 address). Nothing is
  * resolved or fetched: the address is self-reported, and the endpoint never contacts it.
  */
 final class SiteUrl
@@ -79,20 +80,35 @@ final class SiteUrl
         if (count($labels) < 2 || in_array('', $labels, true) || ctype_digit($tld) || preg_match('/^0x[0-9a-f]+$/', $tld) === 1) {
             return true;
         }
-        return in_array($tld, self::INTERNAL_TLDS, true) || str_ends_with($host, '.home.arpa');
+        return in_array($tld, self::INTERNAL_TLDS, true) || $host === 'home.arpa' || str_ends_with($host, '.home.arpa');
     }
 
     private static function isPublicIp(string $ip): bool
     {
-        // An IPv4 address mapped into IPv6 (::ffff:10.0.0.1) is judged as the IPv4 address.
-        if (preg_match('/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i', $ip, $m) === 1) {
-            $ip = $m[1];
-        }
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) === false) {
+        $packed = inet_pton($ip);
+        if ($packed === false) {
             return false;
         }
-        // Shared address space (CGNAT, RFC 6598), not public whatever the filter says.
-        return !self::inIpv4Range($ip, '100.64.0.0', 10);
+        if (strlen($packed) === 16) {
+            // An IPv4 address mapped into IPv6 (::ffff:0:0/96), however it is spelled, is judged as the IPv4 address.
+            if (str_starts_with($packed, str_repeat("\0", 10) . "\xff\xff")) {
+                return self::isPublicIpv4((string) inet_ntop(substr($packed, 12)));
+            }
+            // Only global unicast (2000::/3) is public: this leaves out multicast, site-local, IPv4-compatible and
+            // NAT64 addresses, which the filter lets through.
+            return ( ord($packed[0]) & 0xe0 ) === 0x20
+                && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) !== false;
+        }
+        return self::isPublicIpv4($ip);
+    }
+
+    private static function isPublicIpv4(string $ip): bool
+    {
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_GLOBAL_RANGE) === false) {
+            return false;
+        }
+        // Shared address space (CGNAT, RFC 6598) and multicast (224/4), not public whatever the filter says.
+        return !self::inIpv4Range($ip, '100.64.0.0', 10) && !self::inIpv4Range($ip, '224.0.0.0', 4);
     }
 
     private static function inIpv4Range(string $ip, string $base, int $bits): bool

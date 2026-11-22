@@ -28,6 +28,8 @@ final class SiteUrlTest extends TestCase
             'public IPv4'             => ['https://93.184.215.14/wiki', 'https://93.184.215.14'],
             'public IPv6'             => ['https://[2606:2800:21f:cb07:6820:80da:af6b:8b2c]/', 'https://[2606:2800:21f:cb07:6820:80da:af6b:8b2c]'],
             'example.com is public'   => ['https://example.com', 'https://example.com'],
+            'mapped public IPv4'      => ['https://[::ffff:93.184.215.14]/', 'https://[::ffff:93.184.215.14]'],
+            'mapped public, in hex'   => ['https://[::ffff:5db8:d70e]/', 'https://[::ffff:5db8:d70e]'],
         ];
     }
 
@@ -69,6 +71,14 @@ final class SiteUrlTest extends TestCase
             'IPv6 unique local'   => ['https://[fd00::1]/'],
             'IPv6 link-local'     => ['https://[fe80::1]/'],
             'IPv4-mapped private' => ['https://[::ffff:192.168.1.1]/'],
+            'mapped private, hex' => ['https://[::ffff:c0a8:101]/'],
+            'home.arpa itself'    => ['https://home.arpa'],
+            'IPv4 multicast'      => ['https://224.0.0.1'],
+            'IPv4 multicast 239'  => ['https://239.1.1.1'],
+            'IPv6 multicast'      => ['https://[ff02::1]/'],
+            'IPv6 site-local'     => ['https://[fec0::1]/'],
+            'IPv4-compatible'     => ['https://[::5db8:d70e]/'],
+            'NAT64 private'       => ['https://[64:ff9b::a00:1]/'],
             'numeric host'        => ['https://2130706433/'],
             'short dotted host'   => ['https://127.1/'],
             'hex host'            => ['https://0x7f000001/'],
