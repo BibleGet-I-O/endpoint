@@ -19,6 +19,8 @@ use Psr\Log\LoggerInterface;
 
 class KeywordSearchHandler extends AbstractHandler
 {
+    protected bool $carriesServiceNotices = true;
+
     private const VALID_MATCH_MODES  = ['fulltext', 'exact', 'boolean'];
     private const DEFAULT_PAGE_LIMIT = 50;
     private const MAX_PAGE_LIMIT     = 100;

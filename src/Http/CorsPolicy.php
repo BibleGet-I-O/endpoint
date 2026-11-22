@@ -25,7 +25,7 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class CorsPolicy
 {
-    public const EXPOSED_HEADERS = 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After, X-BibleGet-Version';
+    public const EXPOSED_HEADERS = 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After, X-BibleGet-Version, Deprecation, Sunset, Link';
 
     /** @var string[] */
     private array $allowedOrigins;

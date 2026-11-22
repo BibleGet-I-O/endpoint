@@ -137,9 +137,10 @@ class AdminHttpTest extends ServerTestCase
             $json                    = json_encode($body, JSON_THROW_ON_ERROR);
         }
         return match ($method) {
-            'GET'   => self::httpGet($path, $headers),
-            'POST'  => self::httpPost($path, $json, $headers),
-            'PATCH' => self::httpPatch($path, $json, $headers),
+            'GET'    => self::httpGet($path, $headers),
+            'POST'   => self::httpPost($path, $json, $headers),
+            'PATCH'  => self::httpPatch($path, $json, $headers),
+            'DELETE' => self::httpDelete($path, $headers),
         };
     }
 
@@ -524,6 +525,137 @@ class AdminHttpTest extends ServerTestCase
         self::assertSame(403, self::call('PATCH', '/v3/admin/versions/TEST2', ['reader_full_text' => true], $user)['status']);
         self::assertSame(401, self::httpGet('/v3/admin/versions')['status']);
         self::assertSame(401, self::httpPatch('/v3/admin/versions/TEST2', '{"reader_full_text":true}', ['Content-Type' => 'application/json'])['status']);
+    }
+
+    // ── Service notices ──
+
+    public function testPublishesListsAndWithdrawsServiceNotices(): void
+    {
+        $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        try {
+            $notice  = [
+                'id'          => 'test-v3-sunset',
+                'message'     => 'The v3 API stops on 30 June 2027.',
+                'link'        => 'https://www.bibleget.io/news/v3',
+                'deprecation' => '2027-01-01T00:00:00Z',
+                'sunset'      => '2027-06-30T00:00:00Z'
+            ];
+            $created = self::okJson(self::call('POST', '/v3/admin/service-notices', $notice), 201);
+            self::assertSame('test-v3-sunset', $created['service_notice']['id']);
+            self::assertSame(409, self::call('POST', '/v3/admin/service-notices', $notice)['status']);
+            foreach (
+                [
+                    'bad id'            => ['id' => 'Bad Id', 'message' => 'x'],
+                    'no message'        => ['id' => 'test-a'],
+                    'http link'         => ['id' => 'test-b', 'message' => 'x', 'link' => 'http://example.org'],
+                    'unknown plugin'    => ['id' => 'test-c', 'message' => 'x', 'plugin' => 'vscode'],
+                    'version no plugin' => ['id' => 'test-d', 'message' => 'x', 'below_version' => '2.0'],
+                    'bad type'          => ['id' => 'test-e', 'message' => 'x', 'credential_type' => 'client'],
+                    'bad date'          => ['id' => 'test-f', 'message' => 'x', 'sunset' => 'soon'],
+                    'relative date'     => ['id' => 'test-g', 'message' => 'x', 'sunset' => 'next Thursday'],
+                    'no time zone'      => ['id' => 'test-h', 'message' => 'x', 'sunset' => '2027-06-30T00:00:00'],
+                    'impossible date'   => ['id' => 'test-i', 'message' => 'x', 'sunset' => '2027-02-30T00:00:00Z'],
+                    'expires first'     => ['id' => 'test-j', 'message' => 'x', 'published' => '2027-01-02T00:00:00Z', 'expires' => '2027-01-01T00:00:00Z'],
+                    'already expired'   => ['id' => 'test-k', 'message' => 'x', 'expires' => '2020-01-01T00:00:00Z'],
+                    'unknown field'     => ['id' => 'test-l', 'message' => 'x', 'target_plugin' => 'wordpress'],
+                ] as $why => $body
+            ) {
+                self::assertSame(422, self::call('POST', '/v3/admin/service-notices', $body)['status'], $why);
+            }
+            $list = self::okJson(self::call('GET', '/v3/admin/service-notices'));
+            self::assertContains('test-v3-sunset', array_column($list['service_notices'], 'id'));
+            // Fractions of a second are kept: this interval is valid.
+            $fraction = self::call('POST', '/v3/admin/service-notices', ['id' => 'test-fraction', 'message' => 'x', 'published' => '2027-01-01T00:00:00.100000Z', 'expires' => '2027-01-01T00:00:00.900000Z']);
+            self::assertSame(201, $fraction['status'], $fraction['body']);
+            // Without published, the publication instant is the one checked against expires, and the one stored.
+            $soon = self::call('POST', '/v3/admin/service-notices', ['id' => 'test-soon', 'message' => 'x', 'expires' => gmdate('Y-m-d\\TH:i:s\\Z', time() + 1)]);
+            self::assertContains($soon['status'], [201, 422], $soon['body']);
+            // An explicit offset is kept as the instant it names.
+            $offset = self::okJson(self::call('POST', '/v3/admin/service-notices', ['id' => 'test-offset', 'message' => 'x', 'sunset' => '2027-06-30T02:00:00+02:00']), 201);
+            self::assertSame('2027-06-30 00:00:00+00', $offset['service_notice']['sunset_at']);
+
+            self::assertSame(204, self::call('DELETE', '/v3/admin/service-notices/test-v3-sunset')['status']);
+            self::assertSame(404, self::call('DELETE', '/v3/admin/service-notices/test-v3-sunset')['status']);
+            // Withdrawn, it is kept (and listed with withdrawn_at), so its id is never used again: a client that has
+            // shown it would take a new notice under the same id for one already seen.
+            $listed = array_column(self::okJson(self::call('GET', '/v3/admin/service-notices'))['service_notices'], null, 'id');
+            self::assertNotNull($listed['test-v3-sunset']['withdrawn_at']);
+            self::assertSame(409, self::call('POST', '/v3/admin/service-notices', $notice)['status']);
+            self::assertSame(403, self::call('GET', '/v3/admin/service-notices', null, self::bearer('someone', []))['status']);
+        } finally {
+            $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        }
+    }
+
+    public function testDataAnswersCarryTheNoticesTheirCredentialIsTargetedBy(): void
+    {
+        $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        $this->db->exec("INSERT INTO service_notices (id, message, link, deprecation_at, sunset_at) VALUES
+            ('test-all', 'For everyone.', 'https://www.bibleget.io/news/all', '2027-01-01T00:00:00Z', '2027-06-30T00:00:00Z')");
+        $this->db->exec("INSERT INTO service_notices (id, message, target_plugin, target_below_version) VALUES
+            ('test-mw-old', 'Upgrade the MediaWiki extension to 2.1.', 'mediawiki', '2.1.0'),
+            ('test-wp', 'For WordPress.', 'wordpress', NULL)");
+        $this->db->exec("INSERT INTO service_notices (id, message, published_at) VALUES ('test-later', 'Not yet.', now() + interval '1 day')");
+        $this->db->exec("INSERT INTO service_notices (id, message, withdrawn_at) VALUES ('test-withdrawn', 'Taken back.', now())");
+        try {
+            $appId = $this->application();
+            self::okJson(self::call('POST', "/v3/admin/applications/{$appId}/approve"));
+            $project = ( new ApiKeyRepository($this->db) )->mint($appId, 'k')['plain'];
+            $r       = self::httpGet(self::QUOTE, ['X-Api-Key' => $project]);
+            self::assertSame(200, $r['status']);
+            self::assertSame(['test-all'], array_column(self::jsonBody($r['body'])['service_notices'], 'id'));
+            self::assertSame('@' . strtotime('2027-01-01T00:00:00Z'), $r['headers']['deprecation'] ?? null);
+            self::assertSame('Wed, 30 Jun 2027 00:00:00 GMT', $r['headers']['sunset'] ?? null);
+            // An answer that carries notices is kept an hour at most, so a new or withdrawn notice reaches clients soon.
+            self::assertStringContainsString('max-age=3600', $r['headers']['cache-control'] ?? '');
+            self::assertStringContainsString('<https://www.bibleget.io/news/all>; rel="sunset"', $r['headers']['link'] ?? '');
+
+            $mw    = $this->clientKey('mediawiki', '2.0.0');
+            $token = ( new InstallationRepository($this->db) )->register($mw['id'], '7a1c0de0-0000-4000-8000-0000000000e1', '2.0.0', null)['token'];
+            $ids   = array_column(self::jsonBody(self::httpGet(self::QUOTE, ['X-Api-Key' => $token])['body'])['service_notices'], 'id');
+            sort($ids);
+            self::assertSame(['test-all', 'test-mw-old'], $ids);
+
+            $html = self::httpGet(self::QUOTE . '&return=html', ['X-Api-Key' => $token])['body'];
+            self::assertMatchesRegularExpression('/<input type="hidden" name="service_notices" value="[^"]*test-mw-old[^"]*" class="BibleGetServiceNotices">/', $html);
+            $xml = simplexml_load_string(self::httpGet(self::QUOTE . '&return=xml', ['X-Api-Key' => $token])['body']);
+            self::assertNotFalse($xml);
+            $xmlIds = [];
+            foreach ($xml->service_notices->notice as $n) {
+                $xmlIds[] = (string) $n['id'];
+            }
+            self::assertContains('test-mw-old', $xmlIds);
+
+            $meta = self::jsonBody(self::httpGet('/v3/metadata/bibleversions', ['X-Api-Key' => $project])['body']);
+            self::assertSame(['test-all'], array_column($meta['service_notices'], 'id'));
+        } finally {
+            $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        }
+    }
+
+    public function testAWithdrawnNoticeIsNotKeptByRevalidation(): void
+    {
+        $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        $this->db->exec("INSERT INTO service_notices (id, message, sunset_at) VALUES ('test-etag', 'Going away.', '2027-06-30T00:00:00Z')");
+        try {
+            $appId = $this->application();
+            self::okJson(self::call('POST', "/v3/admin/applications/{$appId}/approve"));
+            $project = ( new ApiKeyRepository($this->db) )->mint($appId, 'k')['plain'];
+            // An XML answer carries notices in its headers only: its body is the same with or without them.
+            $url    = '/v3/metadata/bibleversions?return=xml';
+            $before = self::httpGet($url, ['X-Api-Key' => $project]);
+            self::assertSame(200, $before['status']);
+            self::assertArrayHasKey('sunset', $before['headers']);
+            $etag = $before['headers']['etag'] ?? '';
+            self::assertSame(304, self::httpGet($url, ['X-Api-Key' => $project, 'If-None-Match' => $etag])['status']);
+
+            $this->db->exec("UPDATE service_notices SET withdrawn_at = now() WHERE id = 'test-etag'");
+            $after = self::httpGet($url, ['X-Api-Key' => $project, 'If-None-Match' => $etag]);
+            self::assertSame(200, $after['status'], 'a 304 would keep the withdrawn Sunset header in the cache');
+            self::assertArrayNotHasKey('sunset', $after['headers']);
+        } finally {
+            $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        }
     }
 
     public function testMintsAClientKeyForTheMediaWikiExtension(): void

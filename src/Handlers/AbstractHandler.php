@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Enum\RequestContentType;
@@ -15,6 +16,7 @@ use BibleGet\Api\Http\Exception\UnsupportedMediaTypeException;
 use BibleGet\Api\Http\CorsPolicy;
 use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Services\ServiceNotices;
 use Nyholm\Psr7\Stream;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -23,6 +25,15 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 abstract class AbstractHandler implements RequestHandlerInterface
 {
+    /** How long a client may keep an answer that carries service notices (seconds). */
+    protected const SERVICE_NOTICE_MAX_AGE = 3600;
+
+    /** A data route (quote, metadata, search): its answers carry the service notices (see withServiceNotices). */
+    protected bool $carriesServiceNotices = false;
+
+    /** @var list<array{id: string, message: string, link: string|null, published: string, deprecation: string|null, sunset: string|null}> */
+    private array $serviceNotices = [];
+
     /** @var RequestMethod[] */
     protected array $allowedRequestMethods;
 
@@ -364,6 +375,10 @@ abstract class AbstractHandler implements RequestHandlerInterface
             ->withProtocolVersion($request->getProtocolVersion())
             ->withHeader('Content-Type', $contentType . '; charset=utf-8');
 
+        if ($this->carriesServiceNotices) {
+            $response = $this->withServiceNotices($request, $response);
+        }
+
         return $this->setAccessControlAllowOriginHeader($request, $response);
     }
 
@@ -388,8 +403,16 @@ abstract class AbstractHandler implements RequestHandlerInterface
         int $maxAge = 259200
     ): ResponseInterface {
         $body = (string) $response->getBody();
-        $etag = '"' . md5($body) . '"';
+        // The notices go into the validator too: an XML or HTML answer carries them in its headers only, so without
+        // them a withdrawn notice would answer a 304 and the cache would keep its Deprecation, Sunset and Link headers.
+        $validated = $this->carriesServiceNotices ? $body . "\n" . json_encode($this->serviceNotices) : $body;
+        $etag      = '"' . md5($validated) . '"';
 
+        // An answer carrying service notices is kept an hour at most, so a new or withdrawn notice reaches clients
+        // within the hour (its ETag still answers a 304 while nothing changed).
+        if ($this->carriesServiceNotices) {
+            $maxAge = min($maxAge, self::SERVICE_NOTICE_MAX_AGE);
+        }
         $private  = $request->getAttribute('credential') instanceof Credential ? 'private, ' : '';
         $response = $response
             ->withHeader('Cache-Control', $private . 'must-revalidate, max-age=' . $maxAge)
@@ -435,8 +458,46 @@ abstract class AbstractHandler implements RequestHandlerInterface
      *
      * @param mixed $data
      */
+    /**
+     * A data route's answer (one that sets $carriesServiceNotices) carries the notices the request's credential is
+     * targeted by, and their Deprecation / Sunset / Link headers (src/Services/ServiceNotices.php). Without a
+     * database, none: a notice never breaks an answer.
+     */
+    private function withServiceNotices(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $credential = $request->getAttribute('credential');
+        try {
+            $this->serviceNotices = ServiceNotices::load(Connection::getConnection(), $credential instanceof Credential ? $credential : null);
+        } catch (\Throwable) {
+            $this->serviceNotices = [];
+        }
+        foreach (ServiceNotices::headers($this->serviceNotices) as $name => $values) {
+            foreach ($values as $value) {
+                $response = $response->withAddedHeader($name, $value);
+            }
+        }
+        return $response;
+    }
+
+    /**
+     * The notices for this request (after initResponse), for answers built by hand (quote XML and HTML).
+     *
+     * @return list<array{id: string, message: string, link: string|null, published: string, deprecation: string|null, sunset: string|null}>
+     */
+    protected function serviceNotices(): array
+    {
+        return $this->serviceNotices;
+    }
+
     protected function jsonResponse(ResponseInterface $response, mixed $data): ResponseInterface
     {
+        if ($this->carriesServiceNotices) {
+            if ($data instanceof \stdClass) {
+                $data->service_notices = $this->serviceNotices;
+            } elseif (is_array($data) && !array_is_list($data)) {
+                $data['service_notices'] = $this->serviceNotices;
+            }
+        }
         $encoded = json_encode($data, JSON_UNESCAPED_UNICODE);
         if ($encoded === false) {
             throw new \RuntimeException('JSON encoding failed: ' . json_last_error_msg());

@@ -79,6 +79,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -259,6 +268,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -333,6 +351,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -404,6 +431,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -507,6 +543,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -672,6 +717,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -765,6 +819,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -907,6 +970,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -1028,6 +1100,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -1178,6 +1259,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -1289,6 +1379,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -1381,6 +1480,15 @@
                             },
                             "X-BibleGet-Version": {
                                 "$ref": "#/components/headers/ApiVersion"
+                            },
+                            "Deprecation": {
+                                "$ref": "#/components/headers/Deprecation"
+                            },
+                            "Sunset": {
+                                "$ref": "#/components/headers/Sunset"
+                            },
+                            "Link": {
+                                "$ref": "#/components/headers/Link"
                             }
                         }
                     },
@@ -3892,6 +4000,187 @@
                     }
                 }
             }
+        },
+        "/admin/service-notices": {
+            "get": {
+                "summary": "List the service notices",
+                "description": "Every notice, current, scheduled, expired or withdrawn (`withdrawn_at`). Role `bibleget_admin`.",
+                "operationId": "adminListServiceNotices",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The notices",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "service_notices": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Publish a service notice",
+                "description": "Carried in every data-route answer for the credentials it targets, from `published` (default now) until `expires`, which must be later. Dates are ISO 8601 date-times with their offset (`2027-06-30T00:00:00Z`, `2027-06-30T02:00:00+02:00`); a relative expression, a date without offset or an impossible date is a 422. Fractions of a second are kept. Any other field is a 422. A notice is not edited: a changed notice needs a new id, and the id of a withdrawn notice is never used again (409). Answers that carry notices may be cached for an hour at most (`max-age=3600`). Role `bibleget_admin`.",
+                "operationId": "adminPublishServiceNotice",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                    "id",
+                                    "message"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "maxLength": 1000
+                                    },
+                                    "link": {
+                                        "type": "string",
+                                        "description": "https only"
+                                    },
+                                    "published": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "expires": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "deprecation": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "sunset": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "plugin": {
+                                        "type": "string",
+                                        "enum": [
+                                            "wordpress",
+                                            "google-docs",
+                                            "libreoffice",
+                                            "openoffice",
+                                            "msword",
+                                            "webword",
+                                            "mediawiki"
+                                        ]
+                                    },
+                                    "below_version": {
+                                        "type": "string",
+                                        "description": "Needs plugin: only installations of that plugin older than this version."
+                                    },
+                                    "credential_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "project",
+                                            "installation"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Published"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "409": {
+                        "description": "A notice with this id exists"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/admin/service-notices/{id}": {
+            "delete": {
+                "summary": "Withdraw a service notice",
+                "description": "Stops it being carried in any answer. The notice is kept, listed with `withdrawn_at`, so its id is never used again: a client that has shown it would take a new notice under the same id for one already seen. Withdrawing it twice is a 404. Role `bibleget_admin`.",
+                "operationId": "adminWithdrawServiceNotice",
+                "tags": [
+                    "AdminAPI"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Withdrawn"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "description": "No such notice"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -4348,6 +4637,9 @@
                                 }
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 }
             },
@@ -4747,6 +5039,9 @@
                                 "type": "string"
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 },
                 "xml": {
@@ -4925,6 +5220,9 @@
                                 "type": "string"
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 },
                 "xml": {
@@ -15494,6 +15792,9 @@
                                 "type": "string"
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 },
                 "xml": {
@@ -17673,6 +17974,9 @@
                                 "example": 252
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 },
                 "example": {
@@ -18083,6 +18387,9 @@
                                 "$ref": "#/components/schemas/SearchCapped"
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 }
             },
@@ -18306,6 +18613,9 @@
                                 "$ref": "#/components/schemas/SearchCapped"
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 }
             },
@@ -18343,6 +18653,9 @@
                                 "$ref": "#/components/schemas/SearchCapped"
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 }
             },
@@ -18798,8 +19111,61 @@
                                 "example": "3.0"
                             }
                         }
+                    },
+                    "service_notices": {
+                        "$ref": "#/components/schemas/ServiceNotices"
                     }
                 }
+            },
+            "ServiceNotice": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "message",
+                    "link",
+                    "published",
+                    "deprecation",
+                    "sunset"
+                ],
+                "description": "A notice from BibleGet to the clients using it (a breaking change ahead, a release to upgrade to), published by the admin. Show each `id` once: ids are stable, and a changed notice gets a new one.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "example": "v3-sunset"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "English."
+                    },
+                    "link": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "An https page with more."
+                    },
+                    "published": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "deprecation": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "description": "A scheduled deprecation (also in the `Deprecation` header)."
+                    },
+                    "sunset": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "description": "When something stops working (also in the `Sunset` header)."
+                    }
+                }
+            },
+            "ServiceNotices": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/components/schemas/ServiceNotice"
+                },
+                "description": "The service notices for this request's credential: every data route (quote, metadata, search) carries them in JSON; quote XML has `<service_notices><notice id=… link=… published=… deprecation=… sunset=…>message</notice></service_notices>` and quote HTML a hidden input `name=\"service_notices\"` (`class=\"BibleGetServiceNotices\"`, JSON). A notice may target a credential type, a plugin, or that plugin's versions below one."
             }
         },
         "parameters": {
@@ -18984,6 +19350,26 @@
                     "maxLength": 64,
                     "pattern": "^[A-Za-z0-9._+-]+$",
                     "example": "v4.0.0"
+                }
+            },
+            "Deprecation": {
+                "description": "RFC 9745: the earliest scheduled deprecation among this request's service notices, `@<unix time>`.",
+                "schema": {
+                    "type": "string",
+                    "example": "@1798761600"
+                }
+            },
+            "Sunset": {
+                "description": "RFC 8594: the earliest sunset among this request's service notices (HTTP-date).",
+                "schema": {
+                    "type": "string",
+                    "example": "Wed, 30 Jun 2027 00:00:00 GMT"
+                }
+            },
+            "Link": {
+                "description": "`<url>; rel=\"deprecation\"` and/or `<url>; rel=\"sunset\"`: the pages of the notices giving those dates.",
+                "schema": {
+                    "type": "string"
                 }
             }
         },

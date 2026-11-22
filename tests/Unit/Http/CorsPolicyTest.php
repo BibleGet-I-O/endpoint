@@ -47,7 +47,8 @@ class CorsPolicyTest extends TestCase
         foreach (['', 'https://app.bibleget.io', 'https://other.example'] as $origin) {
             $response = ( new CorsPolicy() )->applyHeaders($this->request($origin), $this->factory->createResponse(200));
             $exposed  = array_map('trim', explode(',', $response->getHeaderLine('Access-Control-Expose-Headers')));
-            foreach (['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After'] as $header) {
+            // Deprecation, Sunset and Link carry the service notices' dates (RFC 9745, RFC 8594).
+            foreach (['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After', 'Deprecation', 'Sunset', 'Link'] as $header) {
                 $this->assertContains($header, $exposed, "{$header} exposed for origin '{$origin}'");
             }
         }
