@@ -43,11 +43,16 @@ final class NvbseLiveTest extends LiveTestCase
         self::assertSame($expected, self::labels($r['body']));
     }
 
+    /**
+     * NVBSE is copyrighted (052) and the live suite's key is an ordinary project key: search gives it the first 30
+     * matches, and info.CAPPED says how many there are.
+     */
     public function testKeywordSearchFindsIsrael(): void
     {
         $r = self::liveGet('/search/keyword?keyword=Israel&version=NVBSE');
         self::assertSame(200, $r['status']);
         self::assertIsArray($r['body']['results']);
-        self::assertGreaterThan(1000, count($r['body']['results']));
+        self::assertCount(30, $r['body']['results']);
+        self::assertGreaterThan(1000, $r['body']['info']['CAPPED']['NVBSE'] ?? 0);
     }
 }
