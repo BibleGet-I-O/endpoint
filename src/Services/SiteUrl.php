@@ -97,7 +97,7 @@ final class SiteUrl
             // Only global unicast (2000::/3) is public: this leaves out multicast, site-local, IPv4-compatible and
             // NAT64 addresses, which the filter lets through.
             return ( ord($packed[0]) & 0xe0 ) === 0x20
-                && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) !== false;
+                && filter_var((string) inet_ntop($packed), FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) !== false;
         }
         return self::isPublicIpv4($ip);
     }

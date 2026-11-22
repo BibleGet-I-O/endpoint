@@ -30,6 +30,7 @@ final class SiteUrlTest extends TestCase
             'example.com is public'   => ['https://example.com', 'https://example.com'],
             'mapped public IPv4'      => ['https://[::ffff:93.184.215.14]/', 'https://[::ffff:93.184.215.14]'],
             'mapped public, in hex'   => ['https://[::ffff:5db8:d70e]/', 'https://[::ffff:5db8:d70e]'],
+            'IPv6 with a dotted tail' => ['https://[2606:4700::104.16.132.229]/', 'https://[2606:4700::104.16.132.229]'],
         ];
     }
 
