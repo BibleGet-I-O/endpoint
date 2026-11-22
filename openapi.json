@@ -1446,7 +1446,7 @@
                                                 ]
                                             }
                                         ],
-                                        "description": "WordPress only: an http(s) URL. An empty string (or null) means none and is accepted from any plugin."
+                                        "description": "WordPress and MediaWiki only (required from MediaWiki): the site's public https address, stored as its origin (scheme://host[:port]; path, query and user info are dropped). An internal name or address (localhost, a single-label name, a .local, .lan, .internal, .test or other non-public TLD, home.arpa, or a private, loopback, link-local, CGNAT or reserved IP) is a 422: registration counts real installations, so such a site asks for a project key instead. The address is never resolved or fetched. An empty string (or null) means none, from a plugin that does not have to send one."
                                     }
                                 }
                             }
@@ -1525,7 +1525,7 @@
         "/installations/self": {
             "patch": {
                 "summary": "Update this installation",
-                "description": "Authenticated with the installation token, and counted against the installation's hourly rate limit like its data requests (over it: 429 with `Retry-After`). Only the fields sent are changed. `contact_email` set to an empty string (or null) removes it. A `site_url` is accepted from WordPress installations only; an empty string (or null) removes it, from any plugin. A 401 means the token was replaced or the installation revoked: register again (see `POST /installations`).",
+                "description": "Authenticated with the installation token, and counted against the installation's hourly rate limit like its data requests (over it: 429 with `Retry-After`). Only the fields sent are changed. `contact_email` set to an empty string (or null) removes it. A `site_url` is accepted from WordPress and MediaWiki installations only, under the same rules as on registering; an empty string (or null) removes it, except from MediaWiki. A 401 means the token was replaced or the installation revoked: register again (see `POST /installations`).",
                 "operationId": "updateInstallation",
                 "tags": [
                     "InstallationsAPI"
@@ -1554,7 +1554,7 @@
                                                 ]
                                             }
                                         ],
-                                        "description": "WordPress only: an http(s) URL; an empty string removes it."
+                                        "description": "WordPress and MediaWiki only (required from MediaWiki): the site's public https address, stored as its origin (scheme://host[:port]; path, query and user info are dropped). An internal name or address (localhost, a single-label name, a .local, .lan, .internal, .test or other non-public TLD, home.arpa, or a private, loopback, link-local, CGNAT or reserved IP) is a 422: registration counts real installations, so such a site asks for a project key instead. The address is never resolved or fetched. An empty string removes it (not from MediaWiki, which must keep one)."
                                     },
                                     "contact_email": {
                                         "anyOf": [
@@ -18651,7 +18651,8 @@
                     },
                     "site_url": {
                         "type": "string",
-                        "nullable": true
+                        "nullable": true,
+                        "description": "The origin the installation sent (https only). Self-reported and never verified: an admin page shows it as plain text, not as a link."
                     },
                     "contact_email": {
                         "type": "string",
