@@ -290,7 +290,7 @@ final class ApiKeysSchemaTest extends DatabaseTestCase
     public function testPluginCheck(): void
     {
         $this->expectSqlState('23514', fn () => $this->getConnection()->exec(
-            "INSERT INTO client_keys (plugin, key_hash, key_prefix) VALUES ('mediawiki', repeat('a', 64), 'bgclient_x')"
+            "INSERT INTO client_keys (plugin, key_hash, key_prefix) VALUES ('vscode', repeat('a', 64), 'bgclient_x')"
         ));
     }
 

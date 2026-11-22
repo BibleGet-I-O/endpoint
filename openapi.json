@@ -2734,7 +2734,8 @@
                                             "libreoffice",
                                             "openoffice",
                                             "msword",
-                                            "webword"
+                                            "webword",
+                                            "mediawiki"
                                         ]
                                     },
                                     "plugin_version": {
@@ -18598,7 +18599,8 @@
                             "libreoffice",
                             "openoffice",
                             "msword",
-                            "webword"
+                            "webword",
+                            "mediawiki"
                         ]
                     },
                     "plugin_version": {
