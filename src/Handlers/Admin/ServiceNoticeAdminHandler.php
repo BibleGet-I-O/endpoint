@@ -19,7 +19,7 @@ use Psr\Http\Message\ServerRequestInterface;
  *   GET    /admin/service-notices        every notice, current, scheduled or expired
  *   POST   /admin/service-notices        {id, message, link?, published?, expires?, deprecation?, sunset?,
  *                                         plugin?, below_version?, credential_type?} → the notice
- *   DELETE /admin/service-notices/{id}   withdraws it
+ *   DELETE /admin/service-notices/{id}   withdraws it (kept, with withdrawn_at, so its id is not used again)
  *
  * A notice is not edited: its id is what a client remembers having shown, so a changed notice is a new one.
  */
@@ -46,7 +46,7 @@ class ServiceNoticeAdminHandler extends AbstractAdminHandler
             throw new NotFoundException();
         }
         self::requireMethod($method, ['DELETE']);
-        $stmt = $this->db()->prepare('DELETE FROM service_notices WHERE id = ?');
+        $stmt = $this->db()->prepare('UPDATE service_notices SET withdrawn_at = now() WHERE id = ? AND withdrawn_at IS NULL');
         $stmt->execute([$path[0]]);
         if ($stmt->rowCount() === 0) {
             throw new NotFoundException('Service notice not found.');
@@ -72,7 +72,7 @@ class ServiceNoticeAdminHandler extends AbstractAdminHandler
         $stmt->execute(array_values($row));
         $created = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!is_array($created)) {
-            throw new ConflictException('A service notice with this id exists: a changed notice needs a new id.');
+            throw new ConflictException('A service notice with this id exists or was withdrawn: a new or changed notice needs a new id.');
         }
         return $this->json($request, ['service_notice' => $created], StatusCode::CREATED);
     }
@@ -104,13 +104,36 @@ class ServiceNoticeAdminHandler extends AbstractAdminHandler
             if (( $p[$field] ?? null ) === null) {
                 continue;
             }
-            $date = $p[$field];
-            if (!is_string($date) || strtotime($date) === false) {
-                throw new ValidationException($field . ' must be a date and time (ISO 8601).');
+            $instant = self::instant($p[$field]);
+            if ($instant === null) {
+                throw new ValidationException($field . ' must be an ISO 8601 date and time with its offset, e.g. 2027-06-30T00:00:00Z.');
             }
-            $row[$column] = gmdate('Y-m-d\TH:i:s\Z', (int) strtotime($date));
+            $row[$column] = gmdate('Y-m-d\TH:i:s\Z', $instant);
+        }
+        $published = isset($row['published_at']) ? (int) strtotime($row['published_at']) : time();
+        if (isset($row['expires_at']) && (int) strtotime($row['expires_at']) <= $published) {
+            throw new ValidationException('expires must be later than published (or than now, when published is not given).');
         }
         return $row + self::target($p);
+    }
+
+    /**
+     * An explicit ISO 8601 instant (2027-06-30T00:00:00Z, 2027-06-30T02:00:00+02:00, seconds and fractions optional)
+     * as a Unix time; null for anything else: a relative expression ("next Thursday"), no offset, an impossible date.
+     */
+    private static function instant(mixed $v): ?int
+    {
+        $re = '/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2})\z/';
+        if (!is_string($v) || preg_match($re, $v, $m) !== 1) {
+            return null;
+        }
+        [$year, $month, $day, $hour, $minute] = [(int) $m[1], (int) $m[2], (int) $m[3], (int) $m[4], (int) $m[5]];
+        $second                               = $m[6] === '' ? 0 : (int) $m[6];
+        if (!checkdate($month, $day, $year) || $hour > 23 || $minute > 59 || $second > 59) {
+            return null;
+        }
+        $t = strtotime($v);
+        return $t === false ? null : $t;
     }
 
     /**

@@ -552,14 +552,28 @@ class AdminHttpTest extends ServerTestCase
                     'version no plugin' => ['id' => 'test-d', 'message' => 'x', 'below_version' => '2.0'],
                     'bad type'          => ['id' => 'test-e', 'message' => 'x', 'credential_type' => 'client'],
                     'bad date'          => ['id' => 'test-f', 'message' => 'x', 'sunset' => 'soon'],
+                    'relative date'     => ['id' => 'test-g', 'message' => 'x', 'sunset' => 'next Thursday'],
+                    'no time zone'      => ['id' => 'test-h', 'message' => 'x', 'sunset' => '2027-06-30T00:00:00'],
+                    'impossible date'   => ['id' => 'test-i', 'message' => 'x', 'sunset' => '2027-02-30T00:00:00Z'],
+                    'expires first'     => ['id' => 'test-j', 'message' => 'x', 'published' => '2027-01-02T00:00:00Z', 'expires' => '2027-01-01T00:00:00Z'],
+                    'already expired'   => ['id' => 'test-k', 'message' => 'x', 'expires' => '2020-01-01T00:00:00Z'],
                 ] as $why => $body
             ) {
                 self::assertSame(422, self::call('POST', '/v3/admin/service-notices', $body)['status'], $why);
             }
             $list = self::okJson(self::call('GET', '/v3/admin/service-notices'));
             self::assertContains('test-v3-sunset', array_column($list['service_notices'], 'id'));
+            // An explicit offset is kept as the instant it names.
+            $offset = self::okJson(self::call('POST', '/v3/admin/service-notices', ['id' => 'test-offset', 'message' => 'x', 'sunset' => '2027-06-30T02:00:00+02:00']), 201);
+            self::assertSame('2027-06-30 00:00:00+00', $offset['service_notice']['sunset_at']);
+
             self::assertSame(204, self::call('DELETE', '/v3/admin/service-notices/test-v3-sunset')['status']);
             self::assertSame(404, self::call('DELETE', '/v3/admin/service-notices/test-v3-sunset')['status']);
+            // Withdrawn, it is kept (and listed with withdrawn_at), so its id is never used again: a client that has
+            // shown it would take a new notice under the same id for one already seen.
+            $listed = array_column(self::okJson(self::call('GET', '/v3/admin/service-notices'))['service_notices'], null, 'id');
+            self::assertNotNull($listed['test-v3-sunset']['withdrawn_at']);
+            self::assertSame(409, self::call('POST', '/v3/admin/service-notices', $notice)['status']);
             self::assertSame(403, self::call('GET', '/v3/admin/service-notices', null, self::bearer('someone', []))['status']);
         } finally {
             $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
@@ -575,6 +589,7 @@ class AdminHttpTest extends ServerTestCase
             ('test-mw-old', 'Upgrade the MediaWiki extension to 2.1.', 'mediawiki', '2.1.0'),
             ('test-wp', 'For WordPress.', 'wordpress', NULL)");
         $this->db->exec("INSERT INTO service_notices (id, message, published_at) VALUES ('test-later', 'Not yet.', now() + interval '1 day')");
+        $this->db->exec("INSERT INTO service_notices (id, message, withdrawn_at) VALUES ('test-withdrawn', 'Taken back.', now())");
         try {
             $appId = $this->application();
             self::okJson(self::call('POST', "/v3/admin/applications/{$appId}/approve"));

@@ -11,6 +11,8 @@
 --   deprecation_at          a scheduled deprecation (RFC 9745 Deprecation header)
 --   sunset_at               when something stops working (RFC 8594 Sunset header)
 --   target_*                optional: one credential type, one plugin, that plugin's versions below one
+--   withdrawn_at            set when the admin withdraws it: the row stays, so its id is never used again (a client
+--                           that has shown a notice would take a new one under the same id for one already seen)
 --
 -- Run by Doctrine (src/Migrations/Version060ServiceNotices.php): no BEGIN/COMMIT. Idempotent.
 
@@ -25,7 +27,11 @@ CREATE TABLE IF NOT EXISTS service_notices (
     target_plugin          TEXT,
     target_below_version   TEXT,
     target_credential_type TEXT CHECK (target_credential_type IN ('project', 'installation')),
+    withdrawn_at           TIMESTAMPTZ,
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (target_below_version IS NULL OR target_plugin IS NOT NULL),
     CHECK (expires_at IS NULL OR expires_at > published_at)
 );
+
+-- A database that ran an earlier draft of this migration.
+ALTER TABLE service_notices ADD COLUMN IF NOT EXISTS withdrawn_at TIMESTAMPTZ;

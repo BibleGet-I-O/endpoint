@@ -4004,7 +4004,7 @@
         "/admin/service-notices": {
             "get": {
                 "summary": "List the service notices",
-                "description": "Every notice, current, scheduled or expired. Role `bibleget_admin`.",
+                "description": "Every notice, current, scheduled, expired or withdrawn (`withdrawn_at`). Role `bibleget_admin`.",
                 "operationId": "adminListServiceNotices",
                 "tags": [
                     "AdminAPI"
@@ -4046,7 +4046,7 @@
             },
             "post": {
                 "summary": "Publish a service notice",
-                "description": "Carried in every data-route answer for the credentials it targets, from `published` (default now) until `expires`. A notice is not edited: a changed notice needs a new id. Role `bibleget_admin`.",
+                "description": "Carried in every data-route answer for the credentials it targets, from `published` (default now) until `expires`, which must be later. Dates are ISO 8601 date-times with their offset (`2027-06-30T00:00:00Z`, `2027-06-30T02:00:00+02:00`); a relative expression, a date without offset or an impossible date is a 422. A notice is not edited: a changed notice needs a new id, and the id of a withdrawn notice is never used again (409). Role `bibleget_admin`.",
                 "operationId": "adminPublishServiceNotice",
                 "tags": [
                     "AdminAPI"
@@ -4145,6 +4145,7 @@
         "/admin/service-notices/{id}": {
             "delete": {
                 "summary": "Withdraw a service notice",
+                "description": "Stops it being carried in any answer. The notice is kept, listed with `withdrawn_at`, so its id is never used again: a client that has shown it would take a new notice under the same id for one already seen. Withdrawing it twice is a 404. Role `bibleget_admin`.",
                 "operationId": "adminWithdrawServiceNotice",
                 "tags": [
                     "AdminAPI"

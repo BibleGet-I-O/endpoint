@@ -31,7 +31,7 @@ final class ServiceNotices
         try {
             $stmt = $pdo->query(
                 'SELECT * FROM service_notices
-                  WHERE published_at <= now() AND (expires_at IS NULL OR expires_at > now())
+                  WHERE withdrawn_at IS NULL AND published_at <= now() AND (expires_at IS NULL OR expires_at > now())
                   ORDER BY published_at DESC, id'
             );
             $rows = $stmt === false ? [] : $stmt->fetchAll(\PDO::FETCH_ASSOC);
