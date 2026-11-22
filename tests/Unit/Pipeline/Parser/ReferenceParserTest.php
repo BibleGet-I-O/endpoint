@@ -7,7 +7,9 @@ namespace BibleGet\Tests\Unit\Pipeline\Parser;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
+use BibleGet\Api\Pipeline\Parser\ParseException;
 use BibleGet\Api\Pipeline\Parser\ReferenceParser;
+use BibleGet\Api\Pipeline\QuoteContext;
 use BibleGet\Api\Pipeline\Tokenizer\ReferenceTokenizer;
 use PHPUnit\Framework\TestCase;
 
@@ -90,6 +92,53 @@ final class ReferenceParserTest extends TestCase
         $this->assertSame(5, $seg->from->verse);
         $this->assertSame(2, $seg->to->chapter);
         $this->assertSame(3, $seg->to->verse);
+    }
+
+    /**
+     * "Jonah 1:1–2:1-2, 11": a range ending on chapter 2 verse 1, then "-2" carrying it on in chapter 2. It reads
+     * as 1:1–2:2, which is how it is quoted, so the range's end moves on to verse 2.
+     */
+    public function testACrossChapterRangeCanEndOnAVerseRange(): void
+    {
+        $q = $this->parse('Jonah1,1-2,1-2.11');
+        $this->assertCount(2, $q->segments);
+        $range = $q->segments[0];
+        $this->assertInstanceOf(VerseRange::class, $range);
+        $this->assertSame([1, 1], [$range->from->chapter, $range->from->verse]);
+        $this->assertSame([2, 2], [$range->to->chapter, $range->to->verse]);
+        $this->assertInstanceOf(VerseRef::class, $q->segments[1]);
+        $this->assertSame([2, 11], [$q->segments[1]->chapter, $q->segments[1]->verse]);
+    }
+
+    /** As typed in English notation, with an en dash and spaces: normalized, then parsed to the same passage. */
+    public function testTheReferenceAsTypedReadsAsJonahOneOneToTwoTwoAndEleven(): void
+    {
+        $ctx = new QuoteContext(['query' => "Jonah 1:1\u{2013}2:1-2, 11"]);
+        $ctx->queryStrClean();
+        $this->assertSame(['Jonah1,1-2,1-2.11'], $ctx->queries);
+        $q = $this->parse($ctx->queries[0]);
+        $this->assertSame([2, 2], [$q->segments[0]->to->chapter, $q->segments[0]->to->verse]);
+        $this->assertSame(11, $q->segments[1]->verse);
+    }
+
+    public function testTheVerseRangeAtTheEndMustGoForward(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->parse('Jonah1,1-2,3-2');
+    }
+
+    /** Only a range whose end names its chapter carries on: "1:1-2-3" stays an error. */
+    public function testAVerseRangeIsNotChained(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->parse('Jonah1,1-2-3');
+    }
+
+    /** "1:1-2:1-3:4" names a second chapter: two cross-chapter ranges in a row stay an error. */
+    public function testTwoCrossChapterRangesAreNotChained(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->parse('Jonah1,1-2,1-3,4');
     }
 
     // ── Non-consecutive verses ────────────────────────────────────

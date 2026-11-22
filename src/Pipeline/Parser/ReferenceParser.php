@@ -18,7 +18,9 @@ use BibleGet\Api\Pipeline\Tokenizer\TokenType;
  *   query       → bookRef segments EOF
  *   bookRef     → BOOK_NUMERIC_PREFIX? BOOK_NAME
  *   segments    → segment (EXPLICIT_VERSE_SEPARATOR verseRef)*
- *   segment     → chapterRef (RANGE_SEPARATOR rangeTarget)?
+ *   segment     → chapterRef (RANGE_SEPARATOR rangeTarget (RANGE_SEPARATOR verse)?)?
+ *                 (the trailing "-verse" only after a rangeTarget that names its chapter and verse:
+ *                 "1,1-2,1-2" is 1,1-2,2)
  *   chapterRef  → CHAPTER_NUMBER altChapter? (CHAPTER_VERSE_SEPARATOR verse)?
  *   rangeTarget → CHAPTER_NUMBER altChapter? (CHAPTER_VERSE_SEPARATOR verse)?
  *               | verse
@@ -137,17 +139,50 @@ final class ReferenceParser
         if ($this->check(TokenType::RANGE_SEPARATOR)) {
             $sepPos = $this->current()->position;
             $this->advance(); // consume "-"
-            $toRef = $this->parseRangeTarget($chapter, $alternateChapter);
+            $namesChapter = $this->check(TokenType::CHAPTER_NUMBER);
+            $toRef        = $this->parseRangeTarget($chapter, $alternateChapter);
             if ($toRef === null) {
                 throw new ParseException(
                     sprintf('Expected chapter or verse number after range separator at position %d', $sepPos),
                     $sepPos
                 );
             }
+            if ($namesChapter && $toRef->verse !== null) {
+                $toRef = $this->extendRangeEnd($toRef);
+            }
             return new VerseRange($fromRef, $toRef);
         }
 
         return $fromRef;
+    }
+
+    /**
+     * A range that ends on a chapter and verse may carry on in that chapter: "1,1-2,1-2" ends on 2,2, as it is
+     * written when the end of a passage is quoted by its own verses (Jonah 1:1–2:1-2). The verse must come after
+     * the end it extends. Nothing else follows a range's end with "-", so no other reference changes meaning.
+     */
+    private function extendRangeEnd(VerseRef $end): VerseRef
+    {
+        if (!$this->check(TokenType::RANGE_SEPARATOR)) {
+            return $end;
+        }
+        $sepPos = $this->current()->position;
+        $this->advance(); // consume "-"
+        if (!$this->check(TokenType::VERSE_NUMBER)) {
+            throw new ParseException(
+                sprintf('Expected a verse number after range separator at position %d', $sepPos),
+                $sepPos
+            );
+        }
+        $versePos              = $this->current()->position;
+        [$verse, $verseSuffix] = $this->parseVerse();
+        if ($verse <= (int) $end->verse) {
+            throw new ParseException(
+                sprintf('The verse after the range separator at position %d must come after verse %d', $sepPos, (int) $end->verse),
+                $sepPos
+            );
+        }
+        return new VerseRef($this->book, $end->chapter, $end->alternateChapter, $verse, $verseSuffix, $versePos);
     }
 
     private function parseRangeTarget(int $fromChapter, ?int $fromAltChapter): ?VerseRef
