@@ -633,6 +633,31 @@ class AdminHttpTest extends ServerTestCase
         }
     }
 
+    public function testAWithdrawnNoticeIsNotKeptByRevalidation(): void
+    {
+        $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        $this->db->exec("INSERT INTO service_notices (id, message, sunset_at) VALUES ('test-etag', 'Going away.', '2027-06-30T00:00:00Z')");
+        try {
+            $appId = $this->application();
+            self::okJson(self::call('POST', "/v3/admin/applications/{$appId}/approve"));
+            $project = ( new ApiKeyRepository($this->db) )->mint($appId, 'k')['plain'];
+            // An XML answer carries notices in its headers only: its body is the same with or without them.
+            $url    = '/v3/metadata/bibleversions?return=xml';
+            $before = self::httpGet($url, ['X-Api-Key' => $project]);
+            self::assertSame(200, $before['status']);
+            self::assertArrayHasKey('sunset', $before['headers']);
+            $etag = $before['headers']['etag'] ?? '';
+            self::assertSame(304, self::httpGet($url, ['X-Api-Key' => $project, 'If-None-Match' => $etag])['status']);
+
+            $this->db->exec("UPDATE service_notices SET withdrawn_at = now() WHERE id = 'test-etag'");
+            $after = self::httpGet($url, ['X-Api-Key' => $project, 'If-None-Match' => $etag]);
+            self::assertSame(200, $after['status'], 'a 304 would keep the withdrawn Sunset header in the cache');
+            self::assertArrayNotHasKey('sunset', $after['headers']);
+        } finally {
+            $this->db->exec("DELETE FROM service_notices WHERE id LIKE 'test-%'");
+        }
+    }
+
     public function testMintsAClientKeyForTheMediaWikiExtension(): void
     {
         $r = self::call('POST', '/v3/admin/client-keys', ['plugin' => 'mediawiki', 'plugin_version' => '2.0.0']);

@@ -403,7 +403,10 @@ abstract class AbstractHandler implements RequestHandlerInterface
         int $maxAge = 259200
     ): ResponseInterface {
         $body = (string) $response->getBody();
-        $etag = '"' . md5($body) . '"';
+        // The notices go into the validator too: an XML or HTML answer carries them in its headers only, so without
+        // them a withdrawn notice would answer a 304 and the cache would keep its Deprecation, Sunset and Link headers.
+        $validated = $this->carriesServiceNotices ? $body . "\n" . json_encode($this->serviceNotices) : $body;
+        $etag      = '"' . md5($validated) . '"';
 
         // An answer carrying service notices is kept an hour at most, so a new or withdrawn notice reaches clients
         // within the hour (its ETag still answers a 304 while nothing changed).
