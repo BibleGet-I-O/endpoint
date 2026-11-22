@@ -27,7 +27,10 @@ class SemanticSearchService
     }
 
     /**
-     * Embed $query once (reused across versions), and warn when the stored
+     * Embed $query once (reused across versions), lowercased: LaBSE is cased, and a capitalised word outside
+     * English ("Nemico") splits into pieces that match unrelated verses ("Ne…", "Non…"), while "nemico" finds the
+     * enemies in every language. Lowercasing a whole question changes nothing measurable (2026-11-22, 18 questions
+     * over DRB and LUZZI). The verses' stored embeddings are not affected. Warn when the stored
      * embeddings of any requested version were computed with a different
      * model than the one the service reports.
      *
@@ -40,7 +43,7 @@ class SemanticSearchService
     {
         $embedStart = microtime(true);
         try {
-            $queryVector = $client->embed($query);
+            $queryVector = $client->embed(mb_strtolower($query, 'UTF-8'));
         } catch (ServiceUnavailableException $e) {
             $this->logger->warning('Embedding service unavailable: ' . $e->getMessage());
             throw new ServiceUnavailableException(self::UNAVAILABLE_MESSAGE);
