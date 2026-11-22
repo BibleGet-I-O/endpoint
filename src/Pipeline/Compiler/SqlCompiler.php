@@ -7,6 +7,7 @@ namespace BibleGet\Api\Pipeline\Compiler;
 use BibleGet\Api\Pipeline\Ast\BibleQuery;
 use BibleGet\Api\Pipeline\Ast\VerseRange;
 use BibleGet\Api\Pipeline\Ast\VerseRef;
+use BibleGet\Api\Services\CopyrightPolicy;
 
 /**
  * Walks the BibleQuery AST to produce SQL WHERE clauses.
@@ -15,7 +16,7 @@ use BibleGet\Api\Pipeline\Ast\VerseRef;
  * - Single verse, whole chapter, verse ranges (same-chapter and cross-chapter)
  * - Non-consecutive verses (multiple segments → multiple SQL queries)
  * - text_tradition annotation for Psalms
- * - Copyright-limited verse count (LIMIT 30)
+ * - Copyright-limited verse count (LIMIT 31: one past the 30-verse cap, so the executor can tell a cut passage)
  * - ORDER BY sort_order (storage order), or the order the caller passes
  *
  * A reference selects verses by their number: every row is stored at its
@@ -66,7 +67,8 @@ final class SqlCompiler
             $sql          .= ' ORDER BY ' . $orderBy;
 
             if ($isCopied) {
-                $sql .= ' LIMIT 30';
+                // One row past the cap: QueryExecutor keeps 30 and, if there was a 31st, says the passage was cut.
+                $sql .= ' LIMIT ' . ( CopyrightPolicy::VERSE_CAP + 1 );
             }
 
             $queries[] = $sql;

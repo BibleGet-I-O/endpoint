@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BibleGet\Api\Pipeline;
 
 use BibleGet\Api\Pipeline\Transform\PsalmNumbering;
+use BibleGet\Api\Services\CopyrightPolicy;
 use BibleGet\Api\Util\Placement;
 use BibleGet\Api\Util\StringUtils;
 use Psr\Log\LoggerInterface;
@@ -150,6 +151,44 @@ class QueryExecutor
         ];
     }
 
+    /**
+     * A copyrighted edition's query asks for one row past the 30-verse cap (SqlCompiler): if that row came, the
+     * passage was cut, so keep the first 30 and add a VERSES_CAPPED notice, which a client can show instead of
+     * guessing why the passage stops.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    private function capIfCut(array $rows): array
+    {
+        $version = $this->ctx->formulatedVariants[$this->i] ?? '';
+        if (count($rows) <= CopyrightPolicy::VERSE_CAP || !in_array($version, $this->ctx->copyrightLimitedVersions(), true)) {
+            return $rows;
+        }
+        $rows                 = array_slice($rows, 0, CopyrightPolicy::VERSE_CAP);
+        $first                = $rows[0];
+        $last                 = $rows[CopyrightPolicy::VERSE_CAP - 1];
+        $book                 = is_string($first['book'] ?? null) ? $first['book'] : '';
+        $from                 = StringUtils::asInt($first['chapter'] ?? 0) . ':' . StringUtils::asInt($first['verse'] ?? 0);
+        $to                   = StringUtils::asInt($last['chapter'] ?? 0) === StringUtils::asInt($first['chapter'] ?? 0)
+            ? (string) StringUtils::asInt($last['verse'] ?? 0)
+            : StringUtils::asInt($last['chapter'] ?? 0) . ':' . StringUtils::asInt($last['verse'] ?? 0);
+        $this->ctx->notices[] = [
+            'code'       => 'VERSES_CAPPED',
+            'version'    => $version,
+            'book'       => StringUtils::asInt($first['univbooknum'] ?? 0),
+            'chapter'    => StringUtils::asInt($first['chapter'] ?? 0),
+            'chapter_to' => StringUtils::asInt($last['chapter'] ?? 0),
+            'verse_from' => StringUtils::asInt($first['verse'] ?? 0),
+            'verse_to'   => StringUtils::asInt($last['verse'] ?? 0),
+            'reference'  => $this->currentOriginalQuery(),
+            'limit'      => CopyrightPolicy::VERSE_CAP,
+            'message'    => $book . ' ' . $from . '-' . $to . ': this edition is under copyright, so only the first '
+                . CopyrightPolicy::VERSE_CAP . ' verses of this passage are given.',
+        ];
+        return $rows;
+    }
+
     private function currentOriginalQuery(): string
     {
         return $this->ctx->originalQueries[$this->i] ?? '';
@@ -170,10 +209,11 @@ class QueryExecutor
                 while (is_array($fetchedRow = $result->fetch(\PDO::FETCH_ASSOC))) {
                     $prepared = $this->prepareResponse(StringUtils::toAssocArray($fetchedRow));
                     if ($prepared !== null) {
-                        $this->ctx->results[] = $prepared;
-                        $rows[]               = $prepared;
+                        $rows[] = $prepared;
                     }
                 }
+                $rows = $this->capIfCut($rows);
+                array_push($this->ctx->results, ...$rows);
                 $this->noticeIfAllOmitted($rows);
             } else {
                 $this->ctx->addErrorMessage(9, $this->currentOriginalQuery());

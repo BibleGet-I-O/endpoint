@@ -127,8 +127,10 @@ class QuoteHandler extends AbstractHandler
 
             foreach ($ctx->notices as $notice) {
                 $noticeNode = $notices->addChild('notice', htmlspecialchars($notice['message'], ENT_XML1, 'UTF-8'));
-                foreach (['code', 'version', 'book', 'chapter', 'verse_from', 'verse_to', 'reference'] as $key) {
-                    $noticeNode->addAttribute($key, (string) $notice[$key]);
+                foreach (['code', 'version', 'book', 'chapter', 'chapter_to', 'verse_from', 'verse_to', 'reference', 'limit'] as $key) {
+                    if (isset($notice[$key])) {
+                        $noticeNode->addAttribute($key, (string) $notice[$key]);
+                    }
                 }
             }
 
