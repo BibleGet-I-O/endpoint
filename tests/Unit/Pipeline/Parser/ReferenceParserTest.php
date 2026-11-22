@@ -127,6 +127,13 @@ final class ReferenceParserTest extends TestCase
         $this->parse('Jonah1,1-2,3-2');
     }
 
+    /** A verse 0 at the range's end is not swallowed by the extension: "1:1-2:0-2" stays an error. */
+    public function testARangeEndOnVerseZeroIsNotExtended(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->parse('Jonah1,1-2,0-2');
+    }
+
     /** Only a range whose end names its chapter carries on: "1:1-2-3" stays an error. */
     public function testAVerseRangeIsNotChained(): void
     {

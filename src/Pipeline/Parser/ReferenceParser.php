@@ -147,7 +147,7 @@ final class ReferenceParser
                     $sepPos
                 );
             }
-            if ($namesChapter && $toRef->verse !== null) {
+            if ($namesChapter && $toRef->verse !== null && $toRef->verse >= 1) {
                 $toRef = $this->extendRangeEnd($toRef);
             }
             return new VerseRange($fromRef, $toRef);
