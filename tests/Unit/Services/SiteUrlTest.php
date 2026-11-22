@@ -89,6 +89,8 @@ final class SiteUrlTest extends TestCase
             'IPv6 documentation'    => ['https://[3fff::1]/'],
             'documentation, dotted' => ['https://[3fff::192.0.2.1]/'],
             'IPv6 doc 2001:db8'     => ['https://[2001:db8::1]/'],
+            '6to4 private'          => ['https://[2002:c0a8:101::1]/'],
+            '6to4 public'           => ['https://[2002:808:808::1]/'],
             'numeric host'          => ['https://2130706433/'],
             'short dotted host'     => ['https://127.1/'],
             'hex host'              => ['https://0x7f000001/'],
