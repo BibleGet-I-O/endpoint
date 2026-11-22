@@ -20,6 +20,7 @@ use BibleGet\Api\Handlers\KeywordSearchHandler;
 use BibleGet\Api\Handlers\SearchHandler;
 use BibleGet\Api\Handlers\SemanticSearchHandler;
 use BibleGet\Api\Handlers\SimilarSearchHandler;
+use BibleGet\Api\Handlers\SuggestSearchHandler;
 use BibleGet\Api\Http\Enum\StatusCode;
 use BibleGet\Api\Http\Exception\ServiceUnavailableException;
 use BibleGet\Api\Http\Middleware\CredentialMiddleware;
@@ -193,7 +194,7 @@ class Router
         if ($subRoute === '') {
             return 'search';
         }
-        return in_array($subRoute, ['keyword', 'semantic', 'hybrid', 'similar'], true) ? 'search/' . $subRoute : null;
+        return in_array($subRoute, ['keyword', 'semantic', 'hybrid', 'similar', 'suggest'], true) ? 'search/' . $subRoute : null;
     }
 
     /**
@@ -254,6 +255,7 @@ class Router
             'semantic' => new SemanticSearchHandler($this->psr17Factory, $subPathParts),
             'hybrid'   => new HybridSearchHandler($this->psr17Factory, $subPathParts),
             'similar'  => new SimilarSearchHandler($this->psr17Factory, $subPathParts),
+            'suggest'  => new SuggestSearchHandler($this->psr17Factory, $subPathParts),
             // Backward-compatible alias: /v3/search → SearchHandler (delegates to KeywordSearchHandler)
             ''         => new SearchHandler($this->psr17Factory, $pathParts),
             default    => $this->createNotFoundHandler(),

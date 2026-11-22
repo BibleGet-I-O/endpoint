@@ -58,6 +58,7 @@ class RouterTest extends TestCase
             'search alias'         => ['search', [], 'search'],
             'search keyword'       => ['search', ['keyword'], 'search/keyword'],
             'search similar'       => ['search', ['similar', 'x'], 'search/similar'],
+            'search suggest'       => ['search', ['suggest'], 'search/suggest'],
             'unknown search route' => ['search', ['anything'], null],
             'unknown route'        => ['installations', [], null],
         ];

@@ -291,4 +291,55 @@ class SimilarSearchHandlerTest extends DatabaseTestCase
             ->withQueryParams(['reference' => 'Gen1:1', 'version' => 'TEST1']);
         $handler->handle($request);
     }
+
+    // ── The 30-verse copyright cap (TEST2 is copyrighted; every TEST2 verse gets the same embedding) ──
+
+    private function embedAllOfTest2(): void
+    {
+        $this->getConnection()->exec('UPDATE "TEST2" SET embedding = \'' . '[' . implode(',', array_fill(0, 384, 0.1)) . ']' . '\'');
+    }
+
+    private function clearTest2(): void
+    {
+        $this->getConnection()->exec('UPDATE "TEST2" SET embedding = NULL');
+    }
+
+    public function testCopyrightedEditionIsCappedAtThirty(): void
+    {
+        $this->embedAllOfTest2();
+        try {
+            $response = $this->createHandler()->handle(
+                ( new ServerRequest('GET', '/v3/search/similar') )
+                    ->withQueryParams(['reference' => 'Gen3:1', 'version' => 'TEST2', 'model' => 'minilm', 'limit' => '40'])
+            );
+        } finally {
+            $this->clearTest2();
+        }
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body, (string) $response->getBody());
+        self::assertCount(30, $body['results']);
+        self::assertSame(['TEST2' => 40], $body['info']['CAPPED']);
+    }
+
+    public function testTheCapLeavesRoomForTheOtherEditions(): void
+    {
+        // TEST2 (copyrighted) matches best, TEST1 less well: the cap keeps 30 TEST2 rows and the limit fills with TEST1.
+        $this->embedAllOfTest2();
+        $this->getConnection()->exec('UPDATE "TEST1" SET embedding = \'' . '[' . implode(',', array_merge(array_fill(0, 192, 0.1), array_fill(0, 192, 0.02))) . ']' . '\'');
+        try {
+            $response = $this->createHandler()->handle(
+                ( new ServerRequest('GET', '/v3/search/similar') )
+                    ->withQueryParams(['reference' => 'Gen3:1', 'version' => 'TEST2,TEST1', 'model' => 'minilm', 'limit' => '40'])
+            );
+        } finally {
+            $this->clearTest2();
+            $this->getConnection()->exec('UPDATE "TEST1" SET embedding = NULL');
+        }
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertIsArray($body, (string) $response->getBody());
+        $by = array_count_values(array_column($body['results'], 'version'));
+        self::assertSame(30, $by['TEST2'] ?? 0);
+        self::assertSame(10, $by['TEST1'] ?? 0);
+        self::assertArrayHasKey('TEST2', $body['info']['CAPPED']);
+    }
 }

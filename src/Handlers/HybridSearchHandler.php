@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Util\AppVersion;
+use BibleGet\Api\Services\CopyrightPolicy;
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
@@ -26,8 +28,8 @@ use Psr\Log\LoggerInterface;
  * where rank_i(d) is d's 1-based rank in leg i's candidate list (the term is
  * omitted when d was not retrieved by leg i). Each leg retrieves
  * `candidates = min(MAX_CANDIDATES, max(limit * 3, MIN_CANDIDATES))` rows
- * (merged globally across versions, like the sibling endpoints), the lists are
- * fused, and the top `limit` fused rows are returned.
+ * from each version (ranked together across them), the lists are fused, the
+ * copyright cap is applied, and the top `limit` fused rows are returned.
  *
  * A leg whose weight is 0 is not executed. When the query is too short for the
  * keyword leg's 4-character minimum, only the semantic leg runs.
@@ -129,8 +131,9 @@ class HybridSearchHandler extends AbstractHandler
                 $stmt = $keywordService->executeSearch($v, $query, 'fulltext', $tsLanguage, $candidates);
                 array_push($keywordRows, ...$keywordService->mapSearchResults($stmt, $v, $versionIndexes[$v]));
             }
+            // Each edition already gave at most $candidates rows; trimming the merged list to $candidates again
+            // would let one (capped) edition crowd the others out before the copyright cap runs.
             SearchUtils::sortByScoreDesc($keywordRows);
-            $keywordRows = array_slice($keywordRows, 0, $candidates);
         }
 
         $semanticRows = [];
@@ -147,8 +150,9 @@ class HybridSearchHandler extends AbstractHandler
                     $column
                 ));
             }
+            // Each edition already gave at most $candidates rows; trimming the merged list to $candidates again
+            // would let one (capped) edition crowd the others out before the copyright cap runs.
             SearchUtils::sortByScoreDesc($semanticRows);
-            $semanticRows = array_slice($semanticRows, 0, $candidates);
         }
 
         [$results, $components] = $this->fuse(
@@ -156,15 +160,25 @@ class HybridSearchHandler extends AbstractHandler
             ['keyword' => $keywordWeight, 'semantic' => $semanticWeight],
             $k,
             array_flip($validatedVersions),
-            $limit
+            PHP_INT_MAX
         );
 
-        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
-        SearchUtils::assignCanonicalOrder($results);
         foreach ($results as $i => &$row) {
             $row['components'] = $components[$i];
         }
         unset($row);
+        $credential = $request->getAttribute('credential');
+        $capped     = SearchUtils::applyCopyrightCapThenLimit(
+            $results,
+            CopyrightPolicy::fromDatabase($pdo),
+            $credential instanceof Credential ? $credential : null,
+            $limit
+        );
+        // The cap first, then the limit: a capped edition's extra rows leave room for the other editions'.
+        $results = $capped['rows'];
+
+        // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
+        SearchUtils::assignCanonicalOrder($results);
 
         $legs = [];
         if ($runKeyword) {
@@ -190,6 +204,7 @@ class HybridSearchHandler extends AbstractHandler
             'candidates'       => $candidates,
             'legs'             => $legs,
         ];
+        $body->info    = SearchUtils::withCapped($body->info, $capped['capped']);
 
         $response = $this->buildResponse($response, $contentType, $body, $results);
         return $this->withCacheHeaders($request, $response);
@@ -345,6 +360,7 @@ class HybridSearchHandler extends AbstractHandler
             $xmlInfo    = $xml->addChild('info');
             $xmlResults = $xml->addChild('results');
             $xmlInfo->addAttribute('ENDPOINT_VERSION', AppVersion::current());
+            SearchUtils::addCappedXml($xmlInfo, $body->info);
 
             foreach ($results as $row) {
                 $resultNode = $xmlResults->addChild('result');

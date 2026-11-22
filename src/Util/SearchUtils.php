@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Util;
 
+use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
 use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Services\CopyrightPolicy;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -222,5 +224,89 @@ class SearchUtils
             $row['canonical_order'] = $rankByIndex[$i] ?? 0;
             unset($row['sort_order'], $row['score_exact']);
         }
+    }
+
+    /**
+     * The 30-verse copyright cap on search results (CopyrightPolicy): for each edition the policy caps for this
+     * credential, keeps the first VERSE_CAP rows in the order given (canonical for keyword search, rank order for the
+     * others), so call it once the rows are in their final order. `capped` maps each edition that lost rows to its
+     * row count before the cap.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array{rows: list<array<string, mixed>>, capped: array<string, int>}
+     */
+    public static function applyCopyrightCap(array $rows, CopyrightPolicy $policy, ?Credential $credential): array
+    {
+        $counts = [];
+        $kept   = [];
+        foreach ($rows as $row) {
+            $version          = is_string($row['version'] ?? null) ? $row['version'] : '';
+            $counts[$version] = ( $counts[$version] ?? 0 ) + 1;
+            if ($counts[$version] <= CopyrightPolicy::VERSE_CAP || !$policy->isCapped($version, $credential)) {
+                $kept[] = $row;
+            }
+        }
+        $capped = [];
+        foreach ($counts as $version => $count) {
+            if ($count > CopyrightPolicy::VERSE_CAP && $policy->isCapped((string) $version, $credential)) {
+                $capped[(string) $version] = $count;
+            }
+        }
+        return ['rows' => $kept, 'capped' => $capped];
+    }
+
+    /**
+     * $info with `CAPPED` (sigla → matches before the cap) when an edition was capped.
+     *
+     * @param array<string, mixed> $info
+     * @param array<string, int>   $capped
+     * @return array<string, mixed>
+     */
+    public static function withCapped(array $info, array $capped): array
+    {
+        if ($capped !== []) {
+            $info['CAPPED'] = $capped;
+        }
+        return $info;
+    }
+
+    /** An XML response's `<info>` gets one `<capped version="…" total="…"/>` per capped edition. */
+    public static function addCappedXml(\SimpleXMLElement $info, mixed $bodyInfo): void
+    {
+        $capped = is_array($bodyInfo) ? ( $bodyInfo['CAPPED'] ?? [] ) : [];
+        if (!is_array($capped)) {
+            return;
+        }
+        foreach ($capped as $version => $total) {
+            $node = $info->addChild('capped');
+            $node->addAttribute('version', (string) $version);
+            $node->addAttribute('total', is_scalar($total) ? (string) $total : '0');
+        }
+    }
+
+    /**
+     * The cap, then the limit, on rows in rank order (semantic, hybrid, similar): a capped edition keeps its best
+     * VERSE_CAP rows, and the limit fills with the next rows of any edition, so a capped edition never crowds the
+     * others out. `capped` reports, for each edition that lost rows, how many it had among the top $limit rows
+     * without the cap: what the route would have returned it.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array{rows: list<array<string, mixed>>, capped: array<string, int>}
+     */
+    public static function applyCopyrightCapThenLimit(array $rows, CopyrightPolicy $policy, ?Credential $credential, int $limit): array
+    {
+        $out   = self::applyCopyrightCap($rows, $policy, $credential);
+        $shown = [];
+        foreach (array_slice($rows, 0, $limit) as $row) {
+            $version         = is_string($row['version'] ?? null) ? $row['version'] : '';
+            $shown[$version] = ( $shown[$version] ?? 0 ) + 1;
+        }
+        $capped = [];
+        foreach (array_keys($out['capped']) as $version) {
+            if (( $shown[$version] ?? 0 ) > CopyrightPolicy::VERSE_CAP) {
+                $capped[$version] = $shown[$version];
+            }
+        }
+        return ['rows' => array_slice($out['rows'], 0, $limit), 'capped' => $capped];
     }
 }

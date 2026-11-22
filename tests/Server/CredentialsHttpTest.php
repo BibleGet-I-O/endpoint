@@ -162,6 +162,13 @@ class CredentialsHttpTest extends ServerTestCase
         self::assertSame('https://www.bibleget.io/developers', $body['developers']);
     }
 
+    public function testSuggestNeedsAKey(): void
+    {
+        self::assertSame(401, self::httpGet('/v3/search/suggest?prefix=lig&version=TEST1')['status']);
+        $key = $this->projectKey();
+        self::assertSame(200, self::httpGet('/v3/search/suggest?prefix=lig&version=TEST1', ['X-Api-Key' => $key['plain']])['status']);
+    }
+
     public function testCorsPreflightNeedsNoKeyAndAllowsTheHeader(): void
     {
         $r = self::httpOptions('/v3/quote', [
