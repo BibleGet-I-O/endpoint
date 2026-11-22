@@ -95,8 +95,10 @@ final class SiteUrl
                 return self::isPublicIpv4((string) inet_ntop(substr($packed, 12)));
             }
             // Only global unicast (2000::/3) is public: this leaves out multicast, site-local, IPv4-compatible and
-            // NAT64 addresses, which the filter lets through.
+            // NAT64 addresses, which the filter lets through, whatever IPv4 address they carry. The documentation
+            // prefix 3fff::/20 (RFC 9637) lies inside 2000::/3 and is unknown to the filter.
             return ( ord($packed[0]) & 0xe0 ) === 0x20
+                && !( $packed[0] === "\x3f" && $packed[1] === "\xff" && ( ord($packed[2]) & 0xf0 ) === 0 )
                 && filter_var((string) inet_ntop($packed), FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) !== false;
         }
         return self::isPublicIpv4($ip);
