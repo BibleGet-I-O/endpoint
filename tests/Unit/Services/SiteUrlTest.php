@@ -71,6 +71,8 @@ final class SiteUrlTest extends TestCase
             'IPv4-mapped private' => ['https://[::ffff:192.168.1.1]/'],
             'numeric host'        => ['https://2130706433/'],
             'short dotted host'   => ['https://127.1/'],
+            'hex host'            => ['https://0x7f000001/'],
+            'hex last label'      => ['https://wiki.0x7f/'],
         ];
     }
 

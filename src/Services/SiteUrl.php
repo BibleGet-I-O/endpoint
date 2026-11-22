@@ -75,8 +75,8 @@ final class SiteUrl
         }
         $labels = explode('.', $host);
         $tld    = end($labels);
-        // A single label, an empty one (a..b); a numeric last label (no TLD is numeric: 2130706433, 127.1 are addresses in disguise).
-        if (count($labels) < 2 || in_array('', $labels, true) || ctype_digit($tld)) {
+        // A single label, an empty one (a..b); a numeric last label (no TLD is numeric or hexadecimal: 2130706433, 127.1, 0x7f000001 are addresses in disguise).
+        if (count($labels) < 2 || in_array('', $labels, true) || ctype_digit($tld) || preg_match('/^0x[0-9a-f]+$/', $tld) === 1) {
             return true;
         }
         return in_array($tld, self::INTERNAL_TLDS, true) || str_ends_with($host, '.home.arpa');
