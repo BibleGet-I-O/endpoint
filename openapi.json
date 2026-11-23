@@ -17653,6 +17653,14 @@
                         "items": {
                             "type": "integer"
                         }
+                    },
+                    "prologue": {
+                        "type": "array",
+                        "description": "For each book (same order as `book_num`), the number of verses of the book's prologue in this version, served as chapter `0` (e.g. `Sir 0` or `Sir 0:1`): today only Sirach's, one verse, in the editions that print it. `0` = the book has no prologue in this version, and chapter `0` is refused.",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
                     }
                 }
             },

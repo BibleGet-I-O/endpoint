@@ -32,6 +32,42 @@ final class ReferenceTokenizerTest extends TestCase
         ));
     }
 
+    // ── A book's prologue: a word after the book name stands for chapter 0 ──
+
+    public function testAPrologueWordIsChapterZero(): void
+    {
+        foreach (['SirProl', 'Sirprol', 'SirachPrologue', 'SirPrologo', 'SirPrologus', 'SirPrólogo', 'SirProlog'] as $input) {
+            $result = $this->typeValues($input);
+            $this->assertSame(TokenType::BOOK_NAME, $result[0][0], $input);
+            $this->assertNotSame('', $result[0][1], $input);
+            $this->assertStringStartsWith('Sir', $result[0][1], $input);
+            $this->assertSame([TokenType::CHAPTER_NUMBER, '0'], $result[1], $input);
+            $this->assertCount(2, $result, $input);
+        }
+    }
+
+    public function testAPrologueWordTakesItsVerse(): void
+    {
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Sir'],
+            [TokenType::CHAPTER_NUMBER, '0'],
+            [TokenType::EXPLICIT_VERSE_SEPARATOR, '.'],
+            [TokenType::VERSE_NUMBER, '1'],
+        ], $this->typeValues('Sirprol.1'));
+        $this->assertSame([
+            [TokenType::BOOK_NAME, 'Sir'],
+            [TokenType::CHAPTER_NUMBER, '0'],
+            [TokenType::RANGE_SEPARATOR, '-'],
+            [TokenType::CHAPTER_NUMBER, '1'],
+        ], $this->typeValues('SirProl-1'));
+    }
+
+    public function testBookNamesThatMerelyContainTheLettersStayWhole(): void
+    {
+        $this->assertSame([[TokenType::BOOK_NAME, 'Proverbs'], [TokenType::CHAPTER_NUMBER, '1']], $this->typeValues('Proverbs1'));
+        $this->assertSame([[TokenType::BOOK_NAME, 'Prol'], [TokenType::CHAPTER_NUMBER, '1']], $this->typeValues('Prol1'));
+    }
+
     // ── Basic book + chapter ──────────────────────────────────────
 
     public function testBookAndChapter(): void

@@ -150,6 +150,12 @@ class MetadataHandlerTest extends DatabaseTestCase
         self::assertArrayHasKey('chapter_limit', $idx);
         self::assertArrayHasKey('verse_limit', $idx);
         self::assertArrayHasKey('book_num', $idx);
+        // Migration 065: each book's prologue verses (chapter 0), 0 where it has none.
+        self::assertArrayHasKey('prologue', $idx);
+        self::assertIsArray($idx['prologue']);
+        self::assertIsArray($idx['book_num']);
+        self::assertCount(count($idx['book_num']), $idx['prologue']);
+        self::assertSame([0], array_values(array_unique($idx['prologue'])));
     }
 
     public function testVersionIndexMultipleVersions(): void

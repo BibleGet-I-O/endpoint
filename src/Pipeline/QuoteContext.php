@@ -89,7 +89,7 @@ class QuoteContext
     public array $READER_FULL_TEXT_VERSIONS = [];
     /** @var array<int, array<int, array<int, string>>> */
     public array $BIBLEBOOKS = [];
-    /** @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> */
+    /** @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>, prologue?: array<int, int>}> */
     public array $INDEXES = [];
     /** @var array<string, string> */
     public array $DATA = [];
@@ -407,7 +407,7 @@ class QuoteContext
             if (!preg_match('/^[A-Za-z0-9_]+$/', $variant)) {
                 throw new ValidationException('Invalid version identifier format: ' . $variant);
             }
-            $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
+            $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = $prologue = [];
             try {
                 $result = $this->pdo->query('SELECT * FROM "' . $variant . '_idx" ORDER BY book');
             } catch (\PDOException $e) {
@@ -423,12 +423,15 @@ class QuoteContext
                 $chapter_limit[] = StringUtils::asInt($row['chapters']);
                 $verse_limit[]   = IndexList::parse(StringUtils::asString($row['verses_last']), $this->logger, $variant . '_idx book ' . StringUtils::asString($row['book']));
                 $book_num[]      = StringUtils::asInt($row['book']);
+                // Verses of the book's prologue, its chapter 0 (migration 065; 0 = none, or an older index).
+                $prologue[] = isset($row['prologue_verses']) ? StringUtils::asInt($row['prologue_verses']) : 0;
             }
             $indexes[$variant]['abbreviations'] = $abbreviations;
             $indexes[$variant]['biblebooks']    = $bbbooks;
             $indexes[$variant]['chapter_limit'] = $chapter_limit;
             $indexes[$variant]['verse_limit']   = $verse_limit;
             $indexes[$variant]['book_num']      = $book_num;
+            $indexes[$variant]['prologue']      = $prologue;
         }
         $this->INDEXES = $indexes;
     }
