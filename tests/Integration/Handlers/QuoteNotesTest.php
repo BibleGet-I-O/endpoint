@@ -34,6 +34,8 @@ final class QuoteNotesTest extends DatabaseTestCase
         // Same verse numbers, other identities: a lettered sub-verse, a verse printed in chapter 2. Never on 1:1.
         SyntheticNotes::add($pdo, 'TEST1', '01001001a-1', 'footnote', '*', [[1, 1, 1, 'a']]);
         SyntheticNotes::add($pdo, 'TEST1', '01001001p-1', 'footnote', '*', [[1, 1, 1, null, null, 2]]);
+        // Esther's two texts share verse numbers: a GREEK anchor is not the NULL-tradition row's.
+        SyntheticNotes::add($pdo, 'TEST1', '01001001g-1', 'footnote', '*', [[1, 1, 1, null, 'GREEK']]);
         // Another edition's note on the same verse.
         SyntheticNotes::add($pdo, 'TEST2', '01001001-1', 'footnote', '*', [[1, 1, 1]]);
     }
@@ -104,7 +106,7 @@ final class QuoteNotesTest extends DatabaseTestCase
                 ['id' => 'TEST1:01001001-2', 'kind' => 'crossref', 'marker' => 'a', 'field' => 'text', 'position' => 16],
             ],
             $rows[0]['notes'],
-            'anchorsMatchByIdentityIncludingNulls: the sub-verse and printed-in-2 notes stay off 1:1'
+            'anchorsMatchByIdentityIncludingNulls: the sub-verse, GREEK and printed-in-2 notes stay off 1:1'
         );
         self::assertSame(['TEST1:01001002-1'], array_column(self::notes($rows[1]), 'id'));
         self::assertSame(['TEST1:01001002-1'], array_column(self::notes($rows[2]), 'id'));
