@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace BibleGet\Api\Services;
 
 use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\ForbiddenException;
-use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Repositories\NoteRepository;
 use BibleGet\Api\Util\StringUtils;
 
@@ -35,13 +35,13 @@ final class QuoteNotes
      */
     public static function mode(array $params): string
     {
-        $v = $params['footnotes'] ?? self::NONE;
-        $v = is_string($v) ? strtolower(trim($v)) : '';
+        $raw = $params['footnotes'] ?? self::NONE;
+        $v   = is_string($raw) ? strtolower(trim($raw)) : null;
         if ($v === '') {
             return self::NONE;
         }
-        if (!in_array($v, [self::NONE, self::MARKERS, self::FULL], true)) {
-            throw new ValidationException('footnotes must be one of none, markers, full.');
+        if ($v === null || !in_array($v, [self::NONE, self::MARKERS, self::FULL], true)) {
+            throw new BadRequestException('footnotes must be one of none, markers, full.');
         }
         return $v;
     }
@@ -56,7 +56,7 @@ final class QuoteNotes
             throw new ForbiddenException("Notes are available only with the BibleGet website's reader key.");
         }
         if ($contentType !== 'application/json') {
-            throw new ValidationException('Notes are available in JSON only: ask for return=json, or leave footnotes out.');
+            throw new BadRequestException('Notes are available in JSON only: ask for return=json, or leave footnotes out.');
         }
     }
 

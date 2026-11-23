@@ -11,7 +11,7 @@ use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
 use BibleGet\Api\Http\Exception\ForbiddenException;
-use BibleGet\Api\Http\Exception\ValidationException;
+use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Tests\Integration\DatabaseTestCase;
 use BibleGet\Tests\Support\SyntheticNotes;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -163,8 +163,18 @@ final class QuoteNotesTest extends DatabaseTestCase
 
     public function testInvalidValueIs400(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(BadRequestException::class);
         $this->quote(['query' => 'Gen1:1', 'version' => 'TEST1', 'footnotes' => 'all'], self::reader());
+    }
+
+    public function testANonStringValueIs400(): void
+    {
+        $this->expectException(BadRequestException::class);
+        $handler = new QuoteHandler(new Psr17Factory());
+        $handler->setAllowedRequestMethods([RequestMethod::GET])->setAllowedAcceptHeaders([AcceptHeader::JSON]);
+        $handler->handle(( new ServerRequest('GET', '/v3/quote') )
+            ->withQueryParams(['query' => 'Gen1:1', 'version' => 'TEST1', 'footnotes' => ['full']])
+            ->withAttribute('credential', self::reader()));
     }
 
     public function testAKeyOtherThanReaderIs403(): void
@@ -182,14 +192,14 @@ final class QuoteNotesTest extends DatabaseTestCase
 
     public function testXmlIs400(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(BadRequestException::class);
         $this->expectExceptionMessage('JSON only');
         $this->quote(['query' => 'Gen1:1', 'version' => 'TEST1', 'footnotes' => 'markers', 'return' => 'xml'], self::reader());
     }
 
     public function testHtmlAcceptIs400(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(BadRequestException::class);
         $this->quote(['query' => 'Gen1:1', 'version' => 'TEST1', 'footnotes' => 'markers'], self::reader(), 'text/html');
     }
 
