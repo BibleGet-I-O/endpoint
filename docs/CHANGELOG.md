@@ -7,6 +7,24 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: Sirach's prologue as chapter 0 (#264)
+
+- **`Sir 0` (or `Sir 0:1`, `Sir 0-1`, `Sir Prol`, `Sir Prologo`…) is Sirach's
+  prologue**, one verse, in the editions that print it (migration `065`). No
+  edition served it before: five had no row, and VGCL had it glued onto 1:1
+  (one 1,708-character row headed "Prologus"); `065` splits VGCL's off, so
+  1:1 is verse 1 again. The copyrighted editions' prologues (NABRE, CEI2008,
+  NVBSE) come from private data halves calling `bibleget_insert_prologue()`;
+  BLPD and DRB have none in our sources.
+- **Chapter 0 is data-driven**: every `_idx` table has `prologue_verses`
+  (0 = none), the validator accepts chapter 0 only where it is not 0 ("The
+  book has no prologue (chapter 0) in the requested version X" otherwise),
+  and `/metadata/versionindex` reports it as `prologue`. The tokenizer reads a
+  word for the prologue after a book name (`Prol`, `Prologue`, `Prologo`,
+  `Prologus`, `Prólogo`, `Prolog`) as chapter 0.
+- After applying: embeddings for the new rows, and
+  `refresh_search_vocabulary()` for each edition that got a prologue.
+
 ### Added: tables for the editions' notes (migration 064)
 
 - **`note`, `note_anchor` and `note_ref`** (migration `064`), for the

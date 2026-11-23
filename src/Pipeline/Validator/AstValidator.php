@@ -41,7 +41,7 @@ final class AstValidator
      */
     private ?array $foldedBibleBooks = null;
 
-    /** @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> */
+    /** @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>, prologue?: array<int, int>}> */
     private array $indexes;
 
     /** @var array<int, string> */
@@ -60,7 +60,7 @@ final class AstValidator
 
     /**
      * @param array<int, array<int, array<int, string>>> $bibleBooks
-     * @param array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}> $indexes
+     * @param array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>, prologue?: array<int, int>}> $indexes
      * @param array<int, string> $requestedVersions
      * @param bool $editionNumbering Psalm numbers are each edition's own (numbering=edition).
      */
@@ -274,7 +274,8 @@ final class AstValidator
     }
 
     /**
-     * Numbers are 1 or greater, every range runs forward, and a verse of a psalm that the
+     * Numbers are 1 or greater (a chapter may be 0, a book's prologue: validateChapter checks that the edition has one),
+     * every range runs forward, and a verse of a psalm that the
      * Vulgate splits or joins exists in the Hebrew numbering ($query is read as Hebrew).
      */
     private function validateShape(BibleQuery $query): void
@@ -282,9 +283,9 @@ final class AstValidator
         foreach ($query->segments as $segment) {
             $refs = $segment instanceof VerseRange ? [$segment->from, $segment->to] : [$segment];
             foreach ($refs as $ref) {
-                if ($ref->chapter < 1) {
+                if ($ref->chapter < 0) {
                     $this->errors[] = new ValidationError(
-                        sprintf('Invalid chapter number: %d. Chapters must be 1 or greater.', $ref->chapter),
+                        sprintf('Invalid chapter number: %d. Chapters must be 1 or greater (0 for a book\'s prologue).', $ref->chapter),
                         $ref->position
                     );
                 } elseif ($ref->verse !== null && $ref->verse < 1) {
@@ -368,6 +369,16 @@ final class AstValidator
         if ($bookidx === false) {
             return;
         }
+        if ($chapter === 0) {
+            // A book's prologue (Sirach's): only where the edition's index says it has one.
+            if (( $index['prologue'][$bookidx] ?? 0 ) < 1) {
+                $this->errors[] = new ValidationError(
+                    sprintf('The book has no prologue (chapter 0) in the requested version %s', $variant),
+                    $position
+                );
+            }
+            return;
+        }
         $chapterLimit = $index['chapter_limit'][$bookidx] ?? 0;
         if ($chapter > $chapterLimit) {
             $this->errors[] = new ValidationError(
@@ -398,7 +409,11 @@ final class AstValidator
             return;
         }
         $verseLimits = $index['verse_limit'][$bookidx] ?? [];
-        $verseLimit  = $verseLimits[$chapter - 1] ?? 0;
+        // Chapter 0 is the prologue: as many verses as the index gives it (none: already reported by validateChapter).
+        $verseLimit = $chapter === 0 ? ( $index['prologue'][$bookidx] ?? 0 ) : ( $verseLimits[$chapter - 1] ?? 0 );
+        if ($chapter === 0 && $verseLimit < 1) {
+            return;
+        }
         if ($verse > $verseLimit) {
             $this->errors[] = new ValidationError(
                 sprintf(

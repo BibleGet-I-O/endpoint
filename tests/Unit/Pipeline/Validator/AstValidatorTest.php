@@ -29,7 +29,7 @@ final class AstValidatorTest extends TestCase
     /**
      * Minimal index for a single version "TST" (test).
      *
-     * @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>}>
+     * @var array<string, array{abbreviations: array<int, string>, biblebooks: array<int, string>, chapter_limit: array<int, int>, verse_limit: array<int, array<int, int>>, book_num: array<int, int>, prologue?: array<int, int>}>
      */
     private array $indexes;
 
@@ -46,14 +46,15 @@ final class AstValidatorTest extends TestCase
         }
         $this->bibleBooks[0]  = [1 => ['Genesis', 'Gen', 'Genesis', 'Gen']];
         $this->bibleBooks[18] = [1 => ['Psalms', 'Ps', 'Psalms', 'Ps']];
+        $this->bibleBooks[27] = [1 => ['Sirach', 'Sir', 'Sirach', 'Sir']];
         $this->bibleBooks[42] = [1 => ['John', 'Jn', 'John', 'Jn']];
         $this->bibleBooks[61] = [1 => ['1John', '1Jn', '1John', '1Jn']];
 
         $this->indexes = [
             'TST' => [
-                'abbreviations' => ['Gen', 'Ps', 'Jn', '1Jn'],
-                'biblebooks'    => ['Genesis', 'Psalms', 'John', '1John'],
-                'chapter_limit' => [50, 150, 21, 5],
+                'abbreviations' => ['Gen', 'Ps', 'Jn', '1Jn', 'Sir'],
+                'biblebooks'    => ['Genesis', 'Psalms', 'John', '1John', 'Sirach'],
+                'chapter_limit' => [50, 150, 21, 5, 51],
                 'verse_limit'   => [
                     // Genesis: chapters 1-50, but we only fill first few for testing
                     array_merge([31, 25, 24], array_fill(0, 47, 30)),
@@ -63,8 +64,11 @@ final class AstValidatorTest extends TestCase
                     array_merge([51, 25, 36], array_fill(0, 18, 25)),
                     // 1John: 5 chapters
                     array_fill(0, 5, 21),
+                    // Sirach: 51 chapters, and a prologue of one verse (prologue below)
+                    array_fill(0, 51, 30),
                 ],
-                'book_num'      => [1, 19, 43, 62],
+                'book_num'      => [1, 19, 43, 62, 28],
+                'prologue'      => [0, 0, 0, 0, 1],
             ],
         ];
     }
@@ -85,6 +89,36 @@ final class AstValidatorTest extends TestCase
     }
 
     // ── Valid references ──────────────────────────────────────────
+
+    // ── Chapter 0: a book's prologue (Sirach), where the edition has one ─────────
+
+    public function testThePrologueIsChapterZero(): void
+    {
+        foreach (['Sirach0', 'Sirach0,1', 'Sirach0-1', 'Sirach0,1-1,3', 'SirachProl', 'SirProl.1', 'SirPrologo-1'] as $ref) {
+            $validator        = $this->createValidator();
+            [$query, $tokens] = $this->tokenizeAndParse($ref);
+            $this->assertNotNull($validator->validate($query, $tokens), $ref);
+            $this->assertEmpty($validator->getErrors(), $ref);
+        }
+    }
+
+    public function testThePrologueHasOnlyItsVerses(): void
+    {
+        $validator        = $this->createValidator();
+        [$query, $tokens] = $this->tokenizeAndParse('Sirach0,2');
+        $validator->validate($query, $tokens);
+        $this->assertNotEmpty($validator->getErrors());
+        $this->assertStringContainsString('no verse <2> at chapter <0>', $validator->getErrors()[0]->message);
+    }
+
+    public function testABookWithoutAPrologueHasNoChapterZero(): void
+    {
+        $validator        = $this->createValidator();
+        [$query, $tokens] = $this->tokenizeAndParse('Genesis0');
+        $validator->validate($query, $tokens);
+        $this->assertNotEmpty($validator->getErrors());
+        $this->assertStringContainsString('has no prologue (chapter 0)', $validator->getErrors()[0]->message);
+    }
 
     public function testValidWholeChapter(): void
     {

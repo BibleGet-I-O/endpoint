@@ -254,7 +254,7 @@ class MetadataHandler extends AbstractHandler
             if (!preg_match('/^[A-Za-z0-9_]+$/', $variant)) {
                 continue;
             }
-            $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = [];
+            $abbreviations = $bbbooks = $chapter_limit = $verse_limit = $book_num = $prologue = [];
             try {
                 $result = $pdo->query('SELECT * FROM "' . $variant . '_idx" ORDER BY book');
             } catch (\PDOException) {
@@ -269,6 +269,7 @@ class MetadataHandler extends AbstractHandler
                 $chapter_limit[] = StringUtils::asInt($row['chapters']);
                 $verse_limit[]   = IndexList::parse(StringUtils::asString($row['verses_last']), $this->logger, $variant . '_idx book ' . StringUtils::asString($row['book']));
                 $book_num[]      = StringUtils::asInt($row['book']);
+                $prologue[]      = isset($row['prologue_verses']) ? StringUtils::asInt($row['prologue_verses']) : 0;
             }
             $indexes[$variant] = [
                 'abbreviations' => $abbreviations,
@@ -276,6 +277,7 @@ class MetadataHandler extends AbstractHandler
                 'chapter_limit' => $chapter_limit,
                 'verse_limit'   => $verse_limit,
                 'book_num'      => $book_num,
+                'prologue'      => $prologue,
             ];
         }
 

@@ -27,6 +27,13 @@ final class ReferenceTokenizer
      */
     public const MAX_BOOK_NUMERIC_PREFIX = 5;
 
+    /**
+     * A book name followed by a word for its prologue (spaces are gone by now: "Sir Prol" arrives as "SirProl"): the
+     * prologue is chapter 0 (migration 065). English, Italian, Spanish, French, German, Portuguese and Latin forms,
+     * any case; the book part must not be empty, so a book named "Prol..." is never split.
+     */
+    private const PROLOGUE_WORD = '/^(\p{L}[\p{L}\p{M}]*?)(prol(?:ogue|ogo|ogus|og)?|prólogo)$/iu';
+
     private string $input;
     private int $length;
     private int $pos = 0;
@@ -127,6 +134,13 @@ final class ReferenceTokenizer
         if ($bookName === '') {
             // Unexpected character — skip it to avoid infinite loop
             $this->pos++;
+            return;
+        }
+
+        if (preg_match(self::PROLOGUE_WORD, $bookName, $m) === 1) {
+            $this->tokens[]     = new Token(TokenType::BOOK_NAME, $m[1], $bookStart);
+            $this->tokens[]     = new Token(TokenType::CHAPTER_NUMBER, '0', $bookStart + strlen($m[1]));
+            $this->atVerseLevel = false;
             return;
         }
 
