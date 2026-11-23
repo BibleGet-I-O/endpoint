@@ -7,6 +7,12 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Fixed: garbled "œ" in the Vulgate
+
+- **VGCL** stored the control character U+009C for "œ" (925 times in 879
+  verses: "fœderis", "cœpit"), which also split those words for the search.
+  Migration `068` restores it and refreshes the search vocabulary.
+
 ### Fixed: garbled ellipses in NABRE, and wrong citation links in the notes (#267)
 
 - **Ellipses**: the SCML's Windows-1252 ellipsis was read as UTF-8, leaving
