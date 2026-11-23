@@ -171,6 +171,18 @@ class OutputTest(unittest.TestCase):
         self.assertEqual(problems, [("7", "9,9", "no-verse", "")])
 
 
+class CorrectionsTest(unittest.TestCase):
+    def test_aCitationFileCorrectsDropsAndReportsWhatItDidNotUse(self):
+        import tempfile
+        notes = nc.collect([(1, note(5, "1,1", link("Pr", "1,2", "1,2") + " e " + link("Gen", "6,5", "6,5") + " kg"))])
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "c.tsv"
+            p.write_text("5\tPr 1,2\tGen 1,2\town book\n5\tGen 6,5\t-\tmeasure\n9\tGen 1,1\t-\tgone\n", encoding="utf-8")
+            problems = nc.correct_citations(notes, p)
+        self.assertEqual(notes["5"].refs, [("Gen", "1,2", 0, 3, None)])
+        self.assertEqual(problems, [("9", "Gen 1,1", "unused-correction", "")])
+
+
 class MainTest(unittest.TestCase):
     def test_anArchiveWithNoNotesWritesNothing(self):
         import tempfile

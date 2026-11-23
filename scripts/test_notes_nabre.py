@@ -211,6 +211,27 @@ class SqlTest(unittest.TestCase):
         self.assertTrue(sql.rstrip().endswith("COMMIT;"))
 
 
+class SourceTest(unittest.TestCase):
+    def test_windows1252BytesAreReadAsSuch(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "nab-01-gn.scml"
+            p.write_bytes("caf\u00e9 ".encode("utf-8") + b"when\x85then")
+            self.assertEqual(nn.read_scml(p), "caf\u00e9 when\u2026then")
+
+    def test_aCitationFileCorrectsDropsAndReportsWhatItDidNotUse(self):
+        import tempfile
+        n = nn.Note("crossref", "a", "1:1", "A; B; C", [("36001010", 0, 1), ("99001001", 3, 4), ("05003005", 6, 7)], [])
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "c.tsv"
+            p.write_text("# note\tprinted\tcorrected\treason\nx\t36001010\t36002001\told numbering\n"
+                         "x\t99001001\t-\tno such verse\nx\t11111111\t22222222\tunused\n", encoding="utf-8")
+            notes = {"x": n}
+            problems = nn.correct_citations(notes, p)
+        self.assertEqual(notes["x"].refs, [("36002001", 0, 1), ("05003005", 6, 7)])
+        self.assertEqual(problems, [("x", "", "11111111", "unused-correction", "")])
+
+
 class MainTest(unittest.TestCase):
     def test_noScmlWritesNothing(self):
         import tempfile

@@ -23,6 +23,32 @@ def chunks(values, size=500):
         yield values[i:i + size]
 
 
+def load_citations(path):
+    """{(source_id, citation as the source gives it): corrected citation, or None for none}, from a TSV of
+    source_id, citation, correction ("-" = not a link), reason."""
+    out = {}
+    if path:
+        for line in open(path, encoding="utf-8").read().splitlines():
+            if line.strip() and not line.startswith("#"):
+                sid, cited, corrected = line.split("\t")[:3]
+                out[(sid, cited)] = None if corrected == "-" else corrected
+    return out
+
+
+def correct_refs(sid, refs, corrections, key, change):
+    """A note's citations with the corrections applied, and the (source_id, citation) keys used."""
+    out, used = [], set()
+    for r in refs:
+        k = (sid, key(r))
+        if k not in corrections:
+            out.append(r)
+            continue
+        used.add(k)
+        if corrections[k] is not None:
+            out.append(change(r, corrections[k]))
+    return out, used
+
+
 def _joined(edition, head, columns, rows):
     tail = f"\n) AS v({columns})\nJOIN note n ON n.edition = {lit(edition)} AND n.source_id = v.source_id;"
     return [head + ",\n".join(c) + tail for c in chunks(rows)]
