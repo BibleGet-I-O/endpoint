@@ -534,3 +534,5 @@ CREATE TABLE IF NOT EXISTS note_ref (
     span_end         INT NOT NULL CHECK (span_end >= span_start),
     UNIQUE (note_id, ord)
 );
+-- Migration 066: a citation into another edition (NULL = the note's own).
+ALTER TABLE note_ref ADD COLUMN IF NOT EXISTS edition VARCHAR(10);

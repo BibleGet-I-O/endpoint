@@ -26,6 +26,9 @@ ROWS = [(1, 1, v, "", "") for v in range(1, 32)] + [(1, 2, v, "", "") for v in r
     (19, 1, 1, "", "HEBREW"), (19, 1, 1, "", "GREEK"), (19, 1, 1, "a", "GREEK"), (19, 1, 2, "", "HEBREW"),
     (22, 40, 4, "", ""), (38, 1, 8, "", ""), (38, 1, 9, "", ""), (64, 1, 24, "", "")]
 INDEX = nc.index_rows(ROWS)
+# The Nova Vulgata's Sirach 24 runs to verse 47; CEI 2008's to 34.
+NV = nc.index_rows([(28, 24, v, "", "") for v in range(1, 48)] + [(28, 24, 1, "b", "")])
+CEI_SIR = nc.index_rows([(28, 24, v, "", "") for v in range(1, 35)])
 
 
 class ParseTest(unittest.TestCase):
@@ -41,14 +44,14 @@ class ParseTest(unittest.TestCase):
         [n] = nc.parse_page(note(41218, "1,1-31", "<b>GENEALOGIE</b> (" + link("Gen", "1,1-31", "Gen 1,1-31") + ")<br>Testo."), 1)
         self.assertEqual(n.title, "GENEALOGIE")
         self.assertEqual(n.body, "(Gen 1,1-31)\nTesto.")
-        self.assertEqual(n.refs, [("Gen", "1,1-31", 1, 11)])
+        self.assertEqual(n.refs, [("Gen", "1,1-31", 1, 11, None)])
 
     def test_citationsKeepTheirSpanInCodePointsWithTags(self):
         body = "Cfr. <i>" + link("Sal", "8", "Sal 8") + "</i>; " + link("Pr", "8,22-31", "Pr 8,22-31") + "."
         [n] = nc.parse_page(note(1, "1,1", body), 1)
         self.assertEqual(n.body, "Cfr. <i>Sal 8</i>; Pr 8,22-31.")
         cps = list(n.body)
-        self.assertEqual([("".join(cps[s:e])) for _, _, s, e in n.refs], ["Sal 8", "Pr 8,22-31"])
+        self.assertEqual([("".join(cps[s:e])) for _, _, s, e, _ in n.refs], ["Sal 8", "Pr 8,22-31"])
 
     def test_otherTagsAreDroppedAndReported(self):
         [n] = nc.parse_page(note(2, "1,1", "<p>Uno<sup>1</sup></p><p>Due</p>"), 1)
@@ -66,7 +69,7 @@ class ParseTest(unittest.TestCase):
     def test_aCitationEndingTheBodyStaysInsideIt(self):
         [n] = nc.parse_page(note(9, "1,1", "Cfr. " + link("Gen", "1,1", "Gen 1,1 ")), 1)
         self.assertEqual(n.body, "Cfr. Gen 1,1")
-        self.assertEqual(n.refs, [("Gen", "1,1", 5, 12)])
+        self.assertEqual(n.refs, [("Gen", "1,1", 5, 12, None)])
 
     def test_aNoteOnTwoPagesIsKeptOnce(self):
         notes = nc.collect([(1, note(5, "1,1-2,4a", "A.")), (1, note(5, "1,1-2,4a", "A.")), (1, note(6, "2,5", "B."))])
@@ -112,6 +115,36 @@ class ResolveTest(unittest.TestCase):
         self.assertIsNone(nc.resolve_ref("Xyz", "1,1", INDEX))
 
 
+class NovaVulgataTest(unittest.TestCase):
+    def test_aCitationAfterNVgIsANovaVulgataVerse(self):
+        body = "24,1a NVg (" + link("Sir", "24,1", "24,1b") + ") aggiunge: x. 24,18 NVg (" + link("Sir", "24,40", "24,40") + ")"
+        [n] = nc.parse_page(note(52098, "24,1", body), 28)
+        self.assertEqual([r[4] for r in n.refs], ["NVBSE", "NVBSE"])
+        rows = nc.ref_rows(n, CEI_SIR, [], NV)
+        self.assertEqual([(r[2], r[6]) for r in rows], [((28, 24, 1, "b", ""), "NVBSE"), ((28, 24, 40, "", ""), "NVBSE")])
+
+    def test_theNovaVulgataVerseIsReadFromThePrintedNumber(self):
+        # The site's link says sel=24,1 for "24,1b": the printed number is the Nova Vulgata's.
+        [n] = nc.parse_page(note(1, "24,1", "NVg (" + link("Sir", "24,1", "24,1b") + ")"), 28)
+        self.assertEqual(n.refs[0][:2], ("Sir", "24,1b"))
+
+    def test_anOrdinaryCitationStaysInTheNotesEdition(self):
+        [n] = nc.parse_page(note(2, "24,1", "Cfr. " + link("Sir", "24,3", "Sir 24,3")), 28)
+        self.assertIsNone(n.refs[0][4])
+
+    def test_aNovaVulgataVerseItLacksIsReported(self):
+        [n] = nc.parse_page(note(3, "24,1", "NVg (" + link("Sir", "24,60", "24,60") + ")"), 28)
+        problems = []
+        self.assertEqual(nc.ref_rows(n, CEI_SIR, problems, NV), [])
+        self.assertEqual(problems[0][2], "unresolved-citation")
+
+    def test_theDataHalfNamesTheEdition(self):
+        notes = nc.collect([(28, note(4, "24,1", "NVg (" + link("Sir", "24,40", "24,40") + ")"))])
+        sql = nc.to_sql(notes, CEI_SIR, [], NV)
+        self.assertIn("span_start, span_end, edition)", sql)
+        self.assertIn("'NVBSE')", sql)
+
+
 class OutputTest(unittest.TestCase):
     def test_dataHalfDeletesThenInsertsWithTitlesAndLastVerses(self):
         notes = nc.collect([(1, note(5, "1,1-2,4a", "<b>INNO</b> " + link("Sal", "8", "Sal 8") + "; " + link("Gen", "50,1", "Gen 50,1")))])
@@ -123,7 +156,7 @@ class OutputTest(unittest.TestCase):
         self.assertIn("last_book, last_chapter, last_verse", sql)
         self.assertIn("('5', 1, 1, 1, NULL::text, NULL::text, NULL::int, 'text', NULL::int, 1, 2, 4)", sql)
         self.assertIn("('5', 1, 23, 8, NULL::int, NULL::text, NULL::int, NULL::int, NULL::int, NULL::int, 0, 5)", sql)
-        self.assertEqual(problems, [("5", "Gen 50,1", "unresolved-citation", "Gen 50,1")])
+        self.assertEqual(problems, [("5", "Gen 50,1", "unresolved-citation", "CEI2008 Gen 50,1")])
         self.assertTrue(sql.endswith("COMMIT;\n"))
 
     def test_aTitleOnlyNoteHasAnEmptyBody(self):

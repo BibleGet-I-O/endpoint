@@ -19342,6 +19342,11 @@
                                     "minItems": 2,
                                     "maxItems": 2,
                                     "description": "The code points of `body` that print the citation: [start, end)."
+                                },
+                                "edition": {
+                                    "type": "string",
+                                    "description": "Present only when the passage is in another edition than the note's (CEI 2008's notes cite the Nova Vulgata's verses: `NVBSE`); its numbers are that edition's.",
+                                    "example": "NVBSE"
                                 }
                             }
                         }

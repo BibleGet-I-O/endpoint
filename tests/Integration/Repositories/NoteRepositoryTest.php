@@ -74,4 +74,14 @@ final class NoteRepositoryTest extends DatabaseTestCase
         );
         self::assertSame([], ( new NoteRepository($pdo) )->bodies([]));
     }
+
+    public function testACitationIntoAnotherEditionSaysWhich(): void
+    {
+        $pdo = $this->getConnection();
+        $id  = SyntheticNotes::add($pdo, 'TEST1', '1', 'footnote', null, [[1, 1, 1]], [[28, 24, 40, 0, 2], [28, 24, 1, 3, 5]]);
+        $pdo->exec("UPDATE note_ref SET edition = 'NVBSE' WHERE note_id = $id AND ord = 1");
+        $refs = ( new NoteRepository($pdo) )->bodies([$id])[$id]['refs'];
+        self::assertSame('NVBSE', $refs[0]['edition'] ?? null);
+        self::assertArrayNotHasKey('edition', $refs[1], 'the note\'s own edition: no field');
+    }
 }
