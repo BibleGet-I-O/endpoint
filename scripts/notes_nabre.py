@@ -23,6 +23,7 @@ overrides file (TSV: source_id, field, position) places it by hand. Nothing is d
 Usage:
     python3 scripts/notes_nabre.py --scml ../NABRE-source/scml --dump nabre.copy \\
         [--overrides ../NABRE-source/notes-overrides.tsv] \\
+        [--citations ../NABRE-source/notes-citations.tsv] \\
         --out ../NABRE-source/migrations/064-nabre-notes.sql --report ../NABRE-source/reports/nabre-notes.tsv
 with nabre.copy from:
     \\copy (SELECT sort_order, book, chapter, verse, coalesce(verse_segment,''), coalesce(text_tradition,''),
@@ -31,6 +32,7 @@ with nabre.copy from:
 """
 
 import argparse
+import codecs
 import html
 import re
 import sys
@@ -420,24 +422,47 @@ def load_overrides(path):
     return out
 
 
+def correct_citations(notes, path):
+    """Apply the citations file (notes_sql.load_citations; xref ids) to the notes; returns its unused lines as problems."""
+    corrections, used = notes_sql.load_citations(path), set()
+    for sid in {sid for sid, _ in corrections} & set(notes):
+        refs, hit = notes_sql.correct_refs(sid, notes[sid].refs, corrections, lambda r: r[0], lambda r, x: (x,) + r[1:])
+        notes[sid] = notes[sid]._replace(refs=refs)
+        used |= hit
+    return [(sid, "", x, "unused-correction", "") for sid, x in sorted(set(corrections) - used)]
+
+
+def _windows1252(error):
+    return error.object[error.start:error.end].decode("cp1252"), error.end
+
+
+codecs.register_error("windows1252", _windows1252)
+
+
+def read_scml(path):
+    """The SCML's text: UTF-8, but for stray Windows-1252 bytes (0x85, the ellipsis, about 800 times)."""
+    return Path(path).read_bytes().decode("utf-8", "windows1252")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--scml", required=True)
     ap.add_argument("--dump", required=True)
     ap.add_argument("--overrides")
+    ap.add_argument("--citations", help="TSV of corrected citations: source_id, xref id, corrected id or -, reason")
     ap.add_argument("--out", required=True)
     ap.add_argument("--report", required=True)
     args = ap.parse_args(argv)
     index = index_rows(load_dump(args.dump))
     events, notes = [], {}
     for path in sorted(Path(args.scml).glob("nab-*.scml")):
-        scml = path.read_text(encoding="utf-8", errors="replace")
+        scml = read_scml(path)
         events += scan_book(scml, int(path.name[4:6]))
         notes.update(parse_notes(scml))
     if not notes:
         # A data half deletes the edition's notes first: never write one that would leave none.
         sys.exit(f"no notes found under {args.scml}: nothing written")
-    problems = []
+    problems = correct_citations(notes, args.citations)
     anchors = place_all(events, index, load_overrides(args.overrides), problems)
     Path(args.out).write_text(to_sql(notes, anchors, index, problems), encoding="utf-8")
     Path(args.report).write_text(report(anchors, problems, notes), encoding="utf-8")

@@ -7,6 +7,19 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Fixed: garbled ellipses in NABRE, and wrong citation links in the notes (#267)
+
+- **Ellipses**: the SCML's Windows-1252 ellipsis was read as UTF-8, leaving
+  U+FFFD in 12 NABRE verses (migration `067`) and in hundreds of notes
+  (`notes_nabre.py` now decodes it; the data half is regenerated).
+- **Citations**: both import scripts take `--citations`, a private TSV of
+  citations checked by hand. NABRE: 39 unresolved ones, 31 now linked, 8 left as
+  text (verses NABRE omits, or whose target cannot be determined). CEI 2008: 121
+  corrections. bibbiaedu.it gives a bare "22,53" the last book named before it
+  even where the note's own book is meant, so about 80 citations linked to the
+  wrong passage; measures ("6,5 kg") were linked as verses. None is left
+  unresolved, and a line of the file that matches nothing is reported.
+
 ### Added: citations into another edition (migration 066)
 
 - **`note_ref.edition`** (migration `066`): a note's citation may point into

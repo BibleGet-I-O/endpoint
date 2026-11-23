@@ -262,6 +262,19 @@ def to_sql(notes, index, problems=None, nova=None):
         rows, anchors, refs)
 
 
+def correct_citations(notes, path):
+    """Apply the citations file ("Dt 22,53" as the site links it -> "Lc 22,53", or "-"); returns its unused lines."""
+    def change(ref, corrected):
+        slug, sel = corrected.split(" ", 1)
+        return (slug, sel) + ref[2:]
+    corrections, used = notes_sql.load_citations(path), set()
+    for sid in {sid for sid, _ in corrections} & set(notes):
+        refs, hit = notes_sql.correct_refs(sid, notes[sid].refs, corrections, lambda r: f"{r[0]} {r[1]}", change)
+        notes[sid] = notes[sid]._replace(refs=refs)
+        used |= hit
+    return [(sid, cited, "unused-correction", "") for sid, cited in sorted(set(corrections) - used)]
+
+
 def report(problems):
     return "\n".join(["source_id\twhere\treason\tcontext"] + ["\t".join(map(str, p)) for p in problems]) + "\n"
 
@@ -277,13 +290,15 @@ def main(argv=None):
     ap.add_argument("--html", required=True)
     ap.add_argument("--dump", required=True)
     ap.add_argument("--nvbse-dump", help="NVBSE's rows (same \\copy), for the notes' Nova Vulgata citations")
+    ap.add_argument("--citations", help="TSV of corrected citations: source_id, \"Slug sel\", corrected or -, reason")
     ap.add_argument("--out", required=True)
     ap.add_argument("--report", required=True)
     args = ap.parse_args(argv)
-    notes, problems = collect(pages(args.html)), []
+    notes = collect(pages(args.html))
     if not notes:
         # A data half deletes the edition's notes first: never write one that would leave none.
         sys.exit(f"no notes found under {args.html}: nothing written")
+    problems = correct_citations(notes, args.citations)
     nova = load_dump(args.nvbse_dump) if args.nvbse_dump else None
     sql = to_sql(notes, load_dump(args.dump), problems, nova)
     Path(args.out).write_text(sql, encoding="utf-8")
