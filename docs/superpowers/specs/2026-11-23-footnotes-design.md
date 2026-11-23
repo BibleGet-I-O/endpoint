@@ -31,7 +31,7 @@ change explains the Song of Songs' speaker tags ("D?"), which readers find puzzl
 ## Anti-goals
 
 - Changing the stored verse text, `text_plain`, embeddings or the search vocabulary.
-- A copyrighted note reachable by someone who may not read its verse: notes follow the text's access rules.
+- Notes reachable by anyone but the BibleGet website's signed-in readers: see *Who gets notes* (Part 3).
 - Copyrighted source material (NABRE SCML, CEI pages, note bodies) in a public repository.
 
 ## Constraints
@@ -121,8 +121,12 @@ source and writes the private data half:
 - `markers`: each verse row gains `notes: [{id, kind, marker, field, position}]` (ordered by field, position,
   marker). `full`: the response also carries the bodies, once each: `notes: {id: {kind, marker, label, title,
   body, refs: [{start, end, span}]}}`.
-- Notes are filtered by the same access rule as the verses: only notes **anchored** to verses the response
-  contains *(builder check, my call)*. A note is shown where it begins, as the printed page shows it: CEI's
+- **Who gets notes** *(decided by the user, 2026-11-23)*: only requests made with a **`reader`-scope key**, that
+  is the website's key for signed-in users. Project keys, installation tokens (the WordPress plugin, the
+  MediaWiki extension, the Google Docs and Word add-ins) and the website's `read` key for visitors do not: with
+  them, `footnotes` other than `none` answers **403** with a problem saying notes need a reader key.
+- Among reader requests, notes follow the verses: only notes **anchored** to verses the response contains
+  *(builder check, my call)*. A note is shown where it begins, as the printed page shows it: CEI's
   Gen 6:1–9:29 note comes with chapter 6, not with chapters 7–9 (83 CEI notes run across chapters).
 - **JSON only, for now** *(builder check, my call)*: with `return=xml` or `return=html`, `footnotes` other than
   `none` answers 400 with a problem saying so; the WordPress and MediaWiki clients, which insert the HTML as it
@@ -156,10 +160,12 @@ Cross-references:
 - Tapping a letter opens a small **popup** listing the passages as links; a link navigates to that book,
   chapter and verse (`#v{chapter}.{verse}`), keeping the reader's comparison settings as `go()` does.
 
-Copyright and comparison:
+Who sees notes, and comparison:
 
-- The site asks the API for `footnotes=full` with the same key it uses for the text; a capped chapter shows only
-  the notes the API returns.
+- Only **signed-in** readers see notes: the site asks for `footnotes=full` only with the `reader` key. Visitors
+  see the text as today, with no markers, no panel and no popups; where an edition has notes, a one-line hint
+  under the chapter says that signed-in readers see the edition's notes *(my call: otherwise visitors would not
+  know the notes exist)*.
 - In a comparison, each edition's notes are shown with that edition's text; the panel and the bottom list group
   them by edition.
 
