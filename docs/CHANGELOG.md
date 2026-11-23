@@ -7,6 +7,20 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: tables for the editions' notes (migration 064)
+
+- **`note`, `note_anchor` and `note_ref`** (migration `064`), for the
+  footnotes and cross-references of the printed editions (design:
+  `docs/superpowers/specs/2026-11-23-footnotes-design.md`). A note's anchor
+  keys its verse by identity (migration `046`'s columns) and places its
+  marker in code points into `text` or a `title*` field, as
+  `title_position` does; `field = 'chapter'` holds notes on a chapter
+  heading (each psalm's introductory note), and a NULL position the verse as
+  a whole. `note_ref` holds each passage a note cites, resolved to a stored
+  verse, with the span of the body that prints it. The tables ship empty:
+  the notes are copyrighted and come from private data halves, applied with
+  psql after this migration. The API does not serve them yet.
+
 ### Fixed: NVBSE omitted verses as rows of their own (#230 follow-up)
 
 - **The 33 verses the Nova Vulgata omits are rows with `omitted = true`**
