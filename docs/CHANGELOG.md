@@ -7,6 +7,23 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: CEI 2008's notes (import script)
+
+- **`scripts/notes_cei2008.py`** turns the bibbiaedu.it archive (private
+  `CEI2008-bibbiaedu`) into the data half
+  `CEI2008-bibbiaedu/migrations/064-cei2008-notes.sql`: 5,708 notes, each a
+  footnote with no marker, anchored to the first verse of its range as a whole
+  (the reader marks the verse number), the range's last verse recorded, Esther's
+  on the Greek text. A leading bold line is the note's title (850 notes are
+  only a title: the commentary's section headings). 5,829 citations link to
+  their verse; 63 do not resolve (verses of Sirach's longer text that the table
+  does not store, and links the site gives the wrong book) and are reported. HTML
+  comments, some holding a commented-out link, are dropped first.
+- **`scripts/notes_sql.py`**: the data half's SQL, now shared by
+  `notes_nabre.py` (whose output is unchanged, byte for byte) and
+  `notes_cei2008.py`; it writes the anchors' `last_*` columns when an edition
+  records ranges.
+
 ### Added: notes in `/v3/quote` (`footnotes`)
 
 - **`footnotes=none|markers|full`** on `/v3/quote` (footnotes design, Part 3).
