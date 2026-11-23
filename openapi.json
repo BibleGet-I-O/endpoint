@@ -45,6 +45,9 @@
                     },
                     {
                         "$ref": "#/components/parameters/numbering"
+                    },
+                    {
+                        "$ref": "#/components/parameters/footnotes"
                     }
                 ],
                 "responses": {
@@ -4241,6 +4244,16 @@
                             "edition"
                         ],
                         "default": "hebrew"
+                    },
+                    "footnotes": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "markers",
+                            "full"
+                        ],
+                        "default": "none",
+                        "description": "The edition's notes (footnotes and cross-references) on the verses returned. `none` (the default): no notes, the response is unchanged. `markers`: each row gains `notes`, the markers printed on it. `full`: the rows' markers and, in the top-level `notes`, each note's body and citations once. Only for the BibleGet website's `reader` key: any other credential gets 403. JSON only: with `return=xml` or `return=html` (or such an `Accept`), 400. Only notes anchored to the verses returned are given: a note comes with the verse where it begins. Editions with notes: NABRE (CEI 2008 to follow)."
                     }
                 },
                 "required": [
@@ -4586,6 +4599,13 @@
                                         "attribute": true
                                     },
                                     "example": "1John4,7-8"
+                                },
+                                "notes": {
+                                    "type": "array",
+                                    "description": "With `footnotes=markers|full` only: the notes marked on this row, by field (chapter heading, headings, text), then position (the verse as a whole first), then marker.",
+                                    "items": {
+                                        "$ref": "#/components/schemas/NoteMarker"
+                                    }
                                 }
                             }
                         },
@@ -4640,6 +4660,13 @@
                     },
                     "service_notices": {
                         "$ref": "#/components/schemas/ServiceNotices"
+                    },
+                    "notes": {
+                        "type": "object",
+                        "description": "With `footnotes=full` only: each note on the rows, once, keyed by its id (an empty object when there are none).",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Note"
+                        }
                     }
                 }
             },
@@ -4986,6 +5013,13 @@
                         "description": "Per-response 1-based index, partitioned per `version` and ranked by the server's internal subverse-aware canonical-order key. Sort by this field to recover canonical order client-side. Lets a client that re-sorts results (e.g. by relevance from a parallel `/search/*` call) recover canonical order without a second request.",
                         "xml": {
                             "attribute": true
+                        }
+                    },
+                    "notes": {
+                        "type": "array",
+                        "description": "With `footnotes=markers|full` only: the notes marked on this row, by field (chapter heading, headings, text), then position (the verse as a whole first), then marker.",
+                        "items": {
+                            "$ref": "#/components/schemas/NoteMarker"
                         }
                     }
                 },
@@ -19175,6 +19209,152 @@
                     "$ref": "#/components/schemas/ServiceNotice"
                 },
                 "description": "The service notices for this request's credential: every data route (quote, metadata, search) carries them in JSON; quote XML has `<service_notices><notice id=… link=… published=… deprecation=… sunset=…>message</notice></service_notices>` and quote HTML a hidden input `name=\"service_notices\"` (`class=\"BibleGetServiceNotices\"`, JSON). A notice may target a credential type, a plugin, or that plugin's versions below one."
+            },
+            "NoteMarker": {
+                "type": "object",
+                "description": "A note's marker on a verse row (`footnotes=markers|full`).",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The note's id, `{EDITION}:{source id}`, stable across re-imports; the key of the top-level `notes` with `footnotes=full`.",
+                        "example": "NABRE:01001001-1"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "footnote",
+                            "crossref"
+                        ]
+                    },
+                    "marker": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The marker as printed (`*`, `a`); null where the edition prints none.",
+                        "example": "*"
+                    },
+                    "field": {
+                        "type": "string",
+                        "enum": [
+                            "chapter",
+                            "title1",
+                            "title2",
+                            "title3",
+                            "text"
+                        ],
+                        "description": "Where the marker is printed: the verse's text, one of its headings, or the chapter heading."
+                    },
+                    "position": {
+                        "type": "integer",
+                        "nullable": true,
+                        "minimum": 0,
+                        "description": "0-based Unicode code-point offset into `field`, formatting tags included (as `title_position`); null: on the verse as a whole (its number)."
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "marker",
+                    "field",
+                    "position"
+                ]
+            },
+            "Note": {
+                "type": "object",
+                "description": "A note's body and the passages it cites (`footnotes=full`).",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "footnote",
+                            "crossref"
+                        ]
+                    },
+                    "marker": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "label": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The verse or range the note is printed under (`1:1`, `3:6-8`).",
+                        "example": "1:1"
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The note's own title, where the edition prints one."
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "The note as printed; inline tags `<i>`, `<b>`, `<sm>` only."
+                    },
+                    "refs": {
+                        "type": "array",
+                        "description": "The passages the body cites, in order, resolved to the edition's verses.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "start": {
+                                    "type": "object",
+                                    "description": "The first verse cited (`book` is the universal book number; `verse` null for a whole chapter).",
+                                    "properties": {
+                                        "book": {
+                                            "type": "integer"
+                                        },
+                                        "chapter": {
+                                            "type": "integer"
+                                        },
+                                        "verse": {
+                                            "type": "integer",
+                                            "nullable": true
+                                        },
+                                        "segment": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "printed_chapter": {
+                                            "type": "integer",
+                                            "nullable": true
+                                        }
+                                    }
+                                },
+                                "end": {
+                                    "type": "object",
+                                    "nullable": true,
+                                    "description": "The last verse of a range; null for a single verse or chapter.",
+                                    "properties": {
+                                        "book": {
+                                            "type": "integer"
+                                        },
+                                        "chapter": {
+                                            "type": "integer"
+                                        },
+                                        "verse": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "span": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "minItems": 2,
+                                    "maxItems": 2,
+                                    "description": "The code points of `body` that print the citation: [start, end)."
+                                }
+                            }
+                        }
+                    }
+                },
+                "required": [
+                    "kind",
+                    "marker",
+                    "label",
+                    "title",
+                    "body",
+                    "refs"
+                ]
             }
         },
         "parameters": {
@@ -19298,6 +19478,21 @@
                         "value": "HEBREW",
                         "summary": "Request verses based on the original Hebrew text"
                     }
+                }
+            },
+            "footnotes": {
+                "name": "footnotes",
+                "in": "query",
+                "required": false,
+                "description": "The edition's notes (footnotes and cross-references) on the verses returned. `none` (the default): no notes, the response is unchanged. `markers`: each row gains `notes`, the markers printed on it. `full`: the rows' markers and, in the top-level `notes`, each note's body and citations once. Only for the BibleGet website's `reader` key: any other credential gets 403. JSON only: with `return=xml` or `return=html` (or such an `Accept`), 400. Only notes anchored to the verses returned are given: a note comes with the verse where it begins. Editions with notes: NABRE (CEI 2008 to follow).",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "markers",
+                        "full"
+                    ],
+                    "default": "none"
                 }
             }
         },
