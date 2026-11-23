@@ -7,6 +7,19 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: notes in `/v3/quote` (`footnotes`)
+
+- **`footnotes=none|markers|full`** on `/v3/quote` (footnotes design, Part 3).
+  `markers`: each row gains `notes`, its markers (`{id, kind, marker, field,
+  position}`, by field, then position, the verse as a whole first); `full`:
+  also the top-level `notes`, each note's body and citations once, keyed by
+  id (`{EDITION}:{source id}`). Only notes anchored to the verses returned,
+  matched by verse identity. Without the parameter, or with `none`, the
+  response is unchanged and the note tables are not read.
+- **Reader key only, JSON only**: any credential but the `reader` scope gets
+  403 ("Notes are available only with the BibleGet website's reader key"),
+  and `return=xml|html` 400. Checked before the query runs.
+
 ### Added: Sirach's prologue as chapter 0 (#264)
 
 - **`Sir 0` (or `Sir 0:1`, `Sir 0-1`, `Sir Prol`, `Sir Prologo`…) is Sirach's

@@ -6,6 +6,8 @@ namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Repositories\NoteRepository;
+use BibleGet\Api\Services\QuoteNotes;
 use BibleGet\Api\Http\Exception\ForbiddenException;
 use BibleGet\Api\Http\Exception\ValidationException;
 use BibleGet\Api\Http\Logs\LoggerFactory;
@@ -55,6 +57,10 @@ class QuoteHandler extends AbstractHandler
             $request->getMethod(),
             $credential instanceof Credential ? $credential : null
         );
+        // Notes (footnotes=markers|full): the reader key only, JSON only; refused before anything is read.
+        $notesMode = QuoteNotes::mode($params);
+        QuoteNotes::guard($notesMode, $credential instanceof Credential ? $credential : null, $contentType);
+
         $ctx->initialize();
 
         $queryRaw = $params['query'] ?? '';
@@ -82,12 +88,20 @@ class QuoteHandler extends AbstractHandler
         // Per-version 1-based canonical_order (subverse-aware), sort_order stripped.
         SearchUtils::assignCanonicalOrder($ctx->results);
 
+        $notes = null;
+        if ($notesMode !== QuoteNotes::NONE) {
+            [$ctx->results, $notes] = QuoteNotes::attach(array_values($ctx->results), $notesMode, new NoteRepository($ctx->pdo));
+        }
+
         // Build response body
-        $response = $this->buildResponse($response, $contentType, $ctx);
+        $response = $this->buildResponse($response, $contentType, $ctx, $notes);
         return $this->withCacheHeaders($request, $response);
     }
 
-    private function buildResponse(ResponseInterface $response, string $contentType, QuoteContext $ctx): ResponseInterface
+    /**
+     * @param ?array<string, mixed> $notes The notes' bodies (footnotes=full), or null.
+     */
+    private function buildResponse(ResponseInterface $response, string $contentType, QuoteContext $ctx, ?array $notes = null): ResponseInterface
     {
         $bibleVersionsInfo = [];
         foreach ($ctx->formulatedVariants as $variant) {
@@ -106,6 +120,10 @@ class QuoteHandler extends AbstractHandler
                 'detectedNotation'  => $ctx->detectedNotation,
                 'bibleVersionsInfo' => $bibleVersionsInfo,
             ];
+            if ($notes !== null) {
+                // An object even when empty.
+                $body->notes = (object) $notes;
+            }
             return $this->jsonResponse($response, $body);
         }
 
