@@ -6,7 +6,7 @@ rows. Anchors and citations find their note by (edition, source_id), so the seri
 
 NoteRow = tuple  # (source_id, kind, marker, label, title, body)
 AnchorRow = tuple  # (source_id, (book, chapter, verse, segment, tradition, printed_chapter), field, position, last)
-RefRow = tuple  # (source_id, ord, (book, chapter, verse, segment, printed_chapter), end, span_start, span_end)
+RefRow = tuple  # (source_id, ord, (book, chapter, verse, segment, printed_chapter), end, span_start, span_end[, edition])
 
 
 def lit(v, cast="text"):
@@ -59,15 +59,22 @@ def insert_anchors(edition, anchors):
 
 
 def insert_refs(edition, refs):
+    """Citations; a 7th element names another edition the passage is in (migration 066), written only when one does."""
+    other = any(len(r) > 6 and r[6] for r in refs)
     rows = []
-    for sid, ord_, (b, c, v, seg, pc), end, s, e in refs:
+    for r in refs:
+        sid, ord_, (b, c, v, seg, pc), end, s, e = r[:6]
         eb, ec, ev = end or (None, None, None)
-        rows.append(f"({lit(sid)}, {ord_}, {b}, {c}, {lit(v, 'int')}, {lit(seg)}, {lit(pc, 'int')}, "
-                    f"{lit(eb, 'int')}, {lit(ec, 'int')}, {lit(ev, 'int')}, {s}, {e})")
+        row = (f"({lit(sid)}, {ord_}, {b}, {c}, {lit(v, 'int')}, {lit(seg)}, {lit(pc, 'int')}, "
+               f"{lit(eb, 'int')}, {lit(ec, 'int')}, {lit(ev, 'int')}, {s}, {e}")
+        rows.append(row + (f", {lit(r[6] if len(r) > 6 else None)})" if other else ")"))
+    cols, vals, names = "span_start, span_end", "v.s, v.e", "s, e"
+    if other:
+        cols, vals, names = cols + ", edition", vals + ", v.ed", names + ", ed"
     head = ("INSERT INTO note_ref (note_id, ord, book, chapter, verse, verse_segment, printed_chapter, end_book, "
-            "end_chapter, end_verse, span_start, span_end)\nSELECT n.id, v.ord, v.book, v.chapter, v.verse, v.seg, v.pc, "
-            "v.eb, v.ec, v.ev, v.s, v.e FROM (VALUES\n")
-    return _joined(edition, head, "source_id, ord, book, chapter, verse, seg, pc, eb, ec, ev, s, e", rows)
+            f"end_chapter, end_verse, {cols})\nSELECT n.id, v.ord, v.book, v.chapter, v.verse, v.seg, v.pc, "
+            f"v.eb, v.ec, v.ev, {vals} FROM (VALUES\n")
+    return _joined(edition, head, f"source_id, ord, book, chapter, verse, seg, pc, eb, ec, ev, {names}", rows)
 
 
 def data_half(edition, comment, notes, anchors, refs):

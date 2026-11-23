@@ -9,7 +9,7 @@ namespace BibleGet\Api\Repositories;
  * notes kept. A note's public id is "{edition}:{source_id}", stable across re-imports (the serial id is not).
  *
  * @phpstan-type Anchor array{note_id: int, id: string, kind: string, marker: ?string, chapter: int, verse: int, verse_segment: ?string, text_tradition: ?string, printed_chapter: ?int, field: string, position: ?int}
- * @phpstan-type Ref array{start: array{book: int, chapter: int, verse: ?int, segment: ?string, printed_chapter: ?int}, end: ?array{book: int, chapter: int, verse: int}, span: array{0: int, 1: int}}
+ * @phpstan-type Ref array{start: array{book: int, chapter: int, verse: ?int, segment: ?string, printed_chapter: ?int}, end: ?array{book: int, chapter: int, verse: int}, span: array{0: int, 1: int}, edition?: string}
  * @phpstan-type Body array{kind: string, marker: ?string, label: ?string, title: ?string, body: string, refs: list<Ref>}
  */
 class NoteRepository
@@ -77,7 +77,7 @@ class NoteRepository
             ];
         }
         $refs = $this->db->prepare(
-            'SELECT note_id, book, chapter, verse, verse_segment, printed_chapter, end_book, end_chapter, end_verse, span_start, span_end
+            'SELECT note_id, book, chapter, verse, verse_segment, printed_chapter, end_book, end_chapter, end_verse, span_start, span_end, edition
                FROM note_ref WHERE note_id = ANY(:ids::int[]) ORDER BY note_id, ord'
         );
         $refs->execute(['ids' => $in]);
@@ -97,7 +97,7 @@ class NoteRepository
     private static function ref(array $r): array
     {
         $endBook = self::int($r['end_book']);
-        return [
+        $ref     = [
             'start' => [
                 'book'            => Cast::int($r['book']),
                 'chapter'         => Cast::int($r['chapter']),
@@ -108,6 +108,12 @@ class NoteRepository
             'end'   => $endBook === null ? null : ['book' => $endBook, 'chapter' => Cast::int($r['end_chapter']), 'verse' => Cast::int($r['end_verse'])],
             'span'  => [Cast::int($r['span_start']), Cast::int($r['span_end'])],
         ];
+        // A citation into another edition says which (the Nova Vulgata's verses in CEI 2008's notes).
+        $edition = self::str($r['edition'] ?? null);
+        if ($edition !== null) {
+            $ref['edition'] = $edition;
+        }
+        return $ref;
     }
 
     private static function str(mixed $v): ?string

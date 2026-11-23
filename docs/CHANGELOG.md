@@ -7,6 +7,18 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: citations into another edition (migration 066)
+
+- **`note_ref.edition`** (migration `066`): a note's citation may point into
+  another edition; NULL, as for every NABRE citation, means the note's own.
+  CEI 2008's notes give the Nova Vulgata's readings of Sirach, Esther and Tobit
+  at the Nova Vulgata's own numbers ("24,1a NVg (24,1b) aggiunge: ..."):
+  `notes_cei2008.py --nvbse-dump` now resolves those 157 citations against
+  NVBSE's verses. bibbiaedu.it links them as CEI verses, and 137 of them used to
+  resolve to the CEI verse with the same number, the wrong passage.
+- **`/v3/quote?footnotes=full`**: such a citation carries `edition` (`NVBSE`);
+  the others are unchanged.
+
 ### Added: CEI 2008's notes (import script)
 
 - **`scripts/notes_cei2008.py`** turns the bibbiaedu.it archive (private
