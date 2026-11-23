@@ -1,6 +1,6 @@
 # Footnotes and cross-references: storage, import, API and reader
 
-**Date:** 2026-11-23 · **Status:** draft for approval (builder check done 2026-11-23) · **Size:** a project in four parts (endpoint and website)
+**Date:** 2026-11-23 · **Status:** approved 2026-11-23 (builder check done the same day) · **Size:** a project in four parts (endpoint and website)
 
 Supersedes the open points of the wiki's *Design: Footnotes* (RFC, never built), whose two-table model it adopts.
 
