@@ -36,6 +36,8 @@ final class LocalizedBookAbbreviationsTest extends DatabaseTestCase
             'fr Actes des Apôtres'  => ['Actes des Apôtres 17,16-34', 51],
             'en 1 Thes'             => ['1 Thes 4,13-14', 59],
             'en 2 Thes'             => ['2 Thes 2,15', 60],
+            // 063: the NABRE's own abbreviation for Zechariah (SeminaVerbi, Ghent Altarpiece).
+            'en Zec'                => ['Zec 9,9', 45],
             // es and fr: Samuel and Kings by a single letter.
             'es/fr 1 R'             => ['1 R 19,12', 11],
             'es/fr 2 R'             => ['2 R 2,11', 12],
