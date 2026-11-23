@@ -22,6 +22,52 @@ ROWS = [
     row(5, 3, 7, "He said: “It is Solomon’s litter—see!”"),
     row(5, 4, 1, "Behold, you are fair."),
     row(19, 1, 1, "Greek one.", seg="a", trad="GREEK"),
+    row(19, 4, 17, "C a.", seg="a", trad="GREEK"),
+    row(19, 4, 17, "C b.", seg="b", trad="GREEK"),
+    row(19, 4, 17, "C c.", seg="c", trad="GREEK"),
+    row(19, 4, 17, "C d.", seg="d", trad="GREEK"),
+    row(19, 4, 17, "C e.", seg="e", trad="GREEK"),
+    row(19, 4, 17, "C f.", seg="f", trad="GREEK"),
+    row(19, 4, 17, "C g.", seg="g", trad="GREEK"),
+    row(19, 4, 17, "C h.", seg="h", trad="GREEK"),
+    row(19, 4, 17, "C i.", seg="i", trad="GREEK"),
+    row(19, 4, 17, "C k.", seg="k", trad="GREEK"),
+    row(19, 4, 17, "C l.", seg="l", trad="GREEK"),
+    row(19, 4, 17, "C m.", seg="m", trad="GREEK"),
+    row(19, 4, 17, "C n.", seg="n", trad="GREEK"),
+    row(19, 4, 17, "C o.", seg="o", trad="GREEK"),
+    row(19, 4, 17, "C p.", seg="p", trad="GREEK"),
+    row(19, 4, 17, "C q.", seg="q", trad="GREEK"),
+    row(19, 4, 17, "C r.", seg="r", trad="GREEK"),
+    row(19, 4, 17, "C s.", seg="s", trad="GREEK"),
+    row(19, 4, 17, "C t.", seg="t", trad="GREEK"),
+    row(19, 4, 17, "C u.", seg="u", trad="GREEK"),
+    row(19, 4, 17, "C v.", seg="v", trad="GREEK"),
+    row(19, 4, 17, "C x.", seg="x", trad="GREEK"),
+    row(19, 4, 17, "C y.", seg="y", trad="GREEK"),
+    row(19, 4, 17, "C z.", seg="z", trad="GREEK"),
+    row(19, 4, 17, "C aa.", seg="aa", trad="GREEK"),
+    row(19, 4, 17, "C bb.", seg="bb", trad="GREEK"),
+    row(19, 4, 17, "C cc.", seg="cc", trad="GREEK"),
+    row(19, 4, 17, "C dd.", seg="dd", trad="GREEK"),
+    row(19, 4, 17, "C ee.", seg="ee", trad="GREEK"),
+    row(19, 4, 17, "C ff.", seg="ff", trad="GREEK"),
+    row(19, 5, 1, "D one.", trad="GREEK"),
+    row(19, 5, 1, "D 1a.", seg="a", trad="GREEK"),
+    row(19, 5, 1, "D 1b.", seg="b", trad="GREEK"),
+    row(19, 5, 1, "D 1c.", seg="c", trad="GREEK"),
+    row(19, 5, 1, "D 1d.", seg="d", trad="GREEK"),
+    row(19, 5, 1, "D 1e.", seg="e", trad="GREEK"),
+    row(19, 5, 1, "D 1f.", seg="f", trad="GREEK"),
+    row(19, 5, 1, "D 1g.", seg="g", trad="GREEK"),
+    row(19, 5, 1, "D 1h.", seg="h", trad="GREEK"),
+    row(19, 5, 1, "D 1i.", seg="i", trad="GREEK"),
+    row(19, 5, 1, "D 1k.", seg="k", trad="GREEK"),
+    row(19, 5, 2, "D two.", trad="GREEK"),
+    row(19, 5, 2, "D 2a.", seg="a", trad="GREEK"),
+    row(19, 5, 2, "D 2b.", seg="b", trad="GREEK"),
+    row(19, 5, 2, "D 2c.", seg="c", trad="GREEK"),
+    row(19, 5, 2, "D 2d.", seg="d", trad="GREEK"),
     row(19, 2, 1, "Canonical verse.", trad="GREEK"),
     row(19, 2, 1, "Canonical verse.", trad="HEBREW"),
     row(23, 1, 1, "Blessed the one."),
@@ -132,6 +178,21 @@ class RefsTest(unittest.TestCase):
         self.assertEqual(nn.resolve_ref("23001001", self.index), ((23, 1, 1, "", ""), None))
         self.assertEqual(nn.resolve_ref("36001001", self.index), ((35, 1, 1, "", ""), None))  # NAB skips 35
         self.assertEqual(nn.resolve_ref("19041001", self.index), ((19, 1, 1, "a", ""), None))  # Esther addition A 1
+
+    def test_estherAdditionsFollowTheStoredLetters(self):
+        # NABRE's letters skip "j" and "w"; addition D runs through 5:1, 5:1a-k, 5:2, 5:2a-d.
+        self.assertEqual(nn.resolve_ref("19043022", self.index)[0][:4], (19, 4, 17, "x"))
+        self.assertEqual(nn.resolve_ref("19043028", self.index)[0][:4], (19, 4, 17, "dd"))
+        self.assertEqual(nn.resolve_ref("19044001", self.index)[0][:4], (19, 5, 1, ""))
+        self.assertEqual(nn.resolve_ref("19044011", self.index)[0][:4], (19, 5, 1, "k"))
+        self.assertEqual(nn.resolve_ref("19044012", self.index)[0][:4], (19, 5, 2, ""))
+        self.assertEqual(nn.resolve_ref("19044016", self.index)[0][:4], (19, 5, 2, "d"))
+        self.assertIsNone(nn.resolve_ref("19044017", self.index))
+
+    def test_anEstherAdditionMarkerGoesOnItsGreekRowOnly(self):
+        scml = '<p id="19044012"><bcv>12</bcv>D two.<fnref id="19044012-1">*</fnref></p>'
+        (a,) = nn.place_all(nn.scan_book(scml), self.index, {})
+        self.assertEqual((a.ident[:5], a.reason), ((19, 5, 2, "", "GREEK"), ""))
         self.assertEqual(nn.resolve_ref("05004000", self.index), ((5, 4, None, "", ""), None))  # a chapter
         self.assertEqual(nn.resolve_ref("v05003005-v05003007", self.index), ((5, 3, 5, "", ""), (5, 3, 7)))
         self.assertIsNone(nn.resolve_ref("05009009", self.index))

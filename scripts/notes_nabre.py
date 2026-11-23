@@ -40,10 +40,12 @@ from pathlib import Path
 
 EDITION = "NABRE"
 TITLES = ("title1", "title2", "title3")
-# NAB numbers Esther's Greek additions A-F as chapters 41-46; NABRE stores them as lettered verses after the
-# verse they follow (as scripts/nabre_headings_from_scml.py does). NABRE's letters skip "j".
-ESTHER_ADDITIONS = {41: (1, 1), 42: (3, 13), 43: (4, 17), 44: (5, 1), 45: (8, 12), 46: (10, 3)}
-LETTERS = "abcdefghiklmnopqrstuvwxyz"
+# NAB numbers Esther's Greek additions A-F as chapters 41-46, verses 1, 2, 3...; NABRE stores them as the Greek
+# text's lettered verses after the verse they follow, with letters that skip "j" and "w" (4:17x follows 4:17v;
+# 4:17aa follows 4:17z). Addition D runs through 5:1, 5:1a-k, 5:2, 5:2a-d. So NAB verse n is the n-th row of its
+# addition's run, read from our own rows: (chapter, verse, whether the unlettered verse itself belongs to it).
+ESTHER_ADDITIONS = {41: [(1, 1, False)], 42: [(3, 13, False)], 43: [(4, 17, False)],
+                    44: [(5, 1, True), (5, 2, True)], 45: [(8, 12, False)], 46: [(10, 3, False)]}
 
 Event = namedtuple("Event", "place source_id kind marker vid prefix heading")
 Anchor = namedtuple("Anchor", "source_id kind marker ident field position reason")
@@ -114,12 +116,22 @@ def load_dump(path):
     return rows
 
 
+def greek(rows):
+    return [r for r in rows if r["ident"][4] == "GREEK"]
+
+
 class Index:
     def __init__(self, rows):
-        self.by_key, self.first = {}, {}
+        self.by_key, self.first, lettered = {}, {}, {}
         for r in rows:
             self.by_key.setdefault(r["key"], []).append(r)
             self.first.setdefault(r["key"][:2], r)
+            if r["key"][0] == 19 and r["key"][3]:
+                lettered.setdefault(r["key"][1:3], []).append(r)
+        self.esther = {nab: [row for chapter, verse, whole in runs
+                             for row in greek(self.by_key.get((19, chapter, verse, ""), []))[:1 if whole else 0]
+                             + lettered.get((chapter, verse), [])]
+                       for nab, runs in ESTHER_ADDITIONS.items()}
 
 
 def index_rows(rows):
@@ -131,15 +143,16 @@ def nab_book(nab):
 
 
 def keys_for(vid):
-    """Candidate row keys (book, chapter, verse, segment) for a NAB verse id."""
+    """Candidate row keys (book, chapter, verse, segment) for a NAB verse id (not an Esther addition)."""
     book, chapter, verse, letter = nab_book(int(vid[:2])), int(vid[2:5]), int(vid[5:8]), vid[8:]
-    if book == 19 and chapter in ESTHER_ADDITIONS:
-        ch, v = ESTHER_ADDITIONS[chapter]
-        return [(19, ch, v, LETTERS[verse - 1])] if 0 < verse <= len(LETTERS) else []
     return ([(book, chapter, verse, letter)] if letter else []) + [(book, chapter, verse, "")]
 
 
 def rows_for(vid, index):
+    """Our rows for a NAB verse id: every text tradition of it, or an Esther addition's one Greek row."""
+    if vid[:2] == "19" and int(vid[2:5]) in ESTHER_ADDITIONS:
+        run, n = index.esther[int(vid[2:5])], int(vid[5:8])
+        return [run[n - 1]] if 0 < n <= len(run) else []
     for key in keys_for(vid):
         if key in index.by_key:
             return index.by_key[key]
