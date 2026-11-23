@@ -434,6 +434,9 @@ def main(argv=None):
         scml = path.read_text(encoding="utf-8", errors="replace")
         events += scan_book(scml, int(path.name[4:6]))
         notes.update(parse_notes(scml))
+    if not notes:
+        # A data half deletes the edition's notes first: never write one that would leave none.
+        sys.exit(f"no notes found under {args.scml}: nothing written")
     problems = []
     anchors = place_all(events, index, load_overrides(args.overrides), problems)
     Path(args.out).write_text(to_sql(notes, anchors, index, problems), encoding="utf-8")

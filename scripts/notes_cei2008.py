@@ -94,10 +94,19 @@ class Body:
             self.open = None
 
     def done(self):
-        """The body (trimmed) and its citations, spans shifted by what the trimming took off the front."""
+        """The body (trimmed) and its citations, each span shifted by what the trimming took off the front and
+        narrowed to its printed characters (no space at either end), so it stays inside the body."""
         lead = len(self.cps) - len("".join(self.cps).lstrip())
         body = "".join(self.cps).strip()
-        return body, [(slug, sel, s - lead, e - lead) for slug, sel, s, e in self.refs]
+        cps, refs = list(body), []
+        for slug, sel, s, e in self.refs:
+            s, e = max(0, s - lead), min(len(cps), e - lead)
+            while s < e and cps[s].isspace():
+                s += 1
+            while e > s and cps[e - 1].isspace():
+                e -= 1
+            refs.append((slug, sel, s, e))
+        return body, refs
 
 
 def parse_body(raw):
@@ -174,6 +183,11 @@ def parse_range(s):
     return chapter, verse, m[3] or "", end
 
 
+def stored_end(book, end, index):
+    """(book, chapter, verse) of a range's end when the table has that verse, else None (not recorded)."""
+    return (book,) + end if end and stored(book, end[0], end[1], "", index) else None
+
+
 def anchor_for(book, label, index):
     """((book, chapter, verse, segment, tradition, printed_chapter), last (book, chapter, verse) or None), or None."""
     r = parse_range(label)
@@ -185,7 +199,7 @@ def anchor_for(book, label, index):
         return None
     seg, trads = found
     trad = "GREEK" if "GREEK" in trads else trads[0]
-    return (book, chapter, verse, seg, trad, ""), ((book,) + end if end else None)
+    return (book, chapter, verse, seg, trad, ""), stored_end(book, end, index)
 
 
 def resolve_ref(slug, sel, index):
@@ -201,7 +215,7 @@ def resolve_ref(slug, sel, index):
     found = stored(book, chapter, verse, letters, index)
     if not found:
         return None
-    return (book, chapter, verse, found[0], ""), ((book,) + end if end else None)
+    return (book, chapter, verse, found[0], ""), stored_end(book, end, index)
 
 
 # ------------------------------------------------------------------ output
@@ -254,6 +268,9 @@ def main(argv=None):
     ap.add_argument("--report", required=True)
     args = ap.parse_args(argv)
     notes, problems = collect(pages(args.html)), []
+    if not notes:
+        # A data half deletes the edition's notes first: never write one that would leave none.
+        sys.exit(f"no notes found under {args.html}: nothing written")
     sql = to_sql(notes, load_dump(args.dump), problems)
     Path(args.out).write_text(sql, encoding="utf-8")
     Path(args.report).write_text(report(problems), encoding="utf-8")

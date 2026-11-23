@@ -30,8 +30,11 @@ def _joined(edition, head, columns, rows):
 
 def insert_notes(edition, notes):
     """Notes; an empty body (a note that is all title) stays an empty string: `body` is NOT NULL."""
-    rows = [f"({lit(edition)}, {lit(kind)}, {lit(marker)}, {lit(label)}, {lit(title) if title else "NULL"}, {lit(body) if body else "''"}, {lit(sid)})"
-            for sid, kind, marker, label, title, body in notes]
+    rows = []
+    for sid, kind, marker, label, title, body in notes:
+        title_sql = lit(title) if title else "NULL"
+        body_sql = lit(body) if body else "''"
+        rows.append(f"({lit(edition)}, {lit(kind)}, {lit(marker)}, {lit(label)}, {title_sql}, {body_sql}, {lit(sid)})")
     return [("INSERT INTO note (edition, kind, marker, label, title, body, source_id) VALUES\n"
              + ",\n".join(c) + ";") for c in chunks(rows)]
 

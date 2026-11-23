@@ -63,6 +63,11 @@ class ParseTest(unittest.TestCase):
         [m] = nc.parse_page(note(54, "8,11", f"Testo {hidden}fine."), 29)
         self.assertEqual((m.body, m.refs), ("Testo fine.", []))
 
+    def test_aCitationEndingTheBodyStaysInsideIt(self):
+        [n] = nc.parse_page(note(9, "1,1", "Cfr. " + link("Gen", "1,1", "Gen 1,1 ")), 1)
+        self.assertEqual(n.body, "Cfr. Gen 1,1")
+        self.assertEqual(n.refs, [("Gen", "1,1", 5, 12)])
+
     def test_aNoteOnTwoPagesIsKeptOnce(self):
         notes = nc.collect([(1, note(5, "1,1-2,4a", "A.")), (1, note(5, "1,1-2,4a", "A.")), (1, note(6, "2,5", "B."))])
         self.assertEqual(list(notes), ["5", "6"])
@@ -82,6 +87,10 @@ class ResolveTest(unittest.TestCase):
         self.assertEqual(nc.anchor_for(19, "1,1a", INDEX)[0], (19, 1, 1, "a", "GREEK", ""))
         # A verse only the Hebrew text has.
         self.assertEqual(nc.anchor_for(19, "1,2", INDEX)[0], (19, 1, 2, "", "HEBREW", ""))
+
+    def test_aRangeEndTheTableLacksIsNotRecorded(self):
+        self.assertEqual(nc.anchor_for(1, "1,1-50,1", INDEX), ((1, 1, 1, "", "", ""), None))
+        self.assertEqual(nc.resolve_ref("Gen", "1,1-50,1", INDEX), ((1, 1, 1, "", ""), None))
 
     def test_unusualLabels(self):
         self.assertEqual(nc.anchor_for(1, "1,2.5", INDEX)[0], (1, 1, 2, "", "", ""))
@@ -127,6 +136,18 @@ class OutputTest(unittest.TestCase):
         sql = nc.to_sql(notes, INDEX, problems)
         self.assertNotIn("'7')", sql)
         self.assertEqual(problems, [("7", "9,9", "no-verse", "")])
+
+
+class MainTest(unittest.TestCase):
+    def test_anArchiveWithNoNotesWritesNothing(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            dump = Path(d) / "cei.copy"
+            dump.write_text("1\t1\t1\t1\t\t\t\t\tT\t\t\t\n", encoding="utf-8")
+            out = Path(d) / "out.sql"
+            with self.assertRaises(SystemExit):
+                nc.main(["--html", str(Path(d) / "missing"), "--dump", str(dump), "--out", str(out), "--report", str(Path(d) / "r.tsv")])
+            self.assertFalse(out.exists())
 
 
 if __name__ == "__main__":

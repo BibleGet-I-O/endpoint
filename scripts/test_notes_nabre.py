@@ -211,5 +211,17 @@ class SqlTest(unittest.TestCase):
         self.assertTrue(sql.rstrip().endswith("COMMIT;"))
 
 
+class MainTest(unittest.TestCase):
+    def test_noScmlWritesNothing(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            dump = Path(d) / "nabre.copy"
+            dump.write_text("1\t1\t1\t1\t\t\t\t\tT\t\t\t\n", encoding="utf-8")
+            out = Path(d) / "out.sql"
+            with self.assertRaises(SystemExit):
+                nn.main(["--scml", str(Path(d) / "missing"), "--dump", str(dump), "--out", str(out), "--report", str(Path(d) / "r.tsv")])
+            self.assertFalse(out.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
