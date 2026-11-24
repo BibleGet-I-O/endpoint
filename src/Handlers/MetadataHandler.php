@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BibleGet\Api\Handlers;
 
+use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Http\Exception\BadRequestException;
+use BibleGet\Api\Repositories\OutlineRepository;
 use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Http\Exception\InternalServerErrorException;
@@ -58,6 +61,10 @@ class MetadataHandler extends AbstractHandler
                 $versionsStr = is_string($versionsRaw) ? $versionsRaw : '';
                 $data        = $this->getVersionIndex($pdo, $versionsStr);
                 break;
+            case 'outline':
+                $credential = $request->getAttribute('credential');
+                $data       = $this->getOutline($pdo, $params, $contentType, $credential instanceof Credential && $credential->scope === 'reader');
+                break;
             default:
                 throw new NotFoundException('Unknown metadata query: ' . $subResource);
         }
@@ -75,6 +82,29 @@ class MetadataHandler extends AbstractHandler
         }
 
         return $this->withCacheHeaders($request, $response);
+    }
+
+    /**
+     * A book's titles with their levels; the edition's commentary titles only for the reader key.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    private function getOutline(\PDO $pdo, array $params, string $contentType, bool $reader): array
+    {
+        if ($contentType !== 'application/json') {
+            throw new BadRequestException('The outline is available in JSON only.');
+        }
+        $version = strtoupper(StringUtils::asString($params['version'] ?? ''));
+        $book    = StringUtils::asString($params['book'] ?? '');
+        if (preg_match('/^[1-9]\d?$/', $book) !== 1 || (int) $book > 73) {
+            throw new BadRequestException('The book parameter must be a universal book number, 1 to 73.');
+        }
+        $repository = new OutlineRepository($pdo);
+        if (!$repository->editionExists($version)) {
+            throw new BadRequestException('The version parameter must be one of the available Bible versions.');
+        }
+        return ['version' => $version, 'book' => (int) $book, 'titles' => $repository->titles($version, (int) $book, $reader)];
     }
 
     /**

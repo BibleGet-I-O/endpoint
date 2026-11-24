@@ -7,6 +7,14 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: titles with their levels (`/metadata/outline`, migration 069)
+
+- **`GET /metadata/outline?version=NABRE&book=1`**: a book's titles in reading
+  order, each with its level and verse. CEI 2008 prints headings in few books;
+  elsewhere the titles of its commentary serve, for the `reader` key only.
+- **`book_outline`** (migration `069`) ships empty; `scripts/outline.py` writes
+  the private data halves for NABRE and CEI 2008.
+
 ### Fixed: garbled "œ" in the Vulgate
 
 - **VGCL** stored the control character U+009C for "œ" (925 times in 879
