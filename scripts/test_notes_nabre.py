@@ -109,6 +109,30 @@ class PlacementTest(unittest.TestCase):
         self.assertEqual(a.field, "title1")
         self.assertEqual(a.position, len("The Procession"))
 
+    def test_aMarkerRightAfterARunInHeadingIsTheHeadings(self):
+        # Printed after the bold, before the verse: at a chapter's start, and after another verse.
+        scml = ('<ch id="26003000">CHAPTER 3</ch>\n<pf><b>Opening.</b><fnref id="26003005-1">*</fnref> <v id="26003005"><bcv>5</bcv>I adjure</v></pf>\n'
+                '<p><b>The Procession.</b><fnref id="26003006-1">*</fnref><enref id="26003006-a">a</enref> <v id="26003006"><bcv>6</bcv>Who is this<fnref id="26003006-2">*</fnref></v></p>')
+        ev = {e.source_id: (e.place, e.vid, e.prefix, e.heading) for e in nn.scan_book(scml)}
+        self.assertEqual(ev["26003005-1"], ("title", "26003005", "Opening", "Opening."))
+        self.assertEqual(ev["26003006-1"], ("title", "26003006", "The Procession", "The Procession."))
+        self.assertEqual(ev["26003006-a"], ("title", "26003006", "The Procession", "The Procession."))
+        self.assertEqual(ev["26003006-2"][:3], ("text", "26003006", "Who is this"))
+
+    def test_aMarkerAfterAHeadingInsideAVerseStaysOnThatVerse(self):
+        # The heading interrupts 3:6 (stored there): its title; one we do not store: after the words before it.
+        scml = ('<pof id="05003006"><bcv>6</bcv><speaker>D</speaker> Who is this</pof><chsect>{}</chsect><fnref id="x-1">*</fnref>'
+                '<poi>coming up from the desert,</poi><poi id="05003007"><bcv>7</bcv>He said</poi>')
+        (a,) = self.anchors(scml.format("The Procession"))
+        self.assertEqual((a.ident[:3], a.field, a.position), ((5, 3, 6), "title1", len("The Procession")))
+        (b,) = self.anchors(scml.format("Not Stored"))
+        self.assertEqual((b.ident[:3], b.field, b.reason), ((5, 3, 6), "text", ""))
+        self.assertTrue(ROWS[1]["fields"]["text"][:b.position].endswith("Who is this"))
+
+    def test_aMarkerBeforeAVersesNumberWithoutAHeadingIsNotTheOldHeadings(self):
+        scml = '<ch id="26003000">CHAPTER 3</ch><p><b>H.</b><v id="26003005">I<fnref id="x">*</fnref></v></p>'
+        self.assertEqual([(e.place, e.vid) for e in nn.scan_book(scml)], [("text", "26003005")])
+
     def test_quotesAndDashesMatchAcrossConversions(self):
         scml = '<p id="05003007"><bcv>7</bcv>He said: &#8220;It is Solomon&#8217;s litter&#8212;<fnref id="05003007-1">*</fnref>see!&#8221;</p>'
         (a,) = self.anchors(scml)
@@ -209,6 +233,37 @@ class SqlTest(unittest.TestCase):
         self.assertIn("'It’s.'", sql)
         self.assertIn("INSERT INTO note_anchor", sql)
         self.assertTrue(sql.rstrip().endswith("COMMIT;"))
+
+
+class OwnIdsTest(unittest.TestCase):
+    def test_aNoteIdOfAnotherBookIsGivenItsOwn(self):
+        # The publisher numbers Galatians' (56) cross-references as Ephesians' (57); verse and xref ids are right.
+        scml = ('<v id="56001001">Paul<enref id="57001001-a">a</enref><fnref id="56001001-1">*</fnref></v>'
+                '<en id="57001001-a">a. [1:1] <xref id="53001001">Rom 1:1</xref>.</en><fn id="56001001-1">* [1:1] Body.</fn>')
+        fixed = nn.own_ids(scml, 56)
+        self.assertEqual(sorted(nn.parse_notes(fixed)), ["56001001-1", "56001001-a"])
+        self.assertEqual([e.source_id for e in nn.scan_book(fixed)], ["56001001-a", "56001001-1"])
+        self.assertIn('<xref id="53001001">', fixed)
+        # Daniel's file holds 34 and 35.
+        self.assertEqual(nn.own_ids('<fn id="35001001-1">', 34), '<fn id="35001001-1">')
+
+    def test_anUnpairedMarkerOrNoteIsReported(self):
+        notes = {"a": 1, "b": 1}
+        events = [nn.Event("text", s, "footnote", "*", "01001001", "", "") for s in ("a", "c")]
+        self.assertEqual(nn.unpaired(events, notes), [("b", "", "", "note-without-marker", ""), ("c", "footnote", "01001001", "marker-without-note", "")])
+
+    def test_theOneMisnumberedNoteIsPaired(self):
+        self.assertIn('<en id="33032012-e">', nn.own_ids('<en id="33032010-e">e. [32:12] x</en>', 33))
+
+    def test_anIdUsedTwiceStopsTheImport(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for n in ("01-gn", "02-ex"):
+                (Path(d) / f"nab-{n}.scml").write_text('<fn id="x">* [1:1] B.</fn>', encoding="utf-8")
+            dump = Path(d) / "nabre.copy"
+            dump.write_text("1\t1\t1\t1\t\t\t\t\tT\t\t\t\n", encoding="utf-8")
+            with self.assertRaises(SystemExit):
+                nn.main(["--scml", d, "--dump", str(dump), "--out", str(Path(d) / "o"), "--report", str(Path(d) / "r")])
 
 
 class SourceTest(unittest.TestCase):

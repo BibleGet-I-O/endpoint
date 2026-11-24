@@ -36,10 +36,11 @@ verse, and (b) the book's introduction, with its notes and linked citations.
 
 ## Introductions (next slice)
 
-- **`book_introduction`**: `edition, book, title, body`; the body keeps paragraphs, headings, lists and `<i>/<b>/<sm>`.
-  Its notes are `note` rows anchored to the introduction, its citations `note_ref`-like rows.
+- **`book_introduction`**: `edition, book, title`, and `blocks` (JSON): headings, paragraphs, list items and table rows in
+  order, each with its text (`<i>/<b>/<sm>`) and its citations (span and verse). No notes: neither edition prints any in
+  a book's introduction (the NABRE import's "206 introduction notes" were misread verse notes).
 - `GET /metadata/introduction?version=&book=`: `reader` key only (403), JSON only.
-- Page `/read/{edition}/{book}/introduction`, signed-in readers only, reusing the notes list and panel.
+- Page `/read/{edition}/{book}/introduction`, signed-in readers only, its citations linked as the notes' are.
 
 ## Anti-goals
 

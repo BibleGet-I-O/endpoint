@@ -52,7 +52,8 @@ TITLES = ("title1", "title2", "title3")
 ESTHER_ADDITIONS = {41: [(1, 1, False)], 42: [(3, 13, False)], 43: [(4, 17, False)],
                     44: [(5, 1, True), (5, 2, True)], 45: [(8, 12, False)], 46: [(10, 3, False)]}
 
-Event = namedtuple("Event", "place source_id kind marker vid prefix heading")
+# `inside`: (verse id, text so far) of the verse a heading may interrupt, for a marker printed right after it.
+Event = namedtuple("Event", "place source_id kind marker vid prefix heading inside", defaults=(None,))
 Anchor = namedtuple("Anchor", "source_id kind marker ident field position reason")
 Note = namedtuple("Note", "kind marker label body refs dropped")
 
@@ -194,27 +195,39 @@ def refs_in(fragment):
 class Scanner:
     def __init__(self):
         self.events, self.pending, self.current, self.prefix, self.started = [], [], None, "", False
+        self.after = None  # the heading just printed, until a verse or text follows: a marker here is the heading's
 
     def chapter(self, m):
-        self.started, self.current = True, None
+        self.started, self.current, self.after = True, None, None
         for sid, kind, mark, _ in refs_in(m["chin"]):
             self.events.append(Event("chapter", sid, kind, mark, m["ch"], "", ""))
 
     def heading(self, inner):
-        heading = visible(REF.sub("", inner))
+        heading = self.after = visible(REF.sub("", inner))
         for sid, kind, mark, before in refs_in(inner):
             self.pending.append(Event("title", sid, kind, mark, None, before, heading))
 
     def verse(self, vid):
         # A verse id ends the book's introduction (which has none).
-        self.current, self.prefix, self.started = vid, "", True
+        self.current, self.prefix, self.started, self.after = vid, "", True, None
         self.events.extend(e._replace(vid=vid) for e in self.pending)
         self.pending = []
 
     def marker(self, m):
+        if self.after is not None:
+            self.pending.append(Event("title", m["rid"], kind_of(m["ref"]), visible(m["mark"]).strip(), None,
+                                      self.after.rstrip(". "), self.after,
+                                      (self.current, self.prefix) if self.current else None))
+            return
         place = "text" if self.current and self.started else "intro"
         self.events.append(Event(place, m["rid"], kind_of(m["ref"]), visible(m["mark"]).strip(),
                                  self.current, self.prefix, ""))
+
+    def words(self, text):
+        if text.strip():
+            self.after = None
+        if self.current:
+            self.prefix += text
 
     def feed(self, m):
         if m["ch"]:
@@ -227,8 +240,8 @@ class Scanner:
             self.marker(m)
         elif m["vid"] and m["vtag"] != "xref" and not m["vid"][:8].endswith("000"):
             self.verse(m["vid"])
-        elif m["text"] is not None and self.current:
-            self.prefix += m["text"]
+        elif m["text"] is not None:
+            self.words(m["text"])
 
 
 def scan_book(scml, nab=None):
@@ -260,13 +273,22 @@ def heading_field(r, heading):
     return None
 
 
-def place_title(e, rows):
+def on_titles(e, rows):
     found = []
     for r in rows:
         f = heading_field(r, e.heading)
         if f:
             p = find(r["fields"][f], e.prefix)
             found.append(anchor(e, r, f, p, "" if p is not None else "no-match"))
+    return found
+
+
+def place_title(e, rows, index):
+    """On the heading, stored on the verse after it or on the one it interrupts; else where the words before it end."""
+    found = on_titles(e, rows)
+    if not found and e.inside:
+        held = rows_for(e.inside[0], index)
+        found = on_titles(e, held) or (place_text(e._replace(prefix=e.inside[1]), held) if held else [])
     return found or [anchor(e, rows[0], "chapter", None, "heading-not-imported")]
 
 
@@ -281,7 +303,7 @@ def place_event(e, index, problems):
     if not rows:
         problems.append((e.source_id, e.kind, e.vid, "no-row", e.prefix[-40:]))
         return []
-    return place_text(e, rows) if e.place == "text" else place_title(e, rows)
+    return place_text(e, rows) if e.place == "text" else place_title(e, rows, index)
 
 
 def place_all(events, index, overrides, problems=None):
@@ -444,6 +466,24 @@ def read_scml(path):
     return Path(path).read_bytes().decode("utf-8", "windows1252")
 
 
+NOTE_ID = re.compile(r'(<(?:fnref|enref|fn|en)\b[^>]*\bid=")(\d\d)(\d{6}-)')
+
+
+def own_ids(scml, nab):
+    """The SCML with every note id under its own book: the publisher gives Galatians' cross-references Ephesians'
+    numbers (28 ids are then used twice), and Hebrews' Philemon's. Daniel's file rightly holds 34 and 35."""
+    mine = {"34", "35"} if nab == 34 else {f"{nab:02d}"}
+    scml = scml.replace('<en id="33032010-e">', '<en id="33032012-e">')  # Ez 32:12's note, misnumbered
+    return NOTE_ID.sub(lambda m: m[0] if m[2] in mine else f"{m[1]}{nab:02d}{m[3]}", scml)
+
+
+def unpaired(events, notes):
+    """The notes no marker names, and the markers whose note the source lacks: neither can be shown."""
+    marked = {e.source_id for e in events}
+    return ([(sid, "", "", "note-without-marker", "") for sid in sorted(set(notes) - marked)]
+            + [(e.source_id, e.kind, e.vid or "", "marker-without-note", "") for e in events if e.source_id not in notes])
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--scml", required=True)
@@ -456,13 +496,16 @@ def main(argv=None):
     index = index_rows(load_dump(args.dump))
     events, notes = [], {}
     for path in sorted(Path(args.scml).glob("nab-*.scml")):
-        scml = read_scml(path)
+        scml = own_ids(read_scml(path), int(path.name[4:6]))
+        found = parse_notes(scml)
+        if twice := sorted(set(found) & set(notes)):
+            sys.exit(f"{path.name}: note ids used in another book too: {twice[:5]}")
         events += scan_book(scml, int(path.name[4:6]))
-        notes.update(parse_notes(scml))
+        notes.update(found)
     if not notes:
         # A data half deletes the edition's notes first: never write one that would leave none.
         sys.exit(f"no notes found under {args.scml}: nothing written")
-    problems = correct_citations(notes, args.citations)
+    problems = unpaired(events, notes) + correct_citations(notes, args.citations)
     anchors = place_all(events, index, load_overrides(args.overrides), problems)
     Path(args.out).write_text(to_sql(notes, anchors, index, problems), encoding="utf-8")
     Path(args.report).write_text(report(anchors, problems, notes), encoding="utf-8")
