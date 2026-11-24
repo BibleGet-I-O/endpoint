@@ -584,6 +584,124 @@
                 ]
             }
         },
+        "/metadata/outline": {
+            "get": {
+                "summary": "Retrieve a book's titles with their levels",
+                "description": "The titles an edition prints in a book, in reading order, each with its level and verse. Titles of an edition's commentary (CEI 2008, in books where it prints no headings) are given only to the BibleGet website's `reader` key. JSON only.",
+                "operationId": "getOutline",
+                "tags": [
+                    "MetadataAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "book",
+                        "in": "query",
+                        "required": true,
+                        "description": "Universal book number, 1 to 73.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 73
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The book's titles in reading order; an empty list when it has none.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "version": {
+                                            "type": "string"
+                                        },
+                                        "book": {
+                                            "type": "integer"
+                                        },
+                                        "titles": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "level",
+                                                    "title",
+                                                    "chapter",
+                                                    "verse",
+                                                    "segment",
+                                                    "printed_chapter"
+                                                ],
+                                                "properties": {
+                                                    "level": {
+                                                        "type": "integer",
+                                                        "minimum": 1,
+                                                        "description": "1 is the highest. A book may skip levels: indent by the distinct levels it has."
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    },
+                                                    "chapter": {
+                                                        "type": "integer"
+                                                    },
+                                                    "verse": {
+                                                        "type": "integer"
+                                                    },
+                                                    "segment": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "printed_chapter": {
+                                                        "type": "integer",
+                                                        "nullable": true,
+                                                        "description": "The chapter that prints the verse, when it is another."
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "info": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request. Will be returned if the `versions` parameter is missing or invalid."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "405": {
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
+            }
+        },
         "/search": {
             "get": {
                 "summary": "Search for Bible verses that contain a given keyword",

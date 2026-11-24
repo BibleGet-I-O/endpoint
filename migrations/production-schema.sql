@@ -536,3 +536,19 @@ CREATE TABLE IF NOT EXISTS note_ref (
 );
 -- Migration 066: a citation into another edition (NULL = the note's own).
 ALTER TABLE note_ref ADD COLUMN IF NOT EXISTS edition VARCHAR(10);
+
+-- ── Title index (migration 069) ──
+CREATE TABLE IF NOT EXISTS book_outline (
+    edition          VARCHAR(10) NOT NULL,
+    book             INT NOT NULL,
+    ord              INT NOT NULL,
+    level            SMALLINT NOT NULL CHECK (level BETWEEN 1 AND 6),
+    title            TEXT NOT NULL,
+    chapter          INT NOT NULL,
+    verse            INT NOT NULL,
+    verse_segment    VARCHAR(4),
+    text_tradition   VARCHAR(10),
+    printed_chapter  INT,
+    reader_only      BOOLEAN NOT NULL DEFAULT false,
+    PRIMARY KEY (edition, book, ord)
+);
