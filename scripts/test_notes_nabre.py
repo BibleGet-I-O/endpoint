@@ -129,6 +129,11 @@ class PlacementTest(unittest.TestCase):
         self.assertEqual((b.ident[:3], b.field, b.reason), ((5, 3, 6), "text", ""))
         self.assertTrue(ROWS[1]["fields"]["text"][:b.position].endswith("Who is this"))
 
+    def test_aMarkerAfterAHeadingInsideTheLastVerseIsKept(self):
+        scml = '<po id="05004001"><bcv>1</bcv>Behold,</po><chsect>Not Stored</chsect><fnref id="x-1">*</fnref><poi> you are fair.</poi>'
+        (a,) = self.anchors(scml)
+        self.assertEqual((a.ident[:3], a.field, a.position, a.reason), ((5, 4, 1), "text", len("Behold,"), ""))
+
     def test_aMarkerBeforeAVersesNumberWithoutAHeadingIsNotTheOldHeadings(self):
         scml = '<ch id="26003000">CHAPTER 3</ch><p><b>H.</b><v id="26003005">I<fnref id="x">*</fnref></v></p>'
         self.assertEqual([(e.place, e.vid) for e in nn.scan_book(scml)], [("text", "26003005")])
@@ -254,6 +259,12 @@ class OwnIdsTest(unittest.TestCase):
 
     def test_theOneMisnumberedNoteIsPaired(self):
         self.assertIn('<en id="33032012-e">', nn.own_ids('<en id="33032010-e">e. [32:12] x</en>', 33))
+
+    def test_anIdUsedTwiceInOneFileStopsTheImport(self):
+        with self.assertRaises(SystemExit):
+            nn.parse_notes('<fn id="x">* [1:1] A.</fn><fn id="x">* [1:2] B.</fn>')
+        # A continuation is not a second note.
+        self.assertEqual(nn.parse_notes('<fn id="x">* [1:1] A.</fn><fnp>More.</fnp>')["x"].body, "A.\nMore.")
 
     def test_anIdUsedTwiceStopsTheImport(self):
         import tempfile

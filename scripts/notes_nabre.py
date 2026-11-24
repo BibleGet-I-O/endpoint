@@ -250,7 +250,8 @@ def scan_book(scml, nab=None):
     for m in TOKEN.finditer(scml):
         if not m["note"]:
             s.feed(m)
-    s.events.extend(e._replace(place="intro") for e in s.pending)
+    # No verse follows: a heading inside the last verse is that verse's; before any verse, an introduction's.
+    s.events.extend(e._replace(vid=e.inside[0]) if e.inside else e._replace(place="intro") for e in s.pending)
     return s.events
 
 
@@ -371,6 +372,8 @@ def parse_notes(scml):
         mark, label, raw = (head["mark"], flatten(visible(head["label"])).strip(), head["body"]) if head else ("", None, m["inner"])
         body, refs, dropped = convert(raw)
         kind = "footnote" if m["tag"] == "fn" else "crossref"
+        if m["id"] in notes:
+            sys.exit(f"note id used twice in one file: {m['id']}")
         notes[m["id"]] = Note(kind, mark, label, body, refs, dropped)
         last = m["id"]
     return notes
