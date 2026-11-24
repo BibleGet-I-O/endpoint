@@ -300,7 +300,7 @@ def place_event(e, index, problems):
     if e.place == "chapter":
         r = index.first.get((nab_book(int(e.vid[:2])), int(e.vid[2:5])))
         return [anchor(e, r, "chapter", None)] if r else []
-    rows = rows_for(e.vid, index)
+    rows = rows_for(e.vid, index) or (rows_for(e.inside[0], index) if e.inside else [])
     if not rows:
         problems.append((e.source_id, e.kind, e.vid, "no-row", e.prefix[-40:]))
         return []

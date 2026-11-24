@@ -134,6 +134,21 @@ class PlacementTest(unittest.TestCase):
         (a,) = self.anchors(scml)
         self.assertEqual((a.ident[:3], a.field, a.position, a.reason), ((5, 4, 1), "text", len("Behold,"), ""))
 
+    def test_aMarkerInsideAVerseIsKeptWhenTheNextVerseHasNoRow(self):
+        scml = ('<pof id="05003006"><bcv>6</bcv><speaker>D</speaker> Who is this</pof><chsect>{}</chsect><fnref id="x-1">*</fnref>'
+                '<poi>coming up from the desert,</poi><poi id="05003099"><bcv>99</bcv>He said</poi>')
+        problems = []
+        (a,) = nn.place_all(nn.scan_book(scml.format("The Procession"), 5), self.index, {}, problems)
+        self.assertEqual((a.ident[:3], a.field, a.position), ((5, 3, 6), "title1", len("The Procession")))
+        (b,) = nn.place_all(nn.scan_book(scml.format("Not Stored"), 5), self.index, {}, problems)
+        self.assertEqual((b.ident[:3], b.field, b.reason), ((5, 3, 6), "text", ""))
+        self.assertTrue(ROWS[1]["fields"]["text"][:b.position].endswith("Who is this"))
+        self.assertEqual(problems, [])
+        # Neither verse has a row: reported, not an error.
+        lost = scml.format("Not Stored").replace("05003006", "05003098")
+        self.assertEqual(nn.place_all(nn.scan_book(lost, 5), self.index, {}, problems), [])
+        self.assertEqual([p[3] for p in problems], ["no-row"])
+
     def test_aMarkerBeforeAVersesNumberWithoutAHeadingIsNotTheOldHeadings(self):
         scml = '<ch id="26003000">CHAPTER 3</ch><p><b>H.</b><v id="26003005">I<fnref id="x">*</fnref></v></p>'
         self.assertEqual([(e.place, e.vid) for e in nn.scan_book(scml)], [("text", "26003005")])
