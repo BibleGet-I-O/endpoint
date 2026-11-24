@@ -57,6 +57,11 @@ class OutlineTest(unittest.TestCase):
         self.assertIn("DELETE FROM book_outline WHERE edition = 'CEI2008';", sql)
         self.assertIn("('CEI2008', 9, 1, 1, 'L''arca', 4, 1, 'b', NULL::text, NULL::int, true)", sql)
 
+    def test_aSourceWithNoFilesStopsBeforeAnythingIsWritten(self):
+        for read in (o.nabre, o.cei2008):
+            with self.assertRaises(SystemExit):
+                read("/nonexistent", [row(1, 1, 1, "Title")], [])
+
     def test_nothingIsWrittenWithoutTitles(self):
         with self.assertRaises(SystemExit):
             o.write("NABRE", {}, [], "/nonexistent/out", "/nonexistent/report")

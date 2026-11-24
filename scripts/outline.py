@@ -128,9 +128,16 @@ def write(edition, entries, problems, out, report):
     print(f"titles {sum(map(len, entries.values()))} in {len(entries)} books, problems {len(problems)}", file=sys.stderr)
 
 
+def require(found, source):
+    """The source's files; without any, every title would silently get the default level."""
+    if not found:
+        sys.exit(f"no source files found under {source}: nothing written")
+    return found
+
+
 def nabre(source, rows, problems):
     levels = {}
-    for path in sorted(Path(source).glob("nab-*.scml")):
+    for path in require(sorted(Path(source).glob("nab-*.scml")), source):
         number = int(path.name[4:6])
         if number:
             levels.setdefault(notes_nabre.nab_book(number), {}).update(nabre_levels(notes_nabre.read_scml(path)))
@@ -138,7 +145,7 @@ def nabre(source, rows, problems):
 
 
 def cei2008(source, rows, problems):
-    levels, pages = defaultdict(lambda: defaultdict(list)), list(cei.pages(source))
+    levels, pages = defaultdict(lambda: defaultdict(list)), require(list(cei.pages(source)), source)
     for book, page in pages:
         for title, found in cei_levels(page).items():
             levels[book][title] += found
