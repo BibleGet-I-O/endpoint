@@ -670,6 +670,19 @@
                                         },
                                         "info": {
                                             "type": "object"
+                                        },
+                                        "introduction": {
+                                            "type": "object",
+                                            "nullable": true,
+                                            "description": "The book's introduction (`reader` key only; absent otherwise).",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -693,6 +706,141 @@
                     },
                     "429": {
                         "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ]
+            }
+        },
+        "/metadata/introduction": {
+            "get": {
+                "summary": "Retrieve a book's introduction, or a general introduction",
+                "description": "An edition's introductions as printed, for the BibleGet website's `reader` key only. With `book`: the book's own introduction (null when it has none) and the general introductions that cover it, in print order. With `id`: one introduction. JSON only.",
+                "operationId": "getIntroduction",
+                "tags": [
+                    "MetadataAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "book",
+                        "in": "query",
+                        "required": false,
+                        "description": "Universal book number, 1 to 73. Give `book` or `id`.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 73
+                        },
+                        "example": 10
+                    },
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "description": "An introduction's id, as `general[].id` gives it.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9-]{1,40}$"
+                        },
+                        "example": "pentateuch"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The introduction(s).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "version": {
+                                            "type": "string"
+                                        },
+                                        "book": {
+                                            "type": "integer",
+                                            "description": "With `book` only."
+                                        },
+                                        "introduction": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "title",
+                                                "books",
+                                                "blocks"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "description": "A book's universal number, or a general introduction's slug.",
+                                                    "example": "pentateuch"
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "books": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "integer"
+                                                    },
+                                                    "description": "The books it introduces (universal numbers): NABRE prints one introduction for 1-2 Samuel."
+                                                },
+                                                "blocks": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/IntroductionBlock"
+                                                    }
+                                                }
+                                            },
+                                            "nullable": true,
+                                            "description": "The introduction (the `Introduction` schema); null when the book has none."
+                                        },
+                                        "general": {
+                                            "type": "array",
+                                            "description": "With `book` only.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/IntroductionHeading"
+                                            }
+                                        },
+                                        "info": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request: an unknown version or book, both or neither of `book` and `id`, or a format other than JSON."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden: introductions are given only to the BibleGet website's `reader` key."
+                    },
+                    "405": {
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    },
+                    "404": {
+                        "description": "No introduction with that `id` in the edition."
                     }
                 },
                 "security": [
@@ -19478,6 +19626,236 @@
                     "body",
                     "refs"
                 ]
+            },
+            "Citation": {
+                "type": "object",
+                "properties": {
+                    "start": {
+                        "type": "object",
+                        "description": "The first verse cited (`book` is the universal book number; `verse` null for a whole chapter).",
+                        "properties": {
+                            "book": {
+                                "type": "integer"
+                            },
+                            "chapter": {
+                                "type": "integer"
+                            },
+                            "verse": {
+                                "type": "integer",
+                                "nullable": true
+                            },
+                            "segment": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "printed_chapter": {
+                                "type": "integer",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "end": {
+                        "type": "object",
+                        "nullable": true,
+                        "description": "The last verse of a range; null for a single verse or chapter.",
+                        "properties": {
+                            "book": {
+                                "type": "integer"
+                            },
+                            "chapter": {
+                                "type": "integer"
+                            },
+                            "verse": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "span": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "description": "The code points of `body` that print the citation: [start, end)."
+                    }
+                },
+                "description": "A passage cited, resolved to the edition's verses; `span` is in code points into the text, tags included."
+            },
+            "IntroductionBlock": {
+                "type": "object",
+                "description": "One printed block: a heading, a paragraph, an outline item (level 1 `I.`, 2 `A.`) or a table row (`cells`).",
+                "required": [
+                    "type"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "heading",
+                            "paragraph",
+                            "item",
+                            "row"
+                        ]
+                    },
+                    "level": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Headings and items only."
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Inline tags `<i>`, `<b>`, `<sm>` only."
+                    },
+                    "refs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Citation"
+                        }
+                    },
+                    "cells": {
+                        "type": "array",
+                        "description": "Rows only.",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "text",
+                                "refs"
+                            ],
+                            "properties": {
+                                "text": {
+                                    "type": "string",
+                                    "description": "Inline tags `<i>`, `<b>`, `<sm>` only."
+                                },
+                                "refs": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Citation"
+                                    }
+                                },
+                                "sic": {
+                                    "type": "array",
+                                    "description": "Verified misprints in `text`, which stays as printed: show '[sic! expected: `intended`]' after `span` (code points, tags included).",
+                                    "items": {
+                                        "type": "object",
+                                        "required": [
+                                            "span",
+                                            "intended",
+                                            "ref"
+                                        ],
+                                        "properties": {
+                                            "span": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "integer"
+                                                },
+                                                "minItems": 2,
+                                                "maxItems": 2
+                                            },
+                                            "intended": {
+                                                "type": "string",
+                                                "example": "36:43"
+                                            },
+                                            "ref": {
+                                                "type": "object",
+                                                "nullable": true,
+                                                "description": "The intended passage, when it is one (`start` and `end` as a citation's)."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "sic": {
+                        "type": "array",
+                        "description": "Verified misprints in `text`, which stays as printed: show '[sic! expected: `intended`]' after `span` (code points, tags included).",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "span",
+                                "intended",
+                                "ref"
+                            ],
+                            "properties": {
+                                "span": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "minItems": 2,
+                                    "maxItems": 2
+                                },
+                                "intended": {
+                                    "type": "string",
+                                    "example": "36:43"
+                                },
+                                "ref": {
+                                    "type": "object",
+                                    "nullable": true,
+                                    "description": "The intended passage, when it is one (`start` and `end` as a citation's)."
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "IntroductionHeading": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "title",
+                    "books"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "A book's universal number, or a general introduction's slug.",
+                        "example": "pentateuch"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "books": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "description": "The books it introduces (universal numbers): NABRE prints one introduction for 1-2 Samuel."
+                    }
+                }
+            },
+            "Introduction": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "title",
+                    "books",
+                    "blocks"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "A book's universal number, or a general introduction's slug.",
+                        "example": "pentateuch"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "books": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "description": "The books it introduces (universal numbers): NABRE prints one introduction for 1-2 Samuel."
+                    },
+                    "blocks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IntroductionBlock"
+                        }
+                    }
+                }
             }
         },
         "parameters": {

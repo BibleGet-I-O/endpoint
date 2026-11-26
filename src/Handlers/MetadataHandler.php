@@ -6,6 +6,8 @@ namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Exception\BadRequestException;
+use BibleGet\Api\Http\Exception\ForbiddenException;
+use BibleGet\Api\Repositories\IntroductionRepository;
 use BibleGet\Api\Repositories\OutlineRepository;
 use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Database\Connection;
@@ -62,8 +64,10 @@ class MetadataHandler extends AbstractHandler
                 $data        = $this->getVersionIndex($pdo, $versionsStr);
                 break;
             case 'outline':
-                $credential = $request->getAttribute('credential');
-                $data       = $this->getOutline($pdo, $params, $contentType, $credential instanceof Credential && $credential->scope === 'reader');
+                $data = $this->getOutline($pdo, $params, $contentType, self::isReader($request));
+                break;
+            case 'introduction':
+                $data = $this->getIntroduction($pdo, $params, $contentType, self::isReader($request));
                 break;
             default:
                 throw new NotFoundException('Unknown metadata query: ' . $subResource);
@@ -84,8 +88,34 @@ class MetadataHandler extends AbstractHandler
         return $this->withCacheHeaders($request, $response);
     }
 
+    private static function isReader(ServerRequestInterface $request): bool
+    {
+        $credential = $request->getAttribute('credential');
+        return $credential instanceof Credential && $credential->scope === 'reader';
+    }
+
     /**
-     * A book's titles with their levels; the edition's commentary titles only for the reader key.
+     * The edition (upper case) and the universal book number (null when absent and $optional).
+     *
+     * @param array<string, mixed> $params
+     * @return array{0: string, 1: ?int}
+     */
+    private static function editionAndBook(\PDO $pdo, array $params, bool $optional = false): array
+    {
+        $version = strtoupper(StringUtils::asString($params['version'] ?? ''));
+        $book    = StringUtils::asString($params['book'] ?? '');
+        if (!( $optional && $book === '' ) && ( preg_match('/^[1-9]\d?$/', $book) !== 1 || (int) $book > 73 )) {
+            throw new BadRequestException('The book parameter must be a universal book number, 1 to 73.');
+        }
+        if (!( new OutlineRepository($pdo) )->editionExists($version)) {
+            throw new BadRequestException('The version parameter must be one of the available Bible versions.');
+        }
+        return [$version, $book === '' ? null : (int) $book];
+    }
+
+    /**
+     * A book's titles with their levels; the edition's commentary titles, and which introduction the book has,
+     * only for the reader key.
      *
      * @param array<string, mixed> $params
      * @return array<string, mixed>
@@ -95,16 +125,49 @@ class MetadataHandler extends AbstractHandler
         if ($contentType !== 'application/json') {
             throw new BadRequestException('The outline is available in JSON only.');
         }
-        $version = strtoupper(StringUtils::asString($params['version'] ?? ''));
-        $book    = StringUtils::asString($params['book'] ?? '');
-        if (preg_match('/^[1-9]\d?$/', $book) !== 1 || (int) $book > 73) {
-            throw new BadRequestException('The book parameter must be a universal book number, 1 to 73.');
+        [$version, $book] = self::editionAndBook($pdo, $params);
+        $book             = (int) $book;
+        $data             = ['version' => $version, 'book' => $book, 'titles' => ( new OutlineRepository($pdo) )->titles($version, $book, $reader)];
+        if ($reader) {
+            $own                  = ( new IntroductionRepository($pdo) )->forBook($version, $book);
+            $data['introduction'] = $own === null ? null : ['id' => $own['id'], 'title' => $own['title']];
         }
-        $repository = new OutlineRepository($pdo);
-        if (!$repository->editionExists($version)) {
-            throw new BadRequestException('The version parameter must be one of the available Bible versions.');
+        return $data;
+    }
+
+    /**
+     * A book's introduction with the general ones that cover it (book=), or one introduction (id=); reader key only.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    private function getIntroduction(\PDO $pdo, array $params, string $contentType, bool $reader): array
+    {
+        $id               = StringUtils::asString($params['id'] ?? '');
+        [$version, $book] = self::editionAndBook($pdo, $params, $id !== '');
+        if ($id !== '' && ( $book !== null || preg_match('/^[a-z0-9-]{1,40}$/', $id) !== 1 )) {
+            throw new BadRequestException('Give either book (a universal book number) or id (an introduction\'s id), not both.');
         }
-        return ['version' => $version, 'book' => (int) $book, 'titles' => $repository->titles($version, (int) $book, $reader)];
+        if (!$reader) {
+            throw new ForbiddenException('Introductions are available only with the BibleGet website\'s reader key.');
+        }
+        if ($contentType !== 'application/json') {
+            throw new BadRequestException('Introductions are available in JSON only.');
+        }
+        $repository = new IntroductionRepository($pdo);
+        if ($book === null) {
+            $one = $repository->byId($version, $id);
+            if ($one === null) {
+                throw new NotFoundException('No introduction ' . $id . ' in ' . $version . '.');
+            }
+            return ['version' => $version, 'introduction' => $one];
+        }
+        return [
+            'version'      => $version,
+            'book'         => $book,
+            'introduction' => $repository->forBook($version, $book),
+            'general'      => $repository->generalFor($version, $book),
+        ];
     }
 
     /**

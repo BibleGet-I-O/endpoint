@@ -34,13 +34,42 @@ verse, and (b) the book's introduction, with its notes and linked citations.
   panel; a title links to `/{printed_chapter ?? chapter}#v{chapter}.{verse}{segment}`, keeping the comparison. The title
   nearest above the chapter on screen is marked. In a comparison, the icons are the main edition's.
 
-## Introductions (next slice)
+## Introductions
 
-- **`book_introduction`**: `edition, book, title`, and `blocks` (JSON): headings, paragraphs, list items and table rows in
-  order, each with its text (`<i>/<b>/<sm>`) and its citations (span and verse). No notes: neither edition prints any in
-  a book's introduction (the NABRE import's "206 introduction notes" were misread verse notes).
-- `GET /metadata/introduction?version=&book=`: `reader` key only (403), JSON only.
-- Page `/read/{edition}/{book}/introduction`, signed-in readers only, its citations linked as the notes' are.
+- **`book_introduction`** (migration 071): `edition, id, ord, title, books INT[], general, blocks JSONB`, key
+  `(edition, id)`. One row per introduction as printed: a book's own (`id` its universal number, `general` false), or a
+  general one (`general` true, `id` a slug). `books` lists what it introduces: NABRE prints one introduction for
+  1-2 Samuel ("THE BOOKS OF SAMUEL") and one for 1-2 Kings, so those rows have two books.
+- **`blocks`**, in order: `{type: "heading", level, text, refs}`, `{type: "paragraph", text, refs}`,
+  `{type: "item", level, text, refs}` (numbered outlines: level 1 `I.`, 2 `A.`) and `{type: "row", cells: [{text, refs}]}`.
+  `text` keeps `<i>/<b>/<sm>`; `refs` are citations shaped as the notes' (`{start, end, span}`, span in code points
+  into `text`, tags included). No notes: neither edition prints any in a book's introduction (the NABRE import's
+  "206 introduction notes" were misread verse notes).
+- **General introductions** (decided by the user 2026-11-26: linked at the end of each book's introduction they cover).
+  NABRE's, as printed, with the books they introduce (universal numbers): The Pentateuch 1-5, The Historical Books 6-21,
+  Biblical Novellas 17-19, The Wisdom Books 22-28, The Prophetic Books 29-46, Preface to the New American Bible (its
+  New Testament) 47-73, The Gospels 47-50, New Testament Letters 52-72, The Catholic Letters 66-72.
+- **API** (`reader` key only, else 403; JSON only, else 400; unknown version or book 400):
+  - `GET /metadata/introduction?version=NABRE&book=10` →
+    `{version, book, introduction: {id, title, books, blocks} | null, general: [{id, title, books}]}`, the general ones
+    covering the book in print order;
+  - `GET /metadata/introduction?version=NABRE&id=pentateuch` → `{version, introduction: {id, title, books, blocks}}`; an
+    unknown id 404.
+  - `/metadata/outline` with the `reader` key adds `introduction: {id, title} | null`, so the chapter page knows whether
+    to show the book icon and the index's first entry without loading the text.
+- **Website:** page `/read/{edition}/{book}/introduction` (signed-in readers only), its citations linked as the notes'
+  are; the general introductions are listed at its end, each opening `/read/{edition}/{book}/introduction?part={id}`.
+  The book icon beside the tree icon, and "Introduction" first in the title index, when the book has one.
+- **Misprints** (decided by the user 2026-11-26, as the Martyrology project records them): the text stays as printed; a
+  verified misprint is recorded in the private archive (`NABRE-source/misprints.json`: introduction, printed, intended,
+  cite, verified) and its block carries `sic: [{span, intended, ref}]`. The website shows "[*sic!* expected: …]" after
+  the printed words, in rubric red, the intended passage linked. A link whose id is wrong while its text is right is
+  corrected instead (`introductions-citations.tsv`), as the notes' are; a cited verse the edition does not print is
+  left unlinked there ("-").
+- **Data:** `scripts/introductions.py nabre` writes a private data half (`NABRE-source/migrations/071-…`). A book's
+  introduction runs from its title (`<bk>`, `<bks>`) to the first `<bksect>`, `<ch>`, `<chsect>`, `<cs>`, verse, or a
+  second `<bk>` (where a joint introduction gives way to its first book). A citation that does not resolve to a stored
+  verse is kept as plain text and reported. CEI 2008's 73 follow in the next slice.
 
 ## Anti-goals
 
@@ -48,4 +77,4 @@ Changing the stored text or `title1`-`title3`; showing commentary titles or intr
 
 ## Order
 
-NABRE index, CEI index, NABRE introductions, CEI introductions.
+NABRE index, CEI index (done, #272), NABRE introductions, CEI introductions.
