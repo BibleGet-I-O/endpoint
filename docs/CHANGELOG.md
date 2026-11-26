@@ -19,6 +19,10 @@ Deprecated / Fixed / Removed / Security where applicable.
   introductions, one serving 1-2 Samuel and one 1-2 Kings, and 9 general ones).
   Verified misprints stay as printed and are noted (`sic`), as the Martyrology
   project records them; wrong link ids are corrected from a curated list.
+- **`scripts/introductions.py cei2008`** writes CEI 2008's data half: its 73
+  introductions from the bibbiaedu.it archive, with the site's inverted italics
+  put right and the citations read from the text, since about one site link in
+  five names the wrong book.
 
 ### Fixed: NABRE notes lost, misplaced or overwritten
 

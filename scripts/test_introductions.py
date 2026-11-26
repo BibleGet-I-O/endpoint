@@ -191,6 +191,19 @@ class SqlTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, self.assertRaises(SystemExit):
             intro.main(["nabre", "--source", d, "--dump", "/dev/null", "--out", str(Path(d) / "o.sql"), "--report", str(Path(d) / "r.tsv")])
 
+    def test_cei2008ReadsItsPagesAndWritesItsDataHalf(self):
+        page = ('<main><h2 class="book-title text-to-speech">Genesi</h2>\n<em>Il libro.</em>\n</div>\n'
+                '<div class="container d-none d-md-block"></div></main>')
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "at").mkdir()
+            (Path(d) / "at" / "Gen.html").write_text(page, encoding="utf-8")
+            (Path(d) / "cei.copy").write_text("1\t1\t1\t1\t\t\t\t\tx\t\t\t\n", encoding="utf-8")
+            out = Path(d) / "o.sql"
+            intro.main(["cei2008", "--source", d, "--dump", str(Path(d) / "cei.copy"), "--out", str(out), "--report", str(Path(d) / "r.tsv")])
+            sql = out.read_text(encoding="utf-8")
+        self.assertIn("DELETE FROM book_introduction WHERE edition = 'CEI2008';", sql)
+        self.assertIn("('CEI2008', '1', 1, 'Genesi', '{1}'::int[], false, ", sql)
+
 
 if __name__ == "__main__":
     unittest.main()

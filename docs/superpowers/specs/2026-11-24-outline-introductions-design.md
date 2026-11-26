@@ -69,7 +69,16 @@ verse, and (b) the book's introduction, with its notes and linked citations.
 - **Data:** `scripts/introductions.py nabre` writes a private data half (`NABRE-source/migrations/071-…`). A book's
   introduction runs from its title (`<bk>`, `<bks>`) to the first `<bksect>`, `<ch>`, `<chsect>`, `<cs>`, verse, or a
   second `<bk>` (where a joint introduction gives way to its first book). A citation that does not resolve to a stored
-  verse is kept as plain text and reported. CEI 2008's 73 follow in the next slice.
+  verse is kept as plain text and reported.
+- **CEI 2008** (`scripts/introductions.py cei2008`, parser `introductions_cei2008.py`; private data half
+  `CEI2008-bibbiaedu/migrations/071-…`): one introduction per book, no general ones. bibbiaedu.it prints the body inside
+  `<em>` with the books' titles outside it, so the italics are inverted on import; its run-in headings ("I contenuti",
+  "Le caratteristiche", "L'origine") are headings, and the lines after one ending ":" are the outline's items. The
+  site's citation links come from a linker that takes a nearby word for a book ("Giuda (2Cr 10,1-36,23)" linked to
+  Jude) in about one link in five, so citations are read from the text with CEI's grammar, only where a site link
+  overlaps them, and the book is the one printed, else the last printed inside the same parentheses, else the
+  introduction's. Where the prose names the book instead ("dagli Atti degli Apostoli (da 13,4 a 21,17)"), the
+  citation is reported and, once checked, corrected (`CEI2008-bibbiaedu/introductions-citations.tsv`).
 
 ## Anti-goals
 
