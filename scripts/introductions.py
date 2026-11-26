@@ -12,7 +12,13 @@ stays as printed and its block carries "sic": [{span, intended, ref}], which the
 and --citations (links whose id is wrong though their text is right). A record that matches nothing stops the import.
 Design: docs/superpowers/specs/2026-11-24-outline-introductions-design.md. No edition's text is here.
 
-Usage (the dump as for notes_nabre.py):
+CEI 2008 (bibbiaedu.it's pages, private BibleGet-I-O/CEI2008-bibbiaedu/introductions): introductions_cei2008.py;
+--citations there is a TSV of the book's slug, the citation as printed, the citation it is ("At 13,4", or "-"), reason.
+
+Usage (the dump as for notes_nabre.py, or notes_cei2008.py for cei2008):
+    python3 scripts/introductions.py cei2008 --source ../CEI2008-bibbiaedu/introductions --dump cei.copy \\
+        --citations ../CEI2008-bibbiaedu/introductions-citations.tsv \\
+        --out ../CEI2008-bibbiaedu/migrations/071-cei2008-introductions.sql --report ../CEI2008-bibbiaedu/reports/cei2008-introductions.tsv
     python3 scripts/introductions.py nabre --source ../NABRE-source/scml --dump nabre.copy \\
         --misprints ../NABRE-source/misprints.json --citations ../NABRE-source/introductions-citations.tsv \\
         --out ../NABRE-source/migrations/071-nabre-introductions.sql --report ../NABRE-source/reports/nabre-introductions.tsv
@@ -26,6 +32,8 @@ from collections import namedtuple
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import introductions_cei2008 as ic  # noqa: E402
+import notes_cei2008 as nc  # noqa: E402
 import notes_nabre as nn  # noqa: E402
 from notes_sql import chunks, lit  # noqa: E402
 
@@ -223,20 +231,28 @@ def to_sql(edition, intros):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("edition", choices=["nabre"])
+    ap.add_argument("edition", choices=["nabre", "cei2008"])
     for name in ("--source", "--dump", "--out", "--report"):
         ap.add_argument(name, required=True)
     ap.add_argument("--misprints", help="JSON of verified misprints: {misprints: [{introduction, printed, intended, cite?, verified}]}")
     ap.add_argument("--citations", help="TSV of corrected citation links: introduction id, xref id, corrected id or -, reason")
     args = ap.parse_args(argv)
-    require(sorted(Path(args.source).glob("nab-*.scml")), args.source)
     problems = []
+    if args.edition == "cei2008":
+        fixes = ic.load_corrections(Path(args.citations).read_text(encoding="utf-8")) if args.citations else {}
+        intros = ic.introductions(ic.pages(args.source), nc.load_dump(args.dump), problems, fixes)
+        return write(args, intros, problems)
+    require(sorted(Path(args.source).glob("nab-*.scml")), args.source)
     fixes = Fixes(json.loads(Path(args.misprints).read_text(encoding="utf-8"))["misprints"] if args.misprints else [],
                   load_citation_fixes(Path(args.citations).read_text(encoding="utf-8")) if args.citations else {})
     for m in fixes.misprints:
         if not {"introduction", "printed", "intended", "verified"} <= m.keys():
             sys.exit(f"a misprint needs introduction, printed, intended and verified: {m}")
     intros = nabre(args.source, nn.index_rows(nn.load_dump(args.dump)), problems, fixes)
+    return write(args, intros, problems)
+
+
+def write(args, intros, problems):
     if not intros:
         sys.exit(f"no introductions found under {args.source}: nothing written")
     Path(args.out).write_text(to_sql(args.edition.upper(), intros), encoding="utf-8")
