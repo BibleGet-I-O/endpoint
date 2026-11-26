@@ -7,6 +7,18 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Fixed: NABRE notes lost, misplaced or overwritten
+
+- **`notes_nabre.py`** took a marker printed right after a run-in heading for
+  one in the text: 206 notes at a chapter's opening were dropped (reported as
+  "introduction"), and about 420 sat at the end of the verse before their
+  heading. They are on the heading now.
+- **Ids**: the publisher numbers Galatians' cross-references as Ephesians' and
+  Hebrews' as Philemon's, so 28 ids were used twice and the second note replaced
+  the first. Each note takes its own book's number; an id used twice now stops
+  the import, and an unpaired marker or note is reported.
+- **Obadiah's three headings** (migration `070`), missed by `029`.
+
 ### Added: titles with their levels (`/metadata/outline`, migration 069)
 
 - **`GET /metadata/outline?version=NABRE&book=1`**: a book's titles in reading

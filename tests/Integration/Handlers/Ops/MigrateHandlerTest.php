@@ -77,6 +77,7 @@ final class MigrateHandlerTest extends DatabaseTestCase
                 'BibleGet\\Api\\Migrations\\Version067NabreEllipsis',
                 'BibleGet\\Api\\Migrations\\Version068VgclOe',
                 'BibleGet\\Api\\Migrations\\Version069BookOutline',
+                'BibleGet\\Api\\Migrations\\Version070NabreObadiahHeadings',
             ],
             $versions->fetchAll(\PDO::FETCH_COLUMN)
         );
@@ -89,7 +90,7 @@ final class MigrateHandlerTest extends DatabaseTestCase
         self::assertSame(200, $second->getStatusCode(), (string) $second->getBody());
         $count = $pdo->query('SELECT count(*) FROM doctrine_migration_versions');
         self::assertNotFalse($count);
-        self::assertSame(18, (int) $count->fetchColumn());
+        self::assertSame(19, (int) $count->fetchColumn());
     }
 
     public function testStatusListsTheMigrations(): void
