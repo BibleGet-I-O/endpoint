@@ -202,7 +202,11 @@ def _group_book(plain, start, explicit):
             depth -= 1
     if opened is None:
         return None
-    inside = [b for at, b in explicit if at > opened]
+    # Only books printed at this level: one inside parentheses already closed ("(Gen 1,1 (cfr. Zc 7,5) 2,3)") stays there.
+    level = [0] * (start + 1)
+    for i in range(opened + 1, start):
+        level[i + 1] = level[i] + (plain[i] == "(") - (plain[i] == ")")
+    inside = [b for at, b in explicit if opened < at < start and level[at] == 0]
     return inside[-1] if inside else None
 
 

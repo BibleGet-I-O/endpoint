@@ -140,6 +140,11 @@ class CitationTest(unittest.TestCase):
         _, problems = self.refs(f"({link('Gen', '1,2-3.5-7', '1,2-3.5-7')})")
         self.assertEqual(problems, [])
 
+    def test_aBookInsideClosedParenthesesDoesNotCarryOn(self):
+        body = f"({link('Gen', '1,1', 'Gen 1,1')} (cfr. {link('Zc', '7,5', 'Zc 7,5')}) {link('Gen', '2,3', '2,3')})"
+        refs, _ = self.refs(body, book=23)
+        self.assertEqual([(r[0], r[1]) for r in refs], [("Gen 1,1", 1), ("Zc 7,5", 45), ("2,3", 1)])
+
     def test_zacIsZechariah(self):
         refs, _ = self.refs(f"accenna Zac {link('Lam', '7,5', '7,5')}).")
         self.assertEqual(refs, [("Zac 7,5", 45, 7, 5, None)])
