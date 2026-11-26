@@ -552,3 +552,16 @@ CREATE TABLE IF NOT EXISTS book_outline (
     reader_only      BOOLEAN NOT NULL DEFAULT false,
     PRIMARY KEY (edition, book, ord)
 );
+
+CREATE TABLE IF NOT EXISTS book_introduction (
+    edition  VARCHAR(10) NOT NULL,
+    id       VARCHAR(40) NOT NULL CHECK (id ~ '^[a-z0-9-]+$'),
+    ord      INT NOT NULL,
+    title    TEXT NOT NULL,
+    books    INT[] NOT NULL CHECK (cardinality(books) > 0),
+    general  BOOLEAN NOT NULL DEFAULT false,
+    blocks   JSONB NOT NULL CHECK (jsonb_typeof(blocks) = 'array'),
+    PRIMARY KEY (edition, id)
+);
+
+CREATE INDEX IF NOT EXISTS book_introduction_books ON book_introduction USING gin (books);

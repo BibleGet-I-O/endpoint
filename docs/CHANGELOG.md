@@ -7,6 +7,19 @@ Deprecated / Fixed / Removed / Security where applicable.
 
 ## Unreleased (`development`)
 
+### Added: book introductions (`/metadata/introduction`, migration 071)
+
+- **`GET /metadata/introduction?version=NABRE&book=10`**, for the `reader` key
+  only: the book's introduction as printed (headings, paragraphs, outline items
+  and table rows, with their citations resolved to verses) and the general
+  introductions that cover it; `?id=pentateuch` gives one of those.
+  `/metadata/outline` names the book's introduction to the `reader` key.
+- **`book_introduction`** (migration `071`) ships empty;
+  `scripts/introductions.py nabre` writes NABRE's private data half (71 books'
+  introductions, one serving 1-2 Samuel and one 1-2 Kings, and 9 general ones).
+  Verified misprints stay as printed and are noted (`sic`), as the Martyrology
+  project records them; wrong link ids are corrected from a curated list.
+
 ### Fixed: NABRE notes lost, misplaced or overwritten
 
 - **`notes_nabre.py`** took a marker printed right after a run-in heading for
