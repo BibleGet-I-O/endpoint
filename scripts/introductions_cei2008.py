@@ -37,8 +37,10 @@ PAGE = re.compile(r'<h2 class="book-title[^"]*">(.*?)</h2>(.*?)</div>\s*<div cla
 ALIASES = {"Zac": "Zc"}
 # "1Cor" or "1 Cor": a numbered book may be printed with a space.
 _ABBR = "|".join(re.sub(r"^([1-3])", r"\1\\s?", a) for a in sorted(list(BOOK) + list(ALIASES), key=len, reverse=True))
-# A number followed by a capital is a numbered book's ("; 1Pt 5,13"), not a chapter.
-_NUM = r"\d+(?:,\d+[a-z]{0,2})?(?!\s?[A-Z])"
+# A number followed by a numbered book's name is that book's ("; 1Pt 5,13", "; 2 Re 2,3"), not a chapter; a number is
+# never cut short to tell ("In 7,14 Amos": possessive).
+_NUMBERED = "|".join(sorted({a[1:] for a in BOOK if a[0].isdigit()}, key=len, reverse=True))
+_NUM = rf"\d++(?:,\d++[a-z]{{0,2}}+)?+(?!\s?(?:{_NUMBERED})\b)"
 _PART = rf"{_NUM}(?:-(?:(?:{_ABBR})\s*)?{_NUM})?"
 CITE = re.compile(rf"(?<![\w])(?:(?P<book>{_ABBR})\s+)?(?P<cc>cc?\.\s*)?(?P<nums>{_PART}(?:(?:\.|;\s*){_PART})*)")
 PART = re.compile(rf"(?P<sep>^|\.|;\s*)(?P<body>{_PART})")
@@ -149,7 +151,7 @@ def _parts(match, book):
         r = RANGE.fullmatch(m["body"])
         a, b_, letters, end_book, e1, e2, _ = r.groups()
         a, verse = int(a), int(b_) if b_ else None
-        if verse is None and (m["sep"] == "." or (one and not match["cc"])):
+        if verse is None and not match["cc"] and (m["sep"] == "." or one):
             a, verse = (chapter or 1), a
         chapter = a
         eb = _book(end_book) if end_book else book
@@ -205,8 +207,8 @@ def _group_book(plain, start, explicit):
 
 
 def _site(links, s, e, index):
-    """The site's resolutions of the links overlapping [s, e)."""
-    return [(slug, sel, nc.resolve_ref(slug, sel, index)) for slug, sel, ls, le, _ in links if ls < e and s < le]
+    """The site's resolutions of the links overlapping [s, e), each with whether it starts there."""
+    return [(slug, sel, nc.resolve_ref(slug, sel, index), s <= ls) for slug, sel, ls, le, _ in links if ls < e and s < le]
 
 
 class Line:
@@ -225,9 +227,10 @@ class Line:
         refs, explicit = [], []
         for m in CITE.finditer(self.plain):
             s, e = self.span(m.start(), m.end())
+            # An unlinked citation is no citation, but the book it prints carries on in its parentheses.
+            book, named = self.book_of(m, explicit)
             if not any(ls < e and s < le for _, _, ls, le, _ in self.links):
                 continue
-            book, named = self.book_of(m, explicit)
             for part in _parts(m, book):
                 refs += self.part(m, part, named)
         return refs
@@ -257,8 +260,11 @@ class Line:
         return [{**r, "span": [s, e]}]
 
     def compare(self, r, s, e, printed):
-        for slug, sel, site in _site(self.links, s, e, self.index):
-            if site is None or (site[0][0], site[0][1]) != (r["start"]["book"], r["start"]["chapter"]):
+        # The verse is compared where the link starts: one link over "1,2-3.5-7" names its first verse only.
+        for slug, sel, site, starts in _site(self.links, s, e, self.index):
+            ours = r["start"]
+            if site is None or site[0][:2] != (ours["book"], ours["chapter"]) or (
+                    starts and site[0][2] is not None and site[0][2] != ours["verse"]):
                 self.problems.append((self.where, "site-link-differs", f"{printed}: site {slug} {sel}"))
 
     def replaced(self, replacement, s, e):
@@ -267,7 +273,10 @@ class Line:
         m = CITE.fullmatch(replacement)
         if not m or not m["book"]:
             sys.exit(f"correction {replacement!r} in {self.where}: a citation with its book, e.g. 'At 13,4'")
-        r = _resolve(_parts(m, _book(m["book"]))[0], self.index, self.verses)
+        parts = _parts(m, _book(m["book"]))
+        if len(parts) != 1:
+            sys.exit(f"correction {replacement!r} in {self.where}: one passage per correction")
+        r = _resolve(parts[0], self.index, self.verses)
         if r is None:
             sys.exit(f"correction {replacement!r} in {self.where} is no stored verse")
         return [{**r, "span": [s, e]}]

@@ -120,6 +120,26 @@ class CitationTest(unittest.TestCase):
         refs, _ = self.refs(f"({link('Zc', '7,5', 'Zc 7,5')}; {link('2Re', '2,3', '2Re 2,3')})")
         self.assertEqual([(r[0], r[1]) for r in refs], [("Zc 7,5", 45), ("2Re 2,3", 12)])
 
+    def test_anUnlinkedCitationsBookStillCarriesOn(self):
+        refs, _ = self.refs(f"(Zc 7,1, cfr. {link('Gen', '7,6', '7,6')})")
+        self.assertEqual([(r[0], r[1]) for r in refs], [("7,6", 45)])
+
+    def test_aDottedListAfterCcIsChapters(self):
+        refs, _ = self.refs(f"nei {link('Gen', '1', 'cc. 1.3')}")
+        self.assertEqual([(r[0], r[2], r[3]) for r in refs], [("cc. 1", 1, None), ("3", 3, None)])
+
+    def test_aSiteLinkToAnotherVerseIsReported(self):
+        _, problems = self.refs(f"({link('Gen', '1,3', '1,2')})")
+        self.assertIn(("Gen", "site-link-differs", "1,2: site Gen 1,3"), problems)
+
+    def test_aCapitalisedWordAfterACitationLeavesItWhole(self):
+        refs, _ = self.refs(f"In {link('Zc', '7,14', '7,14')} Amos proclama", book=45)
+        self.assertEqual(refs, [("7,14", 45, 7, 14, None)])
+
+    def test_oneLinkOverADottedListIsNoDifference(self):
+        _, problems = self.refs(f"({link('Gen', '1,2-3.5-7', '1,2-3.5-7')})")
+        self.assertEqual(problems, [])
+
     def test_zacIsZechariah(self):
         refs, _ = self.refs(f"accenna Zac {link('Lam', '7,5', '7,5')}).")
         self.assertEqual(refs, [("Zac 7,5", 45, 7, 5, None)])
@@ -185,6 +205,11 @@ class PagesTest(unittest.TestCase):
         intros = ic.introductions(pages, INDEX, [])
         self.assertEqual([(i.id, i.title, i.books, i.general) for i in intros],
                          [("1", "Genesi", [1], False), ("11", "Primo libro dei Re", [11], False)])
+
+    def test_aCorrectionOfSeveralPassagesStopsTheImport(self):
+        ctx = ic.Corrections("Gen", {("Gen", "1,2"): "Zc 7,5; 7,6"})
+        with self.assertRaises(SystemExit):
+            ic.blocks(ic.normalize(f"<em>({link('Gen', '1,2', '1,2')})</em>"), 1, INDEX, "Gen", [], ctx)
 
     def test_anUnusedCorrectionStopsTheImport(self):
         with self.assertRaises(SystemExit):
