@@ -774,13 +774,37 @@
                                         },
                                         "introduction": {
                                             "type": "object",
-                                            "nullable": true,
-                                            "description": "See the `Introduction` schema; null when the book has none.",
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/Introduction"
+                                            "required": [
+                                                "id",
+                                                "title",
+                                                "books",
+                                                "blocks"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "description": "A book's universal number, or a general introduction's slug.",
+                                                    "example": "pentateuch"
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "books": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "integer"
+                                                    },
+                                                    "description": "The books it introduces (universal numbers): NABRE prints one introduction for 1-2 Samuel."
+                                                },
+                                                "blocks": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/IntroductionBlock"
+                                                    }
                                                 }
-                                            ]
+                                            },
+                                            "nullable": true,
+                                            "description": "The introduction (the `Introduction` schema); null when the book has none."
                                         },
                                         "general": {
                                             "type": "array",

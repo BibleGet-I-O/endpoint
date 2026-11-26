@@ -48,6 +48,7 @@ GENERAL = {
 }
 FILE = re.compile(r"nab-(\d\d)([a-z]?)-")
 BLOCK = re.compile(r"<(?P<tag>[a-z0-9]+)\b[^>]*>(?P<inner>.*?)</(?P=tag)>", re.S)
+RANGE = re.compile(r"\d{8}[a-z]?-\d{8}[a-z]?")
 CELL = re.compile(r"<td\b[^>]*>(.*?)</td>", re.S)
 END = re.compile(r"<bk>|<bksect\b|<ch\s+id=|<chsect\b|<cs\b|<(?!xref\b)[a-z0-9]+\s+id=\"\d{8}[a-z]?\"")
 UNCLOSED = re.compile(r"<(p|pf|pl|pcon)>(?:(?!</\1>).)*\Z", re.S)
@@ -80,7 +81,8 @@ def general_segment(scml):
 
 def ref(xref_id, index):
     found = nn.resolve_ref(xref_id, index)
-    if found is None:
+    # A range whose end is no stored verse is unresolved, not a link to its start alone.
+    if found is None or (found[1] is None and RANGE.fullmatch(xref_id.replace("v", ""))):
         return None
     (b, c, v, seg, pc), end = found
     return {"start": {"book": b, "chapter": c, "verse": v, "segment": seg or None, "printed_chapter": int(pc) if pc else None},

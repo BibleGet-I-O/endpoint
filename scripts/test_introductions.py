@@ -80,6 +80,12 @@ class BlocksTest(unittest.TestCase):
         self.assertEqual((self.blocks[2]["text"], self.blocks[2]["refs"]), ("Unknown place.", []))
         self.assertEqual(self.problems, [("nab-03-lv.scml", "unresolved-citation", "99001001 place")])
 
+    def test_aRangeWhoseEndIsNoStoredVerseIsUnresolved(self):
+        problems = []
+        (b,) = intro.blocks('<p>See <xref id="03001001-03009099">1:1&#8211;9:99</xref>.</p>', INDEX, "f", problems)
+        self.assertEqual(b["refs"], [])
+        self.assertEqual(problems, [("f", "unresolved-citation", "03001001-03009099 1:1\u20139:99")])
+
     def test_anUnknownBlockIsReported(self):
         problems = []
         self.assertEqual(intro.blocks("<p>a</p><weird>b</weird>", INDEX, "f", problems), [{"type": "paragraph", "text": "a", "refs": []}])
