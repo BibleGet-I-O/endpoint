@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace BibleGet\Api\Repositories;
 
 use BibleGet\Api\Cbppedr\CatalogReader;
+use BibleGet\Api\Util\Placement;
 
 /**
  * The CBPPEDR catalogs as loaded (migration 072): persons, places and events, the CBTUDR units where each is
  * attested, and for a labelled unit the editions that name the entry there. A verse in an index (Ref) is the tuple
- * [book, chapter, verse, segment, tradition]: compact, since an edition's index of persons runs to some 12,000 of them.
+ * [book, chapter, verse, segment, tradition]: compact, since an edition's index of persons runs to some 12,000 of them;
+ * a verse the edition prints with its own label or under another chapter's heading adds [label, printed chapter].
  *
  * @phpstan-import-type Entry from CatalogReader
- * @phpstan-type Ref array{0: int, 1: int, 2: int, 3: ?string, 4: ?string}
+ * @phpstan-type Ref array{0: int, 1: int, 2: int, 3: ?string, 4: ?string, 5?: ?string, 6?: ?int}
  * @phpstan-type IndexEntry array{id: string, kind: string, names: array<string, string>, description: array<string, string>, qid: ?string, qid_status: ?string, uncertain: bool, refs: list<Ref>}
  */
 final class EntityRepository
@@ -68,7 +70,46 @@ final class EntityRepository
                 $refs[$row['entry']][] = $ref;
             }
         }
-        return array_map(self::oneEstherText(...), $refs);
+        $printed = $this->printed($edition);
+        return array_map(static fn (array $list): array => array_map(
+            static fn (array $r): array => isset($printed[self::key($r)]) ? [$r[0], $r[1], $r[2], $r[3], $r[4], $printed[self::key($r)][0], $printed[self::key($r)][1]] : $r,
+            self::oneEstherText($list)
+        ), $refs);
+    }
+
+    /**
+     * The verses an edition prints otherwise than by their number (migrations 044/045): a label of their own ("E:21",
+     * "12:1") or another chapter's heading, keyed as self::key. Few rows; none where the table lacks the columns.
+     *
+     * @return array<string, array{0: ?string, 1: ?int}>
+     */
+    private function printed(string $edition): array
+    {
+        if (preg_match('/^[A-Z0-9_]+$/', $edition) !== 1) {
+            return [];
+        }
+        try {
+            $stmt = $this->db->query('SELECT * FROM "' . $edition . '" WHERE verse_label IS NOT NULL OR printed_chapter IS NOT NULL');
+        } catch (\PDOException) {
+            return [];
+        }
+        $out = [];
+        foreach ($stmt === false ? [] : $stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            $book = is_array($row) ? ( $row['book'] ?? null ) : null;
+            if (!is_array($row) || !is_int($book)) {
+                continue;
+            }
+            $f         = Placement::verseFields(array_filter($row, is_string(...), ARRAY_FILTER_USE_KEY));
+            $key       = self::key([$book, $f['chapter'], $f['verse'], $f['verse_segment'], $f['text_tradition']]);
+            $out[$key] = [$f['verse_label'], $f['printed_chapter']];
+        }
+        return $out;
+    }
+
+    /** @param Ref $r */
+    private static function key(array $r): string
+    {
+        return $r[0] . '|' . $r[1] . '|' . $r[2] . '|' . ( $r[3] ?? '' ) . '|' . ( $r[4] ?? '' );
     }
 
     /**

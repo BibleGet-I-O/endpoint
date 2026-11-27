@@ -845,11 +845,11 @@
                                                     },
                                                     "refs": {
                                                         "type": "array",
-                                                        "description": "The verses in the edition, in its order. Each is `[book, chapter, verse, segment, tradition]`: the universal book number, the chapter and verse, the segment letter or null, and Esther's text (`GREEK`, `HEBREW`) or null.",
+                                                        "description": "The verses in the edition, in its order. Each is `[book, chapter, verse, segment, tradition]`: the universal book number, the chapter and verse, the segment letter or null, and Esther's text (`GREEK`, `HEBREW`) or null. A verse the edition prints otherwise than by its number adds `label, printed_chapter`: the label it prints (NABRE's Greek Esther `E:21`, `12:1` for Wis 12:1) or null, and the chapter under whose heading it is printed when not its own, or null.",
                                                         "items": {
                                                             "type": "array",
                                                             "minItems": 5,
-                                                            "maxItems": 5,
+                                                            "maxItems": 7,
                                                             "items": {}
                                                         },
                                                         "example": [
@@ -861,11 +861,20 @@
                                                                 null
                                                             ],
                                                             [
-                                                                17,
+                                                                19,
                                                                 1,
                                                                 1,
                                                                 "a",
                                                                 "GREEK"
+                                                            ],
+                                                            [
+                                                                27,
+                                                                12,
+                                                                1,
+                                                                null,
+                                                                null,
+                                                                "12:1",
+                                                                11
                                                             ]
                                                         ]
                                                     }
@@ -881,7 +890,7 @@
                         }
                     },
                     "400": {
-                        "description": "Bad request. Will be returned if the `versions` parameter is missing or invalid."
+                        "description": "Bad request: the `version` parameter is not an available Bible edition, the `type` parameter is not `person`, `place` or `event`, or a format other than JSON was asked for."
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthorized"
@@ -893,7 +902,7 @@
                         "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
                     },
                     "415": {
-                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
+                        "description": "Unsupported media type: the `Accept` header asks for a content type other than `application/json`, `application/xml` or `text/html` (this route answers JSON only; XML or HTML gets a 400)."
                     },
                     "429": {
                         "$ref": "#/components/responses/TooManyRequests"

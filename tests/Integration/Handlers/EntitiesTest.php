@@ -23,6 +23,8 @@ final class EntitiesTest extends DatabaseTestCase
         $pdo->exec((string) file_get_contents(__DIR__ . '/../../../migrations/053-btu-review-store.sql'));
         $pdo->exec((string) file_get_contents(__DIR__ . '/../../../migrations/072-cbppedr.sql'));
         $this->clean();
+        // How TEST1 prints Genesis 1:3: labelled "L3", under chapter 2's heading (as NABRE Wis 12:1 under 11).
+        $pdo->exec('UPDATE "TEST1" SET verse_label = \'L3\', printed_chapter = 2 WHERE book = 1 AND chapter = 1 AND verse = 3');
         $pdo->exec("INSERT INTO btu_link (edition, book, ord, ref, units, kind, status) VALUES
             ('TEST1', 1, 0, '1:1', ARRAY['btu:gn.1.1'], 'same', 'rule'),
             ('TEST1', 1, 1, '1:2', ARRAY['btu:gn.1.2'], 'same', 'reviewed'),
@@ -65,6 +67,7 @@ final class EntitiesTest extends DatabaseTestCase
 
     private function clean(): void
     {
+        $this->getConnection()->exec('UPDATE "TEST1" SET verse_label = NULL, printed_chapter = NULL WHERE book = 1 AND chapter = 1 AND verse = 3');
         $this->getConnection()->exec('TRUNCATE bpe_entry, bpe_attested, bpe_label, bpe_release, btu_link RESTART IDENTITY CASCADE');
     }
 
@@ -120,7 +123,15 @@ final class EntitiesTest extends DatabaseTestCase
 
     public function testListsEveryVerseOfAUnitLinkedToTwo(): void
     {
-        self::assertSame([self::ref(1, 3), self::ref(1, 4)], self::byId($this->index(['version' => 'TEST1', 'type' => 'person']))['bpers:b']['refs']);
+        self::assertSame([[1, 1, 3, null, null, 'L3', 2], self::ref(1, 4)], self::byId($this->index(['version' => 'TEST1', 'type' => 'person']))['bpers:b']['refs']);
+    }
+
+    /** A verse the edition prints with a label of its own, or under another chapter, carries both after the five fields. */
+    public function testCarriesThePrintedLabelAndChapter(): void
+    {
+        $refs = self::byId($this->index(['version' => 'TEST1', 'type' => 'person']))['bpers:b']['refs'];
+        self::assertSame([1, 1, 3, null, null, 'L3', 2], $refs[0]);
+        self::assertCount(5, $refs[1]);
     }
 
     public function testSkipsUnitsWithOnlyDraftLinks(): void
