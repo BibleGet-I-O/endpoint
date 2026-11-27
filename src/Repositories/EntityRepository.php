@@ -33,12 +33,14 @@ final class EntityRepository
      */
     public function index(string $edition, string $type): array
     {
-        // One snapshot for every read, so that a load committed meanwhile cannot mix two releases; a caller's own
-        // transaction is left to the caller.
+        // One snapshot for every read, so that a load committed meanwhile cannot mix two releases. A caller's own
+        // transaction must already give one (repeatable read or serializable).
         $own = !$this->db->inTransaction();
         if ($own) {
             $this->db->beginTransaction();
             $this->db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+        } elseif (!$this->inOneSnapshot()) {
+            throw new \LogicException('An index is read in one snapshot: the caller\'s transaction must be repeatable read or serializable.');
         }
         try {
             $refs  = $this->refsByEntry($edition, $type);
@@ -53,6 +55,13 @@ final class EntityRepository
             $this->db->commit();
         }
         return $index;
+    }
+
+    /** Whether the open transaction reads one snapshot throughout (repeatable read or serializable). */
+    private function inOneSnapshot(): bool
+    {
+        $stmt = $this->db->query("SELECT current_setting('transaction_isolation')");
+        return $stmt !== false && in_array($stmt->fetchColumn(), ['repeatable read', 'serializable'], true);
     }
 
     /**

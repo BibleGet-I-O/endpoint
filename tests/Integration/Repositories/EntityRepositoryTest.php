@@ -111,4 +111,30 @@ class EntityRepositoryTest extends DatabaseTestCase
         self::assertSame(['repeatable read on'], array_values(array_unique($pdo->seen)));
         self::assertFalse($pdo->inTransaction());
     }
+
+    /** A caller's own transaction must give one snapshot too: read committed would not. */
+    public function testRefusesACallersReadCommittedTransaction(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->beginTransaction();
+        try {
+            $this->expectException(\LogicException::class);
+            ( new EntityRepository($pdo) )->index('NOSUCH', 'person');
+        } finally {
+            $pdo->rollBack();
+        }
+    }
+
+    public function testReadsInACallersRepeatableReadTransaction(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->beginTransaction();
+        $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        try {
+            self::assertSame([], ( new EntityRepository($pdo) )->index('NOSUCH', 'person')['entries']);
+            self::assertTrue($pdo->inTransaction());
+        } finally {
+            $pdo->rollBack();
+        }
+    }
 }

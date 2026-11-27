@@ -899,7 +899,7 @@
                         "$ref": "#/components/responses/Forbidden"
                     },
                     "405": {
-                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                        "description": "Method not allowed: a method other than `GET`, `POST` or `OPTIONS` (which answers the CORS preflight)."
                     },
                     "406": {
                         "description": "Not acceptable: the `Accept` header names no format the API serves (`application/json`, `application/xml`, `text/html`). This route answers JSON only: XML or HTML gets a 400."
