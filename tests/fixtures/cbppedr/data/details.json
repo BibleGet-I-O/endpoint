@@ -1,0 +1,7 @@
+{
+  "$comment": "Synthetic CBPPEDR details for tests.",
+  "entries": {
+    "bpers:fixture.a": {"image": {"file": "Fixtura.jpg", "author": "Auctor", "license": "CC0", "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"}, "wikipedia": {"la": "Fixtura", "en": "Fixture"}},
+    "bplace:locus.b": {"coords": {"lat": 31.5, "lon": 35.25}}
+  }
+}
