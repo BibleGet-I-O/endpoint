@@ -840,41 +840,29 @@
                                                     },
                                                     "refs": {
                                                         "type": "array",
+                                                        "description": "The verses in the edition, in its order. Each is `[book, chapter, verse, segment, tradition]`: the universal book number, the chapter and verse, the segment letter or null, and Esther's text (`GREEK`, `HEBREW`) or null.",
                                                         "items": {
-                                                            "type": "object",
-                                                            "required": [
-                                                                "book",
-                                                                "chapter",
-                                                                "verse",
-                                                                "segment",
-                                                                "tradition"
+                                                            "type": "array",
+                                                            "minItems": 5,
+                                                            "maxItems": 5,
+                                                            "items": {}
+                                                        },
+                                                        "example": [
+                                                            [
+                                                                1,
+                                                                11,
+                                                                26,
+                                                                null,
+                                                                null
                                                             ],
-                                                            "properties": {
-                                                                "book": {
-                                                                    "type": "integer",
-                                                                    "description": "Universal book number."
-                                                                },
-                                                                "chapter": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "verse": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "segment": {
-                                                                    "type": "string",
-                                                                    "nullable": true
-                                                                },
-                                                                "tradition": {
-                                                                    "type": "string",
-                                                                    "nullable": true,
-                                                                    "enum": [
-                                                                        "GREEK",
-                                                                        "HEBREW"
-                                                                    ],
-                                                                    "description": "Esther's text, in editions that print both."
-                                                                }
-                                                            }
-                                                        }
+                                                            [
+                                                                17,
+                                                                1,
+                                                                1,
+                                                                "a",
+                                                                "GREEK"
+                                                            ]
+                                                        ]
                                                     }
                                                 }
                                             }

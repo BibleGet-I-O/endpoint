@@ -8,10 +8,11 @@ use BibleGet\Api\Cbppedr\CatalogReader;
 
 /**
  * The CBPPEDR catalogs as loaded (migration 072): persons, places and events, the CBTUDR units where each is
- * attested, and for a labelled unit the editions that name the entry there.
+ * attested, and for a labelled unit the editions that name the entry there. A verse in an index (Ref) is the tuple
+ * [book, chapter, verse, segment, tradition]: compact, since an edition's index of persons runs to some 12,000 of them.
  *
  * @phpstan-import-type Entry from CatalogReader
- * @phpstan-type Ref array{book: int, chapter: int, verse: int, segment: ?string, tradition: ?string}
+ * @phpstan-type Ref array{0: int, 1: int, 2: int, 3: ?string, 4: ?string}
  * @phpstan-type IndexEntry array{id: string, kind: string, names: array<string, string>, description: array<string, string>, qid: ?string, qid_status: ?string, uncertain: bool, refs: list<Ref>}
  */
 final class EntityRepository
@@ -119,13 +120,7 @@ final class EntityRepository
         if (preg_match(self::REF, $ref, $m) !== 1) {
             return null;
         }
-        return [
-            'book'      => $book,
-            'chapter'   => (int) $m[1],
-            'verse'     => (int) $m[2],
-            'segment'   => $m[3] === '' ? null : $m[3],
-            'tradition' => ( $m[4] ?? '' ) === '' ? null : $m[4],
-        ];
+        return [$book, (int) $m[1], (int) $m[2], $m[3] === '' ? null : $m[3], ( $m[4] ?? '' ) === '' ? null : $m[4]];
     }
 
     /** @return array<string, string> */

@@ -93,10 +93,10 @@ final class EntitiesTest extends DatabaseTestCase
         return array_column($entries, null, 'id');
     }
 
-    /** @return array{book: int, chapter: int, verse: int, segment: ?string, tradition: ?string} */
+    /** @return array{0: int, 1: int, 2: int, 3: ?string, 4: ?string} A ref as the route sends it: [book, chapter, verse, segment, tradition]. */
     private static function ref(int $chapter, int $verse, int $book = 1, ?string $segment = null, ?string $tradition = null): array
     {
-        return ['book' => $book, 'chapter' => $chapter, 'verse' => $verse, 'segment' => $segment, 'tradition' => $tradition];
+        return [$book, $chapter, $verse, $segment, $tradition];
     }
 
     public function testResolvesUnitsToTheEditionsVerses(): void
