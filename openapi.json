@@ -715,6 +715,204 @@
                 ]
             }
         },
+        "/metadata/entities": {
+            "get": {
+                "summary": "Retrieve an edition's index of persons, places or events",
+                "description": "The persons, places or events of [CBPPEDR](https://github.com/CatholicOS/cbppedr) attested in an edition, each with its verses in that edition: the entry's CBTUDR units resolved through the edition's rule and reviewed unit links (drafted links are not used). A unit where CBPPEDR records the entry under a label (another name, a title) counts only for the editions the label names. Entries with no verse in the edition are left out; an edition without unit links answers an empty list. JSON only.",
+                "operationId": "getEntities",
+                "tags": [
+                    "MetadataAPI"
+                ],
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "person",
+                                "place",
+                                "event"
+                            ]
+                        },
+                        "example": "person"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The index, entries in id order.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "edition": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "person",
+                                                "place",
+                                                "event"
+                                            ]
+                                        },
+                                        "release": {
+                                            "type": "object",
+                                            "nullable": true,
+                                            "description": "The CBPPEDR commit loaded, and when.",
+                                            "properties": {
+                                                "commit": {
+                                                    "type": "string"
+                                                },
+                                                "loaded_at": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "entries": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "kind",
+                                                    "names",
+                                                    "description",
+                                                    "qid",
+                                                    "qid_status",
+                                                    "uncertain",
+                                                    "refs"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "description": "The CBPPEDR id (`bpers:`, `bplace:`, `bevent:`).",
+                                                        "example": "bpers:abraham"
+                                                    },
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "description": "The entry's kind in CBPPEDR (individual, group, city, river…)."
+                                                    },
+                                                    "names": {
+                                                        "type": "object",
+                                                        "additionalProperties": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": "By language code (`la`, `it`, `en`); a name may be empty."
+                                                    },
+                                                    "description": {
+                                                        "type": "object",
+                                                        "additionalProperties": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": "A short description of CBPPEDR's own, by language code (`it`, `en`)."
+                                                    },
+                                                    "qid": {
+                                                        "type": "string",
+                                                        "nullable": true,
+                                                        "description": "The Wikidata item."
+                                                    },
+                                                    "qid_status": {
+                                                        "type": "string",
+                                                        "nullable": true,
+                                                        "enum": [
+                                                            "auto",
+                                                            "adjudicated",
+                                                            "reviewed",
+                                                            "unresolved"
+                                                        ],
+                                                        "description": "How the Wikidata item was set; `auto` matches are unreviewed."
+                                                    },
+                                                    "uncertain": {
+                                                        "type": "boolean",
+                                                        "description": "CBPPEDR marks the entry for review."
+                                                    },
+                                                    "refs": {
+                                                        "type": "array",
+                                                        "description": "The verses in the edition, in its order. Each is `[book, chapter, verse, segment, tradition]`: the universal book number, the chapter and verse, the segment letter or null, and Esther's text (`GREEK`, `HEBREW`) or null. A verse the edition prints otherwise than by its number adds `label, printed_chapter`: the label it prints (NABRE's Greek Esther `E:21`, `12:1` for Wis 12:1) or null, and the chapter under whose heading it is printed when not its own, or null.",
+                                                        "items": {
+                                                            "type": "array",
+                                                            "minItems": 5,
+                                                            "maxItems": 7,
+                                                            "items": {}
+                                                        },
+                                                        "example": [
+                                                            [
+                                                                1,
+                                                                11,
+                                                                26,
+                                                                null,
+                                                                null
+                                                            ],
+                                                            [
+                                                                19,
+                                                                1,
+                                                                1,
+                                                                "a",
+                                                                "GREEK"
+                                                            ],
+                                                            [
+                                                                27,
+                                                                12,
+                                                                1,
+                                                                null,
+                                                                null,
+                                                                "12:1",
+                                                                11
+                                                            ]
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "info": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request: the `version` parameter is not an available Bible edition, the `type` parameter is not `person`, `place` or `event`, or a format other than JSON was asked for."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "405": {
+                        "description": "Method not allowed: a method other than `GET`, `POST` or `OPTIONS` (which answers the CORS preflight)."
+                    },
+                    "406": {
+                        "description": "Not acceptable: the `Accept` header names no format the API serves (`application/json`, `application/xml`, `text/html`). This route answers JSON only: XML or HTML gets a 400."
+                    },
+                    "415": {
+                        "description": "Unsupported media type: the request's `Content-Type` is not one the route accepts."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                }
+            }
+        },
         "/metadata/introduction": {
             "get": {
                 "summary": "Retrieve a book's introduction, or a general introduction",
