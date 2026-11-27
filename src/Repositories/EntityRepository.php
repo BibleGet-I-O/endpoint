@@ -147,7 +147,7 @@ final class EntityRepository
     /**
      * An entry's verses with each Esther verse once: editions with both texts link a verse of each to the same
      * unit, and NVBSE's Hebrew run only repeats its Greek one, so the Hebrew ref goes where a Greek one has the
-     * same verse.
+     * same verse. Verses left from both texts are put in chapter and verse order.
      *
      * @param list<Ref> $refs
      * @return list<Ref>
@@ -163,7 +163,14 @@ final class EntityRepository
         if ($greek === []) {
             return $refs;
         }
-        return array_values(array_filter($refs, static fn (array $r): bool => $r[4] !== 'HEBREW' || !in_array([$r[0], $r[1], $r[2], $r[3]], $greek, true)));
+        $kept = array_values(array_filter($refs, static fn (array $r): bool => $r[4] !== 'HEBREW' || !in_array([$r[0], $r[1], $r[2], $r[3]], $greek, true)));
+        if (!in_array('HEBREW', array_column($kept, 4), true)) {
+            return $kept;
+        }
+        // Verses of both texts: the edition's order runs one text after the other, so go by chapter and verse
+        // (a stable sort keeps the edition's order inside a verse).
+        usort($kept, static fn (array $a, array $b): int => [$a[1], $a[2]] <=> [$b[1], $b[2]]);
+        return $kept;
     }
 
     /**

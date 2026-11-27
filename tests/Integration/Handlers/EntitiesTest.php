@@ -33,7 +33,9 @@ final class EntitiesTest extends DatabaseTestCase
             ('TEST1', 1, 4, '1:5', ARRAY['btu:gn.1.4'], 'same', 'draft'),
             ('TEST1', 19, 0, '1:1a@GREEK', ARRAY['btu:est.1.1a'], 'same', 'rule'),
             ('TEST1', 19, 1, '2:5@HEBREW', ARRAY['btu:est.2.5'], 'same', 'rule'),
-            ('TEST1', 19, 2, '2:5@GREEK', ARRAY['btu:est.2.5'], 'same', 'rule')");
+            ('TEST1', 19, 2, '2:5@GREEK', ARRAY['btu:est.2.5'], 'same', 'rule'),
+            ('TEST1', 19, 5, '8:2@HEBREW', ARRAY['btu:est.8.2'], 'same', 'rule'),
+            ('TEST1', 19, 10, '2:7@GREEK', ARRAY['btu:est.2.7'], 'same', 'rule')");
         $e = static fn (string $id, string $type, array $attested, array $labels = []): array => [
             'id'          => $id,
             'type'        => $type,
@@ -54,6 +56,7 @@ final class EntitiesTest extends DatabaseTestCase
             $e('bpers:e', 'person', ['btu:est.1.1a']),
             $e('bplace:p', 'place', ['btu:gn.1.1']),
             $e('bpers:f', 'person', ['btu:est.2.5']),
+            $e('bpers:g', 'person', ['btu:est.2.7', 'btu:est.8.2']),
         ], 'c1');
     }
 
@@ -185,5 +188,14 @@ final class EntitiesTest extends DatabaseTestCase
     public function testIgnoresABookParameter(): void
     {
         self::assertArrayHasKey('bpers:f', self::byId($this->index(['version' => 'TEST1', 'type' => 'person', 'book' => 'abc'])));
+    }
+
+    /** An entry's Esther verses from both texts (one only in the Greek, one only in the Hebrew) go in chapter order. */
+    public function testOrdersEstherVersesOfBothTextsByChapter(): void
+    {
+        self::assertSame(
+            [self::ref(2, 7, 19, null, 'GREEK'), self::ref(8, 2, 19, null, 'HEBREW')],
+            self::byId($this->index(['version' => 'TEST1', 'type' => 'person']))['bpers:g']['refs']
+        );
     }
 }
