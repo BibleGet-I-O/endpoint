@@ -155,7 +155,13 @@ class MetadataHandler extends AbstractHandler
             throw new BadRequestException('The type parameter must be person, place or event.');
         }
         [$version] = self::editionAndBook($pdo, $params, true);
-        return ['edition' => $version, 'type' => $type] + ( new EntityRepository($pdo) )->index($version, $type);
+        $index     = ( new EntityRepository($pdo) )->index($version, $type);
+        // An entry's names and description are maps: JSON objects even when empty.
+        $entries = array_map(
+            static fn (array $e): array => ['names' => (object) $e['names'], 'description' => (object) $e['description']] + $e,
+            $index['entries']
+        );
+        return ['edition' => $version, 'type' => $type, 'release' => $index['release'], 'entries' => $entries];
     }
 
     /**

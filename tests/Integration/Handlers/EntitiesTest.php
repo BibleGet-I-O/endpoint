@@ -39,7 +39,7 @@ final class EntitiesTest extends DatabaseTestCase
             'type'        => $type,
             'kind'        => 'individual',
             'names'       => ['la' => 'N', 'it' => 'N', 'en' => 'N'],
-            'description' => ['en' => 'd'],
+            'description' => $id === 'bpers:a' ? [] : ['en' => 'd'],
             'qid'         => 'Q1',
             'qid_status'  => 'auto',
             'uncertain'   => $id === 'bpers:b',
@@ -119,6 +119,21 @@ final class EntitiesTest extends DatabaseTestCase
         self::assertFalse($a['uncertain']);
         self::assertTrue(self::byId($body)['bpers:b']['uncertain']);
         self::assertArrayNotHasKey('bplace:p', self::byId($body));
+    }
+
+    /** An empty map of names or descriptions is still a JSON object, as documented. */
+    public function testSendsAnEmptyDescriptionAsAnObject(): void
+    {
+        $handler = new MetadataHandler(new Psr17Factory(), ['entities']);
+        $handler->setAllowedRequestMethods([RequestMethod::GET])->setAllowedAcceptHeaders([AcceptHeader::JSON]);
+        $response = $handler->handle(( new ServerRequest('GET', '/v3/metadata/entities', ['Accept' => 'application/json']) )->withQueryParams(['version' => 'TEST1', 'type' => 'person']));
+        $body     = json_decode((string) $response->getBody()); // objects stay objects
+        self::assertIsObject($body);
+        self::assertIsArray($body->entries);
+        $a = array_values(array_filter($body->entries, static fn ($e): bool => $e->id === 'bpers:a'))[0];
+        self::assertInstanceOf(\stdClass::class, $a->description);
+        self::assertSame([], get_object_vars($a->description));
+        self::assertIsArray($a->refs);
     }
 
     public function testListsEveryVerseOfAUnitLinkedToTwo(): void

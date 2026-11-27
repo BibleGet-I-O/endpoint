@@ -901,8 +901,11 @@
                     "405": {
                         "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
                     },
+                    "406": {
+                        "description": "Not acceptable: the `Accept` header names no format the API serves (`application/json`, `application/xml`, `text/html`). This route answers JSON only: XML or HTML gets a 400."
+                    },
                     "415": {
-                        "description": "Unsupported media type: the `Accept` header asks for a content type other than `application/json`, `application/xml` or `text/html` (this route answers JSON only; XML or HTML gets a 400)."
+                        "description": "Unsupported media type: the request's `Content-Type` is not one the route accepts."
                     },
                     "429": {
                         "$ref": "#/components/responses/TooManyRequests"
