@@ -117,6 +117,36 @@ class EntityRepositoryTest extends DatabaseTestCase
         self::assertFalse($pdo->inTransaction());
     }
 
+    /**
+     * A load holds the CBPPEDR advisory lock from the catalog's replacement through the verse counts: a load waits
+     * for another one to finish, and once done holds no advisory lock.
+     */
+    public function testSerializesLoadsWithAnAdvisoryLock(): void
+    {
+        $p     = Connection::params();
+        $other = new \PDO("pgsql:host={$p['host']};port={$p['port']};dbname={$p['dbname']}", $p['user'], $p['password']);
+        $other->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $other->query("SELECT pg_advisory_lock(hashtext('bibleget.cbppedr.load'))");
+        $pdo = $this->getConnection();
+        $pdo->exec("SET lock_timeout = '200ms'");
+        try {
+            ( new EntityRepository($pdo) )->replaceAll([self::entry('bpers:a', ['btu:gn.1.1'])], 'c1');
+            self::fail('A load ran while another one held the lock');
+        } catch (\PDOException $e) {
+            self::assertSame('55P03', $e->getCode()); // lock_not_available
+        } finally {
+            $other->query("SELECT pg_advisory_unlock(hashtext('bibleget.cbppedr.load'))");
+        }
+        try {
+            ( new EntityRepository($pdo) )->replaceAll([self::entry('bpers:a', ['btu:gn.1.1'])], 'c1');
+        } finally {
+            $pdo->exec('RESET lock_timeout');
+        }
+        $held = $pdo->query("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()");
+        self::assertSame(0, (int) $held?->fetchColumn());
+        self::assertSame(1, (int) $pdo->query('SELECT count(*) FROM bpe_entry')?->fetchColumn());
+    }
+
     /** A caller's own transaction must give one snapshot too: read committed would not. */
     public function testRefusesACallersReadCommittedTransaction(): void
     {

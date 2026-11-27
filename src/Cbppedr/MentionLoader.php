@@ -14,6 +14,9 @@ use BibleGet\Api\Util\PlainTextMap;
  *  - no_row: the unit is not linked (rule or reviewed links only) to exactly one row of the edition; a key's
  *    @GREEK / @HEBREW suffix picks Esther's text, a key without one takes a link of either;
  *  - stale: the SHA-256 of the row's text_plain is not the unit's hash (the text changed since CBPPEDR read it);
+ *    or, reported as "<key> text_plain", the row's text_plain is not the plain text PlainTextMap derives from its
+ *    text (SQL's \s, which follows the database locale, took in a whitespace PlainTextMap keeps), so positions
+ *    would shift;
  *  - bad_check: a span's text does not give its check, or falls outside the text;
  *  - unknown_ids: a mention names an entry, or a candidate, that is not loaded (ruling B: dropped whole).
  * A unit is reported by its key, a mention by its key and span ("btu:gn.12.1 10-15"), an unknown id after its key.
@@ -57,7 +60,11 @@ final class MentionLoader
                 $report['stale'][] = $key;
                 continue;
             }
-            $map   = PlainTextMap::of($text);
+            $map = PlainTextMap::of($text);
+            if ($map->plain() !== $plain) {
+                $report['stale'][] = $key . ' text_plain';
+                continue;
+            }
             $utf16 = mb_convert_encoding($plain, 'UTF-16LE', 'UTF-8');
             foreach ($unit['mentions'] as $m) {
                 $span = self::span($key, $m, $utf16, $map, $known, $report);

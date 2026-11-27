@@ -64,6 +64,13 @@ class PlainTextMapTest extends TestCase
         $this->assertSame([6, 12], PlainTextMap::of('<i>et Petrus</i>')->toText(3, 9));
     }
 
+    public function testAnUnmatchedCloserDoesNotCancelALaterOpener(): void
+    {
+        // The first </i> closes a tag opened before the span; the second <i> opens inside it, so its </i> is taken.
+        $this->assertSame([6, 23], PlainTextMap::of('<i>et Pe</i><i>trus</i>')->toText(3, 9));
+        $this->assertSame([0, 13], PlainTextMap::of('<i>Petrus</i>')->toText(0, 6));
+    }
+
     public function testOutOfRangeIsNull(): void
     {
         $map = PlainTextMap::of('et Petrus');

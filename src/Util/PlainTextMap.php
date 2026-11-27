@@ -34,7 +34,9 @@ use InvalidArgumentException;
  *  - the end snaps forward over removed closing inline tags immediately after
  *    it whose opening tag is inside the span (`<i>Petrus</i>`), so the span's
  *    inline tags stay balanced where that is easy; a closer of a tag opened
- *    before the span is left out (`<i>et Petrus</i>` -> `Petrus`).
+ *    before the span is left out (`<i>et Petrus</i>` -> `Petrus`), and does
+ *    not cancel a tag opened inside it (`<i>et Pe</i><i>trus</i>` ->
+ *    `Pe</i><i>trus</i>`).
  * A UTF-16 offset inside an astral character's surrogate pair counts as that
  * character.
  */
@@ -142,11 +144,17 @@ final class PlainTextMap
 
     private function snapEnd(int $start, int $end): int
     {
-        // Inline tags opened inside the span and not yet closed there, by name.
+        // Inline tags opened inside the span and not yet closed there, by name: a closer only closes an opener of
+        // the span (the tags are in text order), and a closer of a tag opened before the span is ignored.
         $open = [];
         foreach ($this->tags as $at => [, $name, $close]) {
-            if ($at >= $start && $at < $end) {
-                $open[$name] = ( $open[$name] ?? 0 ) + ( $close ? -1 : 1 );
+            if ($at < $start || $at >= $end) {
+                continue;
+            }
+            if (!$close) {
+                $open[$name] = ( $open[$name] ?? 0 ) + 1;
+            } elseif (( $open[$name] ?? 0 ) > 0) {
+                $open[$name]--;
             }
         }
         while (isset($this->tags[$end]) && $this->tags[$end][2] && ( $open[$this->tags[$end][1]] ?? 0 ) > 0) {

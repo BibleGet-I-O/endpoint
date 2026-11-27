@@ -32,12 +32,24 @@ final class QuoteMentions
     }
 
     /**
-     * Puts each row's mentions on it, and returns the cards of the entries they name, keyed by id.
+     * Puts each row's mentions on it, and returns the cards of the entries they name, keyed by id; the mentions and
+     * the cards are read in one snapshot (MentionRepository::inOneSnapshot).
      *
      * @param list<array<string, mixed>> $results
      * @return array{0: list<array<string, mixed>>, 1: array<string, Card>}
      */
     public static function attach(array $results, MentionRepository $repo): array
+    {
+        return $repo->inOneSnapshot(static fn (): array => self::attachIn($results, $repo));
+    }
+
+    /**
+     * attach(), in the repository's snapshot.
+     *
+     * @param list<array<string, mixed>> $results
+     * @return array{0: list<array<string, mixed>>, 1: array<string, Card>}
+     */
+    private static function attachIn(array $results, MentionRepository $repo): array
     {
         $editions = [];
         foreach ($results as $row) {

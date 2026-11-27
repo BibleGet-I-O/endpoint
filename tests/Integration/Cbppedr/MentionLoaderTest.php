@@ -185,6 +185,28 @@ final class MentionLoaderTest extends DatabaseTestCase
         self::assertSame(0, $this->rowsIn('bpe_mention'));
     }
 
+    /**
+     * The database's text_plain (whose \s may take in non-ASCII spaces, by locale) must be the plain text PlainTextMap
+     * derives, or every position after the difference would be shifted: such a unit is stale too.
+     */
+    public function testSkipsAUnitWhoseTextPlainIsNotTheMapsPlainText(): void
+    {
+        $this->loadEntries();
+        $pdo = $this->getConnection();
+        $pdo->exec('ALTER TABLE "TEST1" DISABLE TRIGGER USER');
+        try {
+            $pdo->prepare('UPDATE "TEST1" SET text = ?, text_plain = ? WHERE book = 60 AND chapter = 1 AND verse = 1')
+                ->execute(["Ecce\u{2003}\u{2003}Petrus venit.", 'Ecce Petrus venit.']);
+        } finally {
+            $pdo->exec('ALTER TABLE "TEST1" ENABLE TRIGGER USER');
+        }
+        $plain  = $this->plain(60, 1, 1);
+        $result = MentionLoader::load($pdo, 'TEST1', ['btu:fx.1.1' => self::unit($plain, [self::mention($plain, 'Petrus', 'bpers:petrus')])]);
+        self::assertSame(['btu:fx.1.1 text_plain'], $result['stale']);
+        self::assertSame(0, $result['loaded']);
+        self::assertSame(0, $this->rowsIn('bpe_mention'));
+    }
+
     public function testSkipsASpanWhoseCheckDiffers(): void
     {
         $this->loadEntries();

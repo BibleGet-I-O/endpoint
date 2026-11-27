@@ -25,6 +25,9 @@ final class EntityRepository
 {
     private const string TEXT_ARRAY = 'ARRAY(SELECT json_array_elements_text(?::json))';
 
+    /** The advisory lock key that serializes CBPPEDR loads (replaceAll). */
+    private const string LOAD_LOCK = "hashtext('bibleget.cbppedr.load')";
+
     /** A link's ref: chapter, verse, a segment letter or two, a repeated printing (#2), the Esther text (@GREEK). */
     private const string REF = '/^(\d+):(\d+)([a-z]*)(?:#\d+)?(?:@(GREEK|HEBREW))?$/';
 
@@ -260,6 +263,9 @@ final class EntityRepository
      * `mentioned`. Details of an entry not loaded are left out, and reported. Once that transaction commits, the
      * number of verses of each person and place in every edition with mentions is counted from its index (which reads
      * its own snapshot, so it cannot run inside the load) and stored in bpe_verse_count, in a second transaction.
+     * Loads are serialized by a session-level PostgreSQL advisory lock (LOAD_LOCK), taken before the first
+     * transaction and released only after the counts are stored, so that a load cannot store counts read from a
+     * catalog another load has since replaced; a second load waits for the first (up to the session's lock_timeout).
      *
      * @param list<Entry>                                $entries
      * @param array<string, array<string, MentionUnit>>  $mentions by edition, then unit key
@@ -267,6 +273,25 @@ final class EntityRepository
      * @return array{entries: int, attested: int, mentioned: int, labels: int, unknown_units: list<string>, mentions: array<string, Report>, details: int, unknown_details: list<string>, verse_counts: int}
      */
     public function replaceAll(array $entries, string $commit, array $mentions = [], array $details = []): array
+    {
+        $this->db->query('SELECT pg_advisory_lock(' . self::LOAD_LOCK . ')');
+        try {
+            $result = $this->replaceCatalog($entries, $commit, $mentions, $details);
+            return $result + ['verse_counts' => $this->countVerses(array_keys($mentions))];
+        } finally {
+            $this->db->query('SELECT pg_advisory_unlock(' . self::LOAD_LOCK . ')');
+        }
+    }
+
+    /**
+     * replaceAll's first transaction: everything but the verse counts.
+     *
+     * @param list<Entry>                                $entries
+     * @param array<string, array<string, MentionUnit>>  $mentions
+     * @param array<string, Detail>                      $details
+     * @return array{entries: int, attested: int, mentioned: int, labels: int, unknown_units: list<string>, mentions: array<string, Report>, details: int, unknown_details: list<string>}
+     */
+    private function replaceCatalog(array $entries, string $commit, array $mentions, array $details): array
     {
         $this->db->beginTransaction();
         try {
@@ -302,7 +327,6 @@ final class EntityRepository
             'mentions'        => $reports,
             'details'         => $loaded,
             'unknown_details' => $unknownDetails,
-            'verse_counts'    => $this->countVerses(array_keys($mentions)),
         ];
     }
 

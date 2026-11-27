@@ -20,6 +20,31 @@ class MentionRepository
     }
 
     /**
+     * Runs $read in one read-only, repeatable-read transaction, so that a load committed meanwhile cannot mix two
+     * catalogs (mentions of one, cards of the other); inside the caller's transaction when one is open.
+     *
+     * @template T
+     * @param callable(): T $read
+     * @return T
+     */
+    public function inOneSnapshot(callable $read): mixed
+    {
+        if ($this->db->inTransaction()) {
+            return $read();
+        }
+        $this->db->beginTransaction();
+        try {
+            $this->db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+            $result = $read();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+        $this->db->commit();
+        return $result;
+    }
+
+    /**
      * Those of $editions that have any mention.
      *
      * @param list<string> $editions

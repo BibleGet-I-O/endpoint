@@ -43,6 +43,7 @@ final class QuoteMentionsTest extends TestCase
     public function testMatchesRowsByIdentityWithNullsEqualAndAsksOneQueryPerEditionAndBook(): void
     {
         $repo = $this->createMock(MentionRepository::class);
+        $repo->expects(self::once())->method('inOneSnapshot')->willReturnCallback(static fn (callable $read): mixed => $read());
         $repo->method('editionsWithMentions')->willReturn(['NVBSE']);
         $repo->expects(self::once())->method('mentions')->with('NVBSE', 1, 2, 2)->willReturn([
             self::mention(1, 'Ecce Petrus', ['start' => 5, 'end' => 11, 'entry' => 'bpers:petrus']),
