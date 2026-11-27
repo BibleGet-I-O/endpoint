@@ -154,8 +154,11 @@ class MetadataHandler extends AbstractHandler
         if (!in_array($type, ['person', 'place', 'event'], true)) {
             throw new BadRequestException('The type parameter must be person, place or event.');
         }
-        [$version] = self::editionAndBook($pdo, $params, true);
-        $index     = ( new EntityRepository($pdo) )->index($version, $type);
+        $version = strtoupper(StringUtils::asString($params['version'] ?? ''));
+        if (!( new OutlineRepository($pdo) )->editionExists($version)) {
+            throw new BadRequestException('The version parameter must be one of the available Bible versions.');
+        }
+        $index = ( new EntityRepository($pdo) )->index($version, $type);
         // An entry's names and description are maps: JSON objects even when empty.
         $entries = array_map(
             static fn (array $e): array => ['names' => (object) $e['names'], 'description' => (object) $e['description']] + $e,

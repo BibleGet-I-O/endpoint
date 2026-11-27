@@ -180,4 +180,10 @@ final class EntitiesTest extends DatabaseTestCase
         $this->expectException(BadRequestException::class);
         $this->index(['version' => 'TEST1', 'type' => 'angel']);
     }
+
+    /** The route has no book parameter: one sent is ignored, not rejected as a bad book number. */
+    public function testIgnoresABookParameter(): void
+    {
+        self::assertArrayHasKey('bpers:f', self::byId($this->index(['version' => 'TEST1', 'type' => 'person', 'book' => 'abc'])));
+    }
 }

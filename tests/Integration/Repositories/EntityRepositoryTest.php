@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BibleGet\Tests\Integration\Repositories;
 
+use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Repositories\EntityRepository;
 use BibleGet\Tests\Integration\DatabaseTestCase;
 
@@ -20,14 +21,14 @@ class EntityRepositoryTest extends DatabaseTestCase
         $pdo->exec((string) file_get_contents(self::BTU));
         $pdo->exec((string) file_get_contents(self::MIGRATION));
         $pdo->exec((string) file_get_contents(self::MIGRATION)); // idempotent
-        $pdo->exec('TRUNCATE bpe_entry, bpe_attested, bpe_label, bpe_release, btu_unit RESTART IDENTITY CASCADE');
+        $pdo->exec('TRUNCATE bpe_entry, bpe_attested, bpe_label, bpe_release, btu_link, btu_unit RESTART IDENTITY CASCADE');
         $pdo->exec("INSERT INTO btu_unit (id, book, ord) VALUES ('btu:gn.1.1', 1, 0), ('btu:gn.1.2', 1, 1)");
     }
 
     protected function tearDown(): void
     {
         if (!$this->status()->isSkipped()) {
-            $this->getConnection()->exec('TRUNCATE bpe_entry, bpe_attested, bpe_label, bpe_release, btu_unit RESTART IDENTITY CASCADE');
+            $this->getConnection()->exec('TRUNCATE bpe_entry, bpe_attested, bpe_label, bpe_release, btu_link, btu_unit RESTART IDENTITY CASCADE');
         }
         parent::tearDown();
     }
@@ -71,5 +72,43 @@ class EntityRepositoryTest extends DatabaseTestCase
         $result = ( new EntityRepository($this->getConnection()) )->replaceAll([self::entry('bpers:a', ['btu:gn.1.1', 'btu:xx.9.9'])], 'c1');
         self::assertSame(['btu:xx.9.9'], $result['unknown_units']);
         self::assertSame(2, (int) $this->getConnection()->query('SELECT count(*) FROM bpe_attested')?->fetchColumn());
+    }
+
+    /** The reads of an index see one release: a load committed between them cannot mix two. */
+    public function testReadsTheIndexInOneReadOnlySnapshot(): void
+    {
+        ( new EntityRepository($this->getConnection()) )->replaceAll([self::entry('bpers:a', ['btu:gn.1.1'])], 'c1');
+        $this->getConnection()->exec("INSERT INTO btu_link (edition, book, ord, ref, units, kind, status) VALUES ('NOSUCH', 1, 0, '1:1', '{btu:gn.1.1}', 'same', 'rule')");
+        $p   = Connection::params();
+        $pdo = new class ("pgsql:host={$p['host']};port={$p['port']};dbname={$p['dbname']}", $p['user'], $p['password']) extends \PDO {
+            /** @var list<string> */
+            public array $seen = [];
+
+            private function note(): void
+            {
+                $this->seen[] = $this->inTransaction()
+                    ? (string) parent::query("SELECT current_setting('transaction_isolation') || ' ' || current_setting('transaction_read_only')")?->fetchColumn()
+                    : 'autocommit';
+            }
+
+            public function prepare(string $query, array $options = []): \PDOStatement|false
+            {
+                $this->note();
+                return parent::prepare($query, $options);
+            }
+
+            public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): \PDOStatement|false
+            {
+                $this->note();
+                return $fetchMode === null ? parent::query($query) : parent::query($query, $fetchMode, ...$fetchModeArgs);
+            }
+        };
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+        $index = ( new EntityRepository($pdo) )->index('NOSUCH', 'person');
+        self::assertSame(['bpers:a'], array_column($index['entries'], 'id'));
+        self::assertNotSame([], $pdo->seen);
+        self::assertSame(['repeatable read on'], array_values(array_unique($pdo->seen)));
+        self::assertFalse($pdo->inTransaction());
     }
 }

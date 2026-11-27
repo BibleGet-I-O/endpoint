@@ -33,8 +33,26 @@ final class EntityRepository
      */
     public function index(string $edition, string $type): array
     {
-        $refs = $this->refsByEntry($edition, $type);
-        return ['release' => $this->release(), 'entries' => $refs === [] ? [] : $this->entries($type, $refs)];
+        // One snapshot for every read, so that a load committed meanwhile cannot mix two releases; a caller's own
+        // transaction is left to the caller.
+        $own = !$this->db->inTransaction();
+        if ($own) {
+            $this->db->beginTransaction();
+            $this->db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+        }
+        try {
+            $refs  = $this->refsByEntry($edition, $type);
+            $index = ['release' => $this->release(), 'entries' => $refs === [] ? [] : $this->entries($type, $refs)];
+        } catch (\Throwable $e) {
+            if ($own) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+        if ($own) {
+            $this->db->commit();
+        }
+        return $index;
     }
 
     /**
@@ -88,12 +106,17 @@ final class EntityRepository
         if (preg_match('/^[A-Z0-9_]+$/', $edition) !== 1) {
             return [];
         }
-        try {
-            $stmt = $this->db->query('SELECT * FROM "' . $edition . '" WHERE verse_label IS NOT NULL OR printed_chapter IS NOT NULL');
-        } catch (\PDOException) {
+        // Checked first, not caught: inside the index's transaction a failed query would abort the reads after it.
+        $columns = $this->db->prepare(
+            "SELECT count(*) FROM information_schema.columns
+             WHERE table_schema = current_schema() AND table_name = ? AND column_name IN ('verse_label', 'printed_chapter')"
+        );
+        $columns->execute([$edition]);
+        if ((int) $columns->fetchColumn() !== 2) {
             return [];
         }
-        $out = [];
+        $stmt = $this->db->query('SELECT * FROM "' . $edition . '" WHERE verse_label IS NOT NULL OR printed_chapter IS NOT NULL');
+        $out  = [];
         foreach ($stmt === false ? [] : $stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
             $book = is_array($row) ? ( $row['book'] ?? null ) : null;
             if (!is_array($row) || !is_int($book)) {
