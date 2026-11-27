@@ -715,6 +715,199 @@
                 ]
             }
         },
+        "/metadata/entities": {
+            "get": {
+                "summary": "Retrieve an edition's index of persons, places or events",
+                "description": "The persons, places or events of [CBPPEDR](https://github.com/CatholicOS/cbppedr) attested in an edition, each with its verses in that edition: the entry's CBTUDR units resolved through the edition's rule and reviewed unit links (drafted links are not used). A unit where CBPPEDR records the entry under a label (another name, a title) counts only for the editions the label names. Entries with no verse in the edition are left out; an edition without unit links answers an empty list. JSON only.",
+                "operationId": "getEntities",
+                "tags": [
+                    "MetadataAPI"
+                ],
+                "parameters": [
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "NABRE"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "person",
+                                "place",
+                                "event"
+                            ]
+                        },
+                        "example": "person"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The index, entries in id order.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "edition": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "person",
+                                                "place",
+                                                "event"
+                                            ]
+                                        },
+                                        "release": {
+                                            "type": "object",
+                                            "nullable": true,
+                                            "description": "The CBPPEDR commit loaded, and when.",
+                                            "properties": {
+                                                "commit": {
+                                                    "type": "string"
+                                                },
+                                                "loaded_at": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "entries": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "kind",
+                                                    "names",
+                                                    "description",
+                                                    "qid",
+                                                    "qid_status",
+                                                    "uncertain",
+                                                    "refs"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "description": "The CBPPEDR id (`bpers:`, `bplace:`, `bevent:`).",
+                                                        "example": "bpers:abraham"
+                                                    },
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "description": "The entry's kind in CBPPEDR (individual, group, city, river…)."
+                                                    },
+                                                    "names": {
+                                                        "type": "object",
+                                                        "additionalProperties": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": "By language code (`la`, `it`, `en`); a name may be empty."
+                                                    },
+                                                    "description": {
+                                                        "type": "object",
+                                                        "additionalProperties": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": "A short description of CBPPEDR's own, by language code (`it`, `en`)."
+                                                    },
+                                                    "qid": {
+                                                        "type": "string",
+                                                        "nullable": true,
+                                                        "description": "The Wikidata item."
+                                                    },
+                                                    "qid_status": {
+                                                        "type": "string",
+                                                        "nullable": true,
+                                                        "enum": [
+                                                            "auto",
+                                                            "adjudicated",
+                                                            "reviewed",
+                                                            "unresolved"
+                                                        ],
+                                                        "description": "How the Wikidata item was set; `auto` matches are unreviewed."
+                                                    },
+                                                    "uncertain": {
+                                                        "type": "boolean",
+                                                        "description": "CBPPEDR marks the entry for review."
+                                                    },
+                                                    "refs": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "book",
+                                                                "chapter",
+                                                                "verse",
+                                                                "segment",
+                                                                "tradition"
+                                                            ],
+                                                            "properties": {
+                                                                "book": {
+                                                                    "type": "integer",
+                                                                    "description": "Universal book number."
+                                                                },
+                                                                "chapter": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "verse": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "segment": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "tradition": {
+                                                                    "type": "string",
+                                                                    "nullable": true,
+                                                                    "enum": [
+                                                                        "GREEK",
+                                                                        "HEBREW"
+                                                                    ],
+                                                                    "description": "Esther's text, in editions that print both."
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "info": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request. Will be returned if the `versions` parameter is missing or invalid."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "405": {
+                        "description": "Method not allowed. Will be returned if a method other than `GET` or `POST` is utilized."
+                    },
+                    "415": {
+                        "description": "Unsupported media type. Will be returned if a content type other than `application/json`, `application/xml` or `text/html` is requested."
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                }
+            }
+        },
         "/metadata/introduction": {
             "get": {
                 "summary": "Retrieve a book's introduction, or a general introduction",

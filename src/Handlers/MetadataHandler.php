@@ -7,6 +7,7 @@ namespace BibleGet\Api\Handlers;
 use BibleGet\Api\Auth\Credential;
 use BibleGet\Api\Http\Exception\BadRequestException;
 use BibleGet\Api\Http\Exception\ForbiddenException;
+use BibleGet\Api\Repositories\EntityRepository;
 use BibleGet\Api\Repositories\IntroductionRepository;
 use BibleGet\Api\Repositories\OutlineRepository;
 use BibleGet\Api\Util\AppVersion;
@@ -68,6 +69,9 @@ class MetadataHandler extends AbstractHandler
                 break;
             case 'introduction':
                 $data = $this->getIntroduction($pdo, $params, $contentType, self::isReader($request));
+                break;
+            case 'entities':
+                $data = $this->getEntities($pdo, $params, $contentType);
                 break;
             default:
                 throw new NotFoundException('Unknown metadata query: ' . $subResource);
@@ -133,6 +137,25 @@ class MetadataHandler extends AbstractHandler
             $data['introduction'] = $own === null ? null : ['id' => $own['id'], 'title' => $own['title']];
         }
         return $data;
+    }
+
+    /**
+     * An edition's index of the persons, places or events of CBPPEDR, each with its verses in the edition.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    private function getEntities(\PDO $pdo, array $params, string $contentType): array
+    {
+        if ($contentType !== 'application/json') {
+            throw new BadRequestException('The index of persons, places and events is available in JSON only.');
+        }
+        $type = StringUtils::asString($params['type'] ?? '');
+        if (!in_array($type, ['person', 'place', 'event'], true)) {
+            throw new BadRequestException('The type parameter must be person, place or event.');
+        }
+        [$version] = self::editionAndBook($pdo, $params, true);
+        return ['edition' => $version, 'type' => $type] + ( new EntityRepository($pdo) )->index($version, $type);
     }
 
     /**
