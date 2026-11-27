@@ -1,0 +1,6 @@
+{
+  "$comment": "Synthetic CBPPEDR events for tests.",
+  "entries": {
+    "bevent:eventus": {"type": "event", "kind": "event", "names": {"la": "Eventus", "it": "Evento", "en": "Event"}, "description": {"it": "un evento", "en": "an event"}, "attested": ["btu:gn.1.2", "btu:gn.1.3"], "relations": [], "qid": null, "qid_status": "unresolved", "evidence": []}
+  }
+}

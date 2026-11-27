@@ -1,0 +1,7 @@
+{
+  "$comment": "Synthetic CBPPEDR places for tests.",
+  "entries": {
+    "bplace:locus.a": {"type": "place", "kind": "city", "names": {"la": "Locus", "it": "Luogo", "en": "Place"}, "description": {"it": "una città", "en": "a city"}, "attested": ["btu:gn.1.1"], "relations": [], "qid": null, "qid_status": "unresolved", "evidence": []},
+    "bplace:locus.b": {"type": "place", "kind": "river", "names": {"la": "Flumen", "it": "Fiume", "en": "River"}, "description": {"it": "un fiume", "en": "a river"}, "attested": ["btu:xx.9.9"], "relations": [], "qid": "Q3", "qid_status": "adjudicated", "evidence": []}
+  }
+}
