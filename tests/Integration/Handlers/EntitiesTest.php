@@ -29,7 +29,9 @@ final class EntitiesTest extends DatabaseTestCase
             ('TEST1', 1, 2, '1:3', ARRAY['btu:gn.1.3'], 'corresponding', 'rule'),
             ('TEST1', 1, 3, '1:4', ARRAY['btu:gn.1.3'], 'same', 'rule'),
             ('TEST1', 1, 4, '1:5', ARRAY['btu:gn.1.4'], 'same', 'draft'),
-            ('TEST1', 17, 0, '1:1a@GREEK', ARRAY['btu:est.1.1a'], 'same', 'rule')");
+            ('TEST1', 19, 0, '1:1a@GREEK', ARRAY['btu:est.1.1a'], 'same', 'rule'),
+            ('TEST1', 19, 1, '2:5@HEBREW', ARRAY['btu:est.2.5'], 'same', 'rule'),
+            ('TEST1', 19, 2, '2:5@GREEK', ARRAY['btu:est.2.5'], 'same', 'rule')");
         $e = static fn (string $id, string $type, array $attested, array $labels = []): array => [
             'id'          => $id,
             'type'        => $type,
@@ -49,6 +51,7 @@ final class EntitiesTest extends DatabaseTestCase
             $e('bpers:d', 'person', ['btu:gn.1.1', 'btu:gn.1.2'], ['btu:gn.1.2' => ['NVBSE']]),
             $e('bpers:e', 'person', ['btu:est.1.1a']),
             $e('bplace:p', 'place', ['btu:gn.1.1']),
+            $e('bpers:f', 'person', ['btu:est.2.5']),
         ], 'c1');
     }
 
@@ -132,7 +135,13 @@ final class EntitiesTest extends DatabaseTestCase
 
     public function testParsesTheTraditionOfEstherRefs(): void
     {
-        self::assertSame([self::ref(1, 1, 17, 'a', 'GREEK')], self::byId($this->index(['version' => 'TEST1', 'type' => 'person']))['bpers:e']['refs']);
+        self::assertSame([self::ref(1, 1, 19, 'a', 'GREEK')], self::byId($this->index(['version' => 'TEST1', 'type' => 'person']))['bpers:e']['refs']);
+    }
+
+    /** Editions with both texts of Esther link a verse of each to one unit: the verse is listed once, in the Greek text. */
+    public function testListsAnEstherVerseOnceWhenBothTextsHaveIt(): void
+    {
+        self::assertSame([self::ref(2, 5, 19, null, 'GREEK')], self::byId($this->index(['version' => 'TEST1', 'type' => 'person']))['bpers:f']['refs']);
     }
 
     public function testAnswersEmptyForAnEditionWithoutLinks(): void

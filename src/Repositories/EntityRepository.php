@@ -68,7 +68,29 @@ final class EntityRepository
                 $refs[$row['entry']][] = $ref;
             }
         }
-        return $refs;
+        return array_map(self::oneEstherText(...), $refs);
+    }
+
+    /**
+     * An entry's verses with each Esther verse once: editions with both texts link a verse of each to the same
+     * unit, and NVBSE's Hebrew run only repeats its Greek one, so the Hebrew ref goes where a Greek one has the
+     * same verse.
+     *
+     * @param list<Ref> $refs
+     * @return list<Ref>
+     */
+    private static function oneEstherText(array $refs): array
+    {
+        $greek = [];
+        foreach ($refs as $r) {
+            if ($r[4] === 'GREEK') {
+                $greek[] = [$r[0], $r[1], $r[2], $r[3]];
+            }
+        }
+        if ($greek === []) {
+            return $refs;
+        }
+        return array_values(array_filter($refs, static fn (array $r): bool => $r[4] !== 'HEBREW' || !in_array([$r[0], $r[1], $r[2], $r[3]], $greek, true)));
     }
 
     /**
