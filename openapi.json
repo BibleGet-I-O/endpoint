@@ -723,6 +723,11 @@
                 "tags": [
                     "MetadataAPI"
                 ],
+                "security": [
+                    {
+                        "ApiKey": []
+                    }
+                ],
                 "parameters": [
                     {
                         "name": "version",
