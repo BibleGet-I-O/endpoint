@@ -6,7 +6,9 @@ namespace BibleGet\Api\Handlers;
 
 use BibleGet\Api\Util\AppVersion;
 use BibleGet\Api\Auth\Credential;
+use BibleGet\Api\Repositories\MentionRepository;
 use BibleGet\Api\Repositories\NoteRepository;
+use BibleGet\Api\Services\QuoteMentions;
 use BibleGet\Api\Services\QuoteNotes;
 use BibleGet\Api\Http\Exception\ForbiddenException;
 use BibleGet\Api\Http\Exception\ValidationException;
@@ -93,15 +95,22 @@ class QuoteHandler extends AbstractHandler
             [$ctx->results, $notes] = QuoteNotes::attach(array_values($ctx->results), $notesMode, new NoteRepository($ctx->pdo));
         }
 
+        // Mentions (mentions=1): JSON only, other formats ignore it; they follow the rows given (caps included).
+        $entities = null;
+        if ($contentType === 'application/json' && QuoteMentions::requested($params)) {
+            [$ctx->results, $entities] = QuoteMentions::attach(array_values($ctx->results), new MentionRepository($ctx->pdo));
+        }
+
         // Build response body
-        $response = $this->buildResponse($response, $contentType, $ctx, $notes);
+        $response = $this->buildResponse($response, $contentType, $ctx, $notes, $entities);
         return $this->withCacheHeaders($request, $response);
     }
 
     /**
-     * @param ?array<string, mixed> $notes The notes' bodies (footnotes=full), or null.
+     * @param ?array<string, mixed> $notes    The notes' bodies (footnotes=full), or null.
+     * @param ?array<string, mixed> $entities The cards of the entries mentioned (mentions=1), or null.
      */
-    private function buildResponse(ResponseInterface $response, string $contentType, QuoteContext $ctx, ?array $notes = null): ResponseInterface
+    private function buildResponse(ResponseInterface $response, string $contentType, QuoteContext $ctx, ?array $notes = null, ?array $entities = null): ResponseInterface
     {
         $bibleVersionsInfo = [];
         foreach ($ctx->formulatedVariants as $variant) {
@@ -111,20 +120,7 @@ class QuoteHandler extends AbstractHandler
         }
 
         if ($contentType === 'application/json') {
-            $body          = new \stdClass();
-            $body->results = $ctx->results;
-            $body->errors  = $ctx->errors;
-            $body->notices = $ctx->notices;
-            $body->info    = [
-                'ENDPOINT_VERSION'  => AppVersion::current(),
-                'detectedNotation'  => $ctx->detectedNotation,
-                'bibleVersionsInfo' => $bibleVersionsInfo,
-            ];
-            if ($notes !== null) {
-                // An object even when empty.
-                $body->notes = (object) $notes;
-            }
-            return $this->jsonResponse($response, $body);
+            return $this->jsonResponse($response, self::jsonBody($ctx, $bibleVersionsInfo, $notes, $entities));
         }
 
         if ($contentType === 'application/xml') {
@@ -180,6 +176,33 @@ class QuoteHandler extends AbstractHandler
         // HTML
         $html = $this->buildHtmlResponse($ctx, $bibleVersionsInfo);
         return $this->htmlResponse($response, $html);
+    }
+
+    /**
+     * @param array<string, string>  $bibleVersionsInfo
+     * @param ?array<string, mixed>  $notes
+     * @param ?array<string, mixed>  $entities
+     */
+    private static function jsonBody(QuoteContext $ctx, array $bibleVersionsInfo, ?array $notes, ?array $entities): \stdClass
+    {
+        $body          = new \stdClass();
+        $body->results = $ctx->results;
+        $body->errors  = $ctx->errors;
+        $body->notices = $ctx->notices;
+        $body->info    = [
+            'ENDPOINT_VERSION'  => AppVersion::current(),
+            'detectedNotation'  => $ctx->detectedNotation,
+            'bibleVersionsInfo' => $bibleVersionsInfo,
+        ];
+        if ($notes !== null) {
+            // An object even when empty.
+            $body->notes = (object) $notes;
+        }
+        if ($entities !== null) {
+            // An object even when empty.
+            $body->entities = (object) $entities;
+        }
+        return $body;
     }
 
     /**
