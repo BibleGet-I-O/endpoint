@@ -20,6 +20,7 @@ use BibleGet\Api\Util\PlainTextMap;
  *  - bad_check: a span's text does not give its check, or falls outside the text;
  *  - unknown_ids: a mention names an entry, or a candidate, that is not loaded (ruling B: dropped whole).
  * A unit is reported by its key, a mention by its key and span ("btu:gn.12.1 10-15"), an unknown id after its key.
+ * Each mention also keeps the SHA-256 of the row's formatted text (text_hash), which its positions count.
  * Runs inside the caller's transaction, after the entries are loaded (bpe_mention.entry references them).
  *
  * @phpstan-import-type Mention from CatalogReader
@@ -29,6 +30,9 @@ use BibleGet\Api\Util\PlainTextMap;
  */
 final class MentionLoader
 {
+    /** The mentions inserted by one statement. */
+    private const int BATCH = 1000;
+
     /**
      * @param array<string, MentionUnit> $mentions by unit key
      * @return Report
@@ -42,13 +46,10 @@ final class MentionLoader
         if (preg_match('/^[A-Z0-9_]+$/', $edition) !== 1) {
             throw new \InvalidArgumentException("Not an edition: $edition");
         }
-        $known  = self::knownIds($db);
-        $links  = self::links($db, $edition);
-        $texts  = self::texts($db, $edition);
-        $insert = $db->prepare(
-            'INSERT INTO bpe_mention (edition, book, chapter, verse, segment, tradition, unit, plain_hash, start_cp, end_cp, entry, candidates)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT array_agg(c) FROM json_array_elements_text(?::json) AS c))'
-        );
+        $known = self::knownIds($db);
+        $links = self::links($db, $edition);
+        $texts = self::texts($db, $edition);
+        $rows  = [];
         foreach ($mentions as $key => $unit) {
             $row = self::row($key, $links, $texts);
             if ($row === null) {
@@ -65,30 +66,58 @@ final class MentionLoader
                 $report['stale'][] = $key . ' text_plain';
                 continue;
             }
-            $utf16 = mb_convert_encoding($plain, 'UTF-16LE', 'UTF-8');
+            $utf16    = mb_convert_encoding($plain, 'UTF-16LE', 'UTF-8');
+            $textHash = hash('sha256', $text);
             foreach ($unit['mentions'] as $m) {
                 $span = self::span($key, $m, $utf16, $map, $known, $report);
                 if ($span === null) {
                     continue;
                 }
-                $insert->execute([
-                    $edition,
-                    $ref[0],
-                    $ref[1],
-                    $ref[2],
-                    $ref[3],
-                    $ref[4],
-                    $key,
-                    $unit['hash'],
-                    $span[0],
-                    $span[1],
-                    $m['entry'],
-                    $m['candidates'] === null ? null : json_encode($m['candidates'], JSON_THROW_ON_ERROR),
-                ]);
-                $report['loaded']++;
+                $rows[] = [
+                    'edition'    => $edition,
+                    'book'       => $ref[0],
+                    'chapter'    => $ref[1],
+                    'verse'      => $ref[2],
+                    'segment'    => $ref[3],
+                    'tradition'  => $ref[4],
+                    'unit'       => $key,
+                    'plain_hash' => $unit['hash'],
+                    'text_hash'  => $textHash,
+                    'start_cp'   => $span[0],
+                    'end_cp'     => $span[1],
+                    'entry'      => $m['entry'],
+                    'candidates' => $m['candidates'],
+                ];
             }
         }
+        $report['loaded'] = self::insert($db, $rows);
         return $report;
+    }
+
+    /**
+     * Inserts the mentions self::BATCH a statement, so that a load through an SSH tunnel is a few dozen round trips
+     * rather than one per mention.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return int the rows inserted
+     */
+    private static function insert(\PDO $db, array $rows): int
+    {
+        if ($rows === []) {
+            return 0;
+        }
+        $insert   = $db->prepare(
+            'INSERT INTO bpe_mention (edition, book, chapter, verse, segment, tradition, unit, plain_hash, text_hash, start_cp, end_cp, entry, candidates)
+             SELECT edition, book, chapter, verse, segment, tradition, unit, plain_hash, text_hash, start_cp, end_cp, entry, candidates
+               FROM json_to_recordset(?::json) AS r(edition varchar(16), book smallint, chapter integer, verse integer, segment text,
+                    tradition text, unit text, plain_hash text, text_hash text, start_cp integer, end_cp integer, entry text, candidates text[])'
+        );
+        $inserted = 0;
+        foreach (array_chunk($rows, self::BATCH) as $batch) {
+            $insert->execute([json_encode($batch, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)]);
+            $inserted += $insert->rowCount();
+        }
+        return $inserted;
     }
 
     /**

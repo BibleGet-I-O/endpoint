@@ -1,7 +1,8 @@
 -- Where the entries of CBPPEDR are named in an edition's text, so the reader can mark them, and what a card shows of
 -- an entry. Loaded by scripts/load_cbppedr.php, which replaces every row. The positions in bpe_mention are already
--- converted to code points of the row's formatted text, and are valid only against plain_hash (the SHA-256 hex of the
--- row's text_plain when it was loaded). A mention names either its entry or, while the identification is under
+-- converted to code points of the row's formatted text, and are valid only while both of the row's texts are as they
+-- were when it was loaded: plain_hash is the SHA-256 hex of its text_plain, text_hash that of its formatted text (a
+-- change of markup alone moves the code points). A mention names either its entry or, while the identification is under
 -- review, the candidate entries. bpe_verse_count is filled after the load, from the entity index.
 -- Design: the website's docs/superpowers/specs/2026-11-27-mentions-and-cards-design.md.
 
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS bpe_mention (
     tradition  text        NULL,
     unit       text        NOT NULL,
     plain_hash text        NOT NULL,
+    text_hash  text        NOT NULL,
     start_cp   integer     NOT NULL CHECK (start_cp >= 0),
     end_cp     integer     NOT NULL,
     entry      text        NULL REFERENCES bpe_entry (id) ON DELETE CASCADE,
@@ -25,6 +27,8 @@ CREATE TABLE IF NOT EXISTS bpe_mention (
 );
 
 CREATE INDEX IF NOT EXISTS bpe_mention_chapter ON bpe_mention (edition, book, chapter);
+-- For the ON DELETE CASCADE from bpe_entry.
+CREATE INDEX IF NOT EXISTS bpe_mention_entry ON bpe_mention (entry) WHERE entry IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS bpe_detail (
     entry     text PRIMARY KEY REFERENCES bpe_entry (id) ON DELETE CASCADE,

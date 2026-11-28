@@ -6,6 +6,7 @@ namespace BibleGet\Api\Repositories;
 
 use BibleGet\Api\Cbppedr\CatalogReader;
 use BibleGet\Api\Cbppedr\MentionLoader;
+use BibleGet\Api\Cbppedr\VerseCountException;
 use BibleGet\Api\Util\Placement;
 
 /**
@@ -266,6 +267,7 @@ final class EntityRepository
      * Loads are serialized by a session-level PostgreSQL advisory lock (LOAD_LOCK), taken before the first
      * transaction and released only after the counts are stored, so that a load cannot store counts read from a
      * catalog another load has since replaced; a second load waits for the first (up to the session's lock_timeout).
+     * When the counts fail after the catalog committed, a VerseCountException says so: the load must be run again.
      *
      * @param list<Entry>                                $entries
      * @param array<string, array<string, MentionUnit>>  $mentions by edition, then unit key
@@ -277,7 +279,12 @@ final class EntityRepository
         $this->db->query('SELECT pg_advisory_lock(' . self::LOAD_LOCK . ')');
         try {
             $result = $this->replaceCatalog($entries, $commit, $mentions, $details);
-            return $result + ['verse_counts' => $this->countVerses(array_keys($mentions))];
+            try {
+                $counted = $this->countVerses(array_keys($mentions));
+            } catch (\Throwable $e) {
+                throw new VerseCountException($commit, $e);
+            }
+            return $result + ['verse_counts' => $counted];
         } finally {
             $this->db->query('SELECT pg_advisory_unlock(' . self::LOAD_LOCK . ')');
         }

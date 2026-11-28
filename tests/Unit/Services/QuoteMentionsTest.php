@@ -19,6 +19,13 @@ final class QuoteMentionsTest extends TestCase
         self::assertFalse(QuoteMentions::requested(['mentions' => '0']));
         self::assertFalse(QuoteMentions::requested(['mentions' => 'yes']));
         self::assertFalse(QuoteMentions::requested(['mentions' => ['1']]));
+        // A JSON body's native values.
+        self::assertTrue(QuoteMentions::requested(['mentions' => true]));
+        self::assertTrue(QuoteMentions::requested(['mentions' => 1]));
+        self::assertFalse(QuoteMentions::requested(['mentions' => false]));
+        self::assertFalse(QuoteMentions::requested(['mentions' => 0]));
+        self::assertFalse(QuoteMentions::requested(['mentions' => 2]));
+        self::assertFalse(QuoteMentions::requested(['mentions' => 1.0]));
     }
 
     /**
@@ -27,17 +34,17 @@ final class QuoteMentionsTest extends TestCase
      */
     private static function row(string $version, int $verse, string $plain, array $extra = []): array
     {
-        return $extra + ['version' => $version, 'univbooknum' => 1, 'chapter' => 2, 'verse' => $verse, 'verse_segment' => null, 'text_tradition' => null, 'text_plain' => $plain];
+        return $extra + ['version' => $version, 'univbooknum' => 1, 'chapter' => 2, 'verse' => $verse, 'verse_segment' => null, 'text_tradition' => null, 'text' => $plain, 'text_plain' => $plain];
     }
 
     /**
      * @param array<string, mixed> $fields
-     * @return array{chapter: int, verse: int, segment: ?string, tradition: ?string, plain_hash: string, start: int, end: int, entry: ?string, candidates: ?list<string>}
+     * @return array{chapter: int, verse: int, segment: ?string, tradition: ?string, plain_hash: string, text_hash: string, start: int, end: int, entry: ?string, candidates: ?list<string>}
      */
     private static function mention(int $verse, string $plain, array $fields): array
     {
-        /** @var array{chapter: int, verse: int, segment: ?string, tradition: ?string, plain_hash: string, start: int, end: int, entry: ?string, candidates: ?list<string>} */
-        return $fields + ['chapter' => 2, 'verse' => $verse, 'segment' => null, 'tradition' => null, 'plain_hash' => hash('sha256', $plain), 'start' => 0, 'end' => 1, 'entry' => null, 'candidates' => null];
+        /** @var array{chapter: int, verse: int, segment: ?string, tradition: ?string, plain_hash: string, text_hash: string, start: int, end: int, entry: ?string, candidates: ?list<string>} */
+        return $fields + ['chapter' => 2, 'verse' => $verse, 'segment' => null, 'tradition' => null, 'plain_hash' => hash('sha256', $plain), 'text_hash' => hash('sha256', $plain), 'start' => 0, 'end' => 1, 'entry' => null, 'candidates' => null];
     }
 
     public function testMatchesRowsByIdentityWithNullsEqualAndAsksOneQueryPerEditionAndBook(): void
@@ -50,6 +57,8 @@ final class QuoteMentionsTest extends TestCase
             self::mention(1, 'Ecce Petrus', ['start' => 0, 'end' => 11, 'candidates' => ['bpers:a', 'bpers:b']]),
             self::mention(1, 'x', ['segment' => 'a', 'entry' => 'bpers:x']),
             self::mention(2, 'other text', ['entry' => 'bpers:stale']),
+            // Same plain text, measured against other markup.
+            self::mention(1, 'Ecce Petrus', ['text_hash' => hash('sha256', '<i>Ecce</i> Petrus'), 'entry' => 'bpers:markup']),
         ]);
         $repo->expects(self::once())->method('cards')
             ->with('NVBSE', ['bpers:a', 'bpers:b', 'bpers:petrus'])

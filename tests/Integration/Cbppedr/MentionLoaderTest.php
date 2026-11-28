@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace BibleGet\Tests\Integration\Cbppedr;
 
 use BibleGet\Api\Cbppedr\MentionLoader;
+use BibleGet\Api\Cbppedr\VerseCountException;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Repositories\EntityRepository;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use BibleGet\Tests\Support\CountingStatement;
 
 /**
  * Loading CBPPEDR's mentions (migration 073) against an edition's rows: TEST1 gets a few rows of invented Latin in
@@ -249,12 +251,13 @@ final class MentionLoaderTest extends DatabaseTestCase
                 'tradition'  => null,
                 'unit'       => 'btu:fx.1.1',
                 'plain_hash' => $unit['hash'],
+                'text_hash'  => hash('sha256', 'Ecce 𝔄 et <i>Petrus</i> venit.'),
                 'start_cp'   => 10,
                 'end_cp'     => 23,
                 'entry'      => 'bpers:petrus',
                 'candidates' => null,
             ]
-        ], $this->rows('SELECT edition, book, chapter, verse, segment, tradition, unit, plain_hash, start_cp, end_cp, entry, candidates FROM bpe_mention'));
+        ], $this->rows('SELECT edition, book, chapter, verse, segment, tradition, unit, plain_hash, text_hash, start_cp, end_cp, entry, candidates FROM bpe_mention'));
         self::assertSame('<i>Petrus</i>', mb_substr('Ecce 𝔄 et <i>Petrus</i> venit.', 10, 13));
     }
 
@@ -353,6 +356,78 @@ final class MentionLoaderTest extends DatabaseTestCase
         ( new EntityRepository($this->getConnection()) )->replaceAll([self::entry('bpers:marcus', []), self::entry('bplace:via', [])], 'c2');
         self::assertSame(0, $this->rowsIn('bpe_mention'));
         self::assertSame(0, $this->rowsIn('bpe_detail'));
+        self::assertSame(0, $this->rowsIn('bpe_verse_count'));
+    }
+
+    /** A connection of its own to the test database, which runs $statementClass statements when given one. */
+    private static function connection(?string $statementClass = null): \PDO
+    {
+        $p   = Connection::params();
+        $pdo = new \PDO("pgsql:host={$p['host']};port={$p['port']};dbname={$p['dbname']}", $p['user'], $p['password']);
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+        if ($statementClass !== null) {
+            $pdo->setAttribute(\PDO::ATTR_STATEMENT_CLASS, [$statementClass, []]);
+        }
+        return $pdo;
+    }
+
+    /** Through an SSH tunnel every round trip counts: the mentions go in about a thousand per statement. */
+    public function testLoadsMoreThanAThousandMentionsInBatches(): void
+    {
+        $this->loadEntries();
+        $pdo = $this->getConnection();
+        $pdo->prepare('INSERT INTO "TEST1" (book, chapter, verse, text, testament, section) VALUES (60, 2, 1, ?, 1, 1)')
+            ->execute([rtrim(str_repeat('Petrus ', 2500))]);
+        $pdo->exec("INSERT INTO btu_link (edition, book, ord, ref, units, kind, status) VALUES ('TEST1', 60, 3, '2:1', ARRAY['btu:fx.2.1'], 'same', 'rule')");
+        $plain    = $this->plain(60, 2, 1);
+        $check    = substr(hash('sha256', 'Petrus'), 0, 8);
+        $mentions = [];
+        for ($i = 0; $i < 2500; $i++) {
+            $mentions[] = ['start' => $i * 7, 'end' => $i * 7 + 6, 'check' => $check, 'entry' => 'bpers:petrus', 'candidates' => null];
+        }
+        $mentions[] = ['start' => 0, 'end' => 13, 'check' => substr(hash('sha256', 'Petrus Petrus'), 0, 8), 'entry' => null, 'candidates' => ['bpers:petrus', 'bpers:marcus']];
+
+        CountingStatement::$executed = [];
+        $result                      = MentionLoader::load(self::connection(CountingStatement::class), 'TEST1', ['btu:fx.2.1' => self::unit($plain, $mentions)]);
+
+        self::assertSame(2501, $result['loaded']);
+        self::assertSame([], $result['bad_check']);
+        self::assertSame(3, CountingStatement::count('INSERT INTO bpe_mention'), '2501 mentions, 1000 a statement');
+        self::assertSame(2501, $this->rowsIn('bpe_mention'));
+        self::assertSame(
+            [['start_cp' => 0, 'end_cp' => 6], ['start_cp' => 17493, 'end_cp' => 17499]],
+            $this->rows('SELECT start_cp, end_cp FROM bpe_mention WHERE entry IS NOT NULL AND start_cp IN (0, 17493) ORDER BY start_cp')
+        );
+        self::assertSame(
+            [['candidates' => '{bpers:petrus,bpers:marcus}', 'start_cp' => 0, 'end_cp' => 13]],
+            $this->rows('SELECT candidates::text AS candidates, start_cp, end_cp FROM bpe_mention WHERE entry IS NULL')
+        );
+    }
+
+    /** When the catalog commits but the verse counts fail, the load says so: it must be run again. */
+    public function testReportsAVerseCountThatFailedAfterTheCatalogCommitted(): void
+    {
+        $p   = Connection::params();
+        $pdo = new class ("pgsql:host={$p['host']};port={$p['port']};dbname={$p['dbname']}", $p['user'], $p['password']) extends \PDO {
+            public function prepare(string $query, array $options = []): \PDOStatement|false
+            {
+                if (str_contains($query, 'INSERT INTO bpe_verse_count')) {
+                    throw new \RuntimeException('failed on purpose');
+                }
+                return parent::prepare($query, $options);
+            }
+        };
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+        try {
+            ( new EntityRepository($pdo) )->replaceAll(self::entries(), 'c1', ['TEST1' => $this->units()]);
+            self::fail('The verse counts should have failed');
+        } catch (VerseCountException $e) {
+            self::assertSame('failed on purpose', $e->getPrevious()?->getMessage());
+        }
+        self::assertFalse($pdo->inTransaction());
+        self::assertSame(6, $this->rowsIn('bpe_mention'), 'the catalog committed');
         self::assertSame(0, $this->rowsIn('bpe_verse_count'));
     }
 }

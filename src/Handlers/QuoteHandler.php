@@ -95,10 +95,16 @@ class QuoteHandler extends AbstractHandler
             [$ctx->results, $notes] = QuoteNotes::attach(array_values($ctx->results), $notesMode, new NoteRepository($ctx->pdo));
         }
 
-        // Mentions (mentions=1): JSON only, other formats ignore it; they follow the rows given (caps included).
+        // Mentions (mentions=1): JSON only, other formats ignore it; they follow the rows given (caps included). They
+        // are an annotation: when reading them fails, the quote is answered as if they had not been asked for.
         $entities = null;
         if ($contentType === 'application/json' && QuoteMentions::requested($params)) {
-            [$ctx->results, $entities] = QuoteMentions::attach(array_values($ctx->results), new MentionRepository($ctx->pdo));
+            try {
+                [$ctx->results, $entities] = QuoteMentions::attach(array_values($ctx->results), new MentionRepository($ctx->pdo));
+            } catch (\Throwable $e) {
+                $entities = null;
+                $ctx->logger->warning('Quote answered without mentions: ' . $e->getMessage(), ['exception' => $e]);
+            }
         }
 
         // Build response body

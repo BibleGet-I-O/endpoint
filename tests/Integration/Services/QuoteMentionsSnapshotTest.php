@@ -27,9 +27,9 @@ final class QuoteMentionsSnapshotTest extends DatabaseTestCase
              VALUES ('bpers:petrus', 'person', 'individual', '{\"la\": \"Petrus\"}', '{}', NULL, NULL, false)"
         );
         $pdo->prepare(
-            "INSERT INTO bpe_mention (edition, book, chapter, verse, unit, plain_hash, start_cp, end_cp, entry)
-             VALUES ('TEST1', 60, 1, 1, 'btu:fx.1.1', ?, 5, 11, 'bpers:petrus')"
-        )->execute([hash('sha256', 'Ecce Petrus')]);
+            "INSERT INTO bpe_mention (edition, book, chapter, verse, unit, plain_hash, text_hash, start_cp, end_cp, entry)
+             VALUES ('TEST1', 60, 1, 1, 'btu:fx.1.1', ?, ?, 5, 11, 'bpers:petrus')"
+        )->execute([hash('sha256', 'Ecce Petrus'), hash('sha256', 'Ecce Petrus')]);
     }
 
     protected function tearDown(): void
@@ -48,7 +48,7 @@ final class QuoteMentionsSnapshotTest extends DatabaseTestCase
     /** @return list<array<string, mixed>> */
     private static function rows(): array
     {
-        return [['version' => 'TEST1', 'univbooknum' => 60, 'chapter' => 1, 'verse' => 1, 'verse_segment' => null, 'text_tradition' => null, 'text_plain' => 'Ecce Petrus']];
+        return [['version' => 'TEST1', 'univbooknum' => 60, 'chapter' => 1, 'verse' => 1, 'verse_segment' => null, 'text_tradition' => null, 'text' => 'Ecce Petrus', 'text_plain' => 'Ecce Petrus']];
     }
 
     public function testReadsMentionsAndCardsInOneReadOnlySnapshot(): void
@@ -89,15 +89,29 @@ final class QuoteMentionsSnapshotTest extends DatabaseTestCase
         self::assertFalse($pdo->inTransaction());
     }
 
-    /** Inside a caller's transaction the reads simply run in it, which stays open. */
-    public function testReadsInACallersTransaction(): void
+    /** Inside a caller's repeatable-read transaction the reads simply run in it, which stays open. */
+    public function testReadsInACallersRepeatableReadTransaction(): void
     {
         $pdo = $this->getConnection();
         $pdo->beginTransaction();
         try {
+            $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
             [, $cards] = QuoteMentions::attach(self::rows(), new MentionRepository($pdo));
             self::assertSame(['bpers:petrus'], array_keys($cards));
             self::assertTrue($pdo->inTransaction());
+        } finally {
+            $pdo->rollBack();
+        }
+    }
+
+    /** A caller's read-committed transaction would let a load commit between the mention and the card reads. */
+    public function testRefusesACallersReadCommittedTransaction(): void
+    {
+        $pdo = $this->getConnection();
+        $pdo->beginTransaction();
+        try {
+            $this->expectException(\LogicException::class);
+            QuoteMentions::attach(self::rows(), new MentionRepository($pdo));
         } finally {
             $pdo->rollBack();
         }

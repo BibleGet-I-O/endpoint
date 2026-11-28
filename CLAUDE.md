@@ -51,7 +51,7 @@ The Router parses the URL path and dispatches to the appropriate PSR-15 handler:
 
 | Route                        | Handler                | Description |
 |------------------------------|------------------------|-------------|
-| `/v3/quote`                  | `QuoteHandler`         | Bible quote retrieval |
+| `/v3/quote`                  | `QuoteHandler`         | Bible quote retrieval. `mentions=1` (JSON only) adds each NVBSE row's CBPPEDR `mentions` (code points of the formatted `text`, dropped when the row's `text_plain` or `text` no longer hashes as at load) and the top-level `entities` cards (`src/Services/QuoteMentions.php`, table `bpe_mention` etc., migration 073, loaded by `scripts/load_cbppedr.php`) |
 | `/v3/metadata/biblebooks`    | `MetadataHandler`      | Book names in 25+ languages |
 | `/v3/metadata/bibleversions` | `MetadataHandler`      | Available Bible versions |
 | `/v3/metadata/versionindex`  | `MetadataHandler`      | Chapter/verse indexes |

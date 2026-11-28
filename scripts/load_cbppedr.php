@@ -25,6 +25,7 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 use BibleGet\Api\Auth\CredentialFactory;
 use BibleGet\Api\Cbppedr\CatalogReader;
+use BibleGet\Api\Cbppedr\VerseCountException;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Repositories\EntityRepository;
 use BibleGet\Api\Util\EnvLoader;
@@ -47,7 +48,19 @@ ini_set('error_log', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 fwrite(STDERR, sprintf('APP_ENV=%s DB_NAME=%s' . PHP_EOL, CredentialFactory::currentEnv(), CredentialFactory::env('DB_NAME') ?? ''));
 
 $catalog = ( new CatalogReader() )->read($dir);
-$result  = ( new EntityRepository(Connection::getConnection()) )->replaceAll($catalog['entries'], $commit, $catalog['mentions'], $catalog['details']);
+foreach ($catalog['malformed'] as $file => $skipped) {
+    fwrite(STDERR, sprintf('%s: %d malformed units and %d malformed mentions skipped' . PHP_EOL, $file, $skipped['units'], $skipped['mentions']));
+}
+try {
+    $result = ( new EntityRepository(Connection::getConnection()) )->replaceAll($catalog['entries'], $commit, $catalog['mentions'], $catalog['details']);
+} catch (VerseCountException $e) {
+    fwrite(STDERR, sprintf(
+        'CBPPEDR %s was loaded, but counting its verses failed (%s): the cards show stale counts. Run this script again.' . PHP_EOL,
+        substr($e->commit, 0, 12),
+        $e->getPrevious()?->getMessage() ?? $e->getMessage()
+    ));
+    exit(1);
+}
 
 fwrite(STDERR, sprintf(
     'CBPPEDR %s: %d entries, %d attested units, %d mentioned units, %d labelled units, %d details, %d verse counts' . PHP_EOL,

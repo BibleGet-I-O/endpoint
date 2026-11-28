@@ -8,7 +8,9 @@ use BibleGet\Api\Handlers\QuoteHandler;
 use BibleGet\Api\Http\Enum\AcceptHeader;
 use BibleGet\Api\Http\Enum\RequestContentType;
 use BibleGet\Api\Http\Enum\RequestMethod;
+use BibleGet\Api\Http\Logs\LoggerFactory;
 use BibleGet\Tests\Integration\DatabaseTestCase;
+use Monolog\Handler\TestHandler;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
 
@@ -63,21 +65,36 @@ final class QuoteMentionsTest extends DatabaseTestCase
     }
 
     /**
-     * A mention on a row of $edition, hashed against the row's current text_plain unless $hash is given.
+     * A mention on a row of $edition, hashed against the row's current text_plain and text unless $hash or
+     * $textHash is given.
      *
      * @param ?list<string> $candidates
      */
-    private function mention(string $edition, int $chapter, int $verse, int $start, int $end, ?string $entry, ?array $candidates = null, ?string $segment = null, ?string $tradition = null, ?string $hash = null): void
+    private function mention(string $edition, int $chapter, int $verse, int $start, int $end, ?string $entry, ?array $candidates = null, ?string $segment = null, ?string $tradition = null, ?string $hash = null, ?string $textHash = null): void
     {
-        $plainHash = $hash ?? "(SELECT encode(sha256(convert_to(text_plain, 'UTF8')), 'hex') FROM \"$edition\" WHERE book = 1 AND chapter = $chapter AND verse = $verse AND verse_segment IS NULL AND text_tradition IS NULL)";
-        $this->getConnection()->prepare(
-            "INSERT INTO bpe_mention (edition, book, chapter, verse, segment, tradition, unit, plain_hash, start_cp, end_cp, entry, candidates)
-             VALUES (?, 1, ?, ?, ?, ?, 'btu:gn', " . ( $hash === null ? $plainHash : '?' ) . ', ?, ?, ?, (SELECT array_agg(c) FROM json_array_elements_text(?::json) AS c))'
-        )->execute(array_merge(
-            [$edition, $chapter, $verse, $segment, $tradition],
-            $hash === null ? [] : [$hash],
-            [$start, $end, $entry, $candidates === null ? null : json_encode($candidates)]
-        ));
+        $pdo = $this->getConnection();
+        $row = $pdo->prepare(
+            "SELECT text, text_plain FROM \"$edition\" WHERE book = 1 AND chapter = ? AND verse = ? AND verse_segment IS NULL AND text_tradition IS NULL"
+        );
+        $row->execute([$chapter, $verse]);
+        $texts = $row->fetch(\PDO::FETCH_ASSOC);
+        self::assertIsArray($texts);
+        $pdo->prepare(
+            "INSERT INTO bpe_mention (edition, book, chapter, verse, segment, tradition, unit, plain_hash, text_hash, start_cp, end_cp, entry, candidates)
+             VALUES (?, 1, ?, ?, ?, ?, 'btu:gn', ?, ?, ?, ?, ?, (SELECT array_agg(c) FROM json_array_elements_text(?::json) AS c))"
+        )->execute([
+            $edition,
+            $chapter,
+            $verse,
+            $segment,
+            $tradition,
+            $hash ?? hash('sha256', (string) $texts['text_plain']),
+            $textHash ?? hash('sha256', (string) $texts['text']),
+            $start,
+            $end,
+            $entry,
+            $candidates === null ? null : json_encode($candidates),
+        ]);
     }
 
     /**
@@ -222,6 +239,59 @@ final class QuoteMentionsTest extends DatabaseTestCase
         self::assertSame([['start' => 0, 'end' => 5, 'entry' => 'bpers:petrus']], $rows[0]['mentions']);
         self::assertSame([], $rows[1]['mentions'], 'the text no longer hashes to plain_hash');
         self::assertSame(['bpers:petrus'], array_keys(self::entities($body)));
+    }
+
+    /** Positions count code points of the formatted text: a change of markup alone drops them too. */
+    public function testDropsTheMentionsOfARowWhoseMarkupChanged(): void
+    {
+        $this->mention('TEST1', 1, 1, 0, 5, 'bpers:petrus');
+        $text = (string) $this->getConnection()->query('SELECT text FROM "TEST1" WHERE book = 1 AND chapter = 1 AND verse = 1 AND verse_segment IS NULL AND text_tradition IS NULL')?->fetchColumn();
+        // Measured against the text as it was, in italics: the plain text is the same, the markup is not.
+        $this->mention('TEST1', 1, 2, 0, 5, 'bpers:paulus', null, null, null, null, hash('sha256', '<i>' . $text . '</i>'));
+        $body = $this->quote(['query' => 'Gen1:1-2', 'version' => 'TEST1', 'mentions' => '1']);
+        $rows = self::rows($body);
+        self::assertSame([['start' => 0, 'end' => 5, 'entry' => 'bpers:petrus']], $rows[0]['mentions']);
+        self::assertSame([], $rows[1]['mentions'], 'the formatted text no longer hashes to text_hash');
+        self::assertSame(['bpers:petrus'], array_keys(self::entities($body)));
+    }
+
+    /** Images, Wikipedia titles and coordinates only for an entry whose Wikidata item was reviewed or adjudicated. */
+    public function testNoDetailsWithoutAReviewedQid(): void
+    {
+        $this->entry('bplace:nulla', 'place');
+        $this->entry('bplace:auto', 'place', ['la' => 'N'], ['en' => 'd'], 'auto');
+        $this->getConnection()->exec("INSERT INTO bpe_detail (entry, image, wikipedia, coords) VALUES
+            ('bplace:nulla', '{\"file\": \"N.jpg\", \"license\": \"CC0\"}', '{\"en\": \"N\"}', '{\"lat\": 1.5, \"lon\": 2.5}'),
+            ('bplace:auto', '{\"file\": \"A.jpg\", \"license\": \"CC0\"}', '{\"en\": \"A\"}', '{\"lat\": 3.5, \"lon\": 4.5}')");
+        $this->mention('TEST1', 1, 1, 0, 5, 'bplace:nulla');
+        $this->mention('TEST1', 1, 1, 6, 9, 'bplace:auto');
+        $entities = self::entities($this->quote(['query' => 'Gen1:1', 'version' => 'TEST1', 'mentions' => '1']));
+        foreach (['bplace:nulla', 'bplace:auto'] as $id) {
+            self::assertIsArray($entities[$id]);
+            foreach (['image', 'wikipedia', 'coords'] as $field) {
+                self::assertArrayNotHasKey($field, $entities[$id], "$id $field");
+            }
+        }
+    }
+
+    /** A failure in the mentions step is logged, and the quote is answered as if mentions were not asked for. */
+    public function testAFailingMentionsStepLeavesTheQuoteWhole(): void
+    {
+        $this->mention('TEST1', 1, 1, 0, 5, 'bpers:petrus');
+        $plain = $this->quote(['query' => 'Gen1:1-2', 'version' => 'TEST1']);
+        $pdo   = $this->getConnection();
+        $log   = new TestHandler();
+        $pdo->exec('ALTER TABLE bpe_mention RENAME TO bpe_mention_away');
+        LoggerFactory::create('api')->pushHandler($log);
+        try {
+            $body = $this->quote(['query' => 'Gen1:1-2', 'version' => 'TEST1', 'mentions' => '1']);
+        } finally {
+            LoggerFactory::create('api')->popHandler();
+            $this->getConnection()->exec('ALTER TABLE bpe_mention_away RENAME TO bpe_mention');
+        }
+        self::assertTrue($log->hasWarningThatContains('mentions'), 'the failure is logged as a warning');
+        self::assertArrayNotHasKey('entities', $body);
+        self::assertSame($plain['results'], $body['results']);
     }
 
     public function testWithoutTheParameterNothingChanges(): void

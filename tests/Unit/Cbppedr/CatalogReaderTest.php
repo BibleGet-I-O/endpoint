@@ -79,6 +79,53 @@ final class CatalogReaderTest extends TestCase
         }
     }
 
+    /** What a mentions file holds that is not a unit or a mention is skipped, and counted by file. */
+    public function testCountsWhatItSkipsAsMalformed(): void
+    {
+        self::assertSame([], ( new CatalogReader() )->read(self::FIXTURE)['malformed']);
+
+        $dir = sys_get_temp_dir() . '/cbppedr-' . bin2hex(random_bytes(4));
+        mkdir($dir . '/data/mentions', 0o777, true);
+        foreach (['persons', 'places', 'events'] as $c) {
+            copy(self::FIXTURE . "/data/$c.json", "$dir/data/$c.json");
+        }
+        $ok = ['start' => 0, 'end' => 1, 'check' => '0a1b2c3d', 'entry' => 'bpers:fixture.a'];
+        file_put_contents("$dir/data/mentions/TEST1.json", json_encode([
+            'edition' => 'TEST1',
+            'units'   => [
+                'btu:gn.1.1' => ['hash' => 'aa', 'mentions' => [$ok]],
+            ]
+        ]));
+        file_put_contents("$dir/data/mentions/TEST1_curated.json", json_encode([
+            'edition' => 'TEST1',
+            'units'   => [
+                'btu:gn.1.2' => ['mentions' => [$ok]],                     // no hash
+                'btu:gn.1.3' => 'not a unit',
+                'btu:gn.1.4' => [
+                    'hash'     => 'bb',
+                    'mentions' => [
+                        $ok,
+                        ['start' => '0', 'end' => 1, 'check' => '0a1b2c3d', 'entry' => 'bpers:fixture.a'], // start not an int
+                        ['start' => 0, 'end' => 1, 'check' => '0a1b2c3d', 'entry' => 'bpers:fixture.a', 'candidates' => ['bpers:fixture.b']], // both
+                        ['start' => 0, 'end' => 1, 'check' => '0a1b2c3d'],     // neither
+                    ]
+                ],
+            ]
+        ]));
+        try {
+            $catalog = ( new CatalogReader() )->read($dir);
+            self::assertSame(['TEST1_curated.json' => ['units' => 2, 'mentions' => 3]], $catalog['malformed']);
+            self::assertSame(['btu:gn.1.1', 'btu:gn.1.4'], array_keys($catalog['mentions']['TEST1']));
+            self::assertCount(1, $catalog['mentions']['TEST1']['btu:gn.1.4']['mentions']);
+        } finally {
+            array_map('unlink', glob("$dir/data/mentions/*.json") ?: []);
+            array_map('unlink', glob("$dir/data/*.json") ?: []);
+            rmdir("$dir/data/mentions");
+            rmdir("$dir/data");
+            rmdir($dir);
+        }
+    }
+
     public function testRefusesADirectoryWithoutTheCatalogs(): void
     {
         $this->expectException(\RuntimeException::class);

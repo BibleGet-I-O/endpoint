@@ -12,7 +12,8 @@ use BibleGet\Api\Util\StringUtils;
  * the parameter). Each row of an edition that has CBPPEDR mentions gets `mentions: [{start, end, entry} | {start,
  * end, candidates}]`, in code points of its formatted text, ordered by start and then outer before inner; a row is
  * matched by verse identity (NULLs equal), and gets none when its text_plain no longer hashes to the mentions'
- * plain_hash. The cards of exactly the entries the sent mentions name come back keyed by id, each with the number of
+ * plain_hash or its formatted text to their text_hash (the positions count the formatted text's code points, so a
+ * change of markup alone moves them). `mentions` may also be a JSON body's `true` or `1`; any other value is off. The cards of exactly the entries the sent mentions name come back keyed by id, each with the number of
  * verses of its index entry in the edition of the first row that names it. Mentions follow the rows given, so a
  * visitor's 30 verses of a copyrighted edition carry only theirs.
  *
@@ -28,6 +29,9 @@ final class QuoteMentions
     public static function requested(array $params): bool
     {
         $raw = $params['mentions'] ?? null;
+        if ($raw === true || $raw === 1) { // a JSON body's native values
+            return true;
+        }
         return is_string($raw) && in_array(strtolower(trim($raw)), ['1', 'true'], true);
     }
 
@@ -66,10 +70,11 @@ final class QuoteMentions
             if (!isset($with[$edition])) {
                 continue;
             }
-            $hash  = hash('sha256', StringUtils::asString($row['text_plain'] ?? ''));
-            $marks = [];
+            $plainHash = hash('sha256', StringUtils::asString($row['text_plain'] ?? ''));
+            $textHash  = hash('sha256', StringUtils::asString($row['text'] ?? ''));
+            $marks     = [];
             foreach ($byKey[self::rowKey($edition, $row)] ?? [] as $m) {
-                if (hash_equals($m['plain_hash'], $hash)) {
+                if (hash_equals($m['plain_hash'], $plainHash) && hash_equals($m['text_hash'], $textHash)) {
                     $marks[] = self::mark($m);
                     foreach ($m['candidates'] ?? [(string) $m['entry']] as $id) {
                         $named[$id] ??= $edition;

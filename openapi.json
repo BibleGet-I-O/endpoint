@@ -4723,15 +4723,29 @@
                         "description": "The edition's notes (footnotes and cross-references) on the verses returned. `none` (the default): no notes, the response is unchanged. `markers`: each row gains `notes`, the markers printed on it. `full`: the rows' markers and, in the top-level `notes`, each note's body and citations once. Only for the BibleGet website's `reader` key: any other credential gets 403. JSON only: with `return=xml` or `return=html` (or such an `Accept`), 400. Only notes anchored to the verses returned are given: a note comes with the verse where it begins. Editions with notes: NABRE (CEI 2008 to follow)."
                     },
                     "mentions": {
-                        "type": "string",
-                        "enum": [
-                            "0",
-                            "1",
-                            "false",
-                            "true"
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "0",
+                                    "1",
+                                    "false",
+                                    "true"
+                                ]
+                            },
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "integer",
+                                "enum": [
+                                    0,
+                                    1
+                                ]
+                            }
                         ],
                         "default": "0",
-                        "description": "CBPPEDR's persons and places named in the text (JSON only: with `return=xml` or `return=html` the parameter is ignored, without an error). `1` or `true`: each row of an edition with mentions (the Nova Vulgata, NVBSE) gains `mentions`, and the response gains the top-level `entities`, the cards of exactly the entries those mentions name. Rows of other editions are unchanged. A row whose text changed since the mentions were loaded gets none. Same credentials and caps as the quote: the mentions follow the rows returned (a visitor's 30 verses of a copyrighted edition carry only theirs). See the `mentions` query parameter."
+                        "description": "A JSON body may also send the native `true` or `1`. CBPPEDR's persons and places named in the text (JSON only: with `return=xml` or `return=html` the parameter is ignored, without an error). `1` or `true`: each row of an edition with mentions (the Nova Vulgata, NVBSE) gains `mentions`, and the response gains the top-level `entities`, the cards of exactly the entries those mentions name. Rows of other editions are unchanged. A row whose text (its plain text or its markup) changed since the mentions were loaded gets none. Any other value (`0`, `false`, anything else) means off: the response is unchanged. Same credentials and caps as the quote: the mentions follow the rows returned (a visitor's 30 verses of a copyrighted edition carry only theirs). See the `mentions` query parameter."
                     }
                 },
                 "required": [
@@ -20157,7 +20171,32 @@
                     },
                     "image": {
                         "type": "object",
-                        "description": "The entry's image (from Wikidata), as CBPPEDR records it.",
+                        "description": "The entry's image (from Wikidata, on Wikimedia Commons), as CBPPEDR records it. Show its author and license with it.",
+                        "required": [
+                            "file",
+                            "license"
+                        ],
+                        "properties": {
+                            "file": {
+                                "type": "string",
+                                "description": "The file's name on Wikimedia Commons (Wikidata P18).",
+                                "example": "Fixtura.jpg"
+                            },
+                            "author": {
+                                "type": "string",
+                                "description": "The author to credit, when Commons records one."
+                            },
+                            "license": {
+                                "type": "string",
+                                "description": "The file's license, as Commons names it.",
+                                "example": "CC BY-SA 4.0"
+                            },
+                            "license_url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "The license's text, when it has one (not for the public domain)."
+                            }
+                        },
                         "additionalProperties": {
                             "type": "string"
                         }
@@ -20338,7 +20377,7 @@
                 "name": "mentions",
                 "in": "query",
                 "required": false,
-                "description": "CBPPEDR's persons and places named in the text (JSON only: with `return=xml` or `return=html` the parameter is ignored, without an error). `1` or `true`: each row of an edition with mentions (the Nova Vulgata, NVBSE) gains `mentions`, and the response gains the top-level `entities`, the cards of exactly the entries those mentions name. Rows of other editions are unchanged. A row whose text changed since the mentions were loaded gets none. Same credentials and caps as the quote: the mentions follow the rows returned (a visitor's 30 verses of a copyrighted edition carry only theirs).",
+                "description": "CBPPEDR's persons and places named in the text (JSON only: with `return=xml` or `return=html` the parameter is ignored, without an error). `1` or `true`: each row of an edition with mentions (the Nova Vulgata, NVBSE) gains `mentions`, and the response gains the top-level `entities`, the cards of exactly the entries those mentions name. Rows of other editions are unchanged. A row whose text (its plain text or its markup) changed since the mentions were loaded gets none. Any other value (`0`, `false`, anything else) means off: the response is unchanged. Same credentials and caps as the quote: the mentions follow the rows returned (a visitor's 30 verses of a copyrighted edition carry only theirs).",
                 "schema": {
                     "type": "string",
                     "enum": [
