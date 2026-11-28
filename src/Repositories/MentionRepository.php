@@ -137,19 +137,22 @@ class MentionRepository
     }
 
     /**
-     * An entry's image, Wikipedia titles and coordinates, each only when present.
+     * An entry's image, Wikipedia titles and coordinates, each only when present; the image only with its `file` and
+     * `license` (EntityCard.image requires both), with `author` and `license_url` when they are strings.
      *
      * @param array<string, mixed> $r
      * @return array{image?: \stdClass, wikipedia?: \stdClass, coords?: array{lat: float, lon: float}}
      */
     private static function details(array $r): array
     {
-        $out = [];
-        foreach (['image', 'wikipedia'] as $k) {
-            $map = self::stringMap($r[$k]);
-            if ($map !== []) {
-                $out[$k] = (object) $map;
-            }
+        $out   = [];
+        $image = array_intersect_key(self::stringMap($r['image']), array_flip(['file', 'author', 'license', 'license_url']));
+        if (isset($image['file'], $image['license'])) {
+            $out['image'] = (object) $image;
+        }
+        $wikipedia = self::stringMap($r['wikipedia']);
+        if ($wikipedia !== []) {
+            $out['wikipedia'] = (object) $wikipedia;
         }
         $coords = is_string($r['coords']) ? json_decode($r['coords'], true) : null;
         if (is_array($coords) && is_numeric($coords['lat'] ?? null) && is_numeric($coords['lon'] ?? null)) {

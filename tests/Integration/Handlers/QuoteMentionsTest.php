@@ -36,7 +36,7 @@ final class QuoteMentionsTest extends DatabaseTestCase
         $this->entry('bplace:roma', 'place', ['la' => 'Roma', 'en' => 'Rome'], [], 'reviewed');
         $this->entry('bplace:via', 'place');
         $pdo->exec("INSERT INTO bpe_detail (entry, image, wikipedia, coords) VALUES
-            ('bplace:roma', '{\"file\": \"Roma.jpg\"}', '{\"en\": \"Rome\"}', '{\"lat\": 41.9, \"lon\": 12.5}')");
+            ('bplace:roma', '{\"file\": \"Roma.jpg\", \"license\": \"CC0\", \"author\": 7}', '{\"en\": \"Rome\"}', '{\"lat\": 41.9, \"lon\": 12.5}')");
         $pdo->exec("INSERT INTO bpe_verse_count (edition, entry, verses) VALUES ('TEST1', 'bplace:roma', 7), ('TEST1', 'bpers:petrus', 3)");
     }
 
@@ -182,7 +182,7 @@ final class QuoteMentionsTest extends DatabaseTestCase
                 'description' => [],
                 'uncertain'   => false,
                 'verse_count' => 7,
-                'image'       => ['file' => 'Roma.jpg'],
+                'image'       => ['file' => 'Roma.jpg', 'license' => 'CC0'],
                 'wikipedia'   => ['en' => 'Rome'],
                 'coords'      => ['lat' => 41.9, 'lon' => 12.5],
             ],
@@ -272,6 +272,24 @@ final class QuoteMentionsTest extends DatabaseTestCase
                 self::assertArrayNotHasKey($field, $entities[$id], "$id $field");
             }
         }
+    }
+
+    /** An image is sent only with its file and its license (EntityCard.image requires both). */
+    public function testNoImageWithoutAFileAndALicense(): void
+    {
+        $this->entry('bplace:sine', 'place', ['la' => 'N'], ['en' => 'd'], 'reviewed');
+        $this->entry('bplace:anon', 'place', ['la' => 'N'], ['en' => 'd'], 'adjudicated');
+        $this->getConnection()->exec("INSERT INTO bpe_detail (entry, image, wikipedia, coords) VALUES
+            ('bplace:sine', '{\"file\": \"S.jpg\", \"author\": \"A\"}', '{\"en\": \"S\"}', NULL),
+            ('bplace:anon', '{\"license\": \"CC0\"}', NULL, NULL)");
+        $this->mention('TEST1', 1, 1, 0, 5, 'bplace:sine');
+        $this->mention('TEST1', 1, 1, 6, 9, 'bplace:anon');
+        $entities = self::entities($this->quote(['query' => 'Gen1:1', 'version' => 'TEST1', 'mentions' => '1']));
+        self::assertIsArray($entities['bplace:sine']);
+        self::assertIsArray($entities['bplace:anon']);
+        self::assertArrayNotHasKey('image', $entities['bplace:sine'], 'no license');
+        self::assertSame(['en' => 'S'], $entities['bplace:sine']['wikipedia'], 'the rest of the details stay');
+        self::assertArrayNotHasKey('image', $entities['bplace:anon'], 'no file');
     }
 
     /** A failure in the mentions step is logged, and the quote is answered as if mentions were not asked for. */

@@ -20171,7 +20171,7 @@
                     },
                     "image": {
                         "type": "object",
-                        "description": "The entry's image (from Wikidata, on Wikimedia Commons), as CBPPEDR records it. Show its author and license with it.",
+                        "description": "The entry's image (from Wikidata, on Wikimedia Commons), as CBPPEDR records it; only when it has both a `file` and a `license`. Show its author and license with it.",
                         "required": [
                             "file",
                             "license"
