@@ -48,6 +48,9 @@
                     },
                     {
                         "$ref": "#/components/parameters/footnotes"
+                    },
+                    {
+                        "$ref": "#/components/parameters/mentions"
                     }
                 ],
                 "responses": {
@@ -4718,6 +4721,31 @@
                         ],
                         "default": "none",
                         "description": "The edition's notes (footnotes and cross-references) on the verses returned. `none` (the default): no notes, the response is unchanged. `markers`: each row gains `notes`, the markers printed on it. `full`: the rows' markers and, in the top-level `notes`, each note's body and citations once. Only for the BibleGet website's `reader` key: any other credential gets 403. JSON only: with `return=xml` or `return=html` (or such an `Accept`), 400. Only notes anchored to the verses returned are given: a note comes with the verse where it begins. Editions with notes: NABRE (CEI 2008 to follow)."
+                    },
+                    "mentions": {
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "0",
+                                    "1",
+                                    "false",
+                                    "true"
+                                ]
+                            },
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "integer",
+                                "enum": [
+                                    0,
+                                    1
+                                ]
+                            }
+                        ],
+                        "default": "0",
+                        "description": "A JSON body may also send the native `true` or `1`. CBPPEDR's persons and places named in the text (JSON only: with `return=xml` or `return=html` the parameter is ignored, without an error). `1` or `true`: each row of an edition with mentions (the Nova Vulgata, NVBSE) gains `mentions`, and the response gains the top-level `entities`, the cards of exactly the entries those mentions name. Rows of other editions are unchanged. A row whose text (its plain text or its markup) changed since the mentions were loaded gets none. Any other value (`0`, `false`, anything else) means off: the response is unchanged. Same credentials and caps as the quote: the mentions follow the rows returned (a visitor's 30 verses of a copyrighted edition carry only theirs). See the `mentions` query parameter."
                     }
                 },
                 "required": [
@@ -5070,6 +5098,13 @@
                                     "items": {
                                         "$ref": "#/components/schemas/NoteMarker"
                                     }
+                                },
+                                "mentions": {
+                                    "type": "array",
+                                    "description": "With `mentions=1` only, and only on the rows of an edition with mentions (an empty list when the row has none): CBPPEDR's mentions in this row, by `start`, then outer before inner (by `end` descending).",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Mention"
+                                    }
                                 }
                             }
                         },
@@ -5130,6 +5165,13 @@
                         "description": "With `footnotes=full` only: each note on the rows, once, keyed by its id (an empty object when there are none).",
                         "additionalProperties": {
                             "$ref": "#/components/schemas/Note"
+                        }
+                    },
+                    "entities": {
+                        "type": "object",
+                        "description": "With `mentions=1` only: the card of each entry the rows' mentions name (`entry` or `candidates`), keyed by its id (an empty object when there are none).",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/EntityCard"
                         }
                     }
                 }
@@ -20054,6 +20096,143 @@
                         }
                     }
                 }
+            },
+            "Mention": {
+                "type": "object",
+                "description": "Where a row's text names an entry of CBPPEDR (`mentions=1`): `entry` once identified, `candidates` while the identification is under review (one or the other, never both).",
+                "properties": {
+                    "start": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "0-based Unicode code-point offset into the row's `text`, formatting tags included (as `title_position`)."
+                    },
+                    "end": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Code-point offset into `text` where the mention ends (exclusive)."
+                    },
+                    "entry": {
+                        "type": "string",
+                        "description": "The entry named: a key of the top-level `entities`.",
+                        "example": "bpers:petrus"
+                    },
+                    "candidates": {
+                        "type": "array",
+                        "minItems": 1,
+                        "description": "The entries it may name, while under review: keys of the top-level `entities`.",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "start",
+                    "end"
+                ]
+            },
+            "EntityCard": {
+                "type": "object",
+                "description": "What a card shows of an entry of CBPPEDR (`mentions=1`). `image`, `wikipedia` and `coords` only when present, and only for an entry whose Wikidata item has been reviewed or adjudicated.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "person",
+                            "place",
+                            "event"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "example": "individual"
+                    },
+                    "names": {
+                        "type": "object",
+                        "description": "The entry's names by language code (an empty object when there are none).",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "description": {
+                        "type": "object",
+                        "description": "A short description by language code (an empty object when there is none).",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "uncertain": {
+                        "type": "boolean",
+                        "description": "Whether the entry's identity itself is uncertain."
+                    },
+                    "verse_count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "The number of the edition's verses in the entry's index entry (`/metadata/entities`), for the edition of the first row that names it; 0 when it has none."
+                    },
+                    "image": {
+                        "type": "object",
+                        "description": "The entry's image (from Wikidata, on Wikimedia Commons), as CBPPEDR records it; only when it has both a `file` and a `license`. Show its author and license with it.",
+                        "required": [
+                            "file",
+                            "license"
+                        ],
+                        "properties": {
+                            "file": {
+                                "type": "string",
+                                "description": "The file's name on Wikimedia Commons (Wikidata P18).",
+                                "example": "Fixtura.jpg"
+                            },
+                            "author": {
+                                "type": "string",
+                                "description": "The author to credit, when Commons records one."
+                            },
+                            "license": {
+                                "type": "string",
+                                "description": "The file's license, as Commons names it.",
+                                "example": "CC BY-SA 4.0"
+                            },
+                            "license_url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "The license's text, when it has one (not for the public domain)."
+                            }
+                        },
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "wikipedia": {
+                        "type": "object",
+                        "description": "Wikipedia article titles by language code.",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "coords": {
+                        "type": "object",
+                        "description": "A place's coordinates, only when its Wikidata item has exactly one.",
+                        "properties": {
+                            "lat": {
+                                "type": "number"
+                            },
+                            "lon": {
+                                "type": "number"
+                            }
+                        },
+                        "required": [
+                            "lat",
+                            "lon"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "kind",
+                    "names",
+                    "description",
+                    "uncertain",
+                    "verse_count"
+                ]
             }
         },
         "parameters": {
@@ -20192,6 +20371,22 @@
                         "full"
                     ],
                     "default": "none"
+                }
+            },
+            "mentions": {
+                "name": "mentions",
+                "in": "query",
+                "required": false,
+                "description": "CBPPEDR's persons and places named in the text (JSON only: with `return=xml` or `return=html` the parameter is ignored, without an error). `1` or `true`: each row of an edition with mentions (the Nova Vulgata, NVBSE) gains `mentions`, and the response gains the top-level `entities`, the cards of exactly the entries those mentions name. Rows of other editions are unchanged. A row whose text (its plain text or its markup) changed since the mentions were loaded gets none. Any other value (`0`, `false`, anything else) means off: the response is unchanged. Same credentials and caps as the quote: the mentions follow the rows returned (a visitor's 30 verses of a copyrighted edition carry only theirs).",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "0",
+                        "1",
+                        "false",
+                        "true"
+                    ],
+                    "default": "0"
                 }
             }
         },

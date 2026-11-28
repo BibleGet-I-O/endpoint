@@ -13,6 +13,7 @@ class EntityRepositoryTest extends DatabaseTestCase
 {
     private const string MIGRATION = __DIR__ . '/../../../migrations/072-cbppedr.sql';
     private const string BTU       = __DIR__ . '/../../../migrations/053-btu-review-store.sql';
+    private const string MENTIONS  = __DIR__ . '/../../../migrations/073-cbppedr-mentions.sql';
 
     protected function setUp(): void
     {
@@ -21,6 +22,7 @@ class EntityRepositoryTest extends DatabaseTestCase
         $pdo->exec((string) file_get_contents(self::BTU));
         $pdo->exec((string) file_get_contents(self::MIGRATION));
         $pdo->exec((string) file_get_contents(self::MIGRATION)); // idempotent
+        $pdo->exec((string) file_get_contents(self::MENTIONS));
         $pdo->exec('TRUNCATE bpe_entry, bpe_attested, bpe_label, bpe_release, btu_link, btu_unit RESTART IDENTITY CASCADE');
         $pdo->exec("INSERT INTO btu_unit (id, book, ord) VALUES ('btu:gn.1.1', 1, 0), ('btu:gn.1.2', 1, 1)");
     }
@@ -58,7 +60,10 @@ class EntityRepositoryTest extends DatabaseTestCase
     {
         $repo  = new EntityRepository($this->getConnection());
         $first = $repo->replaceAll([self::entry('bpers:a', ['btu:gn.1.1'], ['btu:gn.1.1' => ['NVBSE']]), self::entry('bpers:b', ['btu:gn.1.2'])], 'c1');
-        self::assertSame(['entries' => 2, 'attested' => 2, 'labels' => 1, 'unknown_units' => []], $first);
+        self::assertSame(
+            ['entries' => 2, 'attested' => 2, 'mentioned' => 0, 'labels' => 1, 'unknown_units' => [], 'mentions' => [], 'details' => 0, 'unknown_details' => [], 'verse_counts' => 0],
+            $first
+        );
         $repo->replaceAll([self::entry('bpers:b', ['btu:gn.1.2'])], 'c2');
         $pdo = $this->getConnection();
         self::assertSame(1, (int) $pdo->query('SELECT count(*) FROM bpe_entry')?->fetchColumn());
@@ -110,6 +115,36 @@ class EntityRepositoryTest extends DatabaseTestCase
         self::assertNotSame([], $pdo->seen);
         self::assertSame(['repeatable read on'], array_values(array_unique($pdo->seen)));
         self::assertFalse($pdo->inTransaction());
+    }
+
+    /**
+     * A load holds the CBPPEDR advisory lock from the catalog's replacement through the verse counts: a load waits
+     * for another one to finish, and once done holds no advisory lock.
+     */
+    public function testSerializesLoadsWithAnAdvisoryLock(): void
+    {
+        $p     = Connection::params();
+        $other = new \PDO("pgsql:host={$p['host']};port={$p['port']};dbname={$p['dbname']}", $p['user'], $p['password']);
+        $other->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $other->query("SELECT pg_advisory_lock(hashtext('bibleget.cbppedr.load'))");
+        $pdo = $this->getConnection();
+        $pdo->exec("SET lock_timeout = '200ms'");
+        try {
+            ( new EntityRepository($pdo) )->replaceAll([self::entry('bpers:a', ['btu:gn.1.1'])], 'c1');
+            self::fail('A load ran while another one held the lock');
+        } catch (\PDOException $e) {
+            self::assertSame('55P03', $e->getCode()); // lock_not_available
+        } finally {
+            $other->query("SELECT pg_advisory_unlock(hashtext('bibleget.cbppedr.load'))");
+        }
+        try {
+            ( new EntityRepository($pdo) )->replaceAll([self::entry('bpers:a', ['btu:gn.1.1'])], 'c1');
+        } finally {
+            $pdo->exec('RESET lock_timeout');
+        }
+        $held = $pdo->query("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()");
+        self::assertSame(0, (int) $held?->fetchColumn());
+        self::assertSame(1, (int) $pdo->query('SELECT count(*) FROM bpe_entry')?->fetchColumn());
     }
 
     /** A caller's own transaction must give one snapshot too: read committed would not. */

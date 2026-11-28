@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BibleGet\Api\Repositories;
 
 use BibleGet\Api\Cbppedr\CatalogReader;
+use BibleGet\Api\Cbppedr\MentionLoader;
+use BibleGet\Api\Cbppedr\VerseCountException;
 use BibleGet\Api\Util\Placement;
 
 /**
@@ -14,12 +16,18 @@ use BibleGet\Api\Util\Placement;
  * a verse the edition prints with its own label or under another chapter's heading adds [label, printed chapter].
  *
  * @phpstan-import-type Entry from CatalogReader
+ * @phpstan-import-type MentionUnit from CatalogReader
+ * @phpstan-import-type Detail from CatalogReader
+ * @phpstan-import-type Report from MentionLoader
  * @phpstan-type Ref array{0: int, 1: int, 2: int, 3: ?string, 4: ?string, 5?: ?string, 6?: ?int}
  * @phpstan-type IndexEntry array{id: string, kind: string, names: array<string, string>, description: array<string, string>, qid: ?string, qid_status: ?string, uncertain: bool, refs: list<Ref>}
  */
 final class EntityRepository
 {
     private const string TEXT_ARRAY = 'ARRAY(SELECT json_array_elements_text(?::json))';
+
+    /** The advisory lock key that serializes CBPPEDR loads (replaceAll). */
+    private const string LOAD_LOCK = "hashtext('bibleget.cbppedr.load')";
 
     /** A link's ref: chapter, verse, a segment letter or two, a repeated printing (#2), the Esther text (@GREEK). */
     private const string REF = '/^(\d+):(\d+)([a-z]*)(?:#\d+)?(?:@(GREEK|HEBREW))?$/';
@@ -219,8 +227,12 @@ final class EntityRepository
         return ['commit' => $row['commit'], 'loaded_at' => $row['loaded_at']];
     }
 
-    /** @return ?Ref */
-    private static function ref(int $book, string $ref): ?array
+    /**
+     * A btu_link ref of a book as a Ref: [book, chapter, verse, segment, tradition]; null when it is not one.
+     *
+     * @return ?Ref
+     */
+    public static function ref(int $book, string $ref): ?array
     {
         if (preg_match(self::REF, $ref, $m) !== 1) {
             return null;
@@ -246,56 +258,183 @@ final class EntityRepository
     }
 
     /**
-     * Replaces every entry in one transaction and records the release loaded. Attested units CBTUDR does not know
-     * (no btu_unit row) are stored all the same, and reported.
+     * Replaces every entry in one transaction, with the editions' mentions (MentionLoader) and the entries' details,
+     * and records the release loaded. Attested units CBTUDR does not know (no btu_unit row) are stored all the same,
+     * and reported; an entry's mentioned units (settled mentions no source cites) follow its attested ones, flagged
+     * `mentioned`. Details of an entry not loaded are left out, and reported. Once that transaction commits, the
+     * number of verses of each person and place in every edition with mentions is counted from its index (which reads
+     * its own snapshot, so it cannot run inside the load) and stored in bpe_verse_count, in a second transaction.
+     * Loads are serialized by a session-level PostgreSQL advisory lock (LOAD_LOCK), taken before the first
+     * transaction and released only after the counts are stored, so that a load cannot store counts read from a
+     * catalog another load has since replaced; a second load waits for the first (up to the session's lock_timeout).
+     * When the counts fail after the catalog committed, a VerseCountException says so: the load must be run again.
      *
-     * @param list<Entry> $entries
-     * @return array{entries: int, attested: int, labels: int, unknown_units: list<string>}
+     * @param list<Entry>                                $entries
+     * @param array<string, array<string, MentionUnit>>  $mentions by edition, then unit key
+     * @param array<string, Detail>                      $details  by entry id
+     * @return array{entries: int, attested: int, mentioned: int, labels: int, unknown_units: list<string>, mentions: array<string, Report>, details: int, unknown_details: list<string>, verse_counts: int}
      */
-    public function replaceAll(array $entries, string $commit): array
+    public function replaceAll(array $entries, string $commit, array $mentions = [], array $details = []): array
     {
-        $counts = ['entries' => 0, 'attested' => 0, 'labels' => 0];
+        $this->db->query('SELECT pg_advisory_lock(' . self::LOAD_LOCK . ')');
+        try {
+            $result = $this->replaceCatalog($entries, $commit, $mentions, $details);
+            try {
+                $counted = $this->countVerses(array_keys($mentions));
+            } catch (\Throwable $e) {
+                throw new VerseCountException($commit, $e);
+            }
+            return $result + ['verse_counts' => $counted];
+        } finally {
+            $this->db->query('SELECT pg_advisory_unlock(' . self::LOAD_LOCK . ')');
+        }
+    }
+
+    /**
+     * replaceAll's first transaction: everything but the verse counts.
+     *
+     * @param list<Entry>                                $entries
+     * @param array<string, array<string, MentionUnit>>  $mentions
+     * @param array<string, Detail>                      $details
+     * @return array{entries: int, attested: int, mentioned: int, labels: int, unknown_units: list<string>, mentions: array<string, Report>, details: int, unknown_details: list<string>}
+     */
+    private function replaceCatalog(array $entries, string $commit, array $mentions, array $details): array
+    {
         $this->db->beginTransaction();
         try {
-            $this->db->exec('DELETE FROM bpe_entry'); // cascades to bpe_attested and bpe_label
-            $entry    = $this->db->prepare(
-                'INSERT INTO bpe_entry (id, type, kind, names, description, qid, qid_status, uncertain) VALUES (?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?)'
-            );
-            $attested = $this->db->prepare('INSERT INTO bpe_attested (entry, unit, ord) VALUES (?, ?, ?) ON CONFLICT DO NOTHING');
-            $label    = $this->db->prepare('INSERT INTO bpe_label (entry, unit, editions) VALUES (?, ?, ' . self::TEXT_ARRAY . ')');
-            foreach ($entries as $e) {
-                $entry->execute([
-                    $e['id'],
-                    $e['type'],
-                    $e['kind'],
-                    self::json((object) $e['names']),
-                    self::json((object) $e['description']),
-                    $e['qid'],
-                    $e['qid_status'],
-                    $e['uncertain'] ? 'true' : 'false',
-                ]);
-                $counts['entries']++;
-                foreach ($e['attested'] as $ord => $unit) {
-                    $attested->execute([$e['id'], $unit, $ord]);
-                    $counts['attested'] += $attested->rowCount();
-                }
-                foreach ($e['labels'] as $unit => $editions) {
-                    $label->execute([$e['id'], $unit, self::json($editions)]);
-                    $counts['labels']++;
-                }
-            }
+            // bpe_mention first and by name: a mention under review has no entry, so no cascade reaches it.
+            $this->db->exec('DELETE FROM bpe_mention');
+            $this->db->exec('DELETE FROM bpe_verse_count');
+            $this->db->exec('DELETE FROM bpe_detail');
+            $this->db->exec('DELETE FROM bpe_entry'); // cascades to bpe_attested and bpe_label, the rest is emptied above
+            $counts       = $this->insertEntries($entries);
             $unknown      = $this->db->query(
                 'SELECT DISTINCT a.unit FROM bpe_attested a WHERE NOT EXISTS (SELECT 1 FROM btu_unit u WHERE u.id = a.unit) ORDER BY 1'
             );
             $unknownUnits = $unknown === false ? [] : array_values(array_filter($unknown->fetchAll(\PDO::FETCH_COLUMN), 'is_string'));
-            $this->db->prepare('INSERT INTO bpe_release (commit, counts) VALUES (?, ?::jsonb)')
-                ->execute([$commit, self::json($counts + ['unknown_units' => count($unknownUnits)])]);
+            $reports      = [];
+            foreach ($mentions as $edition => $units) {
+                $reports[$edition] = MentionLoader::load($this->db, $edition, $units);
+            }
+            [$loaded, $unknownDetails] = $this->insertDetails($details, array_column($entries, 'id'));
+            $this->db->prepare('INSERT INTO bpe_release (commit, counts) VALUES (?, ?::jsonb)')->execute([
+                $commit, self::json($counts + [
+                    'unknown_units' => count($unknownUnits),
+                    'mentions'      => array_sum(array_column($reports, 'loaded')),
+                    'details'       => $loaded,
+                ])
+            ]);
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
-        return $counts + ['unknown_units' => $unknownUnits];
+        return $counts + [
+            'unknown_units'   => $unknownUnits,
+            'mentions'        => $reports,
+            'details'         => $loaded,
+            'unknown_details' => $unknownDetails,
+        ];
+    }
+
+    /**
+     * @param list<Entry> $entries
+     * @return array{entries: int, attested: int, mentioned: int, labels: int}
+     */
+    private function insertEntries(array $entries): array
+    {
+        $counts   = ['entries' => 0, 'attested' => 0, 'mentioned' => 0, 'labels' => 0];
+        $entry    = $this->db->prepare(
+            'INSERT INTO bpe_entry (id, type, kind, names, description, qid, qid_status, uncertain) VALUES (?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?)'
+        );
+        $attested = $this->db->prepare('INSERT INTO bpe_attested (entry, unit, ord, mentioned) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING');
+        $label    = $this->db->prepare('INSERT INTO bpe_label (entry, unit, editions) VALUES (?, ?, ' . self::TEXT_ARRAY . ')');
+        foreach ($entries as $e) {
+            $entry->execute([
+                $e['id'],
+                $e['type'],
+                $e['kind'],
+                self::json((object) $e['names']),
+                self::json((object) $e['description']),
+                $e['qid'],
+                $e['qid_status'],
+                $e['uncertain'] ? 'true' : 'false',
+            ]);
+            $counts['entries']++;
+            // A unit both attested and mentioned stays attested: the conflict keeps the first row.
+            $ord = 0;
+            foreach ([[$e['attested'], 'false', 'attested'], [$e['mentioned'] ?? [], 'true', 'mentioned']] as [$list, $flag, $count]) {
+                foreach ($list as $unit) {
+                    $attested->execute([$e['id'], $unit, $ord++, $flag]);
+                    $counts[$count] += $attested->rowCount();
+                }
+            }
+            foreach ($e['labels'] as $unit => $editions) {
+                $label->execute([$e['id'], $unit, self::json($editions)]);
+                $counts['labels']++;
+            }
+        }
+        return $counts;
+    }
+
+    /**
+     * @param array<string, Detail> $details
+     * @param list<string>          $ids     the entries loaded
+     * @return array{0: int, 1: list<string>} the details loaded, and the ids of those left out
+     */
+    private function insertDetails(array $details, array $ids): array
+    {
+        $known   = array_fill_keys($ids, true);
+        $loaded  = 0;
+        $unknown = [];
+        $detail  = $this->db->prepare('INSERT INTO bpe_detail (entry, image, wikipedia, coords) VALUES (?, ?::jsonb, ?::jsonb, ?::jsonb)');
+        foreach ($details as $id => $d) {
+            if (!isset($known[$id])) {
+                $unknown[] = $id;
+                continue;
+            }
+            $detail->execute([
+                $id,
+                $d['image'] === null ? null : self::json((object) $d['image']),
+                $d['wikipedia'] === null ? null : self::json((object) $d['wikipedia']),
+                $d['coords'] === null ? null : self::json($d['coords']),
+            ]);
+            $loaded++;
+        }
+        return [$loaded, $unknown];
+    }
+
+    /**
+     * Stores, for each edition, how many of its verses each person and place has in its index.
+     *
+     * @param list<string> $editions
+     * @return int the rows stored
+     */
+    private function countVerses(array $editions): int
+    {
+        $stored = 0;
+        foreach ($editions as $edition) {
+            $counts = [];
+            foreach (['person', 'place'] as $type) {
+                foreach ($this->index($edition, $type)['entries'] as $e) {
+                    $counts[$e['id']] = count($e['refs']);
+                }
+            }
+            $this->db->beginTransaction();
+            try {
+                $this->db->prepare('DELETE FROM bpe_verse_count WHERE edition = ?')->execute([$edition]);
+                $insert = $this->db->prepare('INSERT INTO bpe_verse_count (edition, entry, verses) VALUES (?, ?, ?)');
+                foreach ($counts as $id => $verses) {
+                    $insert->execute([$edition, $id, $verses]);
+                }
+                $this->db->commit();
+            } catch (\Throwable $e) {
+                $this->db->rollBack();
+                throw $e;
+            }
+            $stored += count($counts);
+        }
+        return $stored;
     }
 
     private static function json(mixed $v): string

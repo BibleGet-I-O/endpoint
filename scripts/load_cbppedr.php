@@ -1,9 +1,12 @@
 <?php
 
 /**
- * Loads a CBPPEDR checkout (CatholicOS/cbppedr) into the bpe_* tables (migration 072): every person, place and
- * event, the CBTUDR units where each is attested, and the editions that name an entry in a labelled unit. Every
- * row is replaced in one transaction, and the checkout's commit is recorded in bpe_release.
+ * Loads a CBPPEDR checkout (CatholicOS/cbppedr) into the bpe_* tables (migrations 072, 073): every person, place and
+ * event, the CBTUDR units where each is attested (or only mentioned), the editions that name an entry in a labelled
+ * unit, where the entries are named in each edition's text (data/mentions/, the curated file over the generated
+ * one) and what a card shows of them (data/details.json, when there is one). Every row is replaced in one
+ * transaction, and the checkout's commit is recorded in bpe_release; then each person's and place's number of
+ * verses in every edition with mentions is counted from its index (bpe_verse_count).
  *
  *   php scripts/load_cbppedr.php <cbppedr-dir>
  *
@@ -22,6 +25,7 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 use BibleGet\Api\Auth\CredentialFactory;
 use BibleGet\Api\Cbppedr\CatalogReader;
+use BibleGet\Api\Cbppedr\VerseCountException;
 use BibleGet\Api\Database\Connection;
 use BibleGet\Api\Repositories\EntityRepository;
 use BibleGet\Api\Util\EnvLoader;
@@ -43,16 +47,51 @@ if ($commit === '') {
 ini_set('error_log', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 fwrite(STDERR, sprintf('APP_ENV=%s DB_NAME=%s' . PHP_EOL, CredentialFactory::currentEnv(), CredentialFactory::env('DB_NAME') ?? ''));
 
-$entries = ( new CatalogReader() )->read($dir)['entries'];
-$result  = ( new EntityRepository(Connection::getConnection()) )->replaceAll($entries, $commit);
+$catalog = ( new CatalogReader() )->read($dir);
+foreach ($catalog['malformed'] as $file => $skipped) {
+    fwrite(STDERR, sprintf('%s: %d malformed units and %d malformed mentions skipped' . PHP_EOL, $file, $skipped['units'], $skipped['mentions']));
+}
+try {
+    $result = ( new EntityRepository(Connection::getConnection()) )->replaceAll($catalog['entries'], $commit, $catalog['mentions'], $catalog['details']);
+} catch (VerseCountException $e) {
+    fwrite(STDERR, sprintf(
+        'CBPPEDR %s was loaded, but counting its verses failed (%s): the cards show stale counts. Run this script again.' . PHP_EOL,
+        substr($e->commit, 0, 12),
+        $e->getPrevious()?->getMessage() ?? $e->getMessage()
+    ));
+    exit(1);
+}
 
 fwrite(STDERR, sprintf(
-    'CBPPEDR %s: %d entries, %d attested units, %d labelled units' . PHP_EOL,
+    'CBPPEDR %s: %d entries, %d attested units, %d mentioned units, %d labelled units, %d details, %d verse counts' . PHP_EOL,
     substr($commit, 0, 12),
     $result['entries'],
     $result['attested'],
-    $result['labels']
+    $result['mentioned'],
+    $result['labels'],
+    $result['details'],
+    $result['verse_counts']
 ));
 if ($result['unknown_units'] !== []) {
     fwrite(STDERR, sprintf('%d units CBTUDR does not know: %s' . PHP_EOL, count($result['unknown_units']), implode(', ', $result['unknown_units'])));
+}
+if ($result['unknown_details'] !== []) {
+    fwrite(STDERR, sprintf('%d details of entries not loaded: %s' . PHP_EOL, count($result['unknown_details']), implode(', ', array_slice($result['unknown_details'], 0, 20))));
+}
+foreach ($result['mentions'] as $edition => $report) {
+    fwrite(STDERR, sprintf(
+        '%s mentions: %d loaded, %d stale units, %d units with no row, %d bad checks, %d with unknown ids' . PHP_EOL,
+        $edition,
+        $report['loaded'],
+        count($report['stale']),
+        count($report['no_row']),
+        count($report['bad_check']),
+        count($report['unknown_ids'])
+    ));
+    foreach (['stale', 'no_row', 'bad_check', 'unknown_ids'] as $list) {
+        if ($report[$list] !== []) {
+            $more = count($report[$list]) > 20 ? ', …' : '';
+            fwrite(STDERR, sprintf('  %s: %s%s' . PHP_EOL, $list, implode(', ', array_slice($report[$list], 0, 20)), $more));
+        }
+    }
 }

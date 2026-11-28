@@ -8,16 +8,36 @@ namespace BibleGet\Api\Cbppedr;
  * Reads a CBPPEDR checkout's three catalogs (data/persons.json, places.json, events.json) into the rows
  * EntityRepository::replaceAll loads. data/unnamed.json is not read: its persons have no catalog id yet.
  *
- * @phpstan-type Entry array{id: string, type: string, kind: string, names: array<string, string>, description: array<string, string>, qid: ?string, qid_status: ?string, uncertain: bool, attested: list<string>, labels: array<string, list<string>>}
+ * Also read: where the entries are named in an edition's text (data/mentions/<edition>.json, generated, and
+ * <edition>_curated.json, hand corrections that replace the generated file unit by unit; a curated unit with no
+ * mentions removes it), and what a card shows of an entry (data/details.json, absent until CBPPEDR builds it). A
+ * mention's positions are UTF-16 code units of the row's text_plain, and its check the first 8 hex digits of the
+ * SHA-256 of the span's text; MentionLoader verifies both. An entry's `mentioned` units are those of its settled
+ * mentions that no source cites. What a mentions file holds that is not a unit (a key with an object that has a
+ * `hash`) or a mention (int `start` and `end`, a `check`, and an `entry` or `candidates` but not both) is skipped,
+ * and counted in `malformed` by file name.
+ *
+ * @phpstan-type Entry array{id: string, type: string, kind: string, names: array<string, string>, description: array<string, string>, qid: ?string, qid_status: ?string, uncertain: bool, attested: list<string>, labels: array<string, list<string>>, mentioned?: list<string>}
+ * @phpstan-type Mention array{start: int, end: int, check: string, entry: ?string, candidates: ?list<string>}
+ * @phpstan-type MentionUnit array{hash: string, mentions: list<Mention>}
+ * @phpstan-type Detail array{image: ?array<string, string>, wikipedia: ?array<string, string>, coords: ?array{lat: float, lon: float}}
  */
 final class CatalogReader
 {
     private const array CATALOGS = ['persons', 'places', 'events'];
 
     /**
-     * @return array{entries: list<Entry>}
+     * @return array{entries: list<Entry>, mentions: array<string, array<string, MentionUnit>>, details: array<string, Detail>, malformed: array<string, array{units: int, mentions: int}>}
      */
     public function read(string $dir): array
+    {
+        $malformed = [];
+        $mentions  = self::mentions($dir, $malformed);
+        return ['entries' => self::entries($dir), 'mentions' => $mentions, 'details' => self::details($dir), 'malformed' => $malformed];
+    }
+
+    /** @return list<Entry> */
+    private static function entries(string $dir): array
     {
         $entries = [];
         foreach (self::CATALOGS as $catalog) {
@@ -35,7 +55,110 @@ final class CatalogReader
                 }
             }
         }
-        return ['entries' => $entries];
+        return $entries;
+    }
+
+    /**
+     * Each edition's units with mentions, by unit key, the curated file over the generated one.
+     *
+     * @param array<string, array{units: int, mentions: int}> $malformed what was skipped, by file name (set)
+     * @return array<string, array<string, MentionUnit>>
+     */
+    private static function mentions(string $dir, array &$malformed): array
+    {
+        $files = glob($dir . '/data/mentions/*.json') ?: [];
+        // Generated files first, so that the curated ones apply over them.
+        usort($files, static fn (string $a, string $b): int => [str_ends_with($a, '_curated.json'), $a] <=> [str_ends_with($b, '_curated.json'), $b]);
+        /** @var array<string, array<string, MentionUnit>> $out */
+        $out = [];
+        foreach ($files as $path) {
+            $data = json_decode((string) file_get_contents($path), true);
+            if (!is_array($data) || !is_string($data['edition'] ?? null) || !is_array($data['units'] ?? null)) {
+                throw new \RuntimeException("Not a CBPPEDR mentions file: $path");
+            }
+            $skipped = ['units' => 0, 'mentions' => 0];
+            $units   = self::applyUnits($out[$data['edition']] ?? [], $data['units'], $skipped);
+            if ($skipped !== ['units' => 0, 'mentions' => 0]) {
+                $malformed[basename($path)] = $skipped;
+            }
+            if ($units === []) {
+                unset($out[$data['edition']]);
+            } else {
+                $out[$data['edition']] = $units;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * A file's units over those read before: each replaces the one with its key, and one with no mentions removes it.
+     *
+     * @param array<string, MentionUnit>        $units
+     * @param array<mixed>                      $file
+     * @param array{units: int, mentions: int}  $skipped the malformed units and mentions (counted)
+     * @return array<string, MentionUnit>
+     */
+    private static function applyUnits(array $units, array $file, array &$skipped): array
+    {
+        foreach ($file as $key => $unit) {
+            if (!is_string($key) || !is_array($unit) || !is_string($unit['hash'] ?? null)) {
+                $skipped['units']++;
+                continue;
+            }
+            $listed               = is_array($unit['mentions'] ?? null) ? $unit['mentions'] : [];
+            $mentions             = array_values(array_filter(array_map(self::mention(...), $listed)));
+            $skipped['mentions'] += count($listed) - count($mentions);
+            if ($mentions === []) {
+                unset($units[$key]);
+                continue;
+            }
+            $units[$key] = ['hash' => strtolower($unit['hash']), 'mentions' => $mentions];
+        }
+        return $units;
+    }
+
+    /** @return ?Mention */
+    private static function mention(mixed $m): ?array
+    {
+        if (!is_array($m) || !is_int($m['start'] ?? null) || !is_int($m['end'] ?? null) || !is_string($m['check'] ?? null)) {
+            return null;
+        }
+        $entry      = is_string($m['entry'] ?? null) ? $m['entry'] : null;
+        $candidates = is_array($m['candidates'] ?? null) ? array_values(array_filter($m['candidates'], 'is_string')) : null;
+        if (( $entry === null ) === ( $candidates === null || $candidates === [] )) {
+            return null; // neither, or both
+        }
+        return ['start' => $m['start'], 'end' => $m['end'], 'check' => strtolower($m['check']), 'entry' => $entry, 'candidates' => $entry === null ? $candidates : null];
+    }
+
+    /** @return array<string, Detail> */
+    private static function details(string $dir): array
+    {
+        $path = $dir . '/data/details.json';
+        if (!is_file($path)) {
+            return [];
+        }
+        $data = json_decode((string) file_get_contents($path), true);
+        if (!is_array($data) || !is_array($data['entries'] ?? null)) {
+            throw new \RuntimeException("Not a CBPPEDR details file: $path");
+        }
+        $out = [];
+        foreach ($data['entries'] as $id => $d) {
+            if (!is_string($id) || !is_array($d)) {
+                continue;
+            }
+            $image     = self::strings($d['image'] ?? null);
+            $wikipedia = self::strings($d['wikipedia'] ?? null);
+            $coords    = $d['coords'] ?? null;
+            $out[$id]  = [
+                'image'     => $image === [] ? null : $image,
+                'wikipedia' => $wikipedia === [] ? null : $wikipedia,
+                'coords'    => is_array($coords) && is_numeric($coords['lat'] ?? null) && is_numeric($coords['lon'] ?? null)
+                    ? ['lat' => (float) $coords['lat'], 'lon' => (float) $coords['lon']]
+                    : null,
+            ];
+        }
+        return $out;
     }
 
     /**
@@ -59,9 +182,16 @@ final class CatalogReader
             'qid'         => is_string($e['qid'] ?? null) ? $e['qid'] : null,
             'qid_status'  => is_string($e['qid_status'] ?? null) ? $e['qid_status'] : null,
             'uncertain'   => ( $e['review'] ?? null ) === 'uncertain',
-            'attested'    => array_values(array_filter(is_array($e['attested'] ?? null) ? $e['attested'] : [], 'is_string')),
+            'attested'    => self::list($e['attested'] ?? null),
             'labels'      => $labels,
+            'mentioned'   => self::list($e['mentioned'] ?? null),
         ];
+    }
+
+    /** @return list<string> */
+    private static function list(mixed $list): array
+    {
+        return array_values(array_filter(is_array($list) ? $list : [], 'is_string'));
     }
 
     /** @return array<string, string> */

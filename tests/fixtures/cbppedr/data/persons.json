@@ -1,7 +1,7 @@
 {
   "$comment": "Synthetic CBPPEDR persons for tests.",
   "entries": {
-    "bpers:fixture.a": {"type": "person", "kind": "individual", "names": {"la": "Fixtura", "it": "Fixtùra", "en": "Fixture"}, "description": {"it": "una persona di prova", "en": "a test person"}, "attested": ["btu:gn.1.1", "btu:gn.1.2"], "relations": [], "qid": "Q1", "qid_status": "reviewed", "evidence": [], "labels": {"btu:gn.1.2": {"as": "designation", "editions": {"NVBSE": "pater", "NABRE": "the father"}}}},
+    "bpers:fixture.a": {"type": "person", "kind": "individual", "names": {"la": "Fixtura", "it": "Fixtùra", "en": "Fixture"}, "description": {"it": "una persona di prova", "en": "a test person"}, "attested": ["btu:gn.1.1", "btu:gn.1.2"], "relations": [], "qid": "Q1", "qid_status": "reviewed", "evidence": [], "labels": {"btu:gn.1.2": {"as": "designation", "editions": {"NVBSE": "pater", "NABRE": "the father"}}}, "mentioned": ["btu:gn.1.4", "btu:gn.1.1"]},
     "bpers:fixture.b": {"type": "person", "kind": "individual", "names": {"la": "Secunda", "it": "Seconda", "en": "Second"}, "description": {"it": "incerta", "en": "uncertain one"}, "attested": ["btu:gn.1.3"], "relations": [], "qid": "Q2", "qid_status": "auto", "evidence": [], "review": "uncertain"},
     "bpers:fixture.c": {"type": "person", "kind": "group", "names": {"la": "", "it": "Terzi", "en": "Thirds"}, "description": {"en": "a group"}, "attested": [], "relations": [], "qid": null, "qid_status": "unresolved", "evidence": []}
   }
