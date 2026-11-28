@@ -254,27 +254,27 @@
         },
         {
             "name": "doctrine/migrations",
-            "version": "3.9.8",
+            "version": "3.10.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/doctrine/migrations.git",
-                "reference": "eb0b9ce3f999d720fa73037bbd06977ea34b76a0"
+                "reference": "46f6d36c55f0ae64da7e47f7bd49396b5f3cd5ae"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/doctrine/migrations/zipball/eb0b9ce3f999d720fa73037bbd06977ea34b76a0",
-                "reference": "eb0b9ce3f999d720fa73037bbd06977ea34b76a0",
+                "url": "https://api.github.com/repos/doctrine/migrations/zipball/46f6d36c55f0ae64da7e47f7bd49396b5f3cd5ae",
+                "reference": "46f6d36c55f0ae64da7e47f7bd49396b5f3cd5ae",
                 "shasum": ""
             },
             "require": {
                 "composer-runtime-api": "^2",
                 "doctrine/dbal": "^3.6 || ^4",
                 "doctrine/deprecations": "^0.5.3 || ^1",
-                "doctrine/event-manager": "^1.2 || ^2.0",
+                "doctrine/event-manager": "^2.1",
                 "php": "^8.1",
                 "psr/log": "^1.1.3 || ^2 || ^3",
-                "symfony/console": "^5.4 || ^6.0 || ^7.0 || ^8.0",
-                "symfony/stopwatch": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/console": "^6.4.43 || ^7.4.15 || ^8.1.2",
+                "symfony/stopwatch": "^6.0 || ^7.0 || ^8.0",
                 "symfony/var-exporter": "^6.2 || ^7.0 || ^8.0"
             },
             "conflict": {
@@ -293,9 +293,9 @@
                 "phpstan/phpstan-strict-rules": "^2",
                 "phpstan/phpstan-symfony": "^2",
                 "phpunit/phpunit": "^10.3 || ^11.0 || ^12.0",
-                "symfony/cache": "^5.4 || ^6.0 || ^7.0 || ^8.0",
-                "symfony/process": "^5.4 || ^6.0 || ^7.0 || ^8.0",
-                "symfony/yaml": "^5.4 || ^6.0 || ^7.0 || ^8.0"
+                "symfony/cache": "^6.0 || ^7.0 || ^8.0",
+                "symfony/process": "^6.0 || ^7.0 || ^8.0",
+                "symfony/yaml": "^6.0 || ^7.0 || ^8.0"
             },
             "suggest": {
                 "doctrine/sql-formatter": "Allows to generate formatted SQL with the diff command.",
@@ -337,7 +337,7 @@
             ],
             "support": {
                 "issues": "https://github.com/doctrine/migrations/issues",
-                "source": "https://github.com/doctrine/migrations/tree/3.9.8"
+                "source": "https://github.com/doctrine/migrations/tree/3.10.0"
             },
             "funding": [
                 {
@@ -353,7 +353,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-04T12:35:58+00:00"
+            "time": "2026-11-24T20:17:44+00:00"
         },
         {
             "name": "firebase/php-jwt",
@@ -1258,23 +1258,23 @@
         },
         {
             "name": "symfony/console",
-            "version": "v8.1.11",
+            "version": "v8.1.12",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "5a315b092b81f3e920e9daea1a2ae4c66ed298b9"
+                "reference": "20d14376137e111569de1f62ba4274731a9c9345"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/5a315b092b81f3e920e9daea1a2ae4c66ed298b9",
-                "reference": "5a315b092b81f3e920e9daea1a2ae4c66ed298b9",
+                "url": "https://api.github.com/repos/symfony/console/zipball/20d14376137e111569de1f62ba4274731a9c9345",
+                "reference": "20d14376137e111569de1f62ba4274731a9c9345",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.4.1",
                 "symfony/deprecation-contracts": "^2.5|^3",
                 "symfony/polyfill-mbstring": "^1.0",
-                "symfony/polyfill-php85": "^1.32",
+                "symfony/polyfill-php85": "^1.33",
                 "symfony/service-contracts": "^2.5|^3",
                 "symfony/string": "^7.4.6|^8.0.6"
             },
@@ -1334,7 +1334,7 @@
                 "terminal"
             ],
             "support": {
-                "source": "https://github.com/symfony/console/tree/v8.1.11"
+                "source": "https://github.com/symfony/console/tree/v8.1.12"
             },
             "funding": [
                 {
@@ -1354,7 +1354,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-04T07:07:11+00:00"
+            "time": "2026-11-24T15:59:55+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -2102,16 +2102,16 @@
         },
         {
             "name": "symfony/stopwatch",
-            "version": "v8.1.0",
+            "version": "v8.1.13",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/stopwatch.git",
-                "reference": "21c07b026905d596e8379caeb115d87aa479499d"
+                "reference": "68b2fb16c40f6f4b103966aaa7c5c52c033a4620"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/stopwatch/zipball/21c07b026905d596e8379caeb115d87aa479499d",
-                "reference": "21c07b026905d596e8379caeb115d87aa479499d",
+                "url": "https://api.github.com/repos/symfony/stopwatch/zipball/68b2fb16c40f6f4b103966aaa7c5c52c033a4620",
+                "reference": "68b2fb16c40f6f4b103966aaa7c5c52c033a4620",
                 "shasum": ""
             },
             "require": {
@@ -2144,7 +2144,7 @@
             "description": "Provides a way to profile code",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/stopwatch/tree/v8.1.0"
+                "source": "https://github.com/symfony/stopwatch/tree/v8.1.13"
             },
             "funding": [
                 {
@@ -2164,20 +2164,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-29T05:06:50+00:00"
+            "time": "2026-11-27T13:27:33+00:00"
         },
         {
             "name": "symfony/string",
-            "version": "v8.1.10",
+            "version": "v8.1.13",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/string.git",
-                "reference": "6c6110979c0150393bbb336170e286d51ab4d76c"
+                "reference": "ff6a90fe4c4e0e4de484d07189aa25d6d7f447be"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/string/zipball/6c6110979c0150393bbb336170e286d51ab4d76c",
-                "reference": "6c6110979c0150393bbb336170e286d51ab4d76c",
+                "url": "https://api.github.com/repos/symfony/string/zipball/ff6a90fe4c4e0e4de484d07189aa25d6d7f447be",
+                "reference": "ff6a90fe4c4e0e4de484d07189aa25d6d7f447be",
                 "shasum": ""
             },
             "require": {
@@ -2234,7 +2234,7 @@
                 "utf8"
             ],
             "support": {
-                "source": "https://github.com/symfony/string/tree/v8.1.10"
+                "source": "https://github.com/symfony/string/tree/v8.1.13"
             },
             "funding": [
                 {
@@ -2254,7 +2254,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-23T17:06:53+00:00"
+            "time": "2026-11-27T13:27:33+00:00"
         },
         {
             "name": "symfony/var-exporter",
@@ -4770,7 +4770,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "phpstan/phpstan": 0
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
